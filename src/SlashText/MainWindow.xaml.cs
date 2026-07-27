@@ -1,6 +1,5 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
-using System.Drawing;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
@@ -11,6 +10,8 @@ using SlashText.Services;
 using SlashText.Views;
 using Forms = System.Windows.Forms;
 using Button = System.Windows.Controls.Button;
+using DrawingIcon = System.Drawing.Icon;
+using DrawingSystemIcons = System.Drawing.SystemIcons;
 
 namespace SlashText;
 
@@ -88,12 +89,12 @@ public partial class MainWindow : Window
 
     private void InitializeTray()
     {
-        Icon? icon = null;
+        DrawingIcon? icon = null;
         try
         {
             if (!string.IsNullOrWhiteSpace(Environment.ProcessPath))
             {
-                icon = Icon.ExtractAssociatedIcon(Environment.ProcessPath);
+                icon = DrawingIcon.ExtractAssociatedIcon(Environment.ProcessPath);
             }
         }
         catch (Exception)
@@ -114,7 +115,7 @@ public partial class MainWindow : Window
         _trayIcon = new Forms.NotifyIcon
         {
             Text = "SlashText · Monitoramento ativo",
-            Icon = icon ?? SystemIcons.Application,
+            Icon = icon ?? DrawingSystemIcons.Application,
             ContextMenuStrip = menu,
             Visible = true
         };
