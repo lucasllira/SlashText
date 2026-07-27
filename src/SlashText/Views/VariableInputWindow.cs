@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using SlashText.Services;
+using TextBox = System.Windows.Controls.TextBox;
 
 namespace SlashText.Views;
 

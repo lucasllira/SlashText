@@ -6,6 +6,7 @@ using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Media;
 using SlashText.Models;
+using RichTextBox = System.Windows.Controls.RichTextBox;
 
 namespace SlashText.Services;
 

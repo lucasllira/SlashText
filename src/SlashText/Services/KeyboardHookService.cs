@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Windows;
 using SlashText.Models;
+using Point = System.Windows.Point;
 
 namespace SlashText.Services;
 

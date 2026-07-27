@@ -2,6 +2,10 @@ using System.ComponentModel;
 using System.Runtime.InteropServices;
 using System.Windows;
 using SlashText.Models;
+using WpfClipboard = System.Windows.Clipboard;
+using WpfDataFormats = System.Windows.DataFormats;
+using WpfDataObject = System.Windows.DataObject;
+using WpfIDataObject = System.Windows.IDataObject;
 
 namespace SlashText.Services;
 
@@ -31,7 +35,7 @@ public sealed class TextExpansionService
                 ? RichTextMarkdownConverter.ToPlainText(segment).Length
                 : segment.Length);
 
-        IDataObject? previousClipboard = null;
+        WpfIDataObject? previousClipboard = null;
         try
         {
             previousClipboard = TryGetClipboard();
@@ -74,24 +78,24 @@ public sealed class TextExpansionService
         var plain = format == SnippetFormat.Markdown
             ? RichTextMarkdownConverter.ToPlainText(value)
             : value;
-        var data = new DataObject();
-        data.SetData(DataFormats.UnicodeText, plain);
-        data.SetData(DataFormats.Text, plain);
+        var data = new WpfDataObject();
+        data.SetData(WpfDataFormats.UnicodeText, plain);
+        data.SetData(WpfDataFormats.Text, plain);
 
         if (format == SnippetFormat.Markdown)
         {
             var html = RichTextMarkdownConverter.ToHtml(value);
-            data.SetData(DataFormats.Html, HtmlClipboardFormatter.Create(html));
+            data.SetData(WpfDataFormats.Html, HtmlClipboardFormatter.Create(html));
         }
 
         SetClipboard(data);
     }
 
-    private static IDataObject? TryGetClipboard()
+    private static WpfIDataObject? TryGetClipboard()
     {
         try
         {
-            return Clipboard.GetDataObject();
+            return WpfClipboard.GetDataObject();
         }
         catch (ExternalException)
         {
@@ -99,14 +103,14 @@ public sealed class TextExpansionService
         }
     }
 
-    private static void SetClipboard(IDataObject data)
+    private static void SetClipboard(WpfIDataObject data)
     {
         ExternalException? lastException = null;
         for (var attempt = 0; attempt < 5; attempt++)
         {
             try
             {
-                Clipboard.SetDataObject(data, true);
+                WpfClipboard.SetDataObject(data, true);
                 return;
             }
             catch (ExternalException exception)
@@ -121,11 +125,11 @@ public sealed class TextExpansionService
             lastException);
     }
 
-    private static void TryRestoreClipboard(IDataObject data)
+    private static void TryRestoreClipboard(WpfIDataObject data)
     {
         try
         {
-            Clipboard.SetDataObject(data, true);
+            WpfClipboard.SetDataObject(data, true);
         }
         catch (ExternalException)
         {

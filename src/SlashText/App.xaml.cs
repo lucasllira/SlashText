@@ -3,7 +3,7 @@ using System.Windows;
 
 namespace SlashText;
 
-public partial class App : Application
+public partial class App : System.Windows.Application
 {
     private Mutex? _singleInstance;
 

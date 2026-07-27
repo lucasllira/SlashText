@@ -11,10 +11,6 @@
     <ApplicationIcon>Assets\SlashText.ico</ApplicationIcon>
     <AssemblyName>SlashText</AssemblyName>
     <RootNamespace>SlashText</RootNamespace>
-    <PublishSingleFile>true</PublishSingleFile>
-    <SelfContained>true</SelfContained>
-    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
-    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
     <DebugType>embedded</DebugType>
   </PropertyGroup>
 

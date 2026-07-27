@@ -10,6 +10,7 @@ using SlashText.Models;
 using SlashText.Services;
 using SlashText.Views;
 using Forms = System.Windows.Forms;
+using Button = System.Windows.Controls.Button;
 
 namespace SlashText;
 

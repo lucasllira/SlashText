@@ -4,6 +4,7 @@ using System.Windows.Controls;
 using System.Windows.Interop;
 using System.Windows.Media;
 using SlashText.Models;
+using Point = System.Windows.Point;
 
 namespace SlashText.Views;
 
