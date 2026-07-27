@@ -32,6 +32,9 @@ jobs:
       - name: Smoke tests
         run: dotnet run --project tests/SlashText.SmokeTests/SlashText.SmokeTests.csproj --configuration Release --no-build
 
+      - name: Restore portable runtime
+        run: dotnet restore src/SlashText/SlashText.csproj --runtime win-x64
+
       - name: Publish portable app
         run: >
           dotnet publish src/SlashText/SlashText.csproj
