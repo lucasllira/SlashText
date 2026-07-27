@@ -1,0 +1,172 @@
+<Window x:Class="SlashText.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="SlashText"
+        Width="1080"
+        Height="700"
+        MinWidth="820"
+        MinHeight="560"
+        WindowStartupLocation="CenterScreen"
+        Background="{StaticResource CanvasBrush}">
+    <Grid Margin="24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="20"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <StackPanel>
+                <TextBlock Text="SlashText"
+                           FontFamily="Segoe UI Variable Display"
+                           FontSize="28"
+                           FontWeight="SemiBold"
+                           Foreground="{StaticResource InkBrush}"/>
+                <TextBlock Text="Seus textos prontos, em qualquer lugar."
+                           Margin="0,4,0,0"
+                           Foreground="{StaticResource MutedBrush}"/>
+            </StackPanel>
+            <Border Grid.Column="1"
+                    Background="#E7F8EF"
+                    CornerRadius="14"
+                    Padding="12,6"
+                    VerticalAlignment="Center">
+                <TextBlock Text="● Monitoramento em preparação"
+                           Foreground="#197547"
+                           FontSize="12"/>
+            </Border>
+        </Grid>
+
+        <Border Grid.Row="2"
+                Background="{StaticResource SurfaceBrush}"
+                CornerRadius="16"
+                BorderBrush="#E2E6ED"
+                BorderThickness="1">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="310"/>
+                    <ColumnDefinition Width="1"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <Grid Margin="18">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="12"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="12"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <TextBox x:Name="SearchBox"
+                             TextChanged="SearchBox_OnTextChanged"
+                             ToolTip="Buscar por nome, comando ou categoria"/>
+
+                    <ListBox x:Name="SnippetsList"
+                             Grid.Row="2"
+                             BorderThickness="0"
+                             Background="Transparent"
+                             SelectionChanged="SnippetsList_OnSelectionChanged"/>
+
+                    <Button Grid.Row="4"
+                            Content="+ Novo atalho"
+                            Style="{StaticResource PrimaryButton}"
+                            Click="NewSnippet_OnClick"/>
+                </Grid>
+
+                <Border Grid.Column="1" Background="#E7EAF0"/>
+
+                <ScrollViewer Grid.Column="2" VerticalScrollBarVisibility="Auto">
+                    <Grid Margin="28">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="16"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="16"/>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="18"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="20"/>
+                                <ColumnDefinition Width="190"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock Text="Nome" Foreground="{StaticResource MutedBrush}"/>
+                                <TextBox x:Name="NameBox" Margin="0,6,0,0"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Text="Comando" Foreground="{StaticResource MutedBrush}"/>
+                                <TextBox x:Name="TriggerBox" Margin="0,6,0,0"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <Grid Grid.Row="2">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="20"/>
+                                <ColumnDefinition Width="190"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock Text="Categoria" Foreground="{StaticResource MutedBrush}"/>
+                                <TextBox x:Name="CategoryBox" Margin="0,6,0,0"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Text="Formato" Foreground="{StaticResource MutedBrush}"/>
+                                <ComboBox x:Name="FormatBox"
+                                          Margin="0,6,0,0"
+                                          Padding="9"
+                                          SelectedIndex="0">
+                                    <ComboBoxItem Content="Texto simples"/>
+                                    <ComboBoxItem Content="Markdown formatado"/>
+                                </ComboBox>
+                            </StackPanel>
+                        </Grid>
+
+                        <StackPanel Grid.Row="4">
+                            <TextBlock Text="Conteúdo" Foreground="{StaticResource MutedBrush}"/>
+                            <TextBox x:Name="ContentBox"
+                                     Margin="0,6,0,0"
+                                     MinHeight="260"
+                                     AcceptsReturn="True"
+                                     AcceptsTab="True"
+                                     TextWrapping="Wrap"
+                                     VerticalScrollBarVisibility="Auto"
+                                     FontFamily="Cascadia Mono, Consolas"/>
+                            <TextBlock Margin="0,8,0,0"
+                                       Foreground="{StaticResource MutedBrush}"
+                                       Text="Variáveis: {{nome}}, {{data}}, {{hora}}, {{data:+7d}} e {{campo|valor padrão}}"/>
+                        </StackPanel>
+
+                        <Grid Grid.Row="6">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="10"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock x:Name="StatusText"
+                                       VerticalAlignment="Center"
+                                       Foreground="{StaticResource MutedBrush}"/>
+                            <Button Grid.Column="1"
+                                    Content="Excluir"
+                                    Click="DeleteSnippet_OnClick"/>
+                            <Button Grid.Column="3"
+                                    Content="Salvar atalho"
+                                    Style="{StaticResource PrimaryButton}"
+                                    Click="SaveSnippet_OnClick"/>
+                        </Grid>
+                    </Grid>
+                </ScrollViewer>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>
+
