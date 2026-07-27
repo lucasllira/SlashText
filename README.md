@@ -59,5 +59,11 @@ O executável publicado não exige instalação do .NET.
 
 ## Privacidade
 
-O SlashText não envia dados para a internet. O detector global deverá manter
+O SlashText não envia dados para a internet. O detector global mantém
 somente um buffer curto iniciado por `/`, sem registrar o restante da digitação.
+
+## Usar um atalho
+
+Com o SlashText aberto, digite um comando cadastrado em outro aplicativo, como
+`/chamado`. O texto é inserido assim que o comando fica completo. Quando um
+comando for prefixo de outro, confirme a expansão com `Enter`, `Tab` ou `Espaço`.
