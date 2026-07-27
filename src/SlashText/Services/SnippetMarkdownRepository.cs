@@ -14,6 +14,7 @@ public sealed partial class SnippetMarkdownRepository
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        PropertyNameCaseInsensitive = true,
         WriteIndented = false
     };
 
@@ -35,35 +36,96 @@ public sealed partial class SnippetMarkdownRepository
         }
 
         var markdown = await File.ReadAllTextAsync(_filePath, cancellationToken);
-        var snippets = new List<Snippet>();
-
-        foreach (Match match in SnippetPattern().Matches(markdown))
-        {
-            var metadata = JsonSerializer.Deserialize<SnippetMetadata>(
-                match.Groups["metadata"].Value,
-                JsonOptions) ?? throw new InvalidDataException("Metadados de atalho inválidos.");
-
-            var snippet = new Snippet
-            {
-                Id = metadata.Id,
-                Name = metadata.Name,
-                Trigger = match.Groups["trigger"].Value.Trim(),
-                Category = metadata.Category,
-                Format = metadata.Format.Equals("markdown", StringComparison.OrdinalIgnoreCase)
-                    ? SnippetFormat.Markdown
-                    : SnippetFormat.Plain,
-                Enabled = metadata.Enabled,
-                ConfirmKeys = metadata.ConfirmKeys,
-                Content = match.Groups["content"].Value.Replace("\r\n", "\n").TrimEnd()
-            };
-
-            Validate(snippet, snippets);
-            snippets.Add(snippet);
-        }
+        var snippets = Parse(markdown);
 
         if (markdown.Contains("<!-- slashtext:", StringComparison.Ordinal) && snippets.Count == 0)
         {
             throw new InvalidDataException("O arquivo contém atalhos, mas nenhum pôde ser interpretado.");
+        }
+
+        return snippets;
+    }
+
+    private static List<Snippet> Parse(string markdown)
+    {
+        var normalized = markdown
+            .TrimStart('\uFEFF')
+            .Replace("\r\n", "\n")
+            .Replace('\r', '\n');
+        var lines = normalized.Split('\n');
+        var snippets = new List<Snippet>();
+
+        for (var index = 0; index < lines.Length; index++)
+        {
+            var heading = HeadingPattern().Match(lines[index]);
+            if (!heading.Success)
+            {
+                continue;
+            }
+
+            var trigger = heading.Groups["trigger"].Value;
+            var metadataIndex = NextNonEmptyLine(lines, index + 1);
+
+            if (metadataIndex >= lines.Length ||
+                !TryReadMetadata(lines[metadataIndex], out var metadataJson))
+            {
+                throw new InvalidDataException(
+                    $"Metadados do atalho '{trigger}' não encontrados após a linha {index + 1}.");
+            }
+
+            var fenceIndex = NextNonEmptyLine(lines, metadataIndex + 1);
+            if (fenceIndex >= lines.Length ||
+                !TryReadFence(lines[fenceIndex], out var fence, out var format))
+            {
+                throw new InvalidDataException(
+                    $"Bloco de conteúdo do atalho '{trigger}' não encontrado após a linha {metadataIndex + 1}.");
+            }
+
+            var closingFenceIndex = fenceIndex + 1;
+            while (closingFenceIndex < lines.Length &&
+                   !lines[closingFenceIndex].Trim().Equals(fence, StringComparison.Ordinal))
+            {
+                closingFenceIndex++;
+            }
+
+            if (closingFenceIndex >= lines.Length)
+            {
+                throw new InvalidDataException(
+                    $"Bloco de conteúdo do atalho '{trigger}' não foi fechado.");
+            }
+
+            SnippetMetadata metadata;
+            try
+            {
+                metadata = JsonSerializer.Deserialize<SnippetMetadata>(metadataJson, JsonOptions)
+                    ?? throw new JsonException("Metadados vazios.");
+            }
+            catch (JsonException exception)
+            {
+                throw new InvalidDataException(
+                    $"Metadados inválidos no atalho '{trigger}', linha {metadataIndex + 1}.",
+                    exception);
+            }
+
+            var snippet = new Snippet
+            {
+                Id = metadata.Id == Guid.Empty ? Guid.NewGuid() : metadata.Id,
+                Name = metadata.Name,
+                Trigger = trigger,
+                Category = string.IsNullOrWhiteSpace(metadata.Category) ? "Geral" : metadata.Category,
+                Format = format,
+                Enabled = metadata.Enabled,
+                ConfirmKeys = metadata.ConfirmKeys?.Count > 0
+                    ? metadata.ConfirmKeys
+                    : ["Enter", "Tab", "Space"],
+                Content = string.Join(
+                    "\n",
+                    lines[(fenceIndex + 1)..closingFenceIndex]).TrimEnd()
+            };
+
+            Validate(snippet, snippets);
+            snippets.Add(snippet);
+            index = closingFenceIndex;
         }
 
         return snippets;
@@ -192,10 +254,74 @@ public sealed partial class SnippetMarkdownRepository
         return longest;
     }
 
+    private static int NextNonEmptyLine(string[] lines, int start)
+    {
+        var index = start;
+        while (index < lines.Length && string.IsNullOrWhiteSpace(lines[index]))
+        {
+            index++;
+        }
+
+        return index;
+    }
+
+    private static bool TryReadMetadata(string line, out string json)
+    {
+        var trimmed = line.Trim();
+        const string prefix = "<!-- slashtext:";
+        const string suffix = "-->";
+
+        if (trimmed.StartsWith(prefix, StringComparison.OrdinalIgnoreCase) &&
+            trimmed.EndsWith(suffix, StringComparison.Ordinal))
+        {
+            json = trimmed[prefix.Length..^suffix.Length].Trim();
+            return json.StartsWith('{') && json.EndsWith('}');
+        }
+
+        json = string.Empty;
+        return false;
+    }
+
+    private static bool TryReadFence(
+        string line,
+        out string fence,
+        out SnippetFormat format)
+    {
+        var trimmed = line.Trim();
+        var fenceLength = 0;
+        while (fenceLength < trimmed.Length && trimmed[fenceLength] == '`')
+        {
+            fenceLength++;
+        }
+
+        if (fenceLength < 3)
+        {
+            fence = string.Empty;
+            format = SnippetFormat.Plain;
+            return false;
+        }
+
+        var language = trimmed[fenceLength..].Trim();
+        if (!string.IsNullOrEmpty(language) &&
+            !language.Equals("text", StringComparison.OrdinalIgnoreCase) &&
+            !language.Equals("markdown", StringComparison.OrdinalIgnoreCase))
+        {
+            fence = string.Empty;
+            format = SnippetFormat.Plain;
+            return false;
+        }
+
+        fence = new string('`', fenceLength);
+        format = language.Equals("markdown", StringComparison.OrdinalIgnoreCase)
+            ? SnippetFormat.Markdown
+            : SnippetFormat.Plain;
+        return true;
+    }
+
     [GeneratedRegex(
-        @"(?ms)^##[ \t]+(?<trigger>/[A-Za-zÀ-ÿ0-9_-]+)[ \t]*\r?\n<!-- slashtext:(?<metadata>\{[^\r\n]+\}) -->[ \t]*\r?\n(?<fence>`{3,})(?:markdown|text)\r?\n(?<content>.*?)\r?\n\k<fence>[ \t]*$",
+        @"^[ \t]*##[ \t]+(?<trigger>/[A-Za-zÀ-ÿ0-9_-]+)[ \t]*$",
         RegexOptions.CultureInvariant)]
-    private static partial Regex SnippetPattern();
+    private static partial Regex HeadingPattern();
 
     [GeneratedRegex(@"^/[A-Za-zÀ-ÿ0-9_-]+$", RegexOptions.CultureInvariant)]
     private static partial Regex TriggerPattern();
@@ -206,5 +332,5 @@ public sealed partial class SnippetMarkdownRepository
         string Category,
         string Format,
         bool Enabled,
-        List<string> ConfirmKeys);
+        List<string>? ConfirmKeys);
 }

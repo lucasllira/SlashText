@@ -35,7 +35,8 @@
                     CornerRadius="14"
                     Padding="12,6"
                     VerticalAlignment="Center">
-                <TextBlock Text="● Monitoramento em preparação"
+                <TextBlock x:Name="MonitorStatusText"
+                           Text="● Iniciando monitoramento"
                            Foreground="#197547"
                            FontSize="12"/>
             </Border>
@@ -169,4 +170,3 @@
         </Border>
     </Grid>
 </Window>
-
