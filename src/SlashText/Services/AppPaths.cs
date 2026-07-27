@@ -1,3 +1,5 @@
+using System.IO;
+
 namespace SlashText.Services;
 
 public static class AppPaths
@@ -8,4 +10,3 @@ public static class AppPaths
     public static string SettingsFile => Path.Combine(BaseDirectory, "settings.json");
     public static string UsageFile => Path.Combine(BaseDirectory, "usage.json");
 }
-
