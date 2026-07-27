@@ -9,6 +9,8 @@ namespace SlashText;
 public partial class MainWindow : Window
 {
     private readonly SnippetMarkdownRepository _repository = new();
+    private readonly KeyboardHookService _keyboardHook = new();
+    private readonly TextExpansionService _expansionService = new();
     private readonly ObservableCollection<Snippet> _snippets = [];
     private Snippet? _selected;
 
@@ -16,6 +18,8 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         Loaded += MainWindow_OnLoaded;
+        Closed += MainWindow_OnClosed;
+        _keyboardHook.ExpansionRequested += KeyboardHook_OnExpansionRequested;
     }
 
     private async void MainWindow_OnLoaded(object sender, RoutedEventArgs e)
@@ -24,6 +28,7 @@ public partial class MainWindow : Window
         {
             var loaded = await _repository.LoadAsync();
             ReplaceList(loaded);
+            StartMonitoring();
             SnippetsList.SelectedIndex = _snippets.Count > 0 ? 0 : -1;
 
             if (_snippets.Count == 0)
@@ -42,6 +47,41 @@ public partial class MainWindow : Window
                 MessageBoxImage.Warning);
             BeginNewSnippet();
         }
+    }
+
+    private void StartMonitoring()
+    {
+        _keyboardHook.UpdateSnippets(_snippets);
+        if (!_keyboardHook.IsRunning)
+        {
+            _keyboardHook.Start();
+        }
+
+        MonitorStatusText.Text = "● Monitoramento ativo";
+    }
+
+    private void KeyboardHook_OnExpansionRequested(
+        object? sender,
+        SnippetExpansionRequestedEventArgs e)
+    {
+        Dispatcher.BeginInvoke(
+            new Action(async () =>
+            {
+                try
+                {
+                    await _expansionService.ExpandAsync(e.Snippet);
+                    StatusText.Text = $"{e.Snippet.Trigger} inserido";
+                }
+                catch (Exception exception)
+                {
+                    StatusText.Text = $"Falha ao inserir {e.Snippet.Trigger}";
+                    MessageBox.Show(
+                        exception.Message,
+                        "Não foi possível inserir o texto",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Warning);
+                }
+            }));
     }
 
     private void SearchBox_OnTextChanged(object sender, TextChangedEventArgs e)
@@ -134,6 +174,7 @@ public partial class MainWindow : Window
             }
 
             _selected = candidate;
+            _keyboardHook.UpdateSnippets(_snippets);
             ApplyFilter();
             SnippetsList.SelectedItem = candidate;
             StatusText.Text = "Salvo em snippets.md";
@@ -172,6 +213,7 @@ public partial class MainWindow : Window
         try
         {
             await _repository.SaveAsync(_snippets);
+            _keyboardHook.UpdateSnippets(_snippets);
             ApplyFilter();
             BeginNewSnippet();
             StatusText.Text = "Atalho excluído; backup criado";
@@ -186,6 +228,12 @@ public partial class MainWindow : Window
                 MessageBoxButton.OK,
                 MessageBoxImage.Warning);
         }
+    }
+
+    private void MainWindow_OnClosed(object? sender, EventArgs e)
+    {
+        _keyboardHook.ExpansionRequested -= KeyboardHook_OnExpansionRequested;
+        _keyboardHook.Dispose();
     }
 
     private void ReplaceList(IEnumerable<Snippet> snippets)
