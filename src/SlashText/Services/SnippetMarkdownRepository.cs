@@ -1,3 +1,4 @@
+using System.IO;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -207,4 +208,3 @@ public sealed partial class SnippetMarkdownRepository
         bool Enabled,
         List<string> ConfirmKeys);
 }
-
