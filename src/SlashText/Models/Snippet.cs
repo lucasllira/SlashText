@@ -19,4 +19,3 @@ public sealed class Snippet
 
     public override string ToString() => $"{Trigger}  ·  {Name}";
 }
-
