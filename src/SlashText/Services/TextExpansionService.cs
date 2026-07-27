@@ -2,6 +2,10 @@ using System.ComponentModel;
 using System.Runtime.InteropServices;
 using System.Windows;
 using SlashText.Models;
+using WpfClipboard = System.Windows.Clipboard;
+using WpfDataFormats = System.Windows.DataFormats;
+using WpfDataObject = System.Windows.DataObject;
+using WpfIDataObject = System.Windows.IDataObject;
 
 namespace SlashText.Services;
 
@@ -10,29 +14,55 @@ public sealed class TextExpansionService
     private const uint InputKeyboard = 1;
     private const uint KeyEventKeyUp = 0x0002;
     private const ushort VkBack = 0x08;
+    private const ushort VkTab = 0x09;
     private const ushort VkControl = 0x11;
     private const ushort VkV = 0x56;
 
     private readonly TemplateEngine _templateEngine = new();
 
-    public async Task ExpandAsync(Snippet snippet)
+    public IReadOnlyList<TemplateField> GetFillableFields(Snippet snippet) =>
+        _templateEngine.GetFillableFields(snippet.Content);
+
+    public async Task<int> ExpandAsync(
+        Snippet snippet,
+        IReadOnlyDictionary<string, string> values,
+        IntPtr targetWindow)
     {
-        // Permite que a última tecla digitada chegue ao aplicativo de destino.
-        await Task.Delay(35);
+        var rendered = _templateEngine.Render(snippet.Content, values);
+        var segments = rendered.Split(TemplateEngine.TabMarker, StringSplitOptions.None);
+        var insertedCharacters = segments.Sum(segment =>
+            snippet.Format == SnippetFormat.Markdown
+                ? RichTextMarkdownConverter.ToPlainText(segment).Length
+                : segment.Length);
 
-        var text = _templateEngine.Render(snippet.Content);
-        IDataObject? previousClipboard = null;
-
+        WpfIDataObject? previousClipboard = null;
         try
         {
             previousClipboard = TryGetClipboard();
-            SetClipboardText(text);
-            SendBackspaces(snippet.Trigger.Length);
-            await Task.Delay(20);
-            SendPaste();
+            if (targetWindow != IntPtr.Zero)
+            {
+                _ = SetForegroundWindow(targetWindow);
+                await Task.Delay(80);
+            }
 
-            // A maioria dos aplicativos lê o clipboard durante o Ctrl+V.
-            await Task.Delay(300);
+            SendBackspaces(snippet.Trigger.Length);
+            await Task.Delay(25);
+
+            for (var index = 0; index < segments.Length; index++)
+            {
+                SetClipboardSegment(segments[index], snippet.Format);
+                SendPaste();
+                await Task.Delay(150);
+
+                if (index < segments.Length - 1)
+                {
+                    SendKey(VkTab);
+                    await Task.Delay(100);
+                }
+            }
+
+            await Task.Delay(250);
+            return insertedCharacters;
         }
         finally
         {
@@ -43,11 +73,29 @@ public sealed class TextExpansionService
         }
     }
 
-    private static IDataObject? TryGetClipboard()
+    private static void SetClipboardSegment(string value, SnippetFormat format)
+    {
+        var plain = format == SnippetFormat.Markdown
+            ? RichTextMarkdownConverter.ToPlainText(value)
+            : value;
+        var data = new WpfDataObject();
+        data.SetData(WpfDataFormats.UnicodeText, plain);
+        data.SetData(WpfDataFormats.Text, plain);
+
+        if (format == SnippetFormat.Markdown)
+        {
+            var html = RichTextMarkdownConverter.ToHtml(value);
+            data.SetData(WpfDataFormats.Html, HtmlClipboardFormatter.Create(html));
+        }
+
+        SetClipboard(data);
+    }
+
+    private static WpfIDataObject? TryGetClipboard()
     {
         try
         {
-            return Clipboard.GetDataObject();
+            return WpfClipboard.GetDataObject();
         }
         catch (ExternalException)
         {
@@ -55,21 +103,20 @@ public sealed class TextExpansionService
         }
     }
 
-    private static void SetClipboardText(string text)
+    private static void SetClipboard(WpfIDataObject data)
     {
         ExternalException? lastException = null;
-
         for (var attempt = 0; attempt < 5; attempt++)
         {
             try
             {
-                Clipboard.SetText(text);
+                WpfClipboard.SetDataObject(data, true);
                 return;
             }
             catch (ExternalException exception)
             {
                 lastException = exception;
-                Thread.Sleep(20);
+                Thread.Sleep(25);
             }
         }
 
@@ -78,16 +125,15 @@ public sealed class TextExpansionService
             lastException);
     }
 
-    private static void TryRestoreClipboard(IDataObject data)
+    private static void TryRestoreClipboard(WpfIDataObject data)
     {
         try
         {
-            Clipboard.SetDataObject(data, true);
+            WpfClipboard.SetDataObject(data, true);
         }
         catch (ExternalException)
         {
-            // A expansão já foi concluída; não interrompe o usuário se outro
-            // aplicativo assumir a área de transferência nesse intervalo.
+            // A expansão terminou; outro aplicativo pode ter assumido o clipboard.
         }
     }
 
@@ -96,27 +142,27 @@ public sealed class TextExpansionService
         var inputs = new Input[count * 2];
         for (var index = 0; index < count; index++)
         {
-            inputs[index * 2] = KeyboardInput(VkBack, keyUp: false);
-            inputs[(index * 2) + 1] = KeyboardInput(VkBack, keyUp: true);
+            inputs[index * 2] = KeyboardInput(VkBack, false);
+            inputs[(index * 2) + 1] = KeyboardInput(VkBack, true);
         }
 
         Send(inputs);
     }
 
-    private static void SendPaste()
-    {
+    private static void SendPaste() =>
         Send(
         [
-            KeyboardInput(VkControl, keyUp: false),
-            KeyboardInput(VkV, keyUp: false),
-            KeyboardInput(VkV, keyUp: true),
-            KeyboardInput(VkControl, keyUp: true)
+            KeyboardInput(VkControl, false),
+            KeyboardInput(VkV, false),
+            KeyboardInput(VkV, true),
+            KeyboardInput(VkControl, true)
         ]);
-    }
 
-    private static Input KeyboardInput(ushort key, bool keyUp)
-    {
-        return new Input
+    private static void SendKey(ushort key) =>
+        Send([KeyboardInput(key, false), KeyboardInput(key, true)]);
+
+    private static Input KeyboardInput(ushort key, bool keyUp) =>
+        new()
         {
             Type = InputKeyboard,
             Data = new InputUnion
@@ -129,15 +175,10 @@ public sealed class TextExpansionService
                 }
             }
         };
-    }
 
     private static void Send(Input[] inputs)
     {
-        var sent = SendInput(
-            (uint)inputs.Length,
-            inputs,
-            Marshal.SizeOf<Input>());
-
+        var sent = SendInput((uint)inputs.Length, inputs, Marshal.SizeOf<Input>());
         if (sent != inputs.Length)
         {
             throw new Win32Exception(
@@ -156,14 +197,9 @@ public sealed class TextExpansionService
     [StructLayout(LayoutKind.Explicit)]
     private struct InputUnion
     {
-        [FieldOffset(0)]
-        public MouseInputData Mouse;
-
-        [FieldOffset(0)]
-        public KeyboardInputData Keyboard;
-
-        [FieldOffset(0)]
-        public HardwareInputData Hardware;
+        [FieldOffset(0)] public MouseInputData Mouse;
+        [FieldOffset(0)] public KeyboardInputData Keyboard;
+        [FieldOffset(0)] public HardwareInputData Hardware;
     }
 
     [StructLayout(LayoutKind.Sequential)]
@@ -196,11 +232,12 @@ public sealed class TextExpansionService
     }
 
     [DllImport("user32.dll", SetLastError = true)]
-    private static extern uint SendInput(
-        uint inputCount,
-        Input[] inputs,
-        int inputSize);
+    private static extern uint SendInput(uint inputCount, Input[] inputs, int inputSize);
 
     [DllImport("user32.dll")]
     private static extern UIntPtr GetMessageExtraInfo();
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool SetForegroundWindow(IntPtr window);
 }

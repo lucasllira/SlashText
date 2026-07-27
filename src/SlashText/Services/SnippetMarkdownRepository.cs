@@ -10,6 +10,7 @@ public sealed partial class SnippetMarkdownRepository
 {
     private const string Header =
         "# Meus atalhos\n\n<!-- Arquivo gerado pelo SlashText. A edição manual é opcional. -->\n\n";
+    private const int BackupRetentionDays = 7;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -38,7 +39,8 @@ public sealed partial class SnippetMarkdownRepository
         var markdown = await File.ReadAllTextAsync(_filePath, cancellationToken);
         var snippets = Parse(markdown);
 
-        if (markdown.Contains("<!-- slashtext:", StringComparison.Ordinal) && snippets.Count == 0)
+        if (markdown.Contains("<!-- slashtext:", StringComparison.OrdinalIgnoreCase) &&
+            snippets.Count == 0)
         {
             throw new InvalidDataException("O arquivo contém atalhos, mas nenhum pôde ser interpretado.");
         }
@@ -46,12 +48,84 @@ public sealed partial class SnippetMarkdownRepository
         return snippets;
     }
 
+    public async Task SaveAsync(
+        IEnumerable<Snippet> snippets,
+        CancellationToken cancellationToken = default)
+    {
+        var ordered = snippets
+            .OrderBy(item => item.Category, StringComparer.CurrentCultureIgnoreCase)
+            .ThenBy(item => item.Trigger, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        for (var index = 0; index < ordered.Count; index++)
+        {
+            Validate(ordered[index], ordered.Take(index));
+        }
+
+        var markdown = Serialize(ordered);
+        var directory = Path.GetDirectoryName(_filePath) ?? AppPaths.BaseDirectory;
+        Directory.CreateDirectory(directory);
+
+        if (File.Exists(_filePath))
+        {
+            var current = await File.ReadAllTextAsync(_filePath, cancellationToken);
+            if (current == markdown)
+            {
+                return;
+            }
+
+            CreateDailyBackup();
+        }
+
+        var temporaryFile = Path.Combine(directory, $".snippets-{Guid.NewGuid():N}.tmp");
+        try
+        {
+            await File.WriteAllTextAsync(
+                temporaryFile,
+                markdown,
+                new UTF8Encoding(false),
+                cancellationToken);
+            File.Move(temporaryFile, _filePath, true);
+            PruneBackups();
+        }
+        finally
+        {
+            if (File.Exists(temporaryFile))
+            {
+                File.Delete(temporaryFile);
+            }
+        }
+    }
+
+    private void CreateDailyBackup()
+    {
+        Directory.CreateDirectory(_backupDirectory);
+        var backup = Path.Combine(_backupDirectory, $"snippets-{DateTime.Now:yyyyMMdd}.md");
+        if (!File.Exists(backup))
+        {
+            File.Copy(_filePath, backup);
+        }
+    }
+
+    private void PruneBackups()
+    {
+        if (!Directory.Exists(_backupDirectory))
+        {
+            return;
+        }
+
+        foreach (var file in new DirectoryInfo(_backupDirectory)
+                     .GetFiles("snippets-*.md")
+                     .OrderByDescending(item => item.Name)
+                     .Skip(BackupRetentionDays))
+        {
+            file.Delete();
+        }
+    }
+
     private static List<Snippet> Parse(string markdown)
     {
-        var normalized = markdown
-            .TrimStart('\uFEFF')
-            .Replace("\r\n", "\n")
-            .Replace('\r', '\n');
+        var normalized = markdown.TrimStart('\uFEFF').Replace("\r\n", "\n").Replace('\r', '\n');
         var lines = normalized.Split('\n');
         var snippets = new List<Snippet>();
 
@@ -65,7 +139,6 @@ public sealed partial class SnippetMarkdownRepository
 
             var trigger = heading.Groups["trigger"].Value;
             var metadataIndex = NextNonEmptyLine(lines, index + 1);
-
             if (metadataIndex >= lines.Length ||
                 !TryReadMetadata(lines[metadataIndex], out var metadataJson))
             {
@@ -78,7 +151,7 @@ public sealed partial class SnippetMarkdownRepository
                 !TryReadFence(lines[fenceIndex], out var fence, out var format))
             {
                 throw new InvalidDataException(
-                    $"Bloco de conteúdo do atalho '{trigger}' não encontrado após a linha {metadataIndex + 1}.");
+                    $"Bloco de conteúdo do atalho '{trigger}' não encontrado.");
             }
 
             var closingFenceIndex = fenceIndex + 1;
@@ -90,8 +163,7 @@ public sealed partial class SnippetMarkdownRepository
 
             if (closingFenceIndex >= lines.Length)
             {
-                throw new InvalidDataException(
-                    $"Bloco de conteúdo do atalho '{trigger}' não foi fechado.");
+                throw new InvalidDataException($"Bloco de conteúdo do atalho '{trigger}' não foi fechado.");
             }
 
             SnippetMetadata metadata;
@@ -118,9 +190,7 @@ public sealed partial class SnippetMarkdownRepository
                 ConfirmKeys = metadata.ConfirmKeys?.Count > 0
                     ? metadata.ConfirmKeys
                     : ["Enter", "Tab", "Space"],
-                Content = string.Join(
-                    "\n",
-                    lines[(fenceIndex + 1)..closingFenceIndex]).TrimEnd()
+                Content = string.Join("\n", lines[(fenceIndex + 1)..closingFenceIndex]).TrimEnd()
             };
 
             Validate(snippet, snippets);
@@ -131,57 +201,9 @@ public sealed partial class SnippetMarkdownRepository
         return snippets;
     }
 
-    public async Task SaveAsync(
-        IEnumerable<Snippet> snippets,
-        CancellationToken cancellationToken = default)
-    {
-        var ordered = snippets
-            .OrderBy(item => item.Category, StringComparer.CurrentCultureIgnoreCase)
-            .ThenBy(item => item.Trigger, StringComparer.OrdinalIgnoreCase)
-            .ToList();
-
-        for (var index = 0; index < ordered.Count; index++)
-        {
-            Validate(ordered[index], ordered.Take(index));
-        }
-
-        var markdown = Serialize(ordered);
-        var directory = Path.GetDirectoryName(_filePath) ?? AppPaths.BaseDirectory;
-        Directory.CreateDirectory(directory);
-        Directory.CreateDirectory(_backupDirectory);
-
-        if (File.Exists(_filePath))
-        {
-            var backupName = $"snippets-{DateTime.Now:yyyyMMdd-HHmmssfff}.md";
-            File.Copy(_filePath, Path.Combine(_backupDirectory, backupName), overwrite: false);
-        }
-
-        var temporaryFile = Path.Combine(directory, $".snippets-{Guid.NewGuid():N}.tmp");
-
-        try
-        {
-            await File.WriteAllTextAsync(
-                temporaryFile,
-                markdown,
-                new UTF8Encoding(encoderShouldEmitUTF8Identifier: false),
-                cancellationToken);
-
-            File.Move(temporaryFile, _filePath, overwrite: true);
-            PruneBackups(20);
-        }
-        finally
-        {
-            if (File.Exists(temporaryFile))
-            {
-                File.Delete(temporaryFile);
-            }
-        }
-    }
-
     private static string Serialize(IEnumerable<Snippet> snippets)
     {
         var builder = new StringBuilder(Header);
-
         foreach (var snippet in snippets)
         {
             var metadata = new SnippetMetadata(
@@ -192,9 +214,7 @@ public sealed partial class SnippetMarkdownRepository
                 snippet.Enabled,
                 snippet.ConfirmKeys);
 
-            var fenceLength = Math.Max(3, LongestBacktickRun(snippet.Content) + 1);
-            var fence = new string('`', fenceLength);
-
+            var fence = new string('`', Math.Max(3, LongestBacktickRun(snippet.Content) + 1));
             builder.Append("## ").AppendLine(snippet.Trigger);
             builder.Append("<!-- slashtext:")
                 .Append(JsonSerializer.Serialize(metadata, JsonOptions))
@@ -202,8 +222,7 @@ public sealed partial class SnippetMarkdownRepository
             builder.Append(fence)
                 .AppendLine(snippet.Format == SnippetFormat.Markdown ? "markdown" : "text");
             builder.AppendLine(snippet.Content.TrimEnd());
-            builder.AppendLine(fence);
-            builder.AppendLine();
+            builder.AppendLine(fence).AppendLine();
         }
 
         return builder.ToString();
@@ -222,47 +241,20 @@ public sealed partial class SnippetMarkdownRepository
             throw new InvalidDataException($"O atalho '{snippet.Trigger}' precisa de um nome.");
         }
 
-        if (existing.Any(item =>
-                item.Trigger.Equals(snippet.Trigger, StringComparison.OrdinalIgnoreCase)))
+        if (existing.Any(item => item.Trigger.Equals(snippet.Trigger, StringComparison.OrdinalIgnoreCase)))
         {
             throw new InvalidDataException($"O atalho '{snippet.Trigger}' está duplicado.");
         }
     }
 
-    private void PruneBackups(int keep)
-    {
-        foreach (var file in new DirectoryInfo(_backupDirectory)
-                     .GetFiles("snippets-*.md")
-                     .OrderByDescending(file => file.CreationTimeUtc)
-                     .Skip(keep))
-        {
-            file.Delete();
-        }
-    }
-
-    private static int LongestBacktickRun(string value)
-    {
-        var longest = 0;
-        var current = 0;
-
-        foreach (var character in value)
-        {
-            current = character == '`' ? current + 1 : 0;
-            longest = Math.Max(longest, current);
-        }
-
-        return longest;
-    }
-
     private static int NextNonEmptyLine(string[] lines, int start)
     {
-        var index = start;
-        while (index < lines.Length && string.IsNullOrWhiteSpace(lines[index]))
+        while (start < lines.Length && string.IsNullOrWhiteSpace(lines[start]))
         {
-            index++;
+            start++;
         }
 
-        return index;
+        return start;
     }
 
     private static bool TryReadMetadata(string line, out string json)
@@ -270,7 +262,6 @@ public sealed partial class SnippetMarkdownRepository
         var trimmed = line.Trim();
         const string prefix = "<!-- slashtext:";
         const string suffix = "-->";
-
         if (trimmed.StartsWith(prefix, StringComparison.OrdinalIgnoreCase) &&
             trimmed.EndsWith(suffix, StringComparison.Ordinal))
         {
@@ -282,26 +273,23 @@ public sealed partial class SnippetMarkdownRepository
         return false;
     }
 
-    private static bool TryReadFence(
-        string line,
-        out string fence,
-        out SnippetFormat format)
+    private static bool TryReadFence(string line, out string fence, out SnippetFormat format)
     {
         var trimmed = line.Trim();
-        var fenceLength = 0;
-        while (fenceLength < trimmed.Length && trimmed[fenceLength] == '`')
+        var length = 0;
+        while (length < trimmed.Length && trimmed[length] == '`')
         {
-            fenceLength++;
+            length++;
         }
 
-        if (fenceLength < 3)
+        if (length < 3)
         {
             fence = string.Empty;
             format = SnippetFormat.Plain;
             return false;
         }
 
-        var language = trimmed[fenceLength..].Trim();
+        var language = trimmed[length..].Trim();
         if (!string.IsNullOrEmpty(language) &&
             !language.Equals("text", StringComparison.OrdinalIgnoreCase) &&
             !language.Equals("markdown", StringComparison.OrdinalIgnoreCase))
@@ -311,19 +299,30 @@ public sealed partial class SnippetMarkdownRepository
             return false;
         }
 
-        fence = new string('`', fenceLength);
+        fence = new string('`', length);
         format = language.Equals("markdown", StringComparison.OrdinalIgnoreCase)
             ? SnippetFormat.Markdown
             : SnippetFormat.Plain;
         return true;
     }
 
-    [GeneratedRegex(
-        @"^[ \t]*##[ \t]+(?<trigger>/[A-Za-zÀ-ÿ0-9_-]+)[ \t]*$",
-        RegexOptions.CultureInvariant)]
+    private static int LongestBacktickRun(string value)
+    {
+        var longest = 0;
+        var current = 0;
+        foreach (var character in value)
+        {
+            current = character == '`' ? current + 1 : 0;
+            longest = Math.Max(longest, current);
+        }
+
+        return longest;
+    }
+
+    [GeneratedRegex(@"^[ \t]*##[ \t]+(?<trigger>/[A-Za-zÀ-ÿ0-9_-]+)[ \t]*$")]
     private static partial Regex HeadingPattern();
 
-    [GeneratedRegex(@"^/[A-Za-zÀ-ÿ0-9_-]+$", RegexOptions.CultureInvariant)]
+    [GeneratedRegex(@"^/[A-Za-zÀ-ÿ0-9_-]+$")]
     private static partial Regex TriggerPattern();
 
     private sealed record SnippetMetadata(

@@ -5,24 +5,30 @@ namespace SlashText.Services;
 
 public sealed partial class TemplateEngine
 {
-    private static readonly HashSet<string> AutomaticNames =
-        new(StringComparer.OrdinalIgnoreCase) { "data", "hora", "datahora" };
+    public const string TabMarker = "\u001FSLASHTEXT_TAB\u001F";
+
+    private static readonly HashSet<string> AutomaticNames = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "data", "hora", "datahora", "agora", "dia", "mes", "mes_nome",
+        "ano", "semana", "dia_semana", "usuario", "tab"
+    };
 
     public IReadOnlyList<TemplateField> GetFillableFields(string template)
     {
-        var fields = new Dictionary<string, TemplateField>(StringComparer.OrdinalIgnoreCase);
+        var fields = new Dictionary<string, TemplateField>(StringComparer.CurrentCultureIgnoreCase);
 
         foreach (Match match in VariablePattern().Matches(template))
         {
             var expression = match.Groups["expression"].Value.Trim();
-            var (name, argument) = Split(expression, '|');
+            var (token, argument) = Split(expression, '|');
 
-            if (AutomaticNames.Contains(name) || name.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
+            if (AutomaticNames.Contains(token) ||
+                token.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
             {
                 continue;
             }
 
-            fields.TryAdd(name, new TemplateField(name, argument));
+            fields.TryAdd(token, new TemplateField(token, argument));
         }
 
         return fields.Values.ToList();
@@ -37,10 +43,7 @@ public sealed partial class TemplateEngine
         values ??= new Dictionary<string, string>();
 
         return VariablePattern().Replace(template, match =>
-        {
-            var expression = match.Groups["expression"].Value.Trim();
-            return Resolve(expression, values, reference);
-        });
+            Resolve(match.Groups["expression"].Value.Trim(), values, reference));
     }
 
     private static string Resolve(
@@ -50,28 +53,84 @@ public sealed partial class TemplateEngine
     {
         var (token, fallbackOrFormat) = Split(expression, '|');
 
+        if (token.Equals("tab", StringComparison.OrdinalIgnoreCase))
+        {
+            return TabMarker;
+        }
+
         if (token.Equals("data", StringComparison.OrdinalIgnoreCase))
         {
-            return now.ToString(fallbackOrFormat ?? "dd/MM/yyyy", CultureInfo.CurrentCulture);
+            return Format(now, fallbackOrFormat, "dd/MM/yyyy");
         }
 
         if (token.Equals("hora", StringComparison.OrdinalIgnoreCase))
         {
-            return now.ToString(fallbackOrFormat ?? "HH:mm", CultureInfo.CurrentCulture);
+            return Format(now, fallbackOrFormat, "HH:mm");
         }
 
-        if (token.Equals("datahora", StringComparison.OrdinalIgnoreCase))
+        if (token.Equals("datahora", StringComparison.OrdinalIgnoreCase) ||
+            token.Equals("agora", StringComparison.OrdinalIgnoreCase))
         {
-            return now.ToString(fallbackOrFormat ?? "dd/MM/yyyy HH:mm", CultureInfo.CurrentCulture);
+            return Format(now, fallbackOrFormat, "dd/MM/yyyy HH:mm");
         }
 
         if (token.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
         {
-            var calculated = ApplyDateOffset(now, token[5..]);
-            return calculated.ToString(fallbackOrFormat ?? "dd/MM/yyyy", CultureInfo.CurrentCulture);
+            return Format(ApplyDateOffset(now, token[5..]), fallbackOrFormat, "dd/MM/yyyy");
         }
 
-        return TryGetValue(values, token, out var value) ? value : fallbackOrFormat ?? string.Empty;
+        if (token.Equals("dia", StringComparison.OrdinalIgnoreCase))
+        {
+            return now.ToString(fallbackOrFormat ?? "dd", CultureInfo.CurrentCulture);
+        }
+
+        if (token.Equals("mes", StringComparison.OrdinalIgnoreCase))
+        {
+            return now.ToString(fallbackOrFormat ?? "MM", CultureInfo.CurrentCulture);
+        }
+
+        if (token.Equals("mes_nome", StringComparison.OrdinalIgnoreCase))
+        {
+            return Capitalize(now.ToString(fallbackOrFormat ?? "MMMM", CultureInfo.CurrentCulture));
+        }
+
+        if (token.Equals("ano", StringComparison.OrdinalIgnoreCase))
+        {
+            return now.ToString(fallbackOrFormat ?? "yyyy", CultureInfo.CurrentCulture);
+        }
+
+        if (token.Equals("semana", StringComparison.OrdinalIgnoreCase))
+        {
+            return ISOWeek.GetWeekOfYear(now.DateTime).ToString("00", CultureInfo.CurrentCulture);
+        }
+
+        if (token.Equals("dia_semana", StringComparison.OrdinalIgnoreCase))
+        {
+            return Capitalize(now.ToString(fallbackOrFormat ?? "dddd", CultureInfo.CurrentCulture));
+        }
+
+        if (token.Equals("usuario", StringComparison.OrdinalIgnoreCase))
+        {
+            return string.IsNullOrWhiteSpace(fallbackOrFormat)
+                ? Environment.UserName
+                : fallbackOrFormat;
+        }
+
+        return TryGetValue(values, token, out var value)
+            ? value
+            : fallbackOrFormat ?? string.Empty;
+    }
+
+    private static string Format(DateTimeOffset value, string? format, string defaultFormat)
+    {
+        try
+        {
+            return value.ToString(format ?? defaultFormat, CultureInfo.CurrentCulture);
+        }
+        catch (FormatException)
+        {
+            return value.ToString(defaultFormat, CultureInfo.CurrentCulture);
+        }
     }
 
     private static DateTimeOffset ApplyDateOffset(DateTimeOffset value, string offset)
@@ -98,7 +157,7 @@ public sealed partial class TemplateEngine
     {
         foreach (var item in values)
         {
-            if (item.Key.Equals(key, StringComparison.OrdinalIgnoreCase))
+            if (item.Key.Equals(key, StringComparison.CurrentCultureIgnoreCase))
             {
                 value = item.Value;
                 return true;
@@ -108,6 +167,11 @@ public sealed partial class TemplateEngine
         value = string.Empty;
         return false;
     }
+
+    private static string Capitalize(string value) =>
+        string.IsNullOrWhiteSpace(value)
+            ? value
+            : char.ToUpper(value[0], CultureInfo.CurrentCulture) + value[1..];
 
     private static (string Name, string? Argument) Split(string expression, char separator)
     {
@@ -125,4 +189,3 @@ public sealed partial class TemplateEngine
 }
 
 public sealed record TemplateField(string Name, string? DefaultValue);
-

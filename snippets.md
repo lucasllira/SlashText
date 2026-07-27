@@ -13,6 +13,16 @@ O chamado foi aberto em {{data}} às {{hora}}.
 **Prazo estimado:** {{data:+7d}}
 
 Atenciosamente,
-{{usuario|Lucas}}
+{{usuario}}
 ```
 
+## /email
+<!-- slashtext:{"id":"ae7e57f1-9710-4f9a-8d5b-e1748d83e60b","name":"Assunto e corpo de e-mail","category":"E-mail","format":"markdown","enabled":true,"confirmKeys":["Enter","Tab","Space"]} -->
+```markdown
+Retorno sobre o chamado {{chamado}}{{tab}}Olá, {{nome}}.
+
+Segue o retorno referente ao chamado **{{chamado}}**.
+
+Atenciosamente,
+{{usuario}}
+```

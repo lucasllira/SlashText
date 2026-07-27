@@ -1,6 +1,8 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using System.Windows;
 using SlashText.Models;
+using Point = System.Windows.Point;
 
 namespace SlashText.Services;
 
@@ -25,6 +27,7 @@ public sealed class KeyboardHookService : IDisposable
     }
 
     public event EventHandler<SnippetExpansionRequestedEventArgs>? ExpansionRequested;
+    public event EventHandler<SnippetSuggestionsEventArgs>? SuggestionsChanged;
 
     public bool IsRunning => _hookHandle != IntPtr.Zero;
 
@@ -33,13 +36,11 @@ public sealed class KeyboardHookService : IDisposable
         lock (_sync)
         {
             _snippets = snippets
-                .Where(snippet => snippet.Enabled)
-                .Select(snippet => new MonitoredSnippet(
-                    snippet,
-                    snippet.Trigger.ToLowerInvariant(),
-                    new HashSet<string>(
-                        snippet.ConfirmKeys,
-                        StringComparer.OrdinalIgnoreCase)))
+                .Where(item => item.Enabled)
+                .Select(item => new MonitoredSnippet(
+                    item,
+                    item.Trigger.ToLowerInvariant(),
+                    new HashSet<string>(item.ConfirmKeys, StringComparer.OrdinalIgnoreCase)))
                 .ToList();
             ClearBuffer();
         }
@@ -55,8 +56,11 @@ public sealed class KeyboardHookService : IDisposable
 
         using var process = Process.GetCurrentProcess();
         using var module = process.MainModule;
-        var moduleHandle = GetModuleHandle(module?.ModuleName);
-        _hookHandle = SetWindowsHookEx(WhKeyboardLl, _hookCallback, moduleHandle, 0);
+        _hookHandle = SetWindowsHookEx(
+            WhKeyboardLl,
+            _hookCallback,
+            GetModuleHandle(module?.ModuleName),
+            0);
 
         if (_hookHandle == IntPtr.Zero)
         {
@@ -80,12 +84,14 @@ public sealed class KeyboardHookService : IDisposable
         }
 
         Snippet? snippetToExpand = null;
+        IReadOnlyList<Snippet>? suggestions = null;
+        Point suggestionPoint = default;
         var suppressKey = false;
+        var targetWindow = GetForegroundWindow();
 
         lock (_sync)
         {
-            var foregroundWindow = GetForegroundWindow();
-            if (_buffer.Length > 0 && foregroundWindow != _bufferWindow)
+            if (_buffer.Length > 0 && targetWindow != _bufferWindow)
             {
                 ClearBuffer();
             }
@@ -103,16 +109,20 @@ public sealed class KeyboardHookService : IDisposable
                 }
 
                 ClearBuffer();
+                suggestions = [];
             }
             else if (virtualKey == 0x1B)
             {
                 ClearBuffer();
+                suggestions = [];
             }
             else if (virtualKey == 0x08)
             {
                 if (_buffer.Length > 0)
                 {
                     _buffer = _buffer[..^1];
+                    suggestions = GetSuggestions();
+                    suggestionPoint = CaretLocator.GetScreenPosition();
                 }
             }
             else if (TryMapTriggerCharacter(virtualKey, out var character))
@@ -120,59 +130,75 @@ public sealed class KeyboardHookService : IDisposable
                 if (character == '/')
                 {
                     _buffer = "/";
-                    _bufferWindow = foregroundWindow;
+                    _bufferWindow = targetWindow;
                 }
                 else if (_buffer.StartsWith('/') && _buffer.Length < 64)
                 {
                     _buffer += character;
+                }
+
+                if (_buffer.StartsWith('/'))
+                {
                     var exact = FindExactMatch();
                     var hasLongerMatch = _snippets.Any(item =>
                         item.NormalizedTrigger.Length > _buffer.Length &&
-                        item.NormalizedTrigger.StartsWith(
-                            _buffer,
-                            StringComparison.OrdinalIgnoreCase));
+                        item.NormalizedTrigger.StartsWith(_buffer, StringComparison.OrdinalIgnoreCase));
+
+                    suggestions = GetSuggestions();
+                    suggestionPoint = CaretLocator.GetScreenPosition();
 
                     if (exact is not null && !hasLongerMatch)
                     {
                         snippetToExpand = exact.Snippet;
                         ClearBuffer();
+                        suggestions = [];
                     }
                 }
             }
             else if (_buffer.Length > 0)
             {
                 ClearBuffer();
+                suggestions = [];
             }
+        }
+
+        if (suggestions is not null)
+        {
+            SuggestionsChanged?.Invoke(
+                this,
+                new SnippetSuggestionsEventArgs(suggestions, suggestionPoint));
         }
 
         if (snippetToExpand is not null)
         {
             ExpansionRequested?.Invoke(
                 this,
-                new SnippetExpansionRequestedEventArgs(snippetToExpand));
+                new SnippetExpansionRequestedEventArgs(snippetToExpand, targetWindow));
         }
 
-        return suppressKey
-            ? new IntPtr(1)
-            : CallNextHookEx(_hookHandle, code, message, data);
+        return suppressKey ? new IntPtr(1) : CallNextHookEx(_hookHandle, code, message, data);
     }
 
-    private MonitoredSnippet? FindExactMatch()
-    {
-        return _snippets.FirstOrDefault(item =>
+    private MonitoredSnippet? FindExactMatch() =>
+        _snippets.FirstOrDefault(item =>
             item.NormalizedTrigger.Equals(_buffer, StringComparison.OrdinalIgnoreCase));
-    }
 
-    private static string? ConfirmationName(int virtualKey)
-    {
-        return virtualKey switch
+    private IReadOnlyList<Snippet> GetSuggestions() =>
+        _snippets
+            .Where(item => item.NormalizedTrigger.StartsWith(_buffer, StringComparison.OrdinalIgnoreCase))
+            .OrderBy(item => item.NormalizedTrigger.Length)
+            .Take(6)
+            .Select(item => item.Snippet)
+            .ToList();
+
+    private static string? ConfirmationName(int virtualKey) =>
+        virtualKey switch
         {
             0x0D => "Enter",
             0x09 => "Tab",
             0x20 => "Space",
             _ => null
         };
-    }
 
     private static bool TryMapTriggerCharacter(int virtualKey, out char character)
     {
@@ -203,11 +229,6 @@ public sealed class KeyboardHookService : IDisposable
         }
     }
 
-    private static bool IsKeyDown(int virtualKey)
-    {
-        return (GetKeyState(virtualKey) & 0x8000) != 0;
-    }
-
     private static bool IsOwnWindowInForeground()
     {
         var window = GetForegroundWindow();
@@ -219,6 +240,9 @@ public sealed class KeyboardHookService : IDisposable
         _ = GetWindowThreadProcessId(window, out var processId);
         return processId == Environment.ProcessId;
     }
+
+    private static bool IsKeyDown(int virtualKey) =>
+        (GetKeyState(virtualKey) & 0x8000) != 0;
 
     private void ClearBuffer()
     {
@@ -272,11 +296,7 @@ public sealed class KeyboardHookService : IDisposable
     private static extern bool UnhookWindowsHookEx(IntPtr hook);
 
     [DllImport("user32.dll")]
-    private static extern IntPtr CallNextHookEx(
-        IntPtr hook,
-        int code,
-        IntPtr message,
-        IntPtr data);
+    private static extern IntPtr CallNextHookEx(IntPtr hook, int code, IntPtr message, IntPtr data);
 
     [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
     private static extern IntPtr GetModuleHandle(string? moduleName);
@@ -291,7 +311,16 @@ public sealed class KeyboardHookService : IDisposable
     private static extern short GetKeyState(int virtualKey);
 }
 
-public sealed class SnippetExpansionRequestedEventArgs(Snippet snippet) : EventArgs
+public sealed class SnippetExpansionRequestedEventArgs(Snippet snippet, IntPtr targetWindow) : EventArgs
 {
     public Snippet Snippet { get; } = snippet;
+    public IntPtr TargetWindow { get; } = targetWindow;
+}
+
+public sealed class SnippetSuggestionsEventArgs(
+    IReadOnlyList<Snippet> snippets,
+    Point screenPosition) : EventArgs
+{
+    public IReadOnlyList<Snippet> Snippets { get; } = snippets;
+    public Point ScreenPosition { get; } = screenPosition;
 }
