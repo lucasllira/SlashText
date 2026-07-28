@@ -16,6 +16,8 @@ public sealed class PromptDialog : Window
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
         ResizeMode = ResizeMode.NoResize;
         ShowInTaskbar = false;
+        SetResourceReference(BackgroundProperty, "CanvasBrush");
+        SourceInitialized += (_, _) => ThemeService.ApplyToWindow(this);
 
         var panel = new StackPanel { Margin = new Thickness(22) };
         panel.Children.Add(new TextBlock { Text = label, Margin = new Thickness(0, 0, 0, 7) });
