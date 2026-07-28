@@ -5,8 +5,9 @@
         Icon="Assets/SlashText.ico"
         Width="1320"
         Height="850"
-        MinWidth="1040"
-        MinHeight="680"
+        MinWidth="760"
+        MinHeight="600"
+        SizeChanged="MainWindow_OnSizeChanged"
         WindowStartupLocation="CenterScreen"
         Background="{DynamicResource CanvasBrush}">
     <Grid Margin="24,20,24,24">
@@ -85,15 +86,19 @@
                 ClipToBounds="True">
                 <Grid>
                     <Grid x:Name="ShortcutsView">
+                        <Grid.RowDefinitions>
+                            <RowDefinition x:Name="ShortcutPrimaryRow" Height="*"/>
+                            <RowDefinition x:Name="ShortcutSecondaryRow" Height="0"/>
+                        </Grid.RowDefinitions>
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="260"/>
-                            <ColumnDefinition Width="1"/>
+                            <ColumnDefinition x:Name="ShortcutLeftColumn" Width="260"/>
+                            <ColumnDefinition x:Name="ShortcutLeftDividerColumn" Width="1"/>
                             <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="1"/>
-                            <ColumnDefinition Width="260"/>
+                            <ColumnDefinition x:Name="ShortcutRightDividerColumn" Width="1"/>
+                            <ColumnDefinition x:Name="ShortcutRightColumn" Width="260"/>
                         </Grid.ColumnDefinitions>
 
-                        <Grid Margin="18">
+                        <Grid x:Name="ShortcutSidebarPanel" Margin="18">
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="12"/>
@@ -124,9 +129,12 @@
                                     Click="NewSnippet_OnClick"/>
                         </Grid>
 
-                        <Border Grid.Column="1" Background="{DynamicResource DividerBrush}"/>
+                        <Border x:Name="ShortcutLeftDivider"
+                                Grid.Column="1"
+                                Background="{DynamicResource DividerBrush}"/>
 
-                        <ScrollViewer Grid.Column="2"
+                        <ScrollViewer x:Name="ShortcutEditorPanel"
+                                      Grid.Column="2"
                                       VerticalScrollBarVisibility="Auto"
                                       HorizontalScrollBarVisibility="Disabled">
                             <Grid Margin="24">
@@ -187,6 +195,35 @@
                                 <WrapPanel x:Name="FormattingToolbar" Grid.Row="4" Visibility="Collapsed">
                                     <TextBlock Text="Formatação" VerticalAlignment="Center" Margin="0,0,10,0"
                                                Foreground="{DynamicResource MutedBrush}"/>
+                                    <ComboBox x:Name="FontFamilyBox"
+                                              Width="132"
+                                              MinHeight="34"
+                                              Margin="0,0,6,6"
+                                              ToolTip="Fonte"
+                                              SelectedIndex="0"
+                                              SelectionChanged="FontFamilyBox_OnSelectionChanged">
+                                        <ComboBoxItem Content="Segoe UI" Tag="Segoe UI"/>
+                                        <ComboBoxItem Content="Arial" Tag="Arial"/>
+                                        <ComboBoxItem Content="Calibri" Tag="Calibri"/>
+                                        <ComboBoxItem Content="Georgia" Tag="Georgia"/>
+                                        <ComboBoxItem Content="Consolas" Tag="Consolas"/>
+                                    </ComboBox>
+                                    <ComboBox x:Name="FontSizeBox"
+                                              Width="68"
+                                              MinHeight="34"
+                                              Margin="0,0,6,6"
+                                              ToolTip="Tamanho da fonte"
+                                              SelectedIndex="2"
+                                              SelectionChanged="FontSizeBox_OnSelectionChanged">
+                                        <ComboBoxItem Content="9" Tag="12"/>
+                                        <ComboBoxItem Content="10" Tag="13.333"/>
+                                        <ComboBoxItem Content="11" Tag="14.667"/>
+                                        <ComboBoxItem Content="12" Tag="16"/>
+                                        <ComboBoxItem Content="14" Tag="18.667"/>
+                                        <ComboBoxItem Content="16" Tag="21.333"/>
+                                        <ComboBoxItem Content="18" Tag="24"/>
+                                        <ComboBoxItem Content="24" Tag="32"/>
+                                    </ComboBox>
                                     <Button Content="B" FontWeight="Bold"
                                             Style="{StaticResource ToolbarButton}"
                                             ToolTip="Negrito" Click="Bold_OnClick"/>
@@ -199,12 +236,40 @@
                                     <Button Content="Cor"
                                             Style="{StaticResource ToolbarButton}"
                                             ToolTip="Cor do texto" Click="Color_OnClick"/>
+                                    <Button Content="Marca-texto"
+                                            Style="{StaticResource ToolbarButton}"
+                                            ToolTip="Cor de destaque do texto"
+                                            Click="Highlight_OnClick"/>
                                     <Button Content="Link"
                                             Style="{StaticResource ToolbarButton}"
                                             ToolTip="Inserir hiperlink" Click="Link_OnClick"/>
                                     <Button Content="Imagem"
                                             Style="{StaticResource ToolbarButton}"
                                             ToolTip="Adicionar imagem ao atalho" Click="Image_OnClick"/>
+                                    <Button Content="• Lista"
+                                            Style="{StaticResource ToolbarButton}"
+                                            ToolTip="Lista com marcadores"
+                                            Click="Bullets_OnClick"/>
+                                    <Button Content="1. Lista"
+                                            Style="{StaticResource ToolbarButton}"
+                                            ToolTip="Lista numerada"
+                                            Click="Numbering_OnClick"/>
+                                    <Button Content="≡ Esq."
+                                            Style="{StaticResource ToolbarButton}"
+                                            ToolTip="Alinhar à esquerda"
+                                            Click="AlignLeft_OnClick"/>
+                                    <Button Content="≡ Centro"
+                                            Style="{StaticResource ToolbarButton}"
+                                            ToolTip="Centralizar"
+                                            Click="AlignCenter_OnClick"/>
+                                    <Button Content="≡ Dir."
+                                            Style="{StaticResource ToolbarButton}"
+                                            ToolTip="Alinhar à direita"
+                                            Click="AlignRight_OnClick"/>
+                                    <Button Content="Tabela"
+                                            Style="{StaticResource ToolbarButton}"
+                                            ToolTip="Inserir tabela"
+                                            Click="Table_OnClick"/>
                                 </WrapPanel>
 
                                 <Border Grid.Row="6"
@@ -266,9 +331,13 @@
                             </Grid>
                         </ScrollViewer>
 
-                        <Border Grid.Column="3" Background="{DynamicResource DividerBrush}"/>
+                        <Border x:Name="ShortcutRightDivider"
+                                Grid.Column="3"
+                                Background="{DynamicResource DividerBrush}"/>
 
-                        <ScrollViewer Grid.Column="4" VerticalScrollBarVisibility="Auto">
+                        <ScrollViewer x:Name="ShortcutVariablesPanel"
+                                      Grid.Column="4"
+                                      VerticalScrollBarVisibility="Auto">
                             <StackPanel Margin="18">
                                 <TextBlock Text="Variáveis"
                                            FontSize="17"
@@ -762,11 +831,11 @@
                                                    FontWeight="SemiBold"/>
                                         <TextBlock Margin="0,10,0,0"
                                                    TextWrapping="Wrap"
-                                                   Text="snippets.md guarda os atalhos e continua editável. settings.json e usage.json armazenam apenas preferências e contagens locais."
+                                                   Text="A pasta SlashTextData reúne snippets.md, preferências, estatísticas e imagens. O Markdown continua editável."
                                                    Foreground="{DynamicResource MutedBrush}"/>
                                         <TextBlock Margin="0,9,0,0"
                                                    TextWrapping="Wrap"
-                                                   Text="A pasta backups mantém no máximo sete versões diárias."
+                                                   Text="A pasta backups mantém um ZIP por dia, no máximo sete, com atalhos, preferências e estatísticas."
                                                    Foreground="{DynamicResource MutedBrush}"/>
                                     </StackPanel>
                                 </Border>
@@ -830,7 +899,7 @@
                                                    Margin="0,4,0,0"
                                                    FontSize="16"
                                                    Foreground="{DynamicResource MutedBrush}"/>
-                                        <TextBlock Text="Versão 1.3.0 · Licença MIT · código aberto"
+                                        <TextBlock Text="Versão 1.4.0 · Licença MIT · código aberto"
                                                    Margin="0,12,0,0"
                                                    Foreground="{DynamicResource AccentBrush}"
                                                    FontWeight="SemiBold"/>
