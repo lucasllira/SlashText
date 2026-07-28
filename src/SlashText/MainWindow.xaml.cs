@@ -43,6 +43,7 @@ public partial class MainWindow : Window
         Closing += MainWindow_OnClosing;
         Closed += MainWindow_OnClosed;
         StateChanged += MainWindow_OnStateChanged;
+        Activated += MainWindow_OnActivated;
         _keyboardHook.ExpansionRequested += KeyboardHook_OnExpansionRequested;
         _keyboardHook.SuggestionsChanged += KeyboardHook_OnSuggestionsChanged;
         _quickAccentService.Changed += QuickAccentService_OnChanged;
@@ -273,7 +274,7 @@ public partial class MainWindow : Window
         {
             HorizontalContentAlignment = HorizontalAlignment.Left,
             Background = ReferenceEquals(snippet, _selected)
-                ? new SolidColorBrush(System.Windows.Media.Color.FromRgb(232, 230, 255))
+                ? (Brush)FindResource("SelectedBrush")
                 : Brushes.Transparent,
             Padding = new Thickness(9, 7, 9, 7),
             Margin = new Thickness(0, 3, 0, 0),
@@ -818,6 +819,15 @@ public partial class MainWindow : Window
         }
     }
 
+    private void MainWindow_OnActivated(object? sender, EventArgs e)
+    {
+        if (_initialized &&
+            _settings.Theme.Equals("System", StringComparison.OrdinalIgnoreCase))
+        {
+            ThemeService.Apply(_settings.Theme);
+        }
+    }
+
     private void MainWindow_OnClosing(object? sender, CancelEventArgs e)
     {
         if (!_exitRequested && _settings.CloseToTray)
@@ -862,6 +872,7 @@ public partial class MainWindow : Window
         }
 
         _servicesDisposed = true;
+        Activated -= MainWindow_OnActivated;
         _keyboardHook.ExpansionRequested -= KeyboardHook_OnExpansionRequested;
         _keyboardHook.SuggestionsChanged -= KeyboardHook_OnSuggestionsChanged;
         _keyboardHook.Dispose();
