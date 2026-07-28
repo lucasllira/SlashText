@@ -10,8 +10,6 @@ public sealed partial class SnippetMarkdownRepository
 {
     private const string Header =
         "# Meus atalhos\n\n<!-- Arquivo gerado pelo SlashText. A edição manual é opcional. -->\n\n";
-    private const int BackupRetentionDays = 7;
-
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -74,7 +72,6 @@ public sealed partial class SnippetMarkdownRepository
                 return;
             }
 
-            CreateDailyBackup();
         }
 
         var temporaryFile = Path.Combine(directory, $".snippets-{Guid.NewGuid():N}.tmp");
@@ -86,7 +83,6 @@ public sealed partial class SnippetMarkdownRepository
                 new UTF8Encoding(false),
                 cancellationToken);
             File.Move(temporaryFile, _filePath, true);
-            PruneBackups();
         }
         finally
         {
@@ -94,32 +90,6 @@ public sealed partial class SnippetMarkdownRepository
             {
                 File.Delete(temporaryFile);
             }
-        }
-    }
-
-    private void CreateDailyBackup()
-    {
-        Directory.CreateDirectory(_backupDirectory);
-        var backup = Path.Combine(_backupDirectory, $"snippets-{DateTime.Now:yyyyMMdd}.md");
-        if (!File.Exists(backup))
-        {
-            File.Copy(_filePath, backup);
-        }
-    }
-
-    private void PruneBackups()
-    {
-        if (!Directory.Exists(_backupDirectory))
-        {
-            return;
-        }
-
-        foreach (var file in new DirectoryInfo(_backupDirectory)
-                     .GetFiles("snippets-*.md")
-                     .OrderByDescending(item => item.Name)
-                     .Skip(BackupRetentionDays))
-        {
-            file.Delete();
         }
     }
 
