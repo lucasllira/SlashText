@@ -5,8 +5,8 @@
         Icon="Assets/SlashText.ico"
         Width="1320"
         Height="850"
-        MinWidth="760"
-        MinHeight="600"
+        MinWidth="1080"
+        MinHeight="800"
         SizeChanged="MainWindow_OnSizeChanged"
         WindowStartupLocation="CenterScreen"
         Background="{DynamicResource CanvasBrush}">
@@ -281,6 +281,9 @@
                                                  BorderThickness="0"
                                                  Background="Transparent"
                                                  Foreground="{DynamicResource InkBrush}"
+                                                 CaretBrush="{DynamicResource InkBrush}"
+                                                 SelectionBrush="{DynamicResource AccentBrush}"
+                                                 SelectionOpacity="0.3"
                                                  Padding="12"
                                                  AcceptsTab="True"
                                                  TextChanged="ContentEditor_OnTextChanged"
@@ -512,16 +515,6 @@
                                             <TextBox x:Name="QuickAccentDelayBox"
                                                      Width="180"
                                                      HorizontalAlignment="Left"
-                                                     Margin="0,7,0,16"
-                                                     LostFocus="QuickAccentSettings_OnChanged"/>
-                                            <TextBlock Text="Aplicativos excluídos"
-                                                       FontWeight="SemiBold"/>
-                                            <TextBlock Text="Um processo por linha, como game.exe."
-                                                       Margin="0,3,0,0"
-                                                       Foreground="{DynamicResource MutedBrush}"/>
-                                            <TextBox x:Name="QuickAccentExcludedAppsBox"
-                                                     Height="86"
-                                                     AcceptsReturn="True"
                                                      Margin="0,7,0,0"
                                                      LostFocus="QuickAccentSettings_OnChanged"/>
                                         </StackPanel>
@@ -619,12 +612,18 @@
                                     <Border Style="{StaticResource SettingsCard}"
                                             Margin="0,20,0,0">
                                         <StackPanel>
-                                            <TextBlock Text="Caps Lock respeitado"
+                                            <TextBlock Text="Aplicativos excluídos"
                                                        FontWeight="SemiBold"/>
                                             <TextBlock Margin="0,5,0,0"
                                                        TextWrapping="Wrap"
                                                        Foreground="{DynamicResource MutedBrush}"
-                                                       Text="Com Caps Lock ativo, o caractere escolhido também será inserido em maiúsculo. Shift inverte temporariamente o estado, como no teclado normal."/>
+                                                       Text="O Acento Rápido não será ativado nestes processos. Informe um por linha, como game.exe."/>
+                                            <TextBox x:Name="QuickAccentExcludedAppsBox"
+                                                     Height="86"
+                                                     AcceptsReturn="True"
+                                                     VerticalScrollBarVisibility="Auto"
+                                                     Margin="0,10,0,0"
+                                                     LostFocus="QuickAccentSettings_OnChanged"/>
                                         </StackPanel>
                                     </Border>
                                 </StackPanel>
@@ -899,7 +898,7 @@
                                                    Margin="0,4,0,0"
                                                    FontSize="16"
                                                    Foreground="{DynamicResource MutedBrush}"/>
-                                        <TextBlock Text="Versão 1.4.0 · Licença MIT · código aberto"
+                                        <TextBlock Text="Versão 1.4.1 · Licença MIT · código aberto"
                                                    Margin="0,12,0,0"
                                                    Foreground="{DynamicResource AccentBrush}"
                                                    FontWeight="SemiBold"/>
