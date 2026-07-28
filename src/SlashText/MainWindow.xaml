@@ -9,10 +9,12 @@
         MinHeight="680"
         WindowStartupLocation="CenterScreen"
         Background="{DynamicResource CanvasBrush}">
-    <Grid Margin="24">
+    <Grid Margin="24,20,24,24">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
-            <RowDefinition Height="16"/>
+            <RowDefinition Height="14"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="14"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
@@ -45,48 +47,38 @@
             </Border>
         </Grid>
 
-        <Grid Grid.Row="2">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="176"/>
-                <ColumnDefinition Width="14"/>
-                <ColumnDefinition Width="*"/>
-            </Grid.ColumnDefinitions>
+        <Border Grid.Row="2"
+                HorizontalAlignment="Left"
+                Background="{DynamicResource SurfaceBrush}"
+                BorderBrush="{DynamicResource DividerBrush}"
+                BorderThickness="1"
+                CornerRadius="13"
+                Padding="4">
+            <StackPanel Orientation="Horizontal">
+                <Button x:Name="ShortcutsTabButton" Content="Atalhos"
+                        Style="{StaticResource NavButton}"
+                        Click="ShortcutsTab_OnClick"/>
+                <Button x:Name="QuickAccentTabButton" Content="Acento Rápido"
+                        Style="{StaticResource NavButton}"
+                        Click="QuickAccentTab_OnClick"/>
+                <Button x:Name="StatisticsTabButton" Content="Estatísticas"
+                        Style="{StaticResource NavButton}"
+                        Click="StatisticsTab_OnClick"/>
+                <Button x:Name="SettingsTabButton" Content="Configurações"
+                        Style="{StaticResource NavButton}"
+                        Click="SettingsTab_OnClick"/>
+                <Button x:Name="AboutTabButton" Content="Sobre"
+                        Style="{StaticResource NavButton}"
+                        Click="AboutTab_OnClick"/>
+            </StackPanel>
+        </Border>
 
-            <Border Background="{DynamicResource SurfaceBrush}"
-                    BorderBrush="{DynamicResource DividerBrush}"
-                    BorderThickness="1"
-                    CornerRadius="16"
-                    Padding="12">
-                <StackPanel>
-                    <TextBlock Text="NAVEGAÇÃO"
-                               Margin="10,8,0,8"
-                               Foreground="{DynamicResource MutedBrush}"
-                               FontSize="11"
-                               FontWeight="SemiBold"/>
-                    <Button x:Name="ShortcutsTabButton" Content="Atalhos"
-                            Style="{StaticResource SideNavButton}"
-                            Click="ShortcutsTab_OnClick"/>
-                    <Button x:Name="QuickAccentTabButton" Content="Acento Rápido"
-                            Style="{StaticResource SideNavButton}"
-                            Click="QuickAccentTab_OnClick"/>
-                    <Button x:Name="StatisticsTabButton" Content="Estatísticas"
-                            Style="{StaticResource SideNavButton}"
-                            Click="StatisticsTab_OnClick"/>
-                    <Button x:Name="SettingsTabButton" Content="Configurações"
-                            Style="{StaticResource SideNavButton}"
-                            Click="SettingsTab_OnClick"/>
-                    <Button x:Name="AboutTabButton" Content="Sobre"
-                            Style="{StaticResource SideNavButton}"
-                            Click="AboutTab_OnClick"/>
-                </StackPanel>
-            </Border>
-
-            <Border Grid.Column="2"
-                    Background="{DynamicResource SurfaceBrush}"
-                    BorderBrush="{DynamicResource DividerBrush}"
-                    BorderThickness="1"
-                    CornerRadius="16"
-                    ClipToBounds="True">
+        <Border Grid.Row="4"
+                Background="{DynamicResource SurfaceBrush}"
+                BorderBrush="{DynamicResource DividerBrush}"
+                BorderThickness="1"
+                CornerRadius="18"
+                ClipToBounds="True">
                 <Grid>
                     <Grid x:Name="ShortcutsView">
                         <Grid.ColumnDefinitions>
@@ -222,7 +214,8 @@
                                                  VerticalScrollBarVisibility="Auto"
                                                  FontFamily="Segoe UI"
                                                  FontSize="14">
-                                        <FlowDocument PagePadding="0"/>
+                                        <FlowDocument PagePadding="0"
+                                                      Foreground="{DynamicResource InkBrush}"/>
                                     </RichTextBox>
                                 </Border>
 
@@ -240,7 +233,9 @@
                                                               IsToolBarVisible="False"
                                                               Background="Transparent"
                                                               Foreground="{DynamicResource InkBrush}">
-                                        <FlowDocument x:Name="PreviewDocument" PagePadding="0"/>
+                                        <FlowDocument x:Name="PreviewDocument"
+                                                      PagePadding="0"
+                                                      Foreground="{DynamicResource InkBrush}"/>
                                     </FlowDocumentScrollViewer>
                                 </Border>
 
@@ -467,14 +462,14 @@
                                     </Grid.ColumnDefinitions>
                                     <StackPanel>
                                         <TextBlock Text="Tema" FontWeight="SemiBold"/>
-                                        <TextBlock Text="Claro, escuro profundo ou seguindo o Windows."
+                                        <TextBlock Text="Use o tema claro, escuro ou acompanhe o Windows."
                                                    Foreground="{DynamicResource MutedBrush}"/>
                                     </StackPanel>
                                     <ComboBox x:Name="ThemeBox" Grid.Column="1"
                                               SelectionChanged="ThemeBox_OnSelectionChanged">
                                         <ComboBoxItem Content="Seguir o Windows" Tag="System"/>
                                         <ComboBoxItem Content="Claro" Tag="Light"/>
-                                        <ComboBoxItem Content="Escuro profundo" Tag="Dark"/>
+                                        <ComboBoxItem Content="Escuro" Tag="Dark"/>
                                     </ComboBox>
                                 </Grid>
                             </Border>
@@ -517,7 +512,7 @@
                                        Text="Crie atalhos reutilizáveis, use variáveis automáticas, preencha campos, formate conteúdo e acompanhe o tempo economizado em Outlook, Teams, navegadores e outros aplicativos."/>
                             <Border Style="{StaticResource SettingsCard}" Margin="0,24,0,0">
                                 <StackPanel>
-                                    <TextBlock Text="Versão 1.2.0" FontWeight="SemiBold"/>
+                                    <TextBlock Text="Versão 1.2.1" FontWeight="SemiBold"/>
                                     <TextBlock Text="Licença MIT · código aberto" Margin="0,6,0,0"/>
                                     <Button Content="Abrir projeto no GitHub"
                                             HorizontalAlignment="Left"
@@ -532,7 +527,6 @@
                         </StackPanel>
                     </ScrollViewer>
                 </Grid>
-            </Border>
-        </Grid>
+        </Border>
     </Grid>
 </Window>
