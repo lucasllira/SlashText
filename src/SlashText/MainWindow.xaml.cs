@@ -791,7 +791,7 @@ public partial class MainWindow : Window
         box.SelectedIndex = 0;
     }
 
-    private static void OpenGitHub_OnClick(object sender, RoutedEventArgs e)
+    private void OpenGitHub_OnClick(object sender, RoutedEventArgs e)
     {
         Process.Start(new ProcessStartInfo(
             "https://github.com/lucasllira/SlashText")
