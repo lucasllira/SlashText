@@ -4,6 +4,8 @@ namespace SlashText.Services;
 
 public static class AppPaths
 {
+    private const string DataFolderName = "SlashTextData";
+
     public static string BaseDirectory
     {
         get
@@ -19,9 +21,78 @@ public static class AppPaths
         }
     }
 
-    public static string SnippetsFile => Path.Combine(BaseDirectory, "snippets.md");
-    public static string BackupsDirectory => Path.Combine(BaseDirectory, "backups");
-    public static string SettingsFile => Path.Combine(BaseDirectory, "settings.json");
-    public static string UsageFile => Path.Combine(BaseDirectory, "usage.json");
-    public static string AssetsDirectory => Path.Combine(BaseDirectory, "assets");
+    public static string DataDirectory => Path.Combine(BaseDirectory, DataFolderName);
+    public static string SnippetsFile => Path.Combine(DataDirectory, "snippets.md");
+    public static string BackupsDirectory => Path.Combine(DataDirectory, "backups");
+    public static string SettingsFile => Path.Combine(DataDirectory, "settings.json");
+    public static string UsageFile => Path.Combine(DataDirectory, "usage.json");
+    public static string AssetsDirectory => Path.Combine(DataDirectory, "assets");
+
+    public static void EnsureDataLayout()
+    {
+        Directory.CreateDirectory(DataDirectory);
+        MigrateFile("snippets.md", SnippetsFile);
+        MigrateFile("settings.json", SettingsFile);
+        MigrateFile("usage.json", UsageFile);
+        MigrateDirectory("assets", AssetsDirectory);
+        MigrateDirectory("backups", BackupsDirectory);
+    }
+
+    private static void MigrateFile(string legacyName, string destination)
+    {
+        var legacy = Path.Combine(BaseDirectory, legacyName);
+        if (!File.Exists(legacy) ||
+            legacy.Equals(destination, StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        if (!File.Exists(destination))
+        {
+            File.Move(legacy, destination);
+        }
+    }
+
+    private static void MigrateDirectory(string legacyName, string destination)
+    {
+        var legacy = Path.Combine(BaseDirectory, legacyName);
+        if (!Directory.Exists(legacy) ||
+            legacy.Equals(destination, StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        if (!Directory.Exists(destination))
+        {
+            Directory.Move(legacy, destination);
+            return;
+        }
+
+        foreach (var file in Directory.EnumerateFiles(legacy, "*", SearchOption.AllDirectories))
+        {
+            var relative = Path.GetRelativePath(legacy, file);
+            var target = Path.Combine(destination, relative);
+            Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+            if (!File.Exists(target))
+            {
+                File.Move(file, target);
+            }
+        }
+
+        foreach (var directory in Directory.EnumerateDirectories(
+                     legacy,
+                     "*",
+                     SearchOption.AllDirectories).OrderByDescending(item => item.Length))
+        {
+            if (!Directory.EnumerateFileSystemEntries(directory).Any())
+            {
+                Directory.Delete(directory);
+            }
+        }
+
+        if (!Directory.EnumerateFileSystemEntries(legacy).Any())
+        {
+            Directory.Delete(legacy);
+        }
+    }
 }
