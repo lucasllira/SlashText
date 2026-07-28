@@ -1,5 +1,7 @@
 using SlashText.Models;
 using SlashText.Services;
+using System.Reflection;
+using System.Runtime.InteropServices;
 
 var engine = new TemplateEngine();
 var reference = new DateTimeOffset(2026, 7, 27, 14, 35, 0, TimeSpan.FromHours(-3));
@@ -13,6 +15,14 @@ Require(rendered.Contains("|14:35|07|", StringComparison.Ordinal), "variáveis a
 Require(rendered.Contains("|2026|26|", StringComparison.Ordinal), "ano completo e abreviado");
 Require(rendered.Contains("|20/07/2026|", StringComparison.Ordinal), "cálculo de data");
 Require(rendered.EndsWith(TemplateEngine.TabMarker, StringComparison.Ordinal), "marcador Tab");
+
+var nativeInputType = typeof(QuickAccentService).GetNestedType(
+    "Input",
+    BindingFlags.NonPublic);
+Require(nativeInputType is not null, "estrutura nativa do Acento Rápido");
+Require(
+    Marshal.SizeOf(nativeInputType!) == (Environment.Is64BitProcess ? 40 : 28),
+    "estrutura INPUT compatível com SendInput");
 
 var fields = engine.GetFillableFields("Olá {{nome}}, chamado {{chamado|INC000}}. {{nome}}");
 Require(fields.Count == 2, "campos únicos");
