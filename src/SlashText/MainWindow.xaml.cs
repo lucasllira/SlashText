@@ -23,6 +23,7 @@ public partial class MainWindow : Window
     private readonly TextExpansionService _expansionService = new();
     private readonly UsageService _usageService = new();
     private readonly QuickAccentService _quickAccentService = new();
+    private readonly BackupService _backupService = new();
     private readonly JsonFileStore<AppSettings> _settingsStore = new(AppPaths.SettingsFile);
     private readonly ObservableCollection<Snippet> _snippets = [];
     private readonly SuggestionWindow _suggestionWindow = new();
@@ -79,6 +80,7 @@ public partial class MainWindow : Window
 
             var loaded = await _repository.LoadAsync();
             ReplaceList(loaded);
+            _backupService.CreateDailySnapshot();
             StartMonitoring();
             _quickAccentService.Start();
 
@@ -211,8 +213,8 @@ public partial class MainWindow : Window
 
                 if (fields.Count > 0)
                 {
-                    var form = new VariableInputWindow(fields);
-                    if (form.ShowDialog() != true)
+                    var form = VariableInputWindow.ShowForTarget(fields, e.TargetWindow);
+                    if (form.DialogResult != true)
                     {
                         StatusText.Text = "Expansão cancelada";
                         return;
@@ -402,7 +404,7 @@ public partial class MainWindow : Window
             _keyboardHook.UpdateSnippets(_snippets);
             RefreshNavigation();
             RefreshStatistics();
-            StatusText.Text = "Salvo em snippets.md";
+            StatusText.Text = "Salvo em SlashTextData/snippets.md";
         }
         catch (Exception exception)
         {
@@ -471,6 +473,37 @@ public partial class MainWindow : Window
     private void Underline_OnClick(object sender, RoutedEventArgs e) =>
         EditingCommands.ToggleUnderline.Execute(null, ContentEditor);
 
+    private void FontFamilyBox_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (ContentEditor is null ||
+            FontFamilyBox?.SelectedItem is not ComboBoxItem { Tag: string font })
+        {
+            return;
+        }
+
+        ContentEditor.Selection.ApplyPropertyValue(
+            TextElement.FontFamilyProperty,
+            new FontFamily(font));
+        ContentEditor.Focus();
+    }
+
+    private void FontSizeBox_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (ContentEditor is null ||
+            FontSizeBox?.SelectedItem is not ComboBoxItem { Tag: string sizeText } ||
+            !double.TryParse(
+                sizeText,
+                System.Globalization.NumberStyles.Float,
+                System.Globalization.CultureInfo.InvariantCulture,
+                out var size))
+        {
+            return;
+        }
+
+        ContentEditor.Selection.ApplyPropertyValue(TextElement.FontSizeProperty, size);
+        ContentEditor.Focus();
+    }
+
     private void Color_OnClick(object sender, RoutedEventArgs e)
     {
         using var picker = new Forms.ColorDialog
@@ -488,6 +521,111 @@ public partial class MainWindow : Window
             TextElement.ForegroundProperty,
             new SolidColorBrush(System.Windows.Media.Color.FromRgb(color.R, color.G, color.B)));
         ContentEditor.Focus();
+    }
+
+    private void Highlight_OnClick(object sender, RoutedEventArgs e)
+    {
+        using var picker = new Forms.ColorDialog
+        {
+            FullOpen = true,
+            Color = System.Drawing.Color.FromArgb(255, 235, 59)
+        };
+        if (picker.ShowDialog() != Forms.DialogResult.OK)
+        {
+            return;
+        }
+
+        var color = picker.Color;
+        ContentEditor.Selection.ApplyPropertyValue(
+            TextElement.BackgroundProperty,
+            new SolidColorBrush(System.Windows.Media.Color.FromRgb(color.R, color.G, color.B)));
+        ContentEditor.Focus();
+    }
+
+    private void Bullets_OnClick(object sender, RoutedEventArgs e) =>
+        EditingCommands.ToggleBullets.Execute(null, ContentEditor);
+
+    private void Numbering_OnClick(object sender, RoutedEventArgs e) =>
+        EditingCommands.ToggleNumbering.Execute(null, ContentEditor);
+
+    private void AlignLeft_OnClick(object sender, RoutedEventArgs e) =>
+        EditingCommands.AlignLeft.Execute(null, ContentEditor);
+
+    private void AlignCenter_OnClick(object sender, RoutedEventArgs e) =>
+        EditingCommands.AlignCenter.Execute(null, ContentEditor);
+
+    private void AlignRight_OnClick(object sender, RoutedEventArgs e) =>
+        EditingCommands.AlignRight.Execute(null, ContentEditor);
+
+    private void Table_OnClick(object sender, RoutedEventArgs e)
+    {
+        var rowsText = PromptDialog.Show(this, "Inserir tabela", "Quantidade de linhas", "2");
+        if (rowsText is null)
+        {
+            return;
+        }
+
+        var columnsText = PromptDialog.Show(this, "Inserir tabela", "Quantidade de colunas", "2");
+        if (!int.TryParse(rowsText, out var rows) ||
+            !int.TryParse(columnsText, out var columns) ||
+            rows is < 1 or > 10 ||
+            columns is < 1 or > 8)
+        {
+            MessageBox.Show(
+                "Use de 1 a 10 linhas e de 1 a 8 colunas.",
+                "Tabela",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+            return;
+        }
+
+        var table = new Table
+        {
+            CellSpacing = 0,
+            Margin = new Thickness(0, 6, 0, 6)
+        };
+        for (var column = 0; column < columns; column++)
+        {
+            table.Columns.Add(new TableColumn());
+        }
+
+        var group = new TableRowGroup();
+        table.RowGroups.Add(group);
+        TableCell? firstCell = null;
+        for (var rowIndex = 0; rowIndex < rows; rowIndex++)
+        {
+            var row = new TableRow();
+            group.Rows.Add(row);
+            for (var columnIndex = 0; columnIndex < columns; columnIndex++)
+            {
+                var cell = new TableCell(new Paragraph(new Run(
+                    rowIndex == 0 ? $"Título {columnIndex + 1}" : "Texto")))
+                {
+                    BorderBrush = (Brush)FindResource("DividerBrush"),
+                    BorderThickness = new Thickness(1),
+                    Padding = new Thickness(7)
+                };
+                firstCell ??= cell;
+                row.Cells.Add(cell);
+            }
+        }
+
+        var paragraph = ContentEditor.CaretPosition.Paragraph;
+        if (paragraph?.Parent is FlowDocument document)
+        {
+            document.Blocks.InsertAfter(paragraph, table);
+        }
+        else
+        {
+            ContentEditor.Document.Blocks.Add(table);
+        }
+
+        if (firstCell is not null)
+        {
+            ContentEditor.CaretPosition = firstCell.ContentStart;
+        }
+        ContentEditor.Focus();
+        UpdatePreview();
     }
 
     private void Link_OnClick(object sender, RoutedEventArgs e)
@@ -963,6 +1101,65 @@ public partial class MainWindow : Window
             _snippets.Add(snippet);
         }
         RefreshNavigation();
+    }
+
+    private void MainWindow_OnSizeChanged(object sender, SizeChangedEventArgs e) =>
+        UpdateResponsiveLayout(e.NewSize.Width);
+
+    private void UpdateResponsiveLayout(double width)
+    {
+        if (ShortcutSidebarPanel is null)
+        {
+            return;
+        }
+
+        var compact = width < 1080;
+        if (compact)
+        {
+            ShortcutSecondaryRow.Height = new GridLength(250);
+            ShortcutLeftColumn.Width = new GridLength(250);
+            ShortcutLeftDividerColumn.Width = GridLength.Auto;
+            ShortcutRightDividerColumn.Width = GridLength.Auto;
+            ShortcutRightColumn.Width = new GridLength(250);
+
+            Grid.SetRow(ShortcutEditorPanel, 0);
+            Grid.SetColumn(ShortcutEditorPanel, 0);
+            Grid.SetColumnSpan(ShortcutEditorPanel, 5);
+
+            Grid.SetRow(ShortcutSidebarPanel, 1);
+            Grid.SetColumn(ShortcutSidebarPanel, 0);
+            Grid.SetColumnSpan(ShortcutSidebarPanel, 2);
+
+            Grid.SetRow(ShortcutVariablesPanel, 1);
+            Grid.SetColumn(ShortcutVariablesPanel, 2);
+            Grid.SetColumnSpan(ShortcutVariablesPanel, 3);
+
+            ShortcutLeftDivider.Visibility = Visibility.Collapsed;
+            ShortcutRightDivider.Visibility = Visibility.Collapsed;
+        }
+        else
+        {
+            ShortcutSecondaryRow.Height = new GridLength(0);
+            ShortcutLeftColumn.Width = new GridLength(260);
+            ShortcutLeftDividerColumn.Width = new GridLength(1);
+            ShortcutRightDividerColumn.Width = new GridLength(1);
+            ShortcutRightColumn.Width = new GridLength(260);
+
+            Grid.SetRow(ShortcutSidebarPanel, 0);
+            Grid.SetColumn(ShortcutSidebarPanel, 0);
+            Grid.SetColumnSpan(ShortcutSidebarPanel, 1);
+
+            Grid.SetRow(ShortcutEditorPanel, 0);
+            Grid.SetColumn(ShortcutEditorPanel, 2);
+            Grid.SetColumnSpan(ShortcutEditorPanel, 1);
+
+            Grid.SetRow(ShortcutVariablesPanel, 0);
+            Grid.SetColumn(ShortcutVariablesPanel, 4);
+            Grid.SetColumnSpan(ShortcutVariablesPanel, 1);
+
+            ShortcutLeftDivider.Visibility = Visibility.Visible;
+            ShortcutRightDivider.Visibility = Visibility.Visible;
+        }
     }
 
     private void MainWindow_OnStateChanged(object? sender, EventArgs e)
