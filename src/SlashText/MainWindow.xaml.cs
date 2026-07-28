@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
@@ -21,9 +22,11 @@ public partial class MainWindow : Window
     private readonly KeyboardHookService _keyboardHook = new();
     private readonly TextExpansionService _expansionService = new();
     private readonly UsageService _usageService = new();
+    private readonly QuickAccentService _quickAccentService = new();
     private readonly JsonFileStore<AppSettings> _settingsStore = new(AppPaths.SettingsFile);
     private readonly ObservableCollection<Snippet> _snippets = [];
     private readonly SuggestionWindow _suggestionWindow = new();
+    private readonly QuickAccentWindow _quickAccentWindow = new();
 
     private Forms.NotifyIcon? _trayIcon;
     private AppSettings _settings = new();
@@ -42,6 +45,7 @@ public partial class MainWindow : Window
         StateChanged += MainWindow_OnStateChanged;
         _keyboardHook.ExpansionRequested += KeyboardHook_OnExpansionRequested;
         _keyboardHook.SuggestionsChanged += KeyboardHook_OnSuggestionsChanged;
+        _quickAccentService.Changed += QuickAccentService_OnChanged;
     }
 
     private async void MainWindow_OnLoaded(object sender, RoutedEventArgs e)
@@ -50,19 +54,29 @@ public partial class MainWindow : Window
         {
             return;
         }
-        _initialized = true;
-
         try
         {
             _settings = await _settingsStore.LoadAsync();
+            ThemeService.Apply(_settings.Theme);
             await _usageService.LoadAsync();
             CloseToTrayCheckBox.IsChecked = _settings.CloseToTray;
             StartWithWindowsCheckBox.IsChecked = _settings.StartWithWindows;
             ShowSuggestionsCheckBox.IsChecked = _settings.ShowSuggestions;
+            SelectComboByTag(ThemeBox, _settings.Theme);
+            QuickAccentEnabledCheckBox.IsChecked = _settings.QuickAccentEnabled;
+            SelectComboByTag(QuickAccentActivationBox, _settings.QuickAccentActivationKey);
+            SelectComboByTag(QuickAccentPositionBox, _settings.QuickAccentToolbarPosition);
+            QuickAccentUnicodeCheckBox.IsChecked = _settings.QuickAccentShowUnicode;
+            QuickAccentSortCheckBox.IsChecked = _settings.QuickAccentSortByUsage;
+            QuickAccentDelayBox.Text = _settings.QuickAccentInputDelayMs.ToString();
+            QuickAccentExcludedAppsBox.Text = _settings.QuickAccentExcludedApps;
+            ApplyQuickAccentSettings();
+            _initialized = true;
 
             var loaded = await _repository.LoadAsync();
             ReplaceList(loaded);
             StartMonitoring();
+            _quickAccentService.Start();
 
             if (_snippets.Count > 0)
             {
@@ -74,6 +88,7 @@ public partial class MainWindow : Window
             }
 
             RefreshStatistics();
+            ShowView(ShortcutsView, ShortcutsTabButton);
             StatusText.Text = $"{_snippets.Count} atalho(s) carregado(s)";
         }
         catch (Exception exception)
@@ -131,6 +146,24 @@ public partial class MainWindow : Window
         }
 
         MonitorStatusText.Text = "● Monitoramento ativo";
+    }
+
+    private void QuickAccentService_OnChanged(object? sender, QuickAccentChangedEventArgs e)
+    {
+        Dispatcher.BeginInvoke(new Action(() =>
+        {
+            if (!e.Visible)
+            {
+                _quickAccentWindow.Hide();
+                return;
+            }
+
+            _quickAccentWindow.UpdateChoices(
+                e.Choices,
+                e.SelectedIndex,
+                _settings.QuickAccentToolbarPosition,
+                _settings.QuickAccentShowUnicode);
+        }));
     }
 
     private void KeyboardHook_OnSuggestionsChanged(object? sender, SnippetSuggestionsEventArgs e)
@@ -296,6 +329,7 @@ public partial class MainWindow : Window
         RichTextMarkdownConverter.Load(ContentEditor, snippet.Content, snippet.Format);
         StatusText.Text = snippet.Enabled ? "Atalho ativo" : "Atalho pausado";
         RefreshNavigation();
+        UpdatePreview();
     }
 
     private void NewSnippet_OnClick(object sender, RoutedEventArgs e) =>
@@ -312,6 +346,7 @@ public partial class MainWindow : Window
         StatusText.Text = "Novo atalho";
         RefreshNavigation();
         NameBox.Focus();
+        UpdatePreview();
     }
 
     private async void SaveSnippet_OnClick(object sender, RoutedEventArgs e)
@@ -407,6 +442,7 @@ public partial class MainWindow : Window
         {
             FormattingToolbar.Visibility =
                 FormatBox.SelectedIndex == 1 ? Visibility.Visible : Visibility.Collapsed;
+            UpdatePreview();
         }
     }
 
@@ -480,6 +516,57 @@ public partial class MainWindow : Window
         ContentEditor.Focus();
     }
 
+    private void CodeBlock_OnClick(object sender, RoutedEventArgs e)
+    {
+        var language = PromptDialog.Show(
+            this,
+            "Bloco de código",
+            "Linguagem (ex.: powershell, csharp, python)",
+            "powershell");
+        if (language is null)
+        {
+            return;
+        }
+
+        ContentEditor.Selection.Text =
+            $"```{language.Trim()}\ncole seu código aqui\n```";
+        ContentEditor.Focus();
+        UpdatePreview();
+    }
+
+    private void Image_OnClick(object sender, RoutedEventArgs e)
+    {
+        var picker = new Microsoft.Win32.OpenFileDialog
+        {
+            Title = "Adicionar imagem ao atalho",
+            Filter = "Imagens|*.png;*.jpg;*.jpeg;*.gif;*.webp",
+            Multiselect = false
+        };
+        if (picker.ShowDialog(this) != true)
+        {
+            return;
+        }
+
+        var info = new System.IO.FileInfo(picker.FileName);
+        if (info.Length > 5 * 1024 * 1024)
+        {
+            MessageBox.Show(
+                "Escolha uma imagem com até 5 MB.",
+                "Imagem muito grande",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+            return;
+        }
+
+        System.IO.Directory.CreateDirectory(AppPaths.AssetsDirectory);
+        var safeName = $"{Guid.NewGuid():N}{info.Extension.ToLowerInvariant()}";
+        var destination = System.IO.Path.Combine(AppPaths.AssetsDirectory, safeName);
+        System.IO.File.Copy(info.FullName, destination);
+        ContentEditor.Selection.Text = $"![{System.IO.Path.GetFileNameWithoutExtension(info.Name)}](assets/{safeName})";
+        ContentEditor.Focus();
+        UpdatePreview();
+    }
+
     private void VariableChip_OnClick(object sender, RoutedEventArgs e)
     {
         if (sender is Button { Tag: string token })
@@ -489,21 +576,79 @@ public partial class MainWindow : Window
         }
     }
 
+    private void ContentEditor_OnTextChanged(object sender, TextChangedEventArgs e) =>
+        UpdatePreview();
+
+    private void UpdatePreview()
+    {
+        if (PreviewDocument is null || ContentEditor is null || FormatBox is null)
+        {
+            return;
+        }
+
+        var format = FormatBox.SelectedIndex == 1 ? SnippetFormat.Markdown : SnippetFormat.Plain;
+        var content = RichTextMarkdownConverter.Save(ContentEditor, format);
+        var rendered = new TemplateEngine().Render(content, PreviewValues(content));
+        RichTextMarkdownConverter.BuildPreview(PreviewDocument, rendered, format);
+    }
+
+    private static IReadOnlyDictionary<string, string> PreviewValues(string template)
+    {
+        var engine = new TemplateEngine();
+        return engine.GetFillableFields(template)
+            .ToDictionary(
+                item => item.Name,
+                item => item.DefaultValue ?? $"[{item.Name}]",
+                StringComparer.CurrentCultureIgnoreCase);
+    }
+
     private void ShortcutsTab_OnClick(object sender, RoutedEventArgs e)
     {
-        ShortcutsView.Visibility = Visibility.Visible;
-        StatisticsView.Visibility = Visibility.Collapsed;
-        ShortcutsTabButton.Foreground = (Brush)FindResource("AccentBrush");
-        StatisticsTabButton.Foreground = (Brush)FindResource("InkBrush");
+        ShowView(ShortcutsView, ShortcutsTabButton);
     }
+
+    private void QuickAccentTab_OnClick(object sender, RoutedEventArgs e) =>
+        ShowView(QuickAccentView, QuickAccentTabButton);
 
     private void StatisticsTab_OnClick(object sender, RoutedEventArgs e)
     {
         RefreshStatistics();
-        ShortcutsView.Visibility = Visibility.Collapsed;
-        StatisticsView.Visibility = Visibility.Visible;
-        StatisticsTabButton.Foreground = (Brush)FindResource("AccentBrush");
-        ShortcutsTabButton.Foreground = (Brush)FindResource("InkBrush");
+        ShowView(StatisticsView, StatisticsTabButton);
+    }
+
+    private void SettingsTab_OnClick(object sender, RoutedEventArgs e) =>
+        ShowView(SettingsView, SettingsTabButton);
+
+    private void AboutTab_OnClick(object sender, RoutedEventArgs e) =>
+        ShowView(AboutView, AboutTabButton);
+
+    private void ShowView(UIElement view, Button selectedButton)
+    {
+        var views = new UIElement[]
+        {
+            ShortcutsView, QuickAccentView, StatisticsView, SettingsView, AboutView
+        };
+        foreach (var item in views)
+        {
+            item.Visibility = ReferenceEquals(item, view)
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+        }
+
+        var buttons = new[]
+        {
+            ShortcutsTabButton, QuickAccentTabButton, StatisticsTabButton,
+            SettingsTabButton, AboutTabButton
+        };
+        foreach (var button in buttons)
+        {
+            button.Background = ReferenceEquals(button, selectedButton)
+                ? (Brush)FindResource("ElevatedBrush")
+                : Brushes.Transparent;
+            button.Foreground = ReferenceEquals(button, selectedButton)
+                ? (Brush)FindResource("AccentBrush")
+                : (Brush)FindResource("InkBrush");
+        }
     }
 
     private void RefreshStatistics()
@@ -579,6 +724,82 @@ public partial class MainWindow : Window
         }
     }
 
+    private async void ThemeBox_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (!_initialized || ThemeBox.SelectedItem is not ComboBoxItem { Tag: string theme })
+        {
+            return;
+        }
+
+        _settings.Theme = theme;
+        ThemeService.Apply(theme);
+        await _settingsStore.SaveAsync(_settings);
+        ShowView(SettingsView, SettingsTabButton);
+    }
+
+    private async void QuickAccentSettings_OnChanged(object sender, RoutedEventArgs e)
+    {
+        if (!_initialized)
+        {
+            return;
+        }
+
+        _settings.QuickAccentEnabled = QuickAccentEnabledCheckBox.IsChecked == true;
+        _settings.QuickAccentActivationKey = SelectedTag(QuickAccentActivationBox, "Space");
+        _settings.QuickAccentToolbarPosition = SelectedTag(
+            QuickAccentPositionBox,
+            "BottomCenter");
+        _settings.QuickAccentShowUnicode = QuickAccentUnicodeCheckBox.IsChecked == true;
+        _settings.QuickAccentSortByUsage = QuickAccentSortCheckBox.IsChecked == true;
+        _settings.QuickAccentInputDelayMs = int.TryParse(
+            QuickAccentDelayBox.Text,
+            out var delay)
+            ? Math.Clamp(delay, 0, 2000)
+            : 200;
+        _settings.QuickAccentExcludedApps = QuickAccentExcludedAppsBox.Text;
+        ApplyQuickAccentSettings();
+        await _settingsStore.SaveAsync(_settings);
+    }
+
+    private void ApplyQuickAccentSettings()
+    {
+        _quickAccentService.Enabled = _settings.QuickAccentEnabled;
+        _quickAccentService.ActivationKey = _settings.QuickAccentActivationKey;
+        _quickAccentService.SortByUsage = _settings.QuickAccentSortByUsage;
+        _quickAccentService.InputDelayMs = _settings.QuickAccentInputDelayMs;
+        _quickAccentService.ExcludedApps = _settings.QuickAccentExcludedApps;
+        if (!_settings.QuickAccentEnabled)
+        {
+            _quickAccentWindow.Hide();
+        }
+    }
+
+    private static string SelectedTag(ComboBox box, string fallback) =>
+        box.SelectedItem is ComboBoxItem { Tag: string tag } ? tag : fallback;
+
+    private static void SelectComboByTag(ComboBox box, string value)
+    {
+        foreach (var item in box.Items.OfType<ComboBoxItem>())
+        {
+            if (item.Tag is string tag &&
+                tag.Equals(value, StringComparison.OrdinalIgnoreCase))
+            {
+                box.SelectedItem = item;
+                return;
+            }
+        }
+        box.SelectedIndex = 0;
+    }
+
+    private static void OpenGitHub_OnClick(object sender, RoutedEventArgs e)
+    {
+        Process.Start(new ProcessStartInfo(
+            "https://github.com/lucasllira/SlashText")
+        {
+            UseShellExecute = true
+        });
+    }
+
     private void ReplaceList(IEnumerable<Snippet> snippets)
     {
         _snippets.Clear();
@@ -644,7 +865,10 @@ public partial class MainWindow : Window
         _keyboardHook.ExpansionRequested -= KeyboardHook_OnExpansionRequested;
         _keyboardHook.SuggestionsChanged -= KeyboardHook_OnSuggestionsChanged;
         _keyboardHook.Dispose();
+        _quickAccentService.Changed -= QuickAccentService_OnChanged;
+        _quickAccentService.Dispose();
         _suggestionWindow.Close();
+        _quickAccentWindow.Close();
         if (_trayIcon is not null)
         {
             _trayIcon.Visible = false;
