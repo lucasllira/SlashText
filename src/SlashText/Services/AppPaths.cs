@@ -23,4 +23,5 @@ public static class AppPaths
     public static string BackupsDirectory => Path.Combine(BaseDirectory, "backups");
     public static string SettingsFile => Path.Combine(BaseDirectory, "settings.json");
     public static string UsageFile => Path.Combine(BaseDirectory, "usage.json");
+    public static string AssetsDirectory => Path.Combine(BaseDirectory, "assets");
 }
