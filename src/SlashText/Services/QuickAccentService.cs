@@ -141,8 +141,11 @@ public sealed class QuickAccentService : IDisposable
         {
             if (_active && _choices.Length > 0)
             {
-                _usage[_choices[_selected]] = _usage.GetValueOrDefault(_choices[_selected]) + 1;
-                ReplaceBaseCharacter(_choices[_selected]);
+                var selectedCharacter = _choices[_selected];
+                if (ReplaceBaseCharacter(selectedCharacter))
+                {
+                    _usage[selectedCharacter] = _usage.GetValueOrDefault(selectedCharacter) + 1;
+                }
             }
             Reset();
         }
@@ -198,19 +201,20 @@ public sealed class QuickAccentService : IDisposable
     private static string MatchCase(string value, bool upper) =>
         upper ? value.ToUpperInvariant() : value;
 
-    private static void ReplaceBaseCharacter(char character)
+    private static bool ReplaceBaseCharacter(char character)
     {
         var inputs = new[]
         {
-            KeyInput(0x08, '\0', false),
-            KeyInput(0x08, '\0', true),
+            KeyInput(0x08, 0, false),
+            KeyInput(0x08, 0, true),
             KeyInput(0, character, false, true),
             KeyInput(0, character, true, true)
         };
-        _ = SendInput((uint)inputs.Length, inputs, Marshal.SizeOf<Input>());
+        var sent = SendInput((uint)inputs.Length, inputs, Marshal.SizeOf<Input>());
+        return sent == inputs.Length;
     }
 
-    private static Input KeyInput(ushort key, char scan, bool keyUp, bool unicode = false) =>
+    private static Input KeyInput(ushort key, ushort scan, bool keyUp, bool unicode = false) =>
         new()
         {
             Type = InputKeyboard,
@@ -264,17 +268,38 @@ public sealed class QuickAccentService : IDisposable
     [StructLayout(LayoutKind.Explicit)]
     private struct InputUnion
     {
+        [FieldOffset(0)] public MouseInputData Mouse;
         [FieldOffset(0)] public KeyboardInputData Keyboard;
+        [FieldOffset(0)] public HardwareInputData Hardware;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct MouseInputData
+    {
+        public int X;
+        public int Y;
+        public uint MouseData;
+        public uint Flags;
+        public uint Time;
+        public UIntPtr ExtraInfo;
     }
 
     [StructLayout(LayoutKind.Sequential)]
     private struct KeyboardInputData
     {
         public ushort VirtualKey;
-        public char ScanCode;
+        public ushort ScanCode;
         public uint Flags;
         public uint Time;
         public UIntPtr ExtraInfo;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct HardwareInputData
+    {
+        public uint Message;
+        public ushort ParameterLow;
+        public ushort ParameterHigh;
     }
 
     [DllImport("user32.dll", SetLastError = true)]

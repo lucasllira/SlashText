@@ -13,6 +13,7 @@ public sealed class SuggestionWindow : Window
     private const int GwlExStyle = -20;
     private const int WsExNoActivate = 0x08000000;
     private readonly StackPanel _items = new();
+    private readonly Border _surface;
 
     public SuggestionWindow()
     {
@@ -27,10 +28,8 @@ public sealed class SuggestionWindow : Window
         AllowsTransparency = true;
         Background = Brushes.Transparent;
 
-        Content = new Border
+        _surface = new Border
         {
-            Background = new SolidColorBrush(Color.FromArgb(248, 255, 255, 255)),
-            BorderBrush = new SolidColorBrush(Color.FromRgb(222, 226, 235)),
             BorderThickness = new Thickness(1),
             CornerRadius = new CornerRadius(12),
             Padding = new Thickness(8),
@@ -42,6 +41,7 @@ public sealed class SuggestionWindow : Window
             },
             Child = _items
         };
+        Content = _surface;
 
         SourceInitialized += (_, _) =>
         {
@@ -58,6 +58,8 @@ public sealed class SuggestionWindow : Window
             return;
         }
 
+        _surface.Background = FindBrush("SurfaceBrush", Brushes.White);
+        _surface.BorderBrush = FindBrush("DividerBrush", Brushes.LightGray);
         _items.Children.Clear();
         foreach (var snippet in snippets)
         {
@@ -69,13 +71,13 @@ public sealed class SuggestionWindow : Window
                 Text = snippet.Trigger,
                 FontFamily = new FontFamily("Cascadia Mono, Consolas"),
                 FontWeight = FontWeights.SemiBold,
-                Foreground = new SolidColorBrush(Color.FromRgb(99, 91, 255))
+                Foreground = FindBrush("AccentBrush", new SolidColorBrush(Color.FromRgb(99, 91, 255)))
             });
             var name = new TextBlock
             {
                 Text = snippet.Name,
                 TextTrimming = TextTrimming.CharacterEllipsis,
-                Foreground = new SolidColorBrush(Color.FromRgb(89, 99, 113))
+                Foreground = FindBrush("MutedBrush", new SolidColorBrush(Color.FromRgb(89, 99, 113)))
             };
             Grid.SetColumn(name, 1);
             row.Children.Add(name);
@@ -89,6 +91,9 @@ public sealed class SuggestionWindow : Window
             Show();
         }
     }
+
+    private static Brush FindBrush(string key, Brush fallback) =>
+        System.Windows.Application.Current.TryFindResource(key) as Brush ?? fallback;
 
     [DllImport("user32.dll", EntryPoint = "GetWindowLong")]
     private static extern int GetWindowLong(IntPtr window, int index);
