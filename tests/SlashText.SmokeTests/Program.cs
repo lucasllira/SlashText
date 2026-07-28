@@ -2,6 +2,7 @@ using SlashText.Models;
 using SlashText.Services;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using System.IO.Compression;
 
 var engine = new TemplateEngine();
 var reference = new DateTimeOffset(2026, 7, 27, 14, 35, 0, TimeSpan.FromHours(-3));
@@ -64,7 +65,6 @@ try
 
     var loaded = await repository.LoadAsync();
     Require(loaded.Count == 1 && loaded[0].Content == "Terceiro", "persistência Markdown");
-    Require(Directory.GetFiles(backups, "snippets-*.md").Length == 1, "backup diário consolidado");
 
     var colonSnippet = new Snippet
     {
@@ -78,6 +78,8 @@ try
     Require(loaded.Any(item => item.Trigger == ":teste"), "gatilho com dois pontos");
 
     var usageFile = Path.Combine(root, "usage.json");
+    var settingsFile = Path.Combine(root, "settings.json");
+    await File.WriteAllTextAsync(settingsFile, """{"theme":"System"}""");
     await File.WriteAllTextAsync(
         usageFile,
         System.Text.Json.JsonSerializer.Serialize(new List<UsageRecord>
@@ -95,6 +97,21 @@ try
         reloadedUsage.QuickAccent.Characters.GetValueOrDefault("á") == 1,
         "ranking de caracteres acentuados");
 
+    var backupService = new BackupService(
+        backups,
+        [snippetsFile, settingsFile, usageFile]);
+    backupService.CreateDailySnapshot();
+    backupService.CreateDailySnapshot();
+    var backupFiles = Directory.GetFiles(backups, "SlashText-backup-*.zip");
+    Require(backupFiles.Length == 1, "um backup consolidado por dia");
+    using (var archive = ZipFile.OpenRead(backupFiles[0]))
+    {
+        Require(
+            archive.Entries.Select(item => item.Name).Order()
+                .SequenceEqual(["settings.json", "snippets.md", "usage.json"]),
+            "backup contém atalhos, preferências e estatísticas");
+    }
+
     var code = "Antes\n```powershell\nGet-Date\n```\nDepois";
     Require(
         RichTextMarkdownConverter.ToHtml(code).Contains("<pre", StringComparison.Ordinal),
@@ -102,6 +119,20 @@ try
     Require(
         RichTextMarkdownConverter.ToPlainText(code).Contains("Get-Date", StringComparison.Ordinal),
         "fallback de código em texto simples");
+    var rich = """
+               <p align="center"><span style="font-family:Arial;font-size:16px;background-color:#FFF176">Título</span></p>
+               - Primeiro
+               - Segundo
+               | Nome | Valor |
+               | --- | --- |
+               | Teste | 10 |
+               """;
+    var richHtml = RichTextMarkdownConverter.ToHtml(rich);
+    Require(richHtml.Contains("<ul>", StringComparison.Ordinal), "lista com marcadores em HTML");
+    Require(richHtml.Contains("<table", StringComparison.Ordinal), "tabela em HTML");
+    Require(
+        richHtml.Contains("background-color:#FFF176", StringComparison.Ordinal),
+        "marca-texto em HTML");
 }
 finally
 {

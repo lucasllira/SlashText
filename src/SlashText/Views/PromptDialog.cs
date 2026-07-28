@@ -12,24 +12,30 @@ public sealed class PromptDialog : Window
     private PromptDialog(string title, string label, string initialValue)
     {
         Title = title;
-        Width = 430;
-        Height = 180;
+        Width = 480;
+        MinWidth = 420;
+        SizeToContent = SizeToContent.Height;
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
         ResizeMode = ResizeMode.NoResize;
         ShowInTaskbar = false;
         SetResourceReference(BackgroundProperty, "CanvasBrush");
         SourceInitialized += (_, _) => ThemeService.ApplyToWindow(this);
 
-        var panel = new StackPanel { Margin = new Thickness(22) };
+        var panel = new StackPanel { Margin = new Thickness(24) };
         panel.Children.Add(new TextBlock { Text = label, Margin = new Thickness(0, 0, 0, 7) });
-        _input = new TextBox { Text = initialValue };
+        _input = new TextBox
+        {
+            Text = initialValue,
+            MinHeight = 40,
+            VerticalContentAlignment = VerticalAlignment.Center
+        };
         panel.Children.Add(_input);
 
         var buttons = new StackPanel
         {
             Orientation = Orientation.Horizontal,
             HorizontalAlignment = HorizontalAlignment.Right,
-            Margin = new Thickness(0, 18, 0, 0)
+            Margin = new Thickness(0, 22, 0, 0)
         };
         buttons.Children.Add(new Button
         {
@@ -48,6 +54,7 @@ public sealed class PromptDialog : Window
         Content = panel;
         Loaded += (_, _) =>
         {
+            Activate();
             _input.Focus();
             _input.SelectAll();
         };

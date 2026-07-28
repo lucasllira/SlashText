@@ -1,7 +1,9 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Interop;
 using System.Windows.Media;
+using System.Windows.Threading;
 using SlashText.Services;
 using TextBox = System.Windows.Controls.TextBox;
 
@@ -15,17 +17,18 @@ public sealed class VariableInputWindow : Window
     public VariableInputWindow(IReadOnlyList<TemplateField> fields)
     {
         Title = "Preencher campos";
-        Width = 440;
-        SizeToContent = SizeToContent.Height;
+        Width = 480;
+        Height = Math.Clamp(240 + (fields.Count * 70), 320, 650);
+        MinHeight = 320;
         MaxHeight = 650;
-        WindowStartupLocation = WindowStartupLocation.CenterScreen;
+        WindowStartupLocation = WindowStartupLocation.CenterOwner;
         ResizeMode = ResizeMode.NoResize;
         ShowInTaskbar = false;
         SetResourceReference(BackgroundProperty, "CanvasBrush");
         SourceInitialized += (_, _) => ThemeService.ApplyToWindow(this);
 
         var root = new Grid { Margin = new Thickness(24) };
-        root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
         root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(16) });
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(20) });
@@ -40,8 +43,13 @@ public sealed class VariableInputWindow : Window
         });
 
         var fieldsPanel = new StackPanel();
-        Grid.SetRow(fieldsPanel, 2);
-        root.Children.Add(fieldsPanel);
+        var fieldsScroll = new ScrollViewer
+        {
+            Content = fieldsPanel,
+            VerticalScrollBarVisibility = ScrollBarVisibility.Auto
+        };
+        Grid.SetRow(fieldsScroll, 2);
+        root.Children.Add(fieldsScroll);
 
         foreach (var field in fields)
         {
@@ -88,7 +96,15 @@ public sealed class VariableInputWindow : Window
         buttons.Children.Add(insert);
 
         Content = root;
-        Loaded += (_, _) => _inputs.Values.FirstOrDefault()?.Focus();
+        Loaded += (_, _) =>
+        {
+            Topmost = true;
+            Activate();
+            _inputs.Values.FirstOrDefault()?.Focus();
+            Dispatcher.BeginInvoke(
+                DispatcherPriority.ApplicationIdle,
+                new Action(() => Topmost = false));
+        };
         PreviewKeyDown += (_, args) =>
         {
             if (args.Key == Key.Enter && Keyboard.Modifiers == ModifierKeys.Control)
@@ -101,6 +117,22 @@ public sealed class VariableInputWindow : Window
 
     public IReadOnlyDictionary<string, string> Values =>
         _inputs.ToDictionary(item => item.Key, item => item.Value.Text);
+
+    public static VariableInputWindow ShowForTarget(
+        IReadOnlyList<TemplateField> fields,
+        IntPtr targetWindow)
+    {
+        var window = new VariableInputWindow(fields);
+        window.SourceInitialized += (_, _) =>
+        {
+            if (targetWindow != IntPtr.Zero)
+            {
+                new WindowInteropHelper(window).Owner = targetWindow;
+            }
+        };
+        window.ShowDialog();
+        return window;
+    }
 
     private static string Humanize(string name)
     {

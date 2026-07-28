@@ -7,8 +7,9 @@ Teams, navegadores e outros campos de texto.
 
 - criação, edição, pesquisa e exclusão pela interface;
 - categorias recolhíveis na navegação lateral;
-- armazenamento legível em `snippets.md`;
-- texto simples ou formatado com negrito, itálico, sublinhado, cor e hiperlink;
+- armazenamento legível em `SlashTextData/snippets.md`;
+- texto simples ou formatado com fonte, tamanho, negrito, itálico, sublinhado,
+  cor, marca-texto, alinhamento, listas, tabelas e hiperlink;
 - campos preenchíveis antes da expansão, como `{{nome}}`;
 - datas abreviadas ou extensas, mês e dia da semana abreviados ou por extenso;
 - cálculos como `{{data:-7d}}`, `{{data:+1m}}` e `{{data:+1y}}`;
@@ -22,7 +23,8 @@ Teams, navegadores e outros campos de texto.
 - estatísticas locais e atalhos mais usados;
 - temas claro, escuro profundo e automático;
 - minimização para a bandeja e inicialização opcional com o Windows;
-- backup diário consolidado com retenção dos últimos sete snapshots;
+- um backup diário consolidado de atalhos, preferências e estatísticas,
+  com retenção dos últimos sete dias;
 - publicação self-contained e single-file para Windows x64.
 
 ## Variáveis
@@ -76,14 +78,17 @@ a contagem, a data do último uso e a quantidade estimada de caracteres poupados
 ## Arquivos portáteis
 
 - `SlashText.exe`: aplicativo single-file;
-- `snippets.md`: atalhos e formatação legível;
-- `assets/`: imagens adicionadas aos atalhos;
-- `settings.json`: preferências locais;
-- `usage.json`: contadores anônimos de uso;
-- `backups/`: no máximo sete snapshots diários do Markdown.
+- `SlashTextData/snippets.md`: atalhos e formatação legível;
+- `SlashTextData/assets/`: imagens adicionadas aos atalhos;
+- `SlashTextData/settings.json`: preferências locais;
+- `SlashTextData/usage.json`: contadores anônimos de uso;
+- `SlashTextData/backups/`: um ZIP por dia, no máximo sete, contendo atalhos,
+  preferências e estatísticas.
 
 Os arquivos JSON são dados pequenos criados durante o uso, não dependências do app.
-DLLs permanecem incorporadas ao executável publicado.
+DLLs permanecem incorporadas ao executável publicado. Ao iniciar a versão 1.4.0,
+arquivos de dados de versões anteriores são movidos automaticamente para
+`SlashTextData`.
 
 ## Licença
 

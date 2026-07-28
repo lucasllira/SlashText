@@ -1,5 +1,6 @@
 using System.Threading;
 using System.Windows;
+using SlashText.Services;
 
 namespace SlashText;
 
@@ -21,6 +22,7 @@ public partial class App : System.Windows.Application
             return;
         }
 
+        AppPaths.EnsureDataLayout();
         ShutdownMode = ShutdownMode.OnExplicitShutdown;
         var window = new MainWindow();
         MainWindow = window;

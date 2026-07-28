@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using System.Text;
 using System.Windows;
 using SlashText.Models;
 using Point = System.Windows.Point;
@@ -125,6 +126,10 @@ public sealed class KeyboardHookService : IDisposable
                     suggestionPoint = CaretLocator.GetScreenPosition();
                 }
             }
+            else if (IsModifierKey(virtualKey))
+            {
+                // Shift/AltGr podem fazer parte de "/" ou ":" em layouts diferentes.
+            }
             else if (TryMapTriggerCharacter(virtualKey, out var character))
             {
                 if (character is '/' or ':')
@@ -200,43 +205,55 @@ public sealed class KeyboardHookService : IDisposable
             _ => null
         };
 
-    private static bool TryMapTriggerCharacter(int virtualKey, out char character)
+    internal static bool TryMapTriggerCharacter(int virtualKey, out char character)
     {
-        if (virtualKey is >= 0x41 and <= 0x5A)
+        if (virtualKey == 0x6F)
         {
-            character = char.ToLowerInvariant((char)virtualKey);
+            character = '/';
             return true;
         }
 
-        if (virtualKey is >= 0x30 and <= 0x39)
+        var keyboardState = new byte[256];
+        if (!GetKeyboardState(keyboardState))
         {
-            character = (char)virtualKey;
-            return true;
+            character = default;
+            return false;
         }
 
-        switch (virtualKey)
+        keyboardState[virtualKey] |= 0x80;
+        var foreground = GetForegroundWindow();
+        var threadId = foreground == IntPtr.Zero
+            ? 0
+            : GetWindowThreadProcessId(foreground, out _);
+        var layout = GetKeyboardLayout(threadId);
+        var buffer = new StringBuilder(8);
+        var scanCode = MapVirtualKeyEx((uint)virtualKey, 0, layout);
+        var count = ToUnicodeEx(
+            (uint)virtualKey,
+            scanCode,
+            keyboardState,
+            buffer,
+            buffer.Capacity,
+            0,
+            layout);
+
+        if (count <= 0 || buffer.Length == 0)
         {
-            case 0xBF:
-            case 0x6F:
-                character = IsKeyDown(0x10) ? '?' : '/';
-                return character == '/';
-            case 0xBA:
-                character = IsKeyDown(0x10) ? ':' : ';';
-                return character == ':';
-            case 0xBE when IsKeyDown(0x10):
-                character = ':';
-                return true;
-            case 0xBD:
-                character = IsKeyDown(0x10) ? '_' : '-';
-                return true;
-            default:
-                character = default;
-                return false;
+            character = default;
+            return false;
         }
+
+        character = char.ToLowerInvariant(buffer[0]);
+        return char.IsAsciiLetterOrDigit(character) ||
+               character is '/' or ':' or '-' or '_';
     }
 
     private static bool HasSupportedPrefix(string value) =>
         value.StartsWith('/') || value.StartsWith(':');
+
+    private static bool IsModifierKey(int virtualKey) =>
+        virtualKey is 0x10 or 0x11 or 0x12 or
+            0xA0 or 0xA1 or 0xA2 or 0xA3 or 0xA4 or 0xA5;
 
     private static bool IsOwnWindowInForeground()
     {
@@ -249,9 +266,6 @@ public sealed class KeyboardHookService : IDisposable
         _ = GetWindowThreadProcessId(window, out var processId);
         return processId == Environment.ProcessId;
     }
-
-    private static bool IsKeyDown(int virtualKey) =>
-        (GetKeyState(virtualKey) & 0x8000) != 0;
 
     private void ClearBuffer()
     {
@@ -317,7 +331,27 @@ public sealed class KeyboardHookService : IDisposable
     private static extern uint GetWindowThreadProcessId(IntPtr window, out uint processId);
 
     [DllImport("user32.dll")]
-    private static extern short GetKeyState(int virtualKey);
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetKeyboardState(byte[] keyState);
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr GetKeyboardLayout(uint threadId);
+
+    [DllImport("user32.dll")]
+    private static extern uint MapVirtualKeyEx(
+        uint code,
+        uint mapType,
+        IntPtr keyboardLayout);
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    private static extern int ToUnicodeEx(
+        uint virtualKey,
+        uint scanCode,
+        byte[] keyState,
+        [Out] StringBuilder buffer,
+        int bufferSize,
+        uint flags,
+        IntPtr keyboardLayout);
 }
 
 public sealed class SnippetExpansionRequestedEventArgs(Snippet snippet, IntPtr targetWindow) : EventArgs
