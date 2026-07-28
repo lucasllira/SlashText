@@ -34,6 +34,7 @@ public partial class MainWindow : Window
     private bool _exitRequested;
     private bool _servicesDisposed;
     private bool _initialized;
+    private bool _updatingQuickAccentSets;
 
     public MainWindow()
     {
@@ -47,6 +48,7 @@ public partial class MainWindow : Window
         _keyboardHook.ExpansionRequested += KeyboardHook_OnExpansionRequested;
         _keyboardHook.SuggestionsChanged += KeyboardHook_OnSuggestionsChanged;
         _quickAccentService.Changed += QuickAccentService_OnChanged;
+        _quickAccentService.CharacterInserted += QuickAccentService_OnCharacterInserted;
     }
 
     private async void MainWindow_OnLoaded(object sender, RoutedEventArgs e)
@@ -71,6 +73,7 @@ public partial class MainWindow : Window
             QuickAccentSortCheckBox.IsChecked = _settings.QuickAccentSortByUsage;
             QuickAccentDelayBox.Text = _settings.QuickAccentInputDelayMs.ToString();
             QuickAccentExcludedAppsBox.Text = _settings.QuickAccentExcludedApps;
+            ApplyQuickAccentCharacterSetSelection(_settings.QuickAccentCharacterSets);
             ApplyQuickAccentSettings();
             _initialized = true;
 
@@ -164,6 +167,18 @@ public partial class MainWindow : Window
                 e.SelectedIndex,
                 _settings.QuickAccentToolbarPosition,
                 _settings.QuickAccentShowUnicode);
+        }));
+    }
+
+    private void QuickAccentService_OnCharacterInserted(
+        object? sender,
+        QuickAccentCharacterInsertedEventArgs e)
+    {
+        Dispatcher.BeginInvoke(new Action(async () =>
+        {
+            await _usageService.RecordQuickAccentAsync(e.Character);
+            _quickAccentService.SetUsage(_usageService.QuickAccentCharacterCounts());
+            RefreshStatistics();
         }));
     }
 
@@ -517,24 +532,6 @@ public partial class MainWindow : Window
         ContentEditor.Focus();
     }
 
-    private void CodeBlock_OnClick(object sender, RoutedEventArgs e)
-    {
-        var language = PromptDialog.Show(
-            this,
-            "Bloco de código",
-            "Linguagem (ex.: powershell, csharp, python)",
-            "powershell");
-        if (language is null)
-        {
-            return;
-        }
-
-        ContentEditor.Selection.Text =
-            $"```{language.Trim()}\ncole seu código aqui\n```";
-        ContentEditor.Focus();
-        UpdatePreview();
-    }
-
     private void Image_OnClick(object sender, RoutedEventArgs e)
     {
         var picker = new Microsoft.Win32.OpenFileDialog
@@ -644,7 +641,7 @@ public partial class MainWindow : Window
         foreach (var button in buttons)
         {
             button.Background = ReferenceEquals(button, selectedButton)
-                ? (Brush)FindResource("ElevatedBrush")
+                ? (Brush)FindResource("SelectedBrush")
                 : Brushes.Transparent;
             button.Foreground = ReferenceEquals(button, selectedButton)
                 ? (Brush)FindResource("AccentBrush")
@@ -661,6 +658,7 @@ public partial class MainWindow : Window
         UsedSnippetsText.Text = records.Count(item => item.Count > 0).ToString("N0");
         CharactersSavedText.Text = characters.ToString("N0");
         TimeSavedText.Text = $"{Math.Ceiling(characters / 200d):N0} min";
+        QuickAccentTotalText.Text = _usageService.QuickAccent.Count.ToString("N0");
 
         StatisticsRankingPanel.Children.Clear();
         var ranking = _snippets
@@ -686,6 +684,46 @@ public partial class MainWindow : Window
                 {
                     Text = $"{item.Snippet.Trigger}  ·  {item.Usage!.Count:N0} uso(s)",
                     Margin = new Thickness(0, 5, 0, 5)
+                });
+            }
+        }
+
+        QuickAccentCharactersPanel.Children.Clear();
+        var quickAccentRanking = _usageService.QuickAccent.Characters
+            .Where(item => item.Value > 0)
+            .OrderByDescending(item => item.Value)
+            .ThenBy(item => item.Key, StringComparer.CurrentCultureIgnoreCase)
+            .Take(8)
+            .ToList();
+        QuickAccentFavoriteText.Text = quickAccentRanking.Count > 0
+            ? quickAccentRanking[0].Key
+            : "—";
+
+        if (quickAccentRanking.Count == 0)
+        {
+            QuickAccentCharactersPanel.Children.Add(new TextBlock
+            {
+                Text = "Os caracteres usados aparecerão aqui.",
+                Foreground = (Brush)FindResource("MutedBrush")
+            });
+        }
+        else
+        {
+            foreach (var item in quickAccentRanking)
+            {
+                QuickAccentCharactersPanel.Children.Add(new Border
+                {
+                    Background = (Brush)FindResource("AccentSubtleBrush"),
+                    CornerRadius = new CornerRadius(8),
+                    Padding = new Thickness(10, 6, 10, 6),
+                    Margin = new Thickness(0, 0, 7, 7),
+                    Child = new TextBlock
+                    {
+                        Text = $"{item.Key}  {item.Value:N0}×",
+                        Foreground = (Brush)FindResource("AccentBrush"),
+                        FontFamily = new FontFamily("Cascadia Mono, Consolas"),
+                        FontWeight = FontWeights.SemiBold
+                    }
                 });
             }
         }
@@ -745,6 +783,54 @@ public partial class MainWindow : Window
             return;
         }
 
+        await SaveQuickAccentSettingsAsync();
+    }
+
+    private async void QuickAccentCharacterSet_OnChanged(
+        object sender,
+        RoutedEventArgs e)
+    {
+        if (!_initialized || _updatingQuickAccentSets)
+        {
+            return;
+        }
+
+        if (SelectedQuickAccentCharacterSets().Count == 0)
+        {
+            _updatingQuickAccentSets = true;
+            QuickAccentPortugueseCheckBox.IsChecked = true;
+            _updatingQuickAccentSets = false;
+        }
+
+        await SaveQuickAccentSettingsAsync();
+    }
+
+    private async void QuickAccentPortugueseOnly_OnClick(
+        object sender,
+        RoutedEventArgs e)
+    {
+        ApplyQuickAccentCharacterSetSelection(["PortugueseBrazil"]);
+        if (_initialized)
+        {
+            await SaveQuickAccentSettingsAsync();
+        }
+    }
+
+    private async void QuickAccentSelectAll_OnClick(
+        object sender,
+        RoutedEventArgs e)
+    {
+        ApplyQuickAccentCharacterSetSelection(
+            QuickAccentCharacterSetBoxes()
+                .Select(item => item.Tag?.ToString() ?? string.Empty));
+        if (_initialized)
+        {
+            await SaveQuickAccentSettingsAsync();
+        }
+    }
+
+    private async Task SaveQuickAccentSettingsAsync()
+    {
         _settings.QuickAccentEnabled = QuickAccentEnabledCheckBox.IsChecked == true;
         _settings.QuickAccentActivationKey = SelectedTag(QuickAccentActivationBox, "Space");
         _settings.QuickAccentToolbarPosition = SelectedTag(
@@ -758,6 +844,7 @@ public partial class MainWindow : Window
             ? Math.Clamp(delay, 0, 2000)
             : 200;
         _settings.QuickAccentExcludedApps = QuickAccentExcludedAppsBox.Text;
+        _settings.QuickAccentCharacterSets = SelectedQuickAccentCharacterSets();
         ApplyQuickAccentSettings();
         await _settingsStore.SaveAsync(_settings);
     }
@@ -769,10 +856,77 @@ public partial class MainWindow : Window
         _quickAccentService.SortByUsage = _settings.QuickAccentSortByUsage;
         _quickAccentService.InputDelayMs = _settings.QuickAccentInputDelayMs;
         _quickAccentService.ExcludedApps = _settings.QuickAccentExcludedApps;
+        _quickAccentService.SetCharacterSets(_settings.QuickAccentCharacterSets);
+        _quickAccentService.SetUsage(_usageService.QuickAccentCharacterCounts());
+        UpdateQuickAccentCharacterSetPreview();
         if (!_settings.QuickAccentEnabled)
         {
             _quickAccentWindow.Hide();
         }
+    }
+
+    private void ApplyQuickAccentCharacterSetSelection(IEnumerable<string>? sets)
+    {
+        var selected = new HashSet<string>(
+            sets ?? [],
+            StringComparer.OrdinalIgnoreCase);
+        if (selected.Count == 0)
+        {
+            selected.Add("PortugueseBrazil");
+        }
+
+        _updatingQuickAccentSets = true;
+        foreach (var checkBox in QuickAccentCharacterSetBoxes())
+        {
+            checkBox.IsChecked =
+                checkBox.Tag is string tag && selected.Contains(tag);
+        }
+        if (QuickAccentCharacterSetBoxes().All(item => item.IsChecked != true))
+        {
+            QuickAccentPortugueseCheckBox.IsChecked = true;
+        }
+        _updatingQuickAccentSets = false;
+        UpdateQuickAccentCharacterSetPreview();
+    }
+
+    private List<string> SelectedQuickAccentCharacterSets() =>
+        QuickAccentCharacterSetBoxes()
+            .Where(item => item.IsChecked == true)
+            .Select(item => item.Tag?.ToString())
+            .Where(item => !string.IsNullOrWhiteSpace(item))
+            .Cast<string>()
+            .ToList();
+
+    private CheckBox[] QuickAccentCharacterSetBoxes() =>
+    [
+        QuickAccentPortugueseCheckBox,
+        QuickAccentSpanishCheckBox,
+        QuickAccentFrenchCheckBox,
+        QuickAccentGermanCheckBox,
+        QuickAccentItalianCheckBox,
+        QuickAccentNordicCheckBox,
+        QuickAccentCentralEuropeanCheckBox,
+        QuickAccentCurrencyCheckBox,
+        QuickAccentSpecialCheckBox
+    ];
+
+    private void UpdateQuickAccentCharacterSetPreview()
+    {
+        if (QuickAccentSetSummaryText is null ||
+            QuickAccentCharactersPreviewText is null)
+        {
+            return;
+        }
+
+        var selected = SelectedQuickAccentCharacterSets();
+        QuickAccentSetSummaryText.Text = selected.Count == 1 &&
+                                         selected[0] == "PortugueseBrazil"
+            ? "Somente acentuação comum do PT-BR"
+            : $"{selected.Count} conjunto(s) selecionado(s)";
+        var preview = QuickAccentService.PreviewCharacters(selected);
+        QuickAccentCharactersPreviewText.Text = string.IsNullOrEmpty(preview)
+            ? "Nenhum caractere disponível"
+            : string.Join("  ", preview);
     }
 
     private static string SelectedTag(ComboBox box, string fallback) =>
@@ -877,6 +1031,7 @@ public partial class MainWindow : Window
         _keyboardHook.SuggestionsChanged -= KeyboardHook_OnSuggestionsChanged;
         _keyboardHook.Dispose();
         _quickAccentService.Changed -= QuickAccentService_OnChanged;
+        _quickAccentService.CharacterInserted -= QuickAccentService_OnCharacterInserted;
         _quickAccentService.Dispose();
         _suggestionWindow.Close();
         _quickAccentWindow.Close();

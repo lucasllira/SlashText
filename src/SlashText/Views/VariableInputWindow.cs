@@ -75,9 +75,10 @@ public sealed class VariableInputWindow : Window
         {
             Content = "Inserir",
             IsDefault = true,
-            Background = new SolidColorBrush(Color.FromRgb(99, 91, 255)),
             Foreground = Brushes.White
         };
+        insert.SetResourceReference(Button.BackgroundProperty, "AccentBrush");
+        insert.SetResourceReference(Button.BorderBrushProperty, "AccentBrush");
         insert.Click += (_, _) =>
         {
             DialogResult = true;

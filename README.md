@@ -14,7 +14,8 @@ Teams, navegadores e outros campos de texto.
 - cálculos como `{{data:-7d}}`, `{{data:+1m}}` e `{{data:+1y}}`;
 - `{{tab}}` para preencher campos em sequência, como assunto e corpo do e-mail;
 - preview em tempo real e catálogo de variáveis clicáveis com descrições;
-- blocos de código com linguagem e ação de copiar no preview;
+- imagens e formatação rica com preview dentro do aplicativo;
+- Acento Rápido com conjuntos configuráveis e estatísticas próprias;
 - imagens incorporadas em aplicativos que aceitam conteúdo HTML;
 - sugestões flutuantes ao digitar `/` ou `:`;
 - Acento Rápido opcional para teclados sem teclas acentuadas;

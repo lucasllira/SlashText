@@ -23,6 +23,20 @@ Require(nativeInputType is not null, "estrutura nativa do Acento Rápido");
 Require(
     Marshal.SizeOf(nativeInputType!) == (Environment.Is64BitProcess ? 40 : 28),
     "estrutura INPUT compatível com SendInput");
+Require(
+    QuickAccentService.ShouldUseUppercase(shiftDown: false, capsLockOn: true),
+    "Caps Lock mantém o acento em maiúsculo");
+Require(
+    !QuickAccentService.ShouldUseUppercase(shiftDown: true, capsLockOn: true),
+    "Shift inverte Caps Lock");
+var portugueseCharacters = QuickAccentService.PreviewCharacters(["PortugueseBrazil"]);
+Require(
+    portugueseCharacters.Contains('ã') && !portugueseCharacters.Contains('ä'),
+    "conjunto somente PT-BR");
+Require(
+    QuickAccentService.PreviewCharacters(["PortugueseBrazil", "German", "Currency"])
+        .Contains('€'),
+    "combinação de conjuntos do Acento Rápido");
 
 var fields = engine.GetFillableFields("Olá {{nome}}, chamado {{chamado|INC000}}. {{nome}}");
 Require(fields.Count == 2, "campos únicos");
@@ -62,6 +76,24 @@ try
     await repository.SaveAsync([snippet, colonSnippet]);
     loaded = await repository.LoadAsync();
     Require(loaded.Any(item => item.Trigger == ":teste"), "gatilho com dois pontos");
+
+    var usageFile = Path.Combine(root, "usage.json");
+    await File.WriteAllTextAsync(
+        usageFile,
+        System.Text.Json.JsonSerializer.Serialize(new List<UsageRecord>
+        {
+            new() { SnippetId = snippet.Id, Count = 3 }
+        }));
+    var usage = new UsageService(usageFile);
+    await usage.LoadAsync();
+    Require(usage.Records.Count == 1 && usage.Records[0].Count == 3, "migração de estatísticas antigas");
+    await usage.RecordQuickAccentAsync('á');
+    var reloadedUsage = new UsageService(usageFile);
+    await reloadedUsage.LoadAsync();
+    Require(reloadedUsage.QuickAccent.Count == 1, "estatística do Acento Rápido");
+    Require(
+        reloadedUsage.QuickAccent.Characters.GetValueOrDefault("á") == 1,
+        "ranking de caracteres acentuados");
 
     var code = "Antes\n```powershell\nGet-Date\n```\nDepois";
     Require(

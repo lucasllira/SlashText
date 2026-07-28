@@ -14,23 +14,104 @@ public sealed class QuickAccentService : IDisposable
     private const uint InputKeyboard = 1;
     private const uint KeyEventKeyUp = 0x0002;
     private const uint KeyEventUnicode = 0x0004;
+    private const int VkShift = 0x10;
+    private const int VkCapital = 0x14;
 
-    private static readonly Dictionary<int, string> Characters = new()
+    private static readonly string[] CharacterSetOrder =
+    [
+        "PortugueseBrazil",
+        "Spanish",
+        "French",
+        "German",
+        "Italian",
+        "Nordic",
+        "CentralEuropean",
+        "Currency",
+        "Special"
+    ];
+
+    private static readonly Dictionary<string, IReadOnlyDictionary<int, string>> CharacterSets =
+        new(StringComparer.OrdinalIgnoreCase)
     {
-        [0x41] = "áàâãäåæ",
-        [0x43] = "çćč",
-        [0x45] = "éèêë",
-        [0x49] = "íìîï",
-        [0x4E] = "ñń",
-        [0x4F] = "óòôõöøœ",
-        [0x53] = "šß",
-        [0x55] = "úùûü",
-        [0x59] = "ýÿ",
-        [0x5A] = "žźż"
+        ["PortugueseBrazil"] = new Dictionary<int, string>
+        {
+            [0x41] = "áàâã",
+            [0x43] = "ç",
+            [0x45] = "éê",
+            [0x49] = "í",
+            [0x4F] = "óôõ",
+            [0x55] = "ú"
+        },
+        ["Spanish"] = new Dictionary<int, string>
+        {
+            [0x41] = "á",
+            [0x45] = "é",
+            [0x49] = "í",
+            [0x4E] = "ñ",
+            [0x4F] = "ó",
+            [0x55] = "úü"
+        },
+        ["French"] = new Dictionary<int, string>
+        {
+            [0x41] = "àâäæ",
+            [0x43] = "ç",
+            [0x45] = "éèêë",
+            [0x49] = "îï",
+            [0x4F] = "ôöœ",
+            [0x55] = "ùûü",
+            [0x59] = "ÿ"
+        },
+        ["German"] = new Dictionary<int, string>
+        {
+            [0x41] = "ä",
+            [0x4F] = "ö",
+            [0x53] = "ß",
+            [0x55] = "ü"
+        },
+        ["Italian"] = new Dictionary<int, string>
+        {
+            [0x41] = "à",
+            [0x45] = "èé",
+            [0x49] = "ìíî",
+            [0x4F] = "òó",
+            [0x55] = "ùú"
+        },
+        ["Nordic"] = new Dictionary<int, string>
+        {
+            [0x41] = "åäæ",
+            [0x4F] = "öø",
+            [0x55] = "ü"
+        },
+        ["CentralEuropean"] = new Dictionary<int, string>
+        {
+            [0x43] = "ćč",
+            [0x4E] = "ń",
+            [0x53] = "š",
+            [0x59] = "ý",
+            [0x5A] = "žźż"
+        },
+        ["Currency"] = new Dictionary<int, string>
+        {
+            [0x43] = "¢",
+            [0x44] = "₫",
+            [0x45] = "€",
+            [0x4C] = "£",
+            [0x52] = "₹",
+            [0x59] = "¥"
+        },
+        ["Special"] = new Dictionary<int, string>
+        {
+            [0x43] = "©",
+            [0x44] = "°",
+            [0x4D] = "™",
+            [0x52] = "®",
+            [0x53] = "§"
+        }
     };
 
     private readonly LowLevelKeyboardProc _callback;
-    private readonly Dictionary<char, int> _usage = [];
+    private readonly Dictionary<char, long> _usage = [];
+    private string[] _characterSets = ["PortugueseBrazil"];
     private IntPtr _hook;
     private int? _baseKey;
     private long _basePressedAt;
@@ -49,6 +130,46 @@ public sealed class QuickAccentService : IDisposable
     public bool IsRunning => _hook != IntPtr.Zero;
 
     public event EventHandler<QuickAccentChangedEventArgs>? Changed;
+    public event EventHandler<QuickAccentCharacterInsertedEventArgs>? CharacterInserted;
+
+    public void SetCharacterSets(IEnumerable<string>? characterSets)
+    {
+        var selected = new HashSet<string>(
+            characterSets ?? [],
+            StringComparer.OrdinalIgnoreCase);
+        _characterSets = CharacterSetOrder
+            .Where(selected.Contains)
+            .ToArray();
+        if (_characterSets.Length == 0)
+        {
+            _characterSets = ["PortugueseBrazil"];
+        }
+    }
+
+    public void SetUsage(IReadOnlyDictionary<char, long> usage)
+    {
+        _usage.Clear();
+        foreach (var item in usage)
+        {
+            _usage[item.Key] = item.Value;
+        }
+    }
+
+    public static string PreviewCharacters(IEnumerable<string>? characterSets)
+    {
+        var selected = new HashSet<string>(
+            characterSets ?? [],
+            StringComparer.OrdinalIgnoreCase);
+        return new string(CharacterSetOrder
+            .Where(selected.Contains)
+            .SelectMany(set => CharacterSets[set].Values)
+            .SelectMany(value => value)
+            .Distinct()
+            .ToArray());
+    }
+
+    public static bool ShouldUseUppercase(bool shiftDown, bool capsLockOn) =>
+        shiftDown ^ capsLockOn;
 
     public void Start()
     {
@@ -88,7 +209,7 @@ public sealed class QuickAccentService : IDisposable
         var isDown = message.ToInt32() is WmKeyDown or WmSysKeyDown;
         var isUp = message.ToInt32() is WmKeyUp or WmSysKeyUp;
 
-        if (isDown && Characters.ContainsKey(key) && _baseKey is null)
+        if (isDown && ChoicesFor(key).Length > 0 && _baseKey is null)
         {
             _baseKey = key;
             _basePressedAt = Environment.TickCount64;
@@ -103,7 +224,11 @@ public sealed class QuickAccentService : IDisposable
 
             if (!_active)
             {
-                _choices = MatchCase(Characters[_baseKey.Value], IsKeyDown(0x10));
+                _choices = MatchCase(
+                    ChoicesFor(_baseKey.Value),
+                    ShouldUseUppercase(
+                        IsKeyDown(VkShift),
+                        IsKeyToggled(VkCapital)));
                 if (SortByUsage)
                 {
                     _choices = new string(_choices
@@ -145,6 +270,9 @@ public sealed class QuickAccentService : IDisposable
                 if (ReplaceBaseCharacter(selectedCharacter))
                 {
                     _usage[selectedCharacter] = _usage.GetValueOrDefault(selectedCharacter) + 1;
+                    CharacterInserted?.Invoke(
+                        this,
+                        new QuickAccentCharacterInsertedEventArgs(selectedCharacter));
                 }
             }
             Reset();
@@ -167,6 +295,29 @@ public sealed class QuickAccentService : IDisposable
         "Right" => 0x27,
         _ => 0x20
     };
+
+    private string ChoicesFor(int virtualKey)
+    {
+        var result = new List<char>();
+        foreach (var set in _characterSets)
+        {
+            if (!CharacterSets.TryGetValue(set, out var characters) ||
+                !characters.TryGetValue(virtualKey, out var choices))
+            {
+                continue;
+            }
+
+            foreach (var character in choices)
+            {
+                if (!result.Contains(character))
+                {
+                    result.Add(character);
+                }
+            }
+        }
+
+        return new string(result.ToArray());
+    }
 
     private bool IsExcludedApp()
     {
@@ -231,6 +382,9 @@ public sealed class QuickAccentService : IDisposable
 
     private static bool IsKeyDown(int virtualKey) =>
         (GetKeyState(virtualKey) & 0x8000) != 0;
+
+    private static bool IsKeyToggled(int virtualKey) =>
+        (GetKeyState(virtualKey) & 0x0001) != 0;
 
     public void Dispose()
     {
@@ -335,4 +489,9 @@ public sealed class QuickAccentChangedEventArgs(
     public string Choices { get; } = choices;
     public int SelectedIndex { get; } = selectedIndex;
     public bool Visible { get; } = visible;
+}
+
+public sealed class QuickAccentCharacterInsertedEventArgs(char character) : EventArgs
+{
+    public char Character { get; } = character;
 }
