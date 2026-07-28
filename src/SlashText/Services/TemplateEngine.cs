@@ -9,8 +9,10 @@ public sealed partial class TemplateEngine
 
     private static readonly HashSet<string> AutomaticNames = new(StringComparer.OrdinalIgnoreCase)
     {
-        "data", "hora", "datahora", "agora", "dia", "mes", "mes_nome",
-        "ano", "semana", "dia_semana", "usuario", "tab"
+        "data", "data_curta", "data_extensa", "hora", "datahora", "agora",
+        "dia", "dia_curto", "dia_semana", "dia_semana_curto",
+        "mes", "mes_nome", "mes_curto", "ano", "ano_curto",
+        "semana", "usuario", "tab"
     };
 
     public IReadOnlyList<TemplateField> GetFillableFields(string template)
@@ -63,6 +65,16 @@ public sealed partial class TemplateEngine
             return Format(now, fallbackOrFormat, "dd/MM/yyyy");
         }
 
+        if (token.Equals("data_curta", StringComparison.OrdinalIgnoreCase))
+        {
+            return Format(now, fallbackOrFormat, "dd/MM/yy");
+        }
+
+        if (token.Equals("data_extensa", StringComparison.OrdinalIgnoreCase))
+        {
+            return Capitalize(Format(now, fallbackOrFormat, "dddd, dd 'de' MMMM 'de' yyyy"));
+        }
+
         if (token.Equals("hora", StringComparison.OrdinalIgnoreCase))
         {
             return Format(now, fallbackOrFormat, "HH:mm");
@@ -84,6 +96,11 @@ public sealed partial class TemplateEngine
             return now.ToString(fallbackOrFormat ?? "dd", CultureInfo.CurrentCulture);
         }
 
+        if (token.Equals("dia_curto", StringComparison.OrdinalIgnoreCase))
+        {
+            return Capitalize(now.ToString(fallbackOrFormat ?? "ddd", CultureInfo.CurrentCulture));
+        }
+
         if (token.Equals("mes", StringComparison.OrdinalIgnoreCase))
         {
             return now.ToString(fallbackOrFormat ?? "MM", CultureInfo.CurrentCulture);
@@ -94,9 +111,19 @@ public sealed partial class TemplateEngine
             return Capitalize(now.ToString(fallbackOrFormat ?? "MMMM", CultureInfo.CurrentCulture));
         }
 
+        if (token.Equals("mes_curto", StringComparison.OrdinalIgnoreCase))
+        {
+            return Capitalize(now.ToString(fallbackOrFormat ?? "MMM", CultureInfo.CurrentCulture));
+        }
+
         if (token.Equals("ano", StringComparison.OrdinalIgnoreCase))
         {
             return now.ToString(fallbackOrFormat ?? "yyyy", CultureInfo.CurrentCulture);
+        }
+
+        if (token.Equals("ano_curto", StringComparison.OrdinalIgnoreCase))
+        {
+            return now.ToString(fallbackOrFormat ?? "yy", CultureInfo.CurrentCulture);
         }
 
         if (token.Equals("semana", StringComparison.OrdinalIgnoreCase))
@@ -107,6 +134,11 @@ public sealed partial class TemplateEngine
         if (token.Equals("dia_semana", StringComparison.OrdinalIgnoreCase))
         {
             return Capitalize(now.ToString(fallbackOrFormat ?? "dddd", CultureInfo.CurrentCulture));
+        }
+
+        if (token.Equals("dia_semana_curto", StringComparison.OrdinalIgnoreCase))
+        {
+            return Capitalize(now.ToString(fallbackOrFormat ?? "ddd", CultureInfo.CurrentCulture));
         }
 
         if (token.Equals("usuario", StringComparison.OrdinalIgnoreCase))
