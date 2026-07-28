@@ -1,10 +1,12 @@
 using System.Net;
+using System.IO;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using SlashText.Models;
 using RichTextBox = System.Windows.Controls.RichTextBox;
 
@@ -57,6 +59,8 @@ public static partial class RichTextMarkdownConverter
     public static string ToPlainText(string markdown)
     {
         var value = markdown;
+        value = CodeFencePattern().Replace(value, match => match.Groups["code"].Value.TrimEnd());
+        value = ImagePattern().Replace(value, match => $"[Imagem: {match.Groups["alt"].Value}]");
         value = ColorSpanPattern().Replace(value, match => match.Groups["text"].Value);
         value = LinkPattern().Replace(value, match => match.Groups["text"].Value);
         value = value.Replace("**", string.Empty)
@@ -70,7 +74,19 @@ public static partial class RichTextMarkdownConverter
 
     public static string ToHtml(string markdown)
     {
+        var codeBlocks = new List<string>();
+        markdown = CodeFencePattern().Replace(markdown, match =>
+        {
+            var language = WebUtility.HtmlEncode(match.Groups["language"].Value);
+            var code = WebUtility.HtmlEncode(match.Groups["code"].Value.TrimEnd());
+            codeBlocks.Add(
+                $"<pre style=\"background:#151821;color:#F4F6FB;padding:12px;border-radius:8px;" +
+                $"font-family:Consolas,monospace;white-space:pre-wrap\"><code data-language=\"{language}\">{code}</code></pre>");
+            return $"\u001E_CODE_{codeBlocks.Count - 1}_\u001E";
+        });
+
         var escaped = WebUtility.HtmlEncode(markdown);
+        escaped = EncodedImagePattern().Replace(escaped, BuildImageHtml);
         escaped = EncodedColorSpanPattern().Replace(
             escaped,
             match => $"<span style=\"color:{match.Groups["color"].Value}\">{match.Groups["text"].Value}</span>");
@@ -80,9 +96,165 @@ public static partial class RichTextMarkdownConverter
         escaped = EncodedBoldPattern().Replace(escaped, "<strong>${text}</strong>");
         escaped = EncodedUnderlinePattern().Replace(escaped, "<u>${text}</u>");
         escaped = EncodedItalicPattern().Replace(escaped, "<em>${text}</em>");
-        return "<div style=\"font-family:'Segoe UI',sans-serif;font-size:11pt\">" +
-               escaped.Replace("\r\n", "\n").Replace('\r', '\n').Replace("\n", "<br>") +
-               "</div>";
+        escaped = escaped.Replace("\r\n", "\n").Replace('\r', '\n').Replace("\n", "<br>");
+        for (var index = 0; index < codeBlocks.Count; index++)
+        {
+            escaped = escaped.Replace(
+                WebUtility.HtmlEncode($"\u001E_CODE_{index}_\u001E"),
+                codeBlocks[index],
+                StringComparison.Ordinal);
+        }
+
+        return "<div style=\"font-family:'Segoe UI',sans-serif;font-size:11pt\">" + escaped + "</div>";
+    }
+
+    public static void BuildPreview(FlowDocument document, string markdown, SnippetFormat format)
+    {
+        document.Blocks.Clear();
+        if (format == SnippetFormat.Plain)
+        {
+            document.Blocks.Add(new Paragraph(new Run(markdown))
+            {
+                Margin = new Thickness(0)
+            });
+            return;
+        }
+
+        var normalized = markdown.Replace("\r\n", "\n").Replace('\r', '\n');
+        var position = 0;
+        foreach (Match match in CodeFencePattern().Matches(normalized))
+        {
+            AddPreviewParagraphs(document, normalized[position..match.Index]);
+            var code = match.Groups["code"].Value.TrimEnd();
+            var language = match.Groups["language"].Value;
+            var copyButton = new Button
+            {
+                Content = "Copiar código",
+                Padding = new Thickness(9, 5, 9, 5),
+                Tag = code,
+                HorizontalAlignment = HorizontalAlignment.Right
+            };
+            copyButton.Click += (_, _) => System.Windows.Clipboard.SetText((string)copyButton.Tag);
+
+            var header = new DockPanel { LastChildFill = true };
+            DockPanel.SetDock(copyButton, Dock.Right);
+            header.Children.Add(copyButton);
+            header.Children.Add(new TextBlock
+            {
+                Text = string.IsNullOrWhiteSpace(language) ? "código" : language,
+                Foreground = Brushes.LightGray,
+                VerticalAlignment = VerticalAlignment.Center
+            });
+
+            var panel = new StackPanel();
+            panel.Children.Add(header);
+            panel.Children.Add(new TextBlock
+            {
+                Text = code,
+                FontFamily = new FontFamily("Cascadia Mono, Consolas"),
+                Foreground = Brushes.White,
+                Margin = new Thickness(0, 9, 0, 0),
+                TextWrapping = TextWrapping.Wrap
+            });
+            document.Blocks.Add(new BlockUIContainer(new Border
+            {
+                Background = new SolidColorBrush(Color.FromRgb(21, 24, 33)),
+                CornerRadius = new CornerRadius(9),
+                Padding = new Thickness(12),
+                Margin = new Thickness(0, 6, 0, 8),
+                Child = panel
+            }));
+            position = match.Index + match.Length;
+        }
+        AddPreviewParagraphs(document, normalized[position..]);
+    }
+
+    private static void AddPreviewParagraphs(FlowDocument document, string text)
+    {
+        foreach (var line in text.Trim('\n').Split('\n'))
+        {
+            var imageMatch = ImagePattern().Match(line.Trim());
+            if (imageMatch.Success && TryResolveImage(imageMatch.Groups["path"].Value, out var imagePath))
+            {
+                var bitmap = new BitmapImage();
+                bitmap.BeginInit();
+                bitmap.CacheOption = BitmapCacheOption.OnLoad;
+                bitmap.UriSource = new Uri(imagePath);
+                bitmap.EndInit();
+                document.Blocks.Add(new BlockUIContainer(new Image
+                {
+                    Source = bitmap,
+                    MaxWidth = 520,
+                    MaxHeight = 320,
+                    Stretch = Stretch.Uniform,
+                    HorizontalAlignment = HorizontalAlignment.Left,
+                    ToolTip = imageMatch.Groups["alt"].Value
+                })
+                {
+                    Margin = new Thickness(0, 6, 0, 8)
+                });
+                continue;
+            }
+
+            var paragraph = new Paragraph { Margin = new Thickness(0, 0, 0, 4) };
+            AddMarkdownInlines(paragraph.Inlines, line);
+            document.Blocks.Add(paragraph);
+        }
+    }
+
+    private static string BuildImageHtml(Match match)
+    {
+        var alt = match.Groups["alt"].Value;
+        var relativePath = WebUtility.HtmlDecode(match.Groups["path"].Value);
+        if (!TryResolveImage(relativePath, out var fullPath))
+        {
+            return $"[Imagem: {alt}]";
+        }
+
+        try
+        {
+            var extension = Path.GetExtension(fullPath).ToLowerInvariant();
+            var mediaType = extension switch
+            {
+                ".jpg" or ".jpeg" => "image/jpeg",
+                ".gif" => "image/gif",
+                ".webp" => "image/webp",
+                _ => "image/png"
+            };
+            var base64 = Convert.ToBase64String(File.ReadAllBytes(fullPath));
+            return $"<img alt=\"{alt}\" src=\"data:{mediaType};base64,{base64}\" " +
+                   "style=\"max-width:100%;height:auto\">";
+        }
+        catch (IOException)
+        {
+            return $"[Imagem: {alt}]";
+        }
+    }
+
+    private static bool TryResolveImage(string relativePath, out string fullPath)
+    {
+        try
+        {
+            var root = Path.GetFullPath(AppPaths.AssetsDirectory);
+            var candidate = Path.GetFullPath(Path.Combine(
+                AppPaths.BaseDirectory,
+                relativePath.Replace('/', Path.DirectorySeparatorChar)));
+            if (candidate.StartsWith(
+                    root + Path.DirectorySeparatorChar,
+                    StringComparison.OrdinalIgnoreCase) &&
+                File.Exists(candidate))
+            {
+                fullPath = candidate;
+                return true;
+            }
+        }
+        catch (Exception)
+        {
+            // Caminhos inválidos são exibidos apenas como texto alternativo.
+        }
+
+        fullPath = string.Empty;
+        return false;
     }
 
     private static void AddMarkdownInlines(InlineCollection target, string text)
@@ -234,4 +406,15 @@ public static partial class RichTextMarkdownConverter
 
     [GeneratedRegex(@"\*(?<text>.+?)\*")]
     private static partial Regex EncodedItalicPattern();
+
+    [GeneratedRegex(@"!\[(?<alt>[^\]]*)\]\((?<path>assets/[^\s)]+)\)", RegexOptions.IgnoreCase)]
+    private static partial Regex ImagePattern();
+
+    [GeneratedRegex(@"!\[(?<alt>[^\]]*)\]\((?<path>assets/[^\s)]+)\)", RegexOptions.IgnoreCase)]
+    private static partial Regex EncodedImagePattern();
+
+    [GeneratedRegex(
+        @"(?:^|\n)```(?<language>[A-Za-z0-9_+#.-]*)[ \t]*\n(?<code>[\s\S]*?)\n```(?=\n|$)",
+        RegexOptions.CultureInvariant)]
+    private static partial Regex CodeFencePattern();
 }
