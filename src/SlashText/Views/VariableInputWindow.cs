@@ -20,8 +20,9 @@ public sealed class VariableInputWindow : Window
         MaxHeight = 650;
         WindowStartupLocation = WindowStartupLocation.CenterScreen;
         ResizeMode = ResizeMode.NoResize;
-        Background = new SolidColorBrush(Color.FromRgb(244, 246, 250));
         ShowInTaskbar = false;
+        SetResourceReference(BackgroundProperty, "CanvasBrush");
+        SourceInitialized += (_, _) => ThemeService.ApplyToWindow(this);
 
         var root = new Grid { Margin = new Thickness(24) };
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
@@ -47,9 +48,9 @@ public sealed class VariableInputWindow : Window
             var label = new TextBlock
             {
                 Text = Humanize(field.Name),
-                Margin = new Thickness(0, 0, 0, 5),
-                Foreground = new SolidColorBrush(Color.FromRgb(89, 99, 113))
+                Margin = new Thickness(0, 0, 0, 5)
             };
+            label.SetResourceReference(TextBlock.ForegroundProperty, "MutedBrush");
             var input = new TextBox
             {
                 Text = field.DefaultValue ?? string.Empty,
