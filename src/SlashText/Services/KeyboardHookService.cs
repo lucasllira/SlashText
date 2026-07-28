@@ -127,17 +127,17 @@ public sealed class KeyboardHookService : IDisposable
             }
             else if (TryMapTriggerCharacter(virtualKey, out var character))
             {
-                if (character == '/')
+                if (character is '/' or ':')
                 {
-                    _buffer = "/";
+                    _buffer = character.ToString();
                     _bufferWindow = targetWindow;
                 }
-                else if (_buffer.StartsWith('/') && _buffer.Length < 64)
+                else if (HasSupportedPrefix(_buffer) && _buffer.Length < 64)
                 {
                     _buffer += character;
                 }
 
-                if (_buffer.StartsWith('/'))
+                if (HasSupportedPrefix(_buffer))
                 {
                     var exact = FindExactMatch();
                     var hasLongerMatch = _snippets.Any(item =>
@@ -218,7 +218,13 @@ public sealed class KeyboardHookService : IDisposable
         {
             case 0xBF:
             case 0x6F:
-                character = '/';
+                character = IsKeyDown(0x10) ? '?' : '/';
+                return character == '/';
+            case 0xBA:
+                character = IsKeyDown(0x10) ? ':' : ';';
+                return character == ':';
+            case 0xBE when IsKeyDown(0x10):
+                character = ':';
                 return true;
             case 0xBD:
                 character = IsKeyDown(0x10) ? '_' : '-';
@@ -228,6 +234,9 @@ public sealed class KeyboardHookService : IDisposable
                 return false;
         }
     }
+
+    private static bool HasSupportedPrefix(string value) =>
+        value.StartsWith('/') || value.StartsWith(':');
 
     private static bool IsOwnWindowInForeground()
     {
