@@ -47,10 +47,10 @@ public static class AppPaths
             return;
         }
 
-        if (!File.Exists(destination))
-        {
-            File.Move(legacy, destination);
-        }
+        // Na atualização, o pacote pode trazer um snippets.md inicial dentro da
+        // nova pasta. O arquivo legado contém os dados reais do usuário e tem
+        // prioridade sobre esse modelo.
+        File.Move(legacy, destination, overwrite: true);
     }
 
     private static void MigrateDirectory(string legacyName, string destination)
