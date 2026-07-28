@@ -13,6 +13,10 @@
         <SolidColorBrush x:Key="InkBrush" Color="{StaticResource InkColor}"/>
         <SolidColorBrush x:Key="MutedBrush" Color="{StaticResource MutedColor}"/>
         <SolidColorBrush x:Key="AccentBrush" Color="{StaticResource AccentColor}"/>
+        <SolidColorBrush x:Key="ElevatedBrush" Color="#F7F7FC"/>
+        <SolidColorBrush x:Key="InputBrush" Color="#FFFFFFFF"/>
+        <SolidColorBrush x:Key="DividerBrush" Color="#E2E6ED"/>
+        <SolidColorBrush x:Key="CodeBrush" Color="#151821"/>
 
         <Style TargetType="Button">
             <Setter Property="FontFamily" Value="Segoe UI"/>
@@ -20,7 +24,7 @@
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="Background" Value="#E9ECF2"/>
-            <Setter Property="Foreground" Value="{StaticResource InkBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource InkBrush}"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
@@ -37,7 +41,7 @@
 
         <Style x:Key="PrimaryButton" TargetType="Button"
                BasedOn="{StaticResource {x:Type Button}}">
-            <Setter Property="Background" Value="{StaticResource AccentBrush}"/>
+            <Setter Property="Background" Value="{DynamicResource AccentBrush}"/>
             <Setter Property="Foreground" Value="White"/>
         </Style>
 
@@ -47,19 +51,86 @@
             <Setter Property="Padding" Value="12,7"/>
         </Style>
 
+        <Style x:Key="SideNavButton" TargetType="Button"
+               BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+            <Setter Property="Margin" Value="0,2"/>
+            <Setter Property="Padding" Value="11,9"/>
+        </Style>
+
+        <Style x:Key="VariableButton" TargetType="Button"
+               BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+            <Setter Property="Background" Value="{DynamicResource ElevatedBrush}"/>
+            <Setter Property="Margin" Value="0,2"/>
+            <Setter Property="Padding" Value="9,6"/>
+            <Setter Property="FontFamily" Value="Cascadia Mono, Consolas"/>
+            <Setter Property="FontSize" Value="12"/>
+        </Style>
+
         <Style TargetType="TextBox">
             <Setter Property="FontFamily" Value="Segoe UI"/>
             <Setter Property="FontSize" Value="14"/>
             <Setter Property="Padding" Value="11,9"/>
-            <Setter Property="BorderBrush" Value="#D9DEE8"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource DividerBrush}"/>
             <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="Background" Value="White"/>
+            <Setter Property="Background" Value="{DynamicResource InputBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource InkBrush}"/>
         </Style>
 
         <Style TargetType="CheckBox">
             <Setter Property="FontFamily" Value="Segoe UI"/>
-            <Setter Property="Foreground" Value="{StaticResource InkBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource InkBrush}"/>
             <Setter Property="Margin" Value="0,7,0,7"/>
+        </Style>
+
+        <Style TargetType="ComboBox">
+            <Setter Property="Background" Value="{DynamicResource InputBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource InkBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource DividerBrush}"/>
+            <Setter Property="Padding" Value="9"/>
+        </Style>
+
+        <Style TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource InkBrush}"/>
+        </Style>
+
+        <Style x:Key="PageTitle" TargetType="TextBlock">
+            <Setter Property="FontFamily" Value="Segoe UI Variable Display"/>
+            <Setter Property="FontSize" Value="26"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+        </Style>
+
+        <Style x:Key="PageDescription" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource MutedBrush}"/>
+            <Setter Property="Margin" Value="0,5,0,0"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+        </Style>
+
+        <Style x:Key="SectionTitle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="15"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Margin" Value="0,26,0,9"/>
+        </Style>
+
+        <Style x:Key="SettingsCard" TargetType="Border">
+            <Setter Property="Background" Value="{DynamicResource ElevatedBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource DividerBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="12"/>
+            <Setter Property="Padding" Value="18"/>
+        </Style>
+
+        <Style x:Key="MetricCard" TargetType="Border"
+               BasedOn="{StaticResource SettingsCard}">
+            <Setter Property="Margin" Value="0,0,10,0"/>
+        </Style>
+
+        <Style x:Key="MetricValue" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="26"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Margin" Value="0,6,0,0"/>
         </Style>
     </Application.Resources>
 </Application>

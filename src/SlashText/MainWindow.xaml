@@ -3,18 +3,16 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="SlashText"
         Icon="Assets/SlashText.ico"
-        Width="1180"
-        Height="790"
-        MinWidth="920"
-        MinHeight="640"
+        Width="1320"
+        Height="850"
+        MinWidth="1040"
+        MinHeight="680"
         WindowStartupLocation="CenterScreen"
-        Background="{StaticResource CanvasBrush}">
+        Background="{DynamicResource CanvasBrush}">
     <Grid Margin="24">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
-            <RowDefinition Height="12"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="14"/>
+            <RowDefinition Height="16"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
@@ -24,296 +22,465 @@
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
             <StackPanel Orientation="Horizontal">
-                <Image Source="Assets/SlashText.ico" Width="38" Height="38" Margin="0,0,12,0"/>
+                <Image Source="Assets/SlashText.ico" Width="40" Height="40" Margin="0,0,12,0"/>
                 <StackPanel>
                     <TextBlock Text="SlashText"
                                FontFamily="Segoe UI Variable Display"
                                FontSize="27"
                                FontWeight="SemiBold"
-                               Foreground="{StaticResource InkBrush}"/>
+                               Foreground="{DynamicResource InkBrush}"/>
                     <TextBlock Text="Seus textos prontos, em qualquer lugar."
-                               Foreground="{StaticResource MutedBrush}"/>
+                               Foreground="{DynamicResource MutedBrush}"/>
                 </StackPanel>
             </StackPanel>
             <Border Grid.Column="1"
-                    Background="#E7F8EF"
+                    Background="{DynamicResource ElevatedBrush}"
                     CornerRadius="14"
                     Padding="12,6"
                     VerticalAlignment="Center">
                 <TextBlock x:Name="MonitorStatusText"
                            Text="● Iniciando monitoramento"
-                           Foreground="#197547"
+                           Foreground="#35C984"
                            FontSize="12"/>
             </Border>
         </Grid>
 
-        <StackPanel Grid.Row="2" Orientation="Horizontal">
-            <Button x:Name="ShortcutsTabButton"
-                    Content="Atalhos"
-                    Style="{StaticResource NavButton}"
-                    FontWeight="SemiBold"
-                    Foreground="{StaticResource AccentBrush}"
-                    Click="ShortcutsTab_OnClick"/>
-            <Button x:Name="StatisticsTabButton"
-                    Content="Estatísticas"
-                    Style="{StaticResource NavButton}"
-                    Margin="6,0,0,0"
-                    Click="StatisticsTab_OnClick"/>
-        </StackPanel>
+        <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="176"/>
+                <ColumnDefinition Width="14"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
 
-        <Border Grid.Row="4"
-                Background="{StaticResource SurfaceBrush}"
-                CornerRadius="16"
-                BorderBrush="#E2E6ED"
-                BorderThickness="1"
-                ClipToBounds="True">
-            <Grid>
-                <Grid x:Name="ShortcutsView">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="310"/>
-                        <ColumnDefinition Width="1"/>
-                        <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
+            <Border Background="{DynamicResource SurfaceBrush}"
+                    BorderBrush="{DynamicResource DividerBrush}"
+                    BorderThickness="1"
+                    CornerRadius="16"
+                    Padding="12">
+                <StackPanel>
+                    <TextBlock Text="NAVEGAÇÃO"
+                               Margin="10,8,0,8"
+                               Foreground="{DynamicResource MutedBrush}"
+                               FontSize="11"
+                               FontWeight="SemiBold"/>
+                    <Button x:Name="ShortcutsTabButton" Content="Atalhos"
+                            Style="{StaticResource SideNavButton}"
+                            Click="ShortcutsTab_OnClick"/>
+                    <Button x:Name="QuickAccentTabButton" Content="Acento Rápido"
+                            Style="{StaticResource SideNavButton}"
+                            Click="QuickAccentTab_OnClick"/>
+                    <Button x:Name="StatisticsTabButton" Content="Estatísticas"
+                            Style="{StaticResource SideNavButton}"
+                            Click="StatisticsTab_OnClick"/>
+                    <Button x:Name="SettingsTabButton" Content="Configurações"
+                            Style="{StaticResource SideNavButton}"
+                            Click="SettingsTab_OnClick"/>
+                    <Button x:Name="AboutTabButton" Content="Sobre"
+                            Style="{StaticResource SideNavButton}"
+                            Click="AboutTab_OnClick"/>
+                </StackPanel>
+            </Border>
 
-                    <Grid Margin="18">
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="12"/>
-                            <RowDefinition Height="*"/>
-                            <RowDefinition Height="12"/>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="12"/>
-                            <RowDefinition Height="Auto"/>
-                        </Grid.RowDefinitions>
+            <Border Grid.Column="2"
+                    Background="{DynamicResource SurfaceBrush}"
+                    BorderBrush="{DynamicResource DividerBrush}"
+                    BorderThickness="1"
+                    CornerRadius="16"
+                    ClipToBounds="True">
+                <Grid>
+                    <Grid x:Name="ShortcutsView">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="260"/>
+                            <ColumnDefinition Width="1"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="1"/>
+                            <ColumnDefinition Width="260"/>
+                        </Grid.ColumnDefinitions>
 
-                        <TextBox x:Name="SearchBox"
-                                 TextChanged="SearchBox_OnTextChanged"
-                                 ToolTip="Buscar por nome, comando ou categoria"/>
-
-                        <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
-                            <StackPanel x:Name="CategoriesPanel"/>
-                        </ScrollViewer>
-
-                        <Border Grid.Row="4"
-                                Background="#F7F7FC"
-                                CornerRadius="10"
-                                Padding="11">
-                            <StackPanel>
-                                <TextBlock Text="Mais usados"
-                                           FontWeight="SemiBold"
-                                           Foreground="{StaticResource InkBrush}"/>
-                                <StackPanel x:Name="MostUsedPanel" Margin="0,6,0,0"/>
-                            </StackPanel>
-                        </Border>
-
-                        <Button Grid.Row="6"
-                                Content="+ Novo atalho"
-                                Style="{StaticResource PrimaryButton}"
-                                Click="NewSnippet_OnClick"/>
-                    </Grid>
-
-                    <Border Grid.Column="1" Background="#E7EAF0"/>
-
-                    <ScrollViewer Grid.Column="2"
-                                  VerticalScrollBarVisibility="Auto"
-                                  HorizontalScrollBarVisibility="Disabled">
-                        <Grid Margin="28">
+                        <Grid Margin="18">
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="16"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="16"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="8"/>
+                                <RowDefinition Height="12"/>
                                 <RowDefinition Height="*"/>
                                 <RowDefinition Height="12"/>
                                 <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="18"/>
+                                <RowDefinition Height="12"/>
                                 <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
-
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="20"/>
-                                    <ColumnDefinition Width="190"/>
-                                </Grid.ColumnDefinitions>
+                            <TextBox x:Name="SearchBox"
+                                     TextChanged="SearchBox_OnTextChanged"
+                                     ToolTip="Buscar por nome, comando ou categoria"/>
+                            <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
+                                <StackPanel x:Name="CategoriesPanel"/>
+                            </ScrollViewer>
+                            <Border Grid.Row="4"
+                                    Background="{DynamicResource ElevatedBrush}"
+                                    CornerRadius="10"
+                                    Padding="11">
                                 <StackPanel>
-                                    <TextBlock Text="Nome" Foreground="{StaticResource MutedBrush}"/>
-                                    <TextBox x:Name="NameBox" Margin="0,6,0,0"/>
+                                    <TextBlock Text="Mais usados" FontWeight="SemiBold"
+                                               Foreground="{DynamicResource InkBrush}"/>
+                                    <StackPanel x:Name="MostUsedPanel" Margin="0,6,0,0"/>
                                 </StackPanel>
-                                <StackPanel Grid.Column="2">
-                                    <TextBlock Text="Comando" Foreground="{StaticResource MutedBrush}"/>
-                                    <TextBox x:Name="TriggerBox" Margin="0,6,0,0"/>
-                                </StackPanel>
-                            </Grid>
-
-                            <Grid Grid.Row="2">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="20"/>
-                                    <ColumnDefinition Width="190"/>
-                                </Grid.ColumnDefinitions>
-                                <StackPanel>
-                                    <TextBlock Text="Categoria" Foreground="{StaticResource MutedBrush}"/>
-                                    <TextBox x:Name="CategoryBox" Margin="0,6,0,0"/>
-                                </StackPanel>
-                                <StackPanel Grid.Column="2">
-                                    <TextBlock Text="Formato" Foreground="{StaticResource MutedBrush}"/>
-                                    <ComboBox x:Name="FormatBox"
-                                              Margin="0,6,0,0"
-                                              Padding="9"
-                                              SelectedIndex="0"
-                                              SelectionChanged="FormatBox_OnSelectionChanged">
-                                        <ComboBoxItem Content="Texto simples"/>
-                                        <ComboBoxItem Content="Texto formatado"/>
-                                    </ComboBox>
-                                </StackPanel>
-                            </Grid>
-
-                            <StackPanel x:Name="FormattingToolbar"
-                                        Grid.Row="4"
-                                        Orientation="Horizontal"
-                                        Visibility="Collapsed">
-                                <TextBlock Text="Formatação"
-                                           VerticalAlignment="Center"
-                                           Margin="0,0,10,0"
-                                           Foreground="{StaticResource MutedBrush}"/>
-                                <Button Content="B" FontWeight="Bold" Padding="10,6"
-                                        ToolTip="Negrito" Click="Bold_OnClick"/>
-                                <Button Content="I" FontStyle="Italic" Padding="10,6"
-                                        Margin="6,0,0,0" ToolTip="Itálico" Click="Italic_OnClick"/>
-                                <Button Content="U" Padding="10,6" Margin="6,0,0,0"
-                                        ToolTip="Sublinhado" Click="Underline_OnClick"/>
-                                <Button Content="Cor" Padding="10,6" Margin="6,0,0,0"
-                                        ToolTip="Cor do texto" Click="Color_OnClick"/>
-                                <Button Content="Link" Padding="10,6" Margin="6,0,0,0"
-                                        ToolTip="Inserir hiperlink" Click="Link_OnClick"/>
-                            </StackPanel>
-
-                            <Border Grid.Row="6"
-                                    BorderBrush="#D9DEE8"
-                                    BorderThickness="1"
-                                    CornerRadius="7"
-                                    MinHeight="245"
-                                    Background="White">
-                                <RichTextBox x:Name="ContentEditor"
-                                             BorderThickness="0"
-                                             Padding="12"
-                                             AcceptsTab="True"
-                                             VerticalScrollBarVisibility="Auto"
-                                             FontFamily="Segoe UI"
-                                             FontSize="14">
-                                    <FlowDocument PagePadding="0"/>
-                                </RichTextBox>
                             </Border>
-
-                            <StackPanel Grid.Row="8">
-                                <TextBlock Text="Legenda de variáveis"
-                                           FontWeight="SemiBold"
-                                           Foreground="{StaticResource InkBrush}"/>
-                                <WrapPanel Margin="0,7,0,0">
-                                    <Button Content="{}{{nome}} · campo" Tag="{}{{nome}}" Margin="0,0,6,6"
-                                            Padding="8,5" ToolTip="Solicita um valor antes da expansão"
-                                            Click="VariableChip_OnClick"/>
-                                    <Button Content="{}{{campo|padrão}}" Tag="{}{{campo|valor padrão}}" Margin="0,0,6,6"
-                                            Padding="8,5" ToolTip="Campo preenchível com valor sugerido"
-                                            Click="VariableChip_OnClick"/>
-                                    <Button Content="{}{{data}} · hoje" Tag="{}{{data}}" Margin="0,0,6,6"
-                                            Padding="8,5" Click="VariableChip_OnClick"/>
-                                    <Button Content="{}{{hora}} · agora" Tag="{}{{hora}}" Margin="0,0,6,6"
-                                            Padding="8,5" Click="VariableChip_OnClick"/>
-                                    <Button Content="{}{{mes}}" Tag="{}{{mes}}" Margin="0,0,6,6"
-                                            Padding="8,5" Click="VariableChip_OnClick"/>
-                                    <Button Content="{}{{mes_nome}}" Tag="{}{{mes_nome}}" Margin="0,0,6,6"
-                                            Padding="8,5" Click="VariableChip_OnClick"/>
-                                    <Button Content="{}{{ano}}" Tag="{}{{ano}}" Margin="0,0,6,6"
-                                            Padding="8,5" Click="VariableChip_OnClick"/>
-                                    <Button Content="{}{{dia_semana}}" Tag="{}{{dia_semana}}" Margin="0,0,6,6"
-                                            Padding="8,5" Click="VariableChip_OnClick"/>
-                                    <Button Content="{}{{data:+7d}}" Tag="{}{{data:+7d}}" Margin="0,0,6,6"
-                                            Padding="8,5" ToolTip="Aceita + ou -, seguido de d, m ou y"
-                                            Click="VariableChip_OnClick"/>
-                                    <Button Content="{}{{tab}} · próximo campo" Tag="{}{{tab}}" Margin="0,0,6,6"
-                                            Padding="8,5" ToolTip="Cola o próximo trecho após pressionar Tab"
-                                            Click="VariableChip_OnClick"/>
-                                </WrapPanel>
-                            </StackPanel>
-
-                            <Grid Grid.Row="10">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="10"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-                                <TextBlock x:Name="StatusText"
-                                           VerticalAlignment="Center"
-                                           Foreground="{StaticResource MutedBrush}"/>
-                                <Button Grid.Column="1"
-                                        Content="Excluir"
-                                        Click="DeleteSnippet_OnClick"/>
-                                <Button Grid.Column="3"
-                                        Content="Salvar atalho"
-                                        Style="{StaticResource PrimaryButton}"
-                                        Click="SaveSnippet_OnClick"/>
-                            </Grid>
+                            <Button Grid.Row="6" Content="+ Novo atalho"
+                                    Style="{StaticResource PrimaryButton}"
+                                    Click="NewSnippet_OnClick"/>
                         </Grid>
+
+                        <Border Grid.Column="1" Background="{DynamicResource DividerBrush}"/>
+
+                        <ScrollViewer Grid.Column="2"
+                                      VerticalScrollBarVisibility="Auto"
+                                      HorizontalScrollBarVisibility="Disabled">
+                            <Grid Margin="24">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="14"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="14"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="8"/>
+                                    <RowDefinition Height="210"/>
+                                    <RowDefinition Height="16"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="8"/>
+                                    <RowDefinition Height="180"/>
+                                    <RowDefinition Height="16"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="16"/>
+                                        <ColumnDefinition Width="175"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel>
+                                        <TextBlock Text="Nome" Foreground="{DynamicResource MutedBrush}"/>
+                                        <TextBox x:Name="NameBox" Margin="0,6,0,0"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2">
+                                        <TextBlock Text="Comando" Foreground="{DynamicResource MutedBrush}"/>
+                                        <TextBox x:Name="TriggerBox" Margin="0,6,0,0"
+                                                 ToolTip="Use /atalho ou :atalho"/>
+                                    </StackPanel>
+                                </Grid>
+
+                                <Grid Grid.Row="2">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="16"/>
+                                        <ColumnDefinition Width="175"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel>
+                                        <TextBlock Text="Categoria" Foreground="{DynamicResource MutedBrush}"/>
+                                        <TextBox x:Name="CategoryBox" Margin="0,6,0,0"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2">
+                                        <TextBlock Text="Formato" Foreground="{DynamicResource MutedBrush}"/>
+                                        <ComboBox x:Name="FormatBox" Margin="0,6,0,0" Padding="9"
+                                                  SelectedIndex="0"
+                                                  SelectionChanged="FormatBox_OnSelectionChanged">
+                                            <ComboBoxItem Content="Texto simples"/>
+                                            <ComboBoxItem Content="Texto formatado"/>
+                                        </ComboBox>
+                                    </StackPanel>
+                                </Grid>
+
+                                <WrapPanel x:Name="FormattingToolbar" Grid.Row="4" Visibility="Collapsed">
+                                    <TextBlock Text="Formatação" VerticalAlignment="Center" Margin="0,0,10,0"
+                                               Foreground="{DynamicResource MutedBrush}"/>
+                                    <Button Content="B" FontWeight="Bold" Padding="10,6"
+                                            ToolTip="Negrito" Click="Bold_OnClick"/>
+                                    <Button Content="I" FontStyle="Italic" Padding="10,6" Margin="6,0,0,0"
+                                            ToolTip="Itálico" Click="Italic_OnClick"/>
+                                    <Button Content="U" Padding="10,6" Margin="6,0,0,0"
+                                            ToolTip="Sublinhado" Click="Underline_OnClick"/>
+                                    <Button Content="Cor" Padding="10,6" Margin="6,0,0,0"
+                                            ToolTip="Cor do texto" Click="Color_OnClick"/>
+                                    <Button Content="Link" Padding="10,6" Margin="6,0,0,0"
+                                            ToolTip="Inserir hiperlink" Click="Link_OnClick"/>
+                                    <Button Content="&lt;/&gt; Código" Padding="10,6" Margin="6,0,0,0"
+                                            ToolTip="Inserir bloco de código" Click="CodeBlock_OnClick"/>
+                                    <Button Content="Imagem" Padding="10,6" Margin="6,0,0,0"
+                                            ToolTip="Adicionar imagem ao atalho" Click="Image_OnClick"/>
+                                </WrapPanel>
+
+                                <Border Grid.Row="6"
+                                        BorderBrush="{DynamicResource DividerBrush}"
+                                        BorderThickness="1"
+                                        CornerRadius="9"
+                                        Background="{DynamicResource InputBrush}">
+                                    <RichTextBox x:Name="ContentEditor"
+                                                 BorderThickness="0"
+                                                 Background="Transparent"
+                                                 Foreground="{DynamicResource InkBrush}"
+                                                 Padding="12"
+                                                 AcceptsTab="True"
+                                                 TextChanged="ContentEditor_OnTextChanged"
+                                                 VerticalScrollBarVisibility="Auto"
+                                                 FontFamily="Segoe UI"
+                                                 FontSize="14">
+                                        <FlowDocument PagePadding="0"/>
+                                    </RichTextBox>
+                                </Border>
+
+                                <TextBlock Grid.Row="8" Text="Preview do resultado"
+                                           FontWeight="SemiBold"
+                                           Foreground="{DynamicResource InkBrush}"/>
+                                <Border Grid.Row="10"
+                                        BorderBrush="{DynamicResource DividerBrush}"
+                                        BorderThickness="1"
+                                        CornerRadius="9"
+                                        Background="{DynamicResource ElevatedBrush}"
+                                        Padding="12">
+                                    <FlowDocumentScrollViewer x:Name="PreviewViewer"
+                                                              VerticalScrollBarVisibility="Auto"
+                                                              IsToolBarVisible="False"
+                                                              Background="Transparent"
+                                                              Foreground="{DynamicResource InkBrush}">
+                                        <FlowDocument x:Name="PreviewDocument" PagePadding="0"/>
+                                    </FlowDocumentScrollViewer>
+                                </Border>
+
+                                <Grid Grid.Row="12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="10"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock x:Name="StatusText" VerticalAlignment="Center"
+                                               Foreground="{DynamicResource MutedBrush}"/>
+                                    <Button Grid.Column="1" Content="Excluir" Click="DeleteSnippet_OnClick"/>
+                                    <Button Grid.Column="3" Content="Salvar atalho"
+                                            Style="{StaticResource PrimaryButton}"
+                                            Click="SaveSnippet_OnClick"/>
+                                </Grid>
+                            </Grid>
+                        </ScrollViewer>
+
+                        <Border Grid.Column="3" Background="{DynamicResource DividerBrush}"/>
+
+                        <ScrollViewer Grid.Column="4" VerticalScrollBarVisibility="Auto">
+                            <StackPanel Margin="18">
+                                <TextBlock Text="Variáveis"
+                                           FontSize="17"
+                                           FontWeight="SemiBold"
+                                           Foreground="{DynamicResource InkBrush}"/>
+                                <TextBlock Text="Clique para inserir. Passe o mouse para ver a descrição."
+                                           Margin="0,4,0,14"
+                                           TextWrapping="Wrap"
+                                           Foreground="{DynamicResource MutedBrush}"
+                                           FontSize="12"/>
+                                <Expander Header="Campos e navegação" IsExpanded="True">
+                                    <StackPanel Margin="0,8,0,8">
+                                        <Button Content="{}{{nome}}" Tag="{}{{nome}}" Style="{StaticResource VariableButton}"
+                                                ToolTip="Solicita um valor chamado nome antes da expansão."
+                                                Click="VariableChip_OnClick"/>
+                                        <Button Content="{}{{campo|padrão}}" Tag="{}{{campo|valor padrão}}"
+                                                Style="{StaticResource VariableButton}"
+                                                ToolTip="Campo preenchível com um valor inicial sugerido."
+                                                Click="VariableChip_OnClick"/>
+                                        <Button Content="{}{{tab}}" Tag="{}{{tab}}" Style="{StaticResource VariableButton}"
+                                                ToolTip="Avança para o próximo campo do aplicativo, como assunto → corpo."
+                                                Click="VariableChip_OnClick"/>
+                                    </StackPanel>
+                                </Expander>
+                                <Expander Header="Data e hora" IsExpanded="True">
+                                    <StackPanel Margin="0,8,0,8">
+                                        <Button Content="{}{{data}}" Tag="{}{{data}}" Style="{StaticResource VariableButton}"
+                                                ToolTip="Data atual em dd/MM/yyyy." Click="VariableChip_OnClick"/>
+                                        <Button Content="{}{{data_curta}}" Tag="{}{{data_curta}}" Style="{StaticResource VariableButton}"
+                                                ToolTip="Data atual abreviada em dd/MM/yy." Click="VariableChip_OnClick"/>
+                                        <Button Content="{}{{data_extensa}}" Tag="{}{{data_extensa}}" Style="{StaticResource VariableButton}"
+                                                ToolTip="Data por extenso com dia da semana, mês e ano." Click="VariableChip_OnClick"/>
+                                        <Button Content="{}{{hora}}" Tag="{}{{hora}}" Style="{StaticResource VariableButton}"
+                                                ToolTip="Hora atual em HH:mm." Click="VariableChip_OnClick"/>
+                                        <Button Content="{}{{data:+7d}}" Tag="{}{{data:+7d}}" Style="{StaticResource VariableButton}"
+                                                ToolTip="Data atual mais 7 dias. Aceita d, m ou y e sinais + ou -."
+                                                Click="VariableChip_OnClick"/>
+                                    </StackPanel>
+                                </Expander>
+                                <Expander Header="Partes da data" IsExpanded="True">
+                                    <StackPanel Margin="0,8,0,8">
+                                        <Button Content="{}{{dia}}" Tag="{}{{dia}}" Style="{StaticResource VariableButton}"
+                                                ToolTip="Número do dia." Click="VariableChip_OnClick"/>
+                                        <Button Content="{}{{dia_semana}}" Tag="{}{{dia_semana}}" Style="{StaticResource VariableButton}"
+                                                ToolTip="Dia da semana por extenso." Click="VariableChip_OnClick"/>
+                                        <Button Content="{}{{dia_semana_curto}}" Tag="{}{{dia_semana_curto}}"
+                                                Style="{StaticResource VariableButton}"
+                                                ToolTip="Dia da semana abreviado." Click="VariableChip_OnClick"/>
+                                        <Button Content="{}{{mes}}" Tag="{}{{mes}}" Style="{StaticResource VariableButton}"
+                                                ToolTip="Número do mês." Click="VariableChip_OnClick"/>
+                                        <Button Content="{}{{mes_nome}}" Tag="{}{{mes_nome}}" Style="{StaticResource VariableButton}"
+                                                ToolTip="Mês por extenso." Click="VariableChip_OnClick"/>
+                                        <Button Content="{}{{mes_curto}}" Tag="{}{{mes_curto}}" Style="{StaticResource VariableButton}"
+                                                ToolTip="Mês abreviado." Click="VariableChip_OnClick"/>
+                                        <Button Content="{}{{ano}}" Tag="{}{{ano}}" Style="{StaticResource VariableButton}"
+                                                ToolTip="Ano com quatro dígitos." Click="VariableChip_OnClick"/>
+                                        <Button Content="{}{{ano_curto}}" Tag="{}{{ano_curto}}" Style="{StaticResource VariableButton}"
+                                                ToolTip="Ano com dois dígitos." Click="VariableChip_OnClick"/>
+                                    </StackPanel>
+                                </Expander>
+                                <Expander Header="Sistema">
+                                    <StackPanel Margin="0,8,0,8">
+                                        <Button Content="{}{{usuario}}" Tag="{}{{usuario}}" Style="{StaticResource VariableButton}"
+                                                ToolTip="Nome do usuário conectado ao Windows." Click="VariableChip_OnClick"/>
+                                    </StackPanel>
+                                </Expander>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </Grid>
+
+                    <ScrollViewer x:Name="QuickAccentView" Visibility="Collapsed"
+                                  VerticalScrollBarVisibility="Auto">
+                        <StackPanel Margin="32" MaxWidth="900" HorizontalAlignment="Left">
+                            <TextBlock Text="Acento Rápido" Style="{StaticResource PageTitle}"/>
+                            <TextBlock Text="Digite caracteres acentuados em teclados que não possuem essas teclas."
+                                       Style="{StaticResource PageDescription}"/>
+                            <Border Style="{StaticResource SettingsCard}" Margin="0,18,0,0">
+                                <CheckBox x:Name="QuickAccentEnabledCheckBox"
+                                          Content="Ativar Acento Rápido"
+                                          Click="QuickAccentSettings_OnChanged"/>
+                            </Border>
+                            <TextBlock Text="Ativação" Style="{StaticResource SectionTitle}"/>
+                            <Border Style="{StaticResource SettingsCard}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="220"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel>
+                                        <TextBlock Text="Tecla de ativação" FontWeight="SemiBold"/>
+                                        <TextBlock Text="Segure a letra e pressione esta tecla."
+                                                   Foreground="{DynamicResource MutedBrush}"/>
+                                    </StackPanel>
+                                    <ComboBox x:Name="QuickAccentActivationBox" Grid.Column="1"
+                                              SelectionChanged="QuickAccentSettings_OnChanged">
+                                        <ComboBoxItem Content="Espaço" Tag="Space"/>
+                                        <ComboBoxItem Content="Seta esquerda" Tag="Left"/>
+                                        <ComboBoxItem Content="Seta direita" Tag="Right"/>
+                                    </ComboBox>
+                                </Grid>
+                            </Border>
+                            <TextBlock Text="Barra de caracteres" Style="{StaticResource SectionTitle}"/>
+                            <Border Style="{StaticResource SettingsCard}">
+                                <StackPanel>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="220"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="Posição da barra" VerticalAlignment="Center"/>
+                                        <ComboBox x:Name="QuickAccentPositionBox" Grid.Column="1"
+                                                  SelectionChanged="QuickAccentSettings_OnChanged">
+                                            <ComboBoxItem Content="Centro inferior" Tag="BottomCenter"/>
+                                            <ComboBoxItem Content="Centro" Tag="Center"/>
+                                            <ComboBoxItem Content="Centro superior" Tag="TopCenter"/>
+                                        </ComboBox>
+                                    </Grid>
+                                    <CheckBox x:Name="QuickAccentUnicodeCheckBox"
+                                              Content="Mostrar nome Unicode do caractere"
+                                              Click="QuickAccentSettings_OnChanged"/>
+                                    <CheckBox x:Name="QuickAccentSortCheckBox"
+                                              Content="Priorizar caracteres usados com frequência"
+                                              Click="QuickAccentSettings_OnChanged"/>
+                                </StackPanel>
+                            </Border>
+                            <TextBlock Text="Comportamento" Style="{StaticResource SectionTitle}"/>
+                            <Border Style="{StaticResource SettingsCard}">
+                                <StackPanel>
+                                    <TextBlock Text="Atraso para ativação (ms)"/>
+                                    <TextBox x:Name="QuickAccentDelayBox" Width="180"
+                                             HorizontalAlignment="Left" Margin="0,7,0,12"
+                                             LostFocus="QuickAccentSettings_OnChanged"/>
+                                    <TextBlock Text="Aplicativos excluídos"/>
+                                    <TextBlock Text="Um nome de processo por linha, como game.exe."
+                                               Foreground="{DynamicResource MutedBrush}"/>
+                                    <TextBox x:Name="QuickAccentExcludedAppsBox"
+                                             Height="90" AcceptsReturn="True"
+                                             Margin="0,7,0,0"
+                                             LostFocus="QuickAccentSettings_OnChanged"/>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
                     </ScrollViewer>
-                </Grid>
 
-                <ScrollViewer x:Name="StatisticsView"
-                              Visibility="Collapsed"
-                              VerticalScrollBarVisibility="Auto">
-                    <StackPanel Margin="32" MaxWidth="880" HorizontalAlignment="Left">
-                        <TextBlock Text="Visão geral"
-                                   FontFamily="Segoe UI Variable Display"
-                                   FontSize="24"
-                                   FontWeight="SemiBold"/>
-                        <UniformGrid Columns="4" Margin="0,18,0,0">
-                            <Border Background="#F7F7FC" CornerRadius="12" Padding="18" Margin="0,0,10,0">
+                    <ScrollViewer x:Name="StatisticsView" Visibility="Collapsed"
+                                  VerticalScrollBarVisibility="Auto">
+                        <StackPanel Margin="32" MaxWidth="900" HorizontalAlignment="Left">
+                            <TextBlock Text="Estatísticas" Style="{StaticResource PageTitle}"/>
+                            <TextBlock Text="Uma visão local do tempo que seus atalhos estão economizando."
+                                       Style="{StaticResource PageDescription}"/>
+                            <UniformGrid Columns="4" Margin="0,20,0,0">
+                                <Border Style="{StaticResource MetricCard}">
+                                    <StackPanel>
+                                        <TextBlock Text="Expansões" Foreground="{DynamicResource MutedBrush}"/>
+                                        <TextBlock x:Name="TotalExpansionsText" Style="{StaticResource MetricValue}"/>
+                                    </StackPanel>
+                                </Border>
+                                <Border Style="{StaticResource MetricCard}">
+                                    <StackPanel>
+                                        <TextBlock Text="Atalhos usados" Foreground="{DynamicResource MutedBrush}"/>
+                                        <TextBlock x:Name="UsedSnippetsText" Style="{StaticResource MetricValue}"/>
+                                    </StackPanel>
+                                </Border>
+                                <Border Style="{StaticResource MetricCard}">
+                                    <StackPanel>
+                                        <TextBlock Text="Caracteres poupados" Foreground="{DynamicResource MutedBrush}"/>
+                                        <TextBlock x:Name="CharactersSavedText" Style="{StaticResource MetricValue}"/>
+                                    </StackPanel>
+                                </Border>
+                                <Border Style="{StaticResource MetricCard}">
+                                    <StackPanel>
+                                        <TextBlock Text="Tempo estimado" Foreground="{DynamicResource MutedBrush}"/>
+                                        <TextBlock x:Name="TimeSavedText" Style="{StaticResource MetricValue}"/>
+                                    </StackPanel>
+                                </Border>
+                            </UniformGrid>
+                            <Border Style="{StaticResource SettingsCard}" Margin="0,24,0,0">
                                 <StackPanel>
-                                    <TextBlock Text="Expansões" Foreground="{StaticResource MutedBrush}"/>
-                                    <TextBlock x:Name="TotalExpansionsText" FontSize="26" FontWeight="SemiBold"/>
-                                </StackPanel>
-                            </Border>
-                            <Border Background="#F7F7FC" CornerRadius="12" Padding="18" Margin="0,0,10,0">
-                                <StackPanel>
-                                    <TextBlock Text="Atalhos usados" Foreground="{StaticResource MutedBrush}"/>
-                                    <TextBlock x:Name="UsedSnippetsText" FontSize="26" FontWeight="SemiBold"/>
-                                </StackPanel>
-                            </Border>
-                            <Border Background="#F7F7FC" CornerRadius="12" Padding="18" Margin="0,0,10,0">
-                                <StackPanel>
-                                    <TextBlock Text="Caracteres poupados" Foreground="{StaticResource MutedBrush}"/>
-                                    <TextBlock x:Name="CharactersSavedText" FontSize="26" FontWeight="SemiBold"/>
-                                </StackPanel>
-                            </Border>
-                            <Border Background="#F7F7FC" CornerRadius="12" Padding="18">
-                                <StackPanel>
-                                    <TextBlock Text="Tempo estimado" Foreground="{StaticResource MutedBrush}"/>
-                                    <TextBlock x:Name="TimeSavedText" FontSize="26" FontWeight="SemiBold"/>
-                                </StackPanel>
-                            </Border>
-                        </UniformGrid>
-
-                        <Grid Margin="0,28,0,0">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="24"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <Border Background="#F7F7FC" CornerRadius="12" Padding="20">
-                                <StackPanel>
-                                    <TextBlock Text="Atalhos mais usados"
-                                               FontSize="16" FontWeight="SemiBold"/>
+                                    <TextBlock Text="Atalhos mais usados" FontSize="17" FontWeight="SemiBold"/>
                                     <StackPanel x:Name="StatisticsRankingPanel" Margin="0,12,0,0"/>
                                 </StackPanel>
                             </Border>
-                            <Border Grid.Column="2" Background="#F7F7FC" CornerRadius="12" Padding="20">
+                            <TextBlock Margin="0,16,0,0" TextWrapping="Wrap"
+                                       Foreground="{DynamicResource MutedBrush}"
+                                       Text="As estatísticas ficam somente neste computador. O conteúdo digitado nunca é registrado."/>
+                        </StackPanel>
+                    </ScrollViewer>
+
+                    <ScrollViewer x:Name="SettingsView" Visibility="Collapsed"
+                                  VerticalScrollBarVisibility="Auto">
+                        <StackPanel Margin="32" MaxWidth="760" HorizontalAlignment="Left">
+                            <TextBlock Text="Configurações" Style="{StaticResource PageTitle}"/>
+                            <TextBlock Text="Ajuste a aparência e o comportamento geral do SlashText."
+                                       Style="{StaticResource PageDescription}"/>
+                            <TextBlock Text="Aparência" Style="{StaticResource SectionTitle}"/>
+                            <Border Style="{StaticResource SettingsCard}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="220"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel>
+                                        <TextBlock Text="Tema" FontWeight="SemiBold"/>
+                                        <TextBlock Text="Claro, escuro profundo ou seguindo o Windows."
+                                                   Foreground="{DynamicResource MutedBrush}"/>
+                                    </StackPanel>
+                                    <ComboBox x:Name="ThemeBox" Grid.Column="1"
+                                              SelectionChanged="ThemeBox_OnSelectionChanged">
+                                        <ComboBoxItem Content="Seguir o Windows" Tag="System"/>
+                                        <ComboBoxItem Content="Claro" Tag="Light"/>
+                                        <ComboBoxItem Content="Escuro profundo" Tag="Dark"/>
+                                    </ComboBox>
+                                </Grid>
+                            </Border>
+                            <TextBlock Text="Comportamento" Style="{StaticResource SectionTitle}"/>
+                            <Border Style="{StaticResource SettingsCard}">
                                 <StackPanel>
-                                    <TextBlock Text="Comportamento do aplicativo"
-                                               FontSize="16" FontWeight="SemiBold"/>
                                     <CheckBox x:Name="CloseToTrayCheckBox"
                                               Content="Ao fechar, manter o SlashText na bandeja"
                                               Click="Settings_OnClick"/>
@@ -321,18 +488,51 @@
                                               Content="Iniciar automaticamente com o Windows"
                                               Click="Settings_OnClick"/>
                                     <CheckBox x:Name="ShowSuggestionsCheckBox"
-                                              Content="Mostrar sugestões flutuantes ao digitar /"
+                                              Content="Mostrar sugestões flutuantes ao digitar / ou :"
                                               Click="Settings_OnClick"/>
-                                    <TextBlock Margin="0,12,0,0"
-                                               TextWrapping="Wrap"
-                                               Foreground="{StaticResource MutedBrush}"
-                                               Text="Os dados de uso ficam somente neste computador. O conteúdo digitado nunca é registrado."/>
                                 </StackPanel>
                             </Border>
-                        </Grid>
-                    </StackPanel>
-                </ScrollViewer>
-            </Grid>
-        </Border>
+                            <TextBlock Text="Arquivos" Style="{StaticResource SectionTitle}"/>
+                            <Border Style="{StaticResource SettingsCard}">
+                                <StackPanel>
+                                    <TextBlock Text="Estrutura portátil" FontWeight="SemiBold"/>
+                                    <TextBlock Margin="0,5,0,0" TextWrapping="Wrap"
+                                               Foreground="{DynamicResource MutedBrush}"
+                                               Text="O app é entregue como um único executável. snippets.md, settings.json e usage.json são dados do usuário; backups guarda até sete versões diárias."/>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </ScrollViewer>
+
+                    <ScrollViewer x:Name="AboutView" Visibility="Collapsed"
+                                  VerticalScrollBarVisibility="Auto">
+                        <StackPanel Margin="44" MaxWidth="720" HorizontalAlignment="Left">
+                            <Image Source="Assets/SlashText.ico" Width="72" Height="72"
+                                   HorizontalAlignment="Left"/>
+                            <TextBlock Text="SlashText" FontSize="30" FontWeight="SemiBold"
+                                       Margin="0,16,0,0"/>
+                            <TextBlock Text="Expansor de textos portátil para Windows"
+                                       Foreground="{DynamicResource MutedBrush}" FontSize="16"/>
+                            <TextBlock Margin="0,24,0,0" TextWrapping="Wrap" FontSize="15"
+                                       Text="Crie atalhos reutilizáveis, use variáveis automáticas, preencha campos, formate conteúdo e acompanhe o tempo economizado em Outlook, Teams, navegadores e outros aplicativos."/>
+                            <Border Style="{StaticResource SettingsCard}" Margin="0,24,0,0">
+                                <StackPanel>
+                                    <TextBlock Text="Versão 1.2.0" FontWeight="SemiBold"/>
+                                    <TextBlock Text="Licença MIT · código aberto" Margin="0,6,0,0"/>
+                                    <Button Content="Abrir projeto no GitHub"
+                                            HorizontalAlignment="Left"
+                                            Margin="0,14,0,0"
+                                            Style="{StaticResource PrimaryButton}"
+                                            Click="OpenGitHub_OnClick"/>
+                                </StackPanel>
+                            </Border>
+                            <TextBlock Margin="0,18,0,0" TextWrapping="Wrap"
+                                       Foreground="{DynamicResource MutedBrush}"
+                                       Text="Privacidade: sem telemetria, sem conexão obrigatória e sem registro do conteúdo digitado."/>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Grid>
+            </Border>
+        </Grid>
     </Grid>
 </Window>

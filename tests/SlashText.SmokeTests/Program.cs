@@ -4,11 +4,14 @@ using SlashText.Services;
 var engine = new TemplateEngine();
 var reference = new DateTimeOffset(2026, 7, 27, 14, 35, 0, TimeSpan.FromHours(-3));
 var rendered = engine.Render(
-    "{{data}}|{{hora}}|{{mes}}|{{mes_nome}}|{{ano}}|{{data:-7d}}|{{tab}}",
+    "{{data}}|{{data_curta}}|{{data_extensa}}|{{hora}}|{{mes}}|{{mes_nome}}|" +
+    "{{mes_curto}}|{{ano}}|{{ano_curto}}|{{dia_semana_curto}}|{{data:-7d}}|{{tab}}",
     now: reference);
 
-Require(rendered.StartsWith("27/07/2026|14:35|07|", StringComparison.Ordinal), "variáveis automáticas");
-Require(rendered.Contains("|2026|20/07/2026|", StringComparison.Ordinal), "cálculo de data");
+Require(rendered.StartsWith("27/07/2026|27/07/26|", StringComparison.Ordinal), "datas abreviada e extensa");
+Require(rendered.Contains("|14:35|07|", StringComparison.Ordinal), "variáveis automáticas");
+Require(rendered.Contains("|2026|26|", StringComparison.Ordinal), "ano completo e abreviado");
+Require(rendered.Contains("|20/07/2026|", StringComparison.Ordinal), "cálculo de data");
 Require(rendered.EndsWith(TemplateEngine.TabMarker, StringComparison.Ordinal), "marcador Tab");
 
 var fields = engine.GetFillableFields("Olá {{nome}}, chamado {{chamado|INC000}}. {{nome}}");
@@ -38,6 +41,25 @@ try
     var loaded = await repository.LoadAsync();
     Require(loaded.Count == 1 && loaded[0].Content == "Terceiro", "persistência Markdown");
     Require(Directory.GetFiles(backups, "snippets-*.md").Length == 1, "backup diário consolidado");
+
+    var colonSnippet = new Snippet
+    {
+        Name = "Dois pontos",
+        Trigger = ":teste",
+        Category = "Geral",
+        Content = "Compatível"
+    };
+    await repository.SaveAsync([snippet, colonSnippet]);
+    loaded = await repository.LoadAsync();
+    Require(loaded.Any(item => item.Trigger == ":teste"), "gatilho com dois pontos");
+
+    var code = "Antes\n```powershell\nGet-Date\n```\nDepois";
+    Require(
+        RichTextMarkdownConverter.ToHtml(code).Contains("<pre", StringComparison.Ordinal),
+        "bloco de código HTML");
+    Require(
+        RichTextMarkdownConverter.ToPlainText(code).Contains("Get-Date", StringComparison.Ordinal),
+        "fallback de código em texto simples");
 }
 finally
 {

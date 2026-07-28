@@ -233,7 +233,7 @@ public sealed partial class SnippetMarkdownRepository
         if (!TriggerPattern().IsMatch(snippet.Trigger))
         {
             throw new InvalidDataException(
-                $"O atalho '{snippet.Trigger}' deve começar com / e usar letras, números, hífen ou sublinhado.");
+                $"O atalho '{snippet.Trigger}' deve começar com / ou : e usar letras, números, hífen ou sublinhado.");
         }
 
         if (string.IsNullOrWhiteSpace(snippet.Name))
@@ -319,10 +319,10 @@ public sealed partial class SnippetMarkdownRepository
         return longest;
     }
 
-    [GeneratedRegex(@"^[ \t]*##[ \t]+(?<trigger>/[A-Za-zÀ-ÿ0-9_-]+)[ \t]*$")]
+    [GeneratedRegex(@"^[ \t]*##[ \t]+(?<trigger>[/\:][A-Za-zÀ-ÿ0-9_-]+)[ \t]*$")]
     private static partial Regex HeadingPattern();
 
-    [GeneratedRegex(@"^/[A-Za-zÀ-ÿ0-9_-]+$")]
+    [GeneratedRegex(@"^[/\:][A-Za-zÀ-ÿ0-9_-]+$")]
     private static partial Regex TriggerPattern();
 
     private sealed record SnippetMetadata(
