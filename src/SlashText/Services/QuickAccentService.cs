@@ -202,8 +202,8 @@ public sealed class QuickAccentService : IDisposable
     {
         var inputs = new[]
         {
-            KeyInput(0x08, 0, false),
-            KeyInput(0x08, 0, true),
+            KeyInput(0x08, '\0', false),
+            KeyInput(0x08, '\0', true),
             KeyInput(0, character, false, true),
             KeyInput(0, character, true, true)
         };
