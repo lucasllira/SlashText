@@ -71,7 +71,7 @@ public sealed class SuggestionWindow : Window
                 Text = snippet.Trigger,
                 FontFamily = new FontFamily("Cascadia Mono, Consolas"),
                 FontWeight = FontWeights.SemiBold,
-                Foreground = FindBrush("AccentBrush", new SolidColorBrush(Color.FromRgb(99, 91, 255)))
+                Foreground = FindBrush("AccentBrush", new SolidColorBrush(Color.FromRgb(8, 126, 139)))
             });
             var name = new TextBlock
             {

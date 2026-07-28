@@ -13,4 +13,5 @@ public sealed class AppSettings
     public bool QuickAccentSortByUsage { get; set; } = true;
     public int QuickAccentInputDelayMs { get; set; } = 200;
     public string QuickAccentExcludedApps { get; set; } = string.Empty;
+    public List<string> QuickAccentCharacterSets { get; set; } = ["PortugueseBrazil"];
 }

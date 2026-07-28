@@ -26,10 +26,17 @@ public static class ThemeService
         Set("InkBrush", dark ? "#F4F6FB" : "#18202B");
         Set("MutedBrush", dark ? "#9AA6B6" : "#697586");
         Set("DividerBrush", dark ? "#28303D" : "#E2E6ED");
-        Set("AccentBrush", dark ? "#8B83FF" : "#635BFF");
+        Set("AccentBrush", dark ? "#35C7D2" : "#087E8B");
         Set("CodeBrush", dark ? "#06080C" : "#151821");
-        Set("HoverBrush", dark ? "#202633" : "#EEF0F6");
-        Set("SelectedBrush", dark ? "#29254B" : "#E8E6FF");
+        Set("HoverBrush", dark ? "#202833" : "#EEF2F4");
+        Set("SelectedBrush", dark ? "#14363B" : "#DDF4F5");
+        Set("ControlBrush", dark ? "#1A212B" : "#EDF1F5");
+        Set("ControlHoverBrush", dark ? "#222C38" : "#E4EAEE");
+        Set("ControlPressedBrush", dark ? "#2A3643" : "#D8E1E6");
+        Set("AccentSubtleBrush", dark ? "#12343A" : "#DDF4F5");
+        Set("DangerBrush", dark ? "#FF7D89" : "#C63C4A");
+        Set("DangerSubtleBrush", dark ? "#3A1D23" : "#FCE8EA");
+        Set("SuccessBrush", dark ? "#4FD7A5" : "#188A62");
 
         foreach (Window window in System.Windows.Application.Current.Windows)
         {
