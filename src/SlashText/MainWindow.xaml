@@ -11,12 +11,12 @@
         SizeChanged="MainWindow_OnSizeChanged"
         WindowStartupLocation="CenterScreen"
         Background="{DynamicResource CanvasBrush}">
-    <Grid Margin="24,20,24,24">
+    <Grid Margin="16">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
-            <RowDefinition Height="14"/>
+            <RowDefinition Height="12"/>
             <RowDefinition Height="Auto"/>
-            <RowDefinition Height="14"/>
+            <RowDefinition Height="10"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
@@ -25,26 +25,26 @@
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
-            <StackPanel Orientation="Horizontal">
+            <StackPanel Orientation="Horizontal" Margin="16,8,0,6">
                 <Image Source="Assets/SlashDesk.png"
-                       Width="40"
-                       Height="40"
-                       Margin="0,0,12,0"
+                       Width="46"
+                       Height="46"
+                       Margin="0,0,14,0"
                        RenderOptions.BitmapScalingMode="HighQuality"/>
-                <StackPanel>
+                <StackPanel VerticalAlignment="Center">
                     <TextBlock Text="SlashDesk"
                                FontFamily="Segoe UI Variable Display"
-                               FontSize="27"
+                               FontSize="26"
                                FontWeight="SemiBold"
                                Foreground="{DynamicResource InkBrush}"/>
-                    <TextBlock Text="Produtividade local, em um só lugar."
+                    <TextBlock Text="Textos, acentos e capturas. Tudo local."
+                               Margin="0,2,0,0"
                                Foreground="{DynamicResource MutedBrush}"/>
                 </StackPanel>
             </StackPanel>
             <Border Grid.Column="1"
-                    Background="{DynamicResource ElevatedBrush}"
-                    CornerRadius="14"
-                    Padding="12,6"
+                    Style="{StaticResource StatusPill}"
+                    Margin="0,8,12,6"
                     VerticalAlignment="Center">
                 <TextBlock x:Name="MonitorStatusText"
                            Text="● Iniciando monitoramento"
@@ -54,39 +54,51 @@
         </Grid>
 
         <Border Grid.Row="2"
-                HorizontalAlignment="Left"
+                HorizontalAlignment="Stretch"
                 Background="{DynamicResource SurfaceBrush}"
                 BorderBrush="{DynamicResource DividerBrush}"
                 BorderThickness="1"
-                CornerRadius="13"
-                Padding="4">
-            <StackPanel Orientation="Horizontal">
-                <Button x:Name="ShortcutsTabButton" Content="Atalhos"
-                        Style="{StaticResource NavButton}"
-                        Click="ShortcutsTab_OnClick"/>
-                <Button x:Name="QuickAccentTabButton" Content="Acento Rápido"
-                        Style="{StaticResource NavButton}"
-                        Click="QuickAccentTab_OnClick"/>
-                <Button x:Name="CaptureTabButton" Content="Captura"
-                        Style="{StaticResource NavButton}"
-                        Click="CaptureTab_OnClick"/>
-                <Button x:Name="StatisticsTabButton" Content="Estatísticas"
-                        Style="{StaticResource NavButton}"
-                        Click="StatisticsTab_OnClick"/>
-                <Button x:Name="SettingsTabButton" Content="Configurações"
-                        Style="{StaticResource NavButton}"
-                        Click="SettingsTab_OnClick"/>
-                <Button x:Name="AboutTabButton" Content="Sobre"
-                        Style="{StaticResource NavButton}"
-                        Click="AboutTab_OnClick"/>
-            </StackPanel>
+                CornerRadius="11">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Orientation="Horizontal">
+                    <Button x:Name="ShortcutsTabButton" Content="Atalhos"
+                            Style="{StaticResource NavButton}"
+                            Click="ShortcutsTab_OnClick"/>
+                    <Button x:Name="QuickAccentTabButton" Content="Acento Rápido"
+                            Style="{StaticResource NavButton}"
+                            Click="QuickAccentTab_OnClick"/>
+                    <Button x:Name="CaptureTabButton" Content="Captura"
+                            Style="{StaticResource NavButton}"
+                            Click="CaptureTab_OnClick"/>
+                    <Button x:Name="StatisticsTabButton" Content="Estatísticas"
+                            Style="{StaticResource NavButton}"
+                            Click="StatisticsTab_OnClick"/>
+                    <Button x:Name="SettingsTabButton" Content="Configurações"
+                            Style="{StaticResource NavButton}"
+                            Click="SettingsTab_OnClick"/>
+                    <Button x:Name="AboutTabButton" Content="Sobre"
+                            Style="{StaticResource NavButton}"
+                            Click="AboutTab_OnClick"/>
+                </StackPanel>
+                <TextBlock Grid.Column="2"
+                           Text="100% local  ·  sem upload"
+                           Margin="18,0"
+                           VerticalAlignment="Center"
+                           Foreground="{DynamicResource MutedBrush}"
+                           FontSize="12"/>
+            </Grid>
         </Border>
 
         <Border Grid.Row="4"
                 Background="{DynamicResource SurfaceBrush}"
                 BorderBrush="{DynamicResource DividerBrush}"
                 BorderThickness="1"
-                CornerRadius="18"
+                CornerRadius="12"
                 ClipToBounds="True">
                 <Grid>
                     <Grid x:Name="ShortcutsView">
@@ -443,34 +455,68 @@
                             </StackPanel>
 
                             <Border Grid.Row="2"
-                                    Style="{StaticResource SettingsCard}"
-                                    Background="{DynamicResource AccentSubtleBrush}">
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto"/>
-                                        <ColumnDefinition Width="20"/>
-                                        <ColumnDefinition Width="*"/>
-                                    </Grid.ColumnDefinitions>
-                                    <Border Width="46" Height="46"
-                                            Background="{DynamicResource AccentBrush}"
-                                            CornerRadius="13">
-                                        <TextBlock Text="á"
-                                                   Foreground="White"
-                                                   FontSize="24"
-                                                   FontWeight="SemiBold"
-                                                   HorizontalAlignment="Center"
-                                                   VerticalAlignment="Center"/>
-                                    </Border>
-                                    <StackPanel Grid.Column="2" VerticalAlignment="Center">
-                                        <TextBlock Text="Segure uma letra, pressione a tecla de ativação e escolha o caractere."
-                                                   FontWeight="SemiBold"
-                                                   TextWrapping="Wrap"/>
-                                        <TextBlock Text="Exemplo: segure A + Espaço, navegue pelas opções e solte A para inserir á."
-                                                   Margin="0,4,0,0"
-                                                   Foreground="{DynamicResource MutedBrush}"
-                                                   TextWrapping="Wrap"/>
-                                    </StackPanel>
-                                </Grid>
+                                    Style="{StaticResource SettingsCard}">
+                                <StackPanel>
+                                    <Grid Margin="0,0,0,14">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel>
+                                            <TextBlock Text="PRÉVIA AO VIVO"
+                                                       Style="{StaticResource Eyebrow}"/>
+                                            <TextBlock Text="Segure uma letra e use a tecla de ativação"
+                                                       Margin="0,4,0,0"
+                                                       FontWeight="SemiBold"/>
+                                        </StackPanel>
+                                        <TextBlock Grid.Column="1"
+                                                   Text="A + Espaço"
+                                                   VerticalAlignment="Center"
+                                                   Foreground="{DynamicResource MutedBrush}"/>
+                                    </Grid>
+                                    <UniformGrid Columns="8">
+                                        <Border Style="{StaticResource FeatureTile}"
+                                                Background="{DynamicResource ChromeBrush}">
+                                            <TextBlock Text="a" FontSize="29" FontWeight="SemiBold"
+                                                       HorizontalAlignment="Center"/>
+                                        </Border>
+                                        <Border Style="{StaticResource FeatureTile}"
+                                                BorderBrush="{DynamicResource AccentBrush}"
+                                                Background="{DynamicResource AccentSubtleBrush}">
+                                            <TextBlock Text="á" FontSize="29" FontWeight="SemiBold"
+                                                       Foreground="{DynamicResource AccentBrush}"
+                                                       HorizontalAlignment="Center"/>
+                                        </Border>
+                                        <Border Style="{StaticResource FeatureTile}">
+                                            <TextBlock Text="à" FontSize="29" FontWeight="SemiBold"
+                                                       HorizontalAlignment="Center"/>
+                                        </Border>
+                                        <Border Style="{StaticResource FeatureTile}">
+                                            <TextBlock Text="â" FontSize="29" FontWeight="SemiBold"
+                                                       HorizontalAlignment="Center"/>
+                                        </Border>
+                                        <Border Style="{StaticResource FeatureTile}">
+                                            <TextBlock Text="ã" FontSize="29" FontWeight="SemiBold"
+                                                       HorizontalAlignment="Center"/>
+                                        </Border>
+                                        <Border Style="{StaticResource FeatureTile}">
+                                            <TextBlock Text="ä" FontSize="29" FontWeight="SemiBold"
+                                                       HorizontalAlignment="Center"/>
+                                        </Border>
+                                        <Border Style="{StaticResource FeatureTile}">
+                                            <TextBlock Text="å" FontSize="29" FontWeight="SemiBold"
+                                                       HorizontalAlignment="Center"/>
+                                        </Border>
+                                        <Border Style="{StaticResource SettingsCard}" Padding="16">
+                                            <TextBlock Text="æ" FontSize="29" FontWeight="SemiBold"
+                                                       HorizontalAlignment="Center"/>
+                                        </Border>
+                                    </UniformGrid>
+                                    <TextBlock Text="Navegue pelas opções e solte a letra para inserir o caractere selecionado."
+                                               Margin="0,13,0,0"
+                                               HorizontalAlignment="Center"
+                                               Foreground="{DynamicResource MutedBrush}"/>
+                                </StackPanel>
                             </Border>
 
                             <Grid Grid.Row="4">
@@ -659,8 +705,8 @@
                             </Grid.RowDefinitions>
 
                             <StackPanel>
-                                <TextBlock Text="Captura" Style="{StaticResource PageTitle}"/>
-                                <TextBlock Text="Imagens locais com atalhos, organização automática e sem upload."
+                                <TextBlock Text="Captura de tela" Style="{StaticResource PageTitle}"/>
+                                <TextBlock Text="Capturas e edições 100% locais, rápidas e privadas."
                                            Style="{StaticResource PageDescription}"/>
                             </StackPanel>
 
@@ -826,7 +872,7 @@
 
                             <StackPanel>
                                 <TextBlock Text="Estatísticas" Style="{StaticResource PageTitle}"/>
-                                <TextBlock Text="Atalhos e Acento Rápido reunidos em uma visão simples do uso."
+                                <TextBlock Text="Veja quanto tempo o SlashDesk devolveu ao seu dia."
                                            Style="{StaticResource PageDescription}"/>
                             </StackPanel>
 
@@ -1081,7 +1127,7 @@
                                                    Margin="0,4,0,0"
                                                    FontSize="16"
                                                    Foreground="{DynamicResource MutedBrush}"/>
-                                        <TextBlock Text="Versão 2.0.0 · Licença MIT · código aberto"
+                                        <TextBlock Text="Versão 2.2.0 · Licença MIT · código aberto"
                                                    Margin="0,12,0,0"
                                                    Foreground="{DynamicResource AccentBrush}"
                                                    FontWeight="SemiBold"/>
