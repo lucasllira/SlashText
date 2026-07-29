@@ -29,6 +29,8 @@ onde instalar vários aplicativos ou enviar conteúdo para a nuvem não é uma o
 
 - conjuntos configuráveis, incluindo somente Português (Brasil);
 - suporte a Caps Lock, Shift e layouts de teclado diferentes;
+- avanço previsível de uma opção por toque na tecla de ativação, sem o
+  auto-repeat do Windows pular caracteres;
 - posição, atraso, ordenação e aplicativos excluídos configuráveis.
 
 ### Captura local
@@ -37,8 +39,9 @@ onde instalar vários aplicativos ou enviar conteúdo para a nuvem não é uma o
 - seleção livre de região;
 - reconhecimento da janela sob o cursor;
 - atalho global independente para cada ação, gravado ao pressionar a combinação;
-- teclas de função, teclado, roda, botão central e botões laterais do mouse;
-- combinações como `F10`, `Ctrl+Shift+WheelUp` e `Alt+MouseX1`;
+- teclas de função, `Print Screen`, teclado, roda, botão central e botões
+  laterais do mouse;
+- combinações como `PrintScreen`, `F10`, `Ctrl+Shift+WheelUp` e `Alt+MouseX1`;
 - pasta automática com variáveis `{year}`, `{month}`, `{month-name}` e `{day}`;
 - nome com `{date}`, `{time}`, `{type}` e `{app}`;
 - PNG ou JPEG com qualidade configurável;
@@ -46,6 +49,7 @@ onde instalar vários aplicativos ou enviar conteúdo para a nuvem não é uma o
   lápis, texto, numeração, cores, espessura, desfazer e refazer;
 - ações de copiar, salvar ou concluir usando a regra ativa;
 - salvamento automático, clipboard e histórico local das últimas capturas;
+- estatísticas integradas de atalhos, acentos e capturas por tipo;
 - sem upload, conta ou compartilhamento externo.
 
 ## Primeira inicialização e atualizações
