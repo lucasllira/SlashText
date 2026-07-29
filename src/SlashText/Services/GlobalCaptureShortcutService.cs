@@ -362,7 +362,8 @@ public sealed class GlobalCaptureShortcutService : IDisposable
                     }
                     var keyName = part switch
                     {
-                        "printscreen" or "prtsc" => nameof(Key.Snapshot),
+                        "printscreen" or "print" or "prtsc" or "snapshot" =>
+                            nameof(Key.Snapshot),
                         "escape" => nameof(Key.Escape),
                         "pageup" => nameof(Key.PageUp),
                         "pagedown" => nameof(Key.PageDown),

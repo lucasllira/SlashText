@@ -118,6 +118,7 @@ public sealed class QuickAccentService : IDisposable
     private string _choices = string.Empty;
     private int _selected;
     private bool _active;
+    private bool _activationDown;
     private bool _disposed;
 
     public QuickAccentService() => _callback = HookCallback;
@@ -217,11 +218,17 @@ public sealed class QuickAccentService : IDisposable
 
         if (isDown && _baseKey is not null && key == ActivationVirtualKey())
         {
+            if (_activationDown)
+            {
+                return new IntPtr(1);
+            }
+
             if (Environment.TickCount64 - _basePressedAt < Math.Clamp(InputDelayMs, 0, 2000))
             {
                 return CallNextHookEx(_hook, code, message, data);
             }
 
+            _activationDown = true;
             if (!_active)
             {
                 _choices = MatchCase(
@@ -245,6 +252,15 @@ public sealed class QuickAccentService : IDisposable
 
             Changed?.Invoke(this, new QuickAccentChangedEventArgs(_choices, _selected, true));
             return new IntPtr(1);
+        }
+
+        if (isUp && key == ActivationVirtualKey())
+        {
+            _activationDown = false;
+            if (_active)
+            {
+                return new IntPtr(1);
+            }
         }
 
         if (_active && isDown && key is 0x25 or 0x27)
@@ -285,6 +301,7 @@ public sealed class QuickAccentService : IDisposable
     {
         _baseKey = null;
         _active = false;
+        _activationDown = false;
         _choices = string.Empty;
         Changed?.Invoke(this, new QuickAccentChangedEventArgs(string.Empty, 0, false));
     }

@@ -139,9 +139,9 @@ public sealed class CaptureService
                 Height = output.Height
             };
             _history.Insert(0, record);
-            if (_history.Count > 30)
+            if (_history.Count > 1000)
             {
-                _history.RemoveRange(30, _history.Count - 30);
+                _history.RemoveRange(1000, _history.Count - 1000);
             }
             await _historyStore.SaveAsync(_history);
             return record;

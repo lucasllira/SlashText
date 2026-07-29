@@ -7,6 +7,8 @@ using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
+using System.Windows.Threading;
 using SlashText.Models;
 using SlashText.Services;
 using SlashText.Views;
@@ -40,6 +42,9 @@ public partial class MainWindow : Window
     private bool _servicesDisposed;
     private bool _initialized;
     private bool _updatingQuickAccentSets;
+    private readonly DispatcherTimer _quickAccentPreviewTimer =
+        new() { Interval = TimeSpan.FromMilliseconds(900) };
+    private int _quickAccentPreviewIndex = 1;
 
     public MainWindow()
     {
@@ -55,6 +60,13 @@ public partial class MainWindow : Window
         _quickAccentService.Changed += QuickAccentService_OnChanged;
         _quickAccentService.CharacterInserted += QuickAccentService_OnCharacterInserted;
         _captureShortcuts.Triggered += CaptureShortcuts_OnTriggered;
+        _quickAccentPreviewTimer.Tick += (_, _) =>
+        {
+            _quickAccentPreviewIndex = _quickAccentPreviewIndex >= 7
+                ? 1
+                : _quickAccentPreviewIndex + 1;
+            UpdateQuickAccentPreviewSelection();
+        };
     }
 
     private async void MainWindow_OnLoaded(object sender, RoutedEventArgs e)
@@ -79,6 +91,10 @@ public partial class MainWindow : Window
             QuickAccentUnicodeCheckBox.IsChecked = _settings.QuickAccentShowUnicode;
             QuickAccentSortCheckBox.IsChecked = _settings.QuickAccentSortByUsage;
             QuickAccentDelayBox.Text = _settings.QuickAccentInputDelayMs.ToString();
+            QuickAccentDelaySlider.Value = Math.Clamp(
+                _settings.QuickAccentInputDelayMs,
+                (int)QuickAccentDelaySlider.Minimum,
+                (int)QuickAccentDelaySlider.Maximum);
             QuickAccentExcludedAppsBox.Text = _settings.QuickAccentExcludedApps;
             ApplyQuickAccentCharacterSetSelection(_settings.QuickAccentCharacterSets);
             ApplyQuickAccentSettings();
@@ -813,6 +829,16 @@ public partial class MainWindow : Window
                 ? (Brush)FindResource("InkBrush")
                 : (Brush)FindResource("MutedBrush");
         }
+
+        if (ReferenceEquals(view, QuickAccentView))
+        {
+            UpdateQuickAccentPreviewSelection();
+            _quickAccentPreviewTimer.Start();
+        }
+        else
+        {
+            _quickAccentPreviewTimer.Stop();
+        }
     }
 
     private void RefreshStatistics()
@@ -825,6 +851,18 @@ public partial class MainWindow : Window
         CharactersSavedText.Text = characters.ToString("N0");
         TimeSavedText.Text = $"{Math.Ceiling(characters / 200d):N0} min";
         QuickAccentTotalText.Text = _usageService.QuickAccent.Count.ToString("N0");
+        AverageCharactersText.Text = total == 0
+            ? "0"
+            : $"{characters / (double)total:N0}";
+
+        var captures = _captureService.History;
+        CaptureTotalText.Text = captures.Count.ToString("N0");
+        CaptureRegionTotalText.Text = captures.Count(item =>
+            item.Type.Equals("regiao", StringComparison.OrdinalIgnoreCase)).ToString("N0");
+        CaptureMonitorTotalText.Text = captures.Count(item =>
+            item.Type.Equals("monitor", StringComparison.OrdinalIgnoreCase)).ToString("N0");
+        CaptureWindowTotalText.Text = captures.Count(item =>
+            item.Type.Equals("janela", StringComparison.OrdinalIgnoreCase)).ToString("N0");
 
         StatisticsRankingPanel.Children.Clear();
         var ranking = _snippets
@@ -953,6 +991,69 @@ public partial class MainWindow : Window
         await SaveQuickAccentSettingsAsync();
     }
 
+    private async void QuickAccentDelaySlider_OnValueChanged(
+        object sender,
+        RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (QuickAccentDelayBox is null)
+        {
+            return;
+        }
+
+        QuickAccentDelayBox.Text = ((int)Math.Round(e.NewValue)).ToString();
+        if (_initialized)
+        {
+            await SaveQuickAccentSettingsAsync();
+        }
+    }
+
+    private void QuickAccentPreviewChoice_OnMouseLeftButtonDown(
+        object sender,
+        MouseButtonEventArgs e)
+    {
+        if (sender is Border { Tag: string value } &&
+            int.TryParse(value, out var index))
+        {
+            _quickAccentPreviewIndex = Math.Clamp(index, 0, 7);
+            UpdateQuickAccentPreviewSelection();
+            _quickAccentPreviewTimer.Stop();
+            _quickAccentPreviewTimer.Start();
+        }
+    }
+
+    private void UpdateQuickAccentPreviewSelection()
+    {
+        if (QuickAccentPreviewChoice0 is null)
+        {
+            return;
+        }
+
+        var choices = new[]
+        {
+            QuickAccentPreviewChoice0,
+            QuickAccentPreviewChoice1,
+            QuickAccentPreviewChoice2,
+            QuickAccentPreviewChoice3,
+            QuickAccentPreviewChoice4,
+            QuickAccentPreviewChoice5,
+            QuickAccentPreviewChoice6,
+            QuickAccentPreviewChoice7
+        };
+        for (var index = 0; index < choices.Length; index++)
+        {
+            var selected = index == _quickAccentPreviewIndex;
+            choices[index].Background = (Brush)FindResource(
+                selected ? "AccentSubtleBrush" : "ControlBrush");
+            choices[index].BorderBrush = (Brush)FindResource(
+                selected ? "AccentBrush" : "DividerBrush");
+            if (choices[index].Child is TextBlock text)
+            {
+                text.Foreground = (Brush)FindResource(
+                    selected ? "AccentBrush" : "InkBrush");
+            }
+        }
+    }
+
     private async void QuickAccentCharacterSet_OnChanged(
         object sender,
         RoutedEventArgs e)
@@ -1010,6 +1111,13 @@ public partial class MainWindow : Window
             out var delay)
             ? Math.Clamp(delay, 0, 2000)
             : 200;
+        if (QuickAccentDelaySlider is not null)
+        {
+            QuickAccentDelaySlider.Value = Math.Clamp(
+                _settings.QuickAccentInputDelayMs,
+                (int)QuickAccentDelaySlider.Minimum,
+                (int)QuickAccentDelaySlider.Maximum);
+        }
         _settings.QuickAccentExcludedApps = QuickAccentExcludedAppsBox.Text;
         _settings.QuickAccentCharacterSets = SelectedQuickAccentCharacterSets();
         ApplyQuickAccentSettings();
@@ -1329,6 +1437,42 @@ public partial class MainWindow : Window
         }
 
         CaptureHistoryPanel.Children.Clear();
+        CapturePreviewImage.Source = null;
+        CapturePreviewEmptyPanel.Visibility = Visibility.Visible;
+        CapturePreviewDetailsText.Text = "Nenhuma captura realizada";
+
+        var mostRecent = _captureService.History.FirstOrDefault();
+        if (mostRecent is not null)
+        {
+            CapturePreviewDetailsText.Text =
+                $"{mostRecent.CreatedAt:dd/MM/yyyy HH:mm}  ·  {mostRecent.Type}  ·  " +
+                $"{mostRecent.Width}×{mostRecent.Height}";
+            if (!string.IsNullOrWhiteSpace(mostRecent.FilePath) &&
+                File.Exists(mostRecent.FilePath))
+            {
+                try
+                {
+                    using var stream = File.Open(
+                        mostRecent.FilePath,
+                        FileMode.Open,
+                        FileAccess.Read,
+                        FileShare.ReadWrite);
+                    var image = new BitmapImage();
+                    image.BeginInit();
+                    image.CacheOption = BitmapCacheOption.OnLoad;
+                    image.StreamSource = stream;
+                    image.EndInit();
+                    image.Freeze();
+                    CapturePreviewImage.Source = image;
+                    CapturePreviewEmptyPanel.Visibility = Visibility.Collapsed;
+                }
+                catch (IOException)
+                {
+                    // O histórico continua disponível mesmo se a miniatura não puder ser aberta.
+                }
+            }
+        }
+
         foreach (var item in _captureService.History.Take(6))
         {
             var file = string.IsNullOrWhiteSpace(item.FilePath)
