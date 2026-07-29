@@ -1157,8 +1157,8 @@ public partial class MainWindow : Window
         };
         if (shortcuts.Any(item => !GlobalCaptureShortcutService.IsValid(item)))
         {
-            error = "Use atalhos como Ctrl+Shift+PrintScreen ou Ctrl+Shift+WheelUp. " +
-                    "A roda do mouse sempre exige Ctrl, Alt, Shift ou Win.";
+            error = "Clique no campo e pressione uma tecla, roda ou botão do mouse. " +
+                    "A roda sempre exige Ctrl, Alt, Shift ou Win; cliques esquerdo e direito não são aceitos.";
             return false;
         }
         if (shortcuts.Distinct(StringComparer.OrdinalIgnoreCase).Count() != shortcuts.Length)
@@ -1275,7 +1275,9 @@ public partial class MainWindow : Window
                 var result = await _captureService.CaptureAndProcessAsync(
                     bounds.Value,
                     type,
-                    _settings.Capture);
+                    _settings.Capture,
+                    openEditor: action == CaptureShortcutAction.Region,
+                    owner: shouldHide ? null : this);
                 if (result is not null)
                 {
                     StatusText.Text = string.IsNullOrWhiteSpace(result.FilePath)

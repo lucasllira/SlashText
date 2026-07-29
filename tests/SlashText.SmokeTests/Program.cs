@@ -152,6 +152,103 @@ try
     Require(
         !GlobalCaptureShortcutService.IsValid("WheelUp"),
         "roda do mouse exige modificador");
+    Require(
+        GlobalCaptureShortcutService.FormatKeyboardShortcut(
+            System.Windows.Input.Key.F10,
+            System.Windows.Input.ModifierKeys.None) == "F10",
+        "grava tecla de função sem digitação manual");
+    Require(
+        GlobalCaptureShortcutService.FormatWheelShortcut(
+            120,
+            System.Windows.Input.ModifierKeys.Control |
+            System.Windows.Input.ModifierKeys.Shift) ==
+            "Ctrl+Shift+WheelUp",
+        "grava combinação com roda do mouse");
+    Require(
+        GlobalCaptureShortcutService.FormatMouseShortcut(
+            System.Windows.Input.MouseButton.XButton1,
+            System.Windows.Input.ModifierKeys.Alt) ==
+            "Alt+MouseX1",
+        "grava botão lateral do mouse");
+    Require(
+        GlobalCaptureShortcutService.IsValid("MouseX2") &&
+        GlobalCaptureShortcutService.IsValid("Ctrl+MouseMiddle"),
+        "botões do mouse são atalhos válidos");
+    Require(
+        !GlobalCaptureShortcutService.IsValid("MouseLeft") &&
+        !GlobalCaptureShortcutService.IsValid("MouseRight"),
+        "cliques essenciais do mouse permanecem livres");
+
+    using (var source = new System.Drawing.Bitmap(120, 90))
+    {
+        using (var graphics = System.Drawing.Graphics.FromImage(source))
+        {
+            graphics.Clear(System.Drawing.Color.White);
+        }
+
+        var annotationScenarios = new[]
+        {
+            new CaptureAnnotation
+            {
+                Kind = CaptureAnnotationKind.Arrow,
+                Start = new System.Windows.Point(10, 10),
+                End = new System.Windows.Point(90, 60)
+            },
+            new CaptureAnnotation
+            {
+                Kind = CaptureAnnotationKind.Highlighter,
+                Start = new System.Windows.Point(8, 45),
+                End = new System.Windows.Point(100, 45),
+                Argb = System.Drawing.Color.Gold.ToArgb()
+            },
+            new CaptureAnnotation
+            {
+                Kind = CaptureAnnotationKind.Rectangle,
+                Start = new System.Windows.Point(15, 15),
+                End = new System.Windows.Point(80, 65)
+            },
+            new CaptureAnnotation
+            {
+                Kind = CaptureAnnotationKind.Ellipse,
+                Start = new System.Windows.Point(20, 15),
+                End = new System.Windows.Point(85, 70)
+            },
+            new CaptureAnnotation
+            {
+                Kind = CaptureAnnotationKind.Pencil,
+                Points =
+                [
+                    new System.Windows.Point(5, 5),
+                    new System.Windows.Point(40, 30),
+                    new System.Windows.Point(75, 12)
+                ]
+            },
+            new CaptureAnnotation
+            {
+                Kind = CaptureAnnotationKind.Text,
+                Start = new System.Windows.Point(10, 20),
+                Text = "Teste"
+            },
+            new CaptureAnnotation
+            {
+                Kind = CaptureAnnotationKind.Number,
+                Start = new System.Windows.Point(55, 42),
+                Text = "1"
+            }
+        };
+
+        foreach (var annotation in annotationScenarios)
+        {
+            using var renderedCapture = CaptureAnnotationRenderer.Render(
+                source,
+                [annotation],
+                120,
+                90);
+            Require(
+                HasChangedPixel(renderedCapture),
+                $"renderiza ferramenta {annotation.Kind}");
+        }
+    }
 }
 finally
 {
@@ -163,6 +260,22 @@ finally
 
 Console.WriteLine("SlashText smoke tests: OK");
 return;
+
+static bool HasChangedPixel(System.Drawing.Bitmap bitmap)
+{
+    for (var y = 0; y < bitmap.Height; y += 2)
+    {
+        for (var x = 0; x < bitmap.Width; x += 2)
+        {
+            if (bitmap.GetPixel(x, y).ToArgb() !=
+                System.Drawing.Color.White.ToArgb())
+            {
+                return true;
+            }
+        }
+    }
+    return false;
+}
 
 static void Require(bool condition, string scenario)
 {

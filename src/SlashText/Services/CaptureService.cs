@@ -76,53 +76,100 @@ public sealed class CaptureService
     public async Task<CaptureRecord?> CaptureAndProcessAsync(
         Rectangle bounds,
         string type,
-        CaptureSettings settings)
+        CaptureSettings settings,
+        bool openEditor = false,
+        Window? owner = null)
     {
         if (bounds.Width <= 0 || bounds.Height <= 0)
         {
             return null;
         }
 
-        using var bitmap = new Bitmap(
+        using var captured = CaptureBitmap(bounds);
+        Bitmap output = captured;
+        var save = settings.SaveAutomatically;
+        var copy = settings.CopyToClipboard;
+        try
+        {
+            if (openEditor)
+            {
+                var editor = new CaptureEditorWindow(captured);
+                if (owner is { IsVisible: true })
+                {
+                    editor.Owner = owner;
+                    editor.WindowStartupLocation =
+                        WindowStartupLocation.CenterOwner;
+                }
+                if (editor.ShowDialog() != true ||
+                    editor.EditedBitmap is null)
+                {
+                    return null;
+                }
+
+                output = editor.EditedBitmap;
+                switch (editor.RequestedOutput)
+                {
+                    case CaptureEditorOutput.Clipboard:
+                        save = false;
+                        copy = true;
+                        break;
+                    case CaptureEditorOutput.File:
+                        save = true;
+                        copy = false;
+                        break;
+                }
+            }
+
+            string filePath = string.Empty;
+            if (save)
+            {
+                filePath = Save(output, type, settings);
+            }
+            if (copy)
+            {
+                CopyToClipboard(output);
+            }
+
+            var record = new CaptureRecord
+            {
+                CreatedAt = DateTimeOffset.Now,
+                Type = type,
+                FilePath = filePath,
+                Width = output.Width,
+                Height = output.Height
+            };
+            _history.Insert(0, record);
+            if (_history.Count > 30)
+            {
+                _history.RemoveRange(30, _history.Count - 30);
+            }
+            await _historyStore.SaveAsync(_history);
+            return record;
+        }
+        finally
+        {
+            if (!ReferenceEquals(output, captured))
+            {
+                output.Dispose();
+            }
+        }
+    }
+
+    public static Bitmap CaptureBitmap(Rectangle bounds)
+    {
+        var bitmap = new Bitmap(
             bounds.Width,
             bounds.Height,
             PixelFormat.Format32bppArgb);
-        using (var graphics = Graphics.FromImage(bitmap))
-        {
-            graphics.CopyFromScreen(
-                bounds.Left,
-                bounds.Top,
-                0,
-                0,
-                bounds.Size,
-                CopyPixelOperation.SourceCopy);
-        }
-
-        string filePath = string.Empty;
-        if (settings.SaveAutomatically)
-        {
-            filePath = Save(bitmap, type, settings);
-        }
-        if (settings.CopyToClipboard)
-        {
-            CopyToClipboard(bitmap);
-        }
-
-        var record = new CaptureRecord
-        {
-            CreatedAt = DateTimeOffset.Now,
-            Type = type,
-            FilePath = filePath,
-            Width = bitmap.Width,
-            Height = bitmap.Height
-        };
-        _history.Insert(0, record);
-        if (_history.Count > 30)
-        {
-            _history.RemoveRange(30, _history.Count - 30);
-        }
-        await _historyStore.SaveAsync(_history);
-        return record;
+        using var graphics = Graphics.FromImage(bitmap);
+        graphics.CopyFromScreen(
+            bounds.Left,
+            bounds.Top,
+            0,
+            0,
+            bounds.Size,
+            CopyPixelOperation.SourceCopy);
+        return bitmap;
     }
 
     public static string ResolveDirectoryTemplate(string template, DateTimeOffset now)
