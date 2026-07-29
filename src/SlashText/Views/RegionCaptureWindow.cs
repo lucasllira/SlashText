@@ -40,7 +40,7 @@ public sealed class RegionCaptureWindow : Window
         {
             Background = new SolidColorBrush(Color.FromArgb(220, 24, 32, 43)),
             CornerRadius = new CornerRadius(8),
-            Padding = new Thickness(14, 9),
+            Padding = new Thickness(14, 9, 14, 9),
             Child = new TextBlock
             {
                 Text = "Arraste para selecionar · Esc cancela",
