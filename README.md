@@ -1,53 +1,80 @@
-# SlashText
+# SlashDesk
 
-Aplicativo portátil para Windows que expande atalhos iniciados por `/` ou `:` em Outlook,
-Teams, navegadores e outros campos de texto.
+Utilitário portátil e local para Windows que reúne expansão de texto, Acento
+Rápido e captura de tela. Foi pensado para ambientes pessoais e corporativos
+onde instalar vários aplicativos ou enviar conteúdo para a nuvem não é uma opção.
+
+> O projeto continua no repositório `SlashText` para preservar links e histórico.
+> A partir da versão 2.0, o produto e o executável se chamam **SlashDesk**.
 
 ## Recursos
 
-- criação, edição, pesquisa e exclusão pela interface;
-- categorias recolhíveis na navegação lateral;
-- armazenamento legível em `SlashTextData/snippets.md`;
-- texto simples ou formatado com fonte, tamanho, negrito, itálico, sublinhado,
-  cor, marca-texto, alinhamento, listas, tabelas e hiperlink;
-- campos preenchíveis antes da expansão, como `{{nome}}`;
-- datas abreviadas ou extensas, mês e dia da semana abreviados ou por extenso;
-- cálculos como `{{data:-7d}}`, `{{data:+1m}}` e `{{data:+1y}}`;
-- `{{tab}}` para preencher campos em sequência, como assunto e corpo do e-mail;
-- preview em tempo real e catálogo de variáveis clicáveis com descrições;
-- imagens e formatação rica com preview dentro do aplicativo;
-- Acento Rápido com conjuntos configuráveis e estatísticas próprias;
-- imagens incorporadas em aplicativos que aceitam conteúdo HTML;
-- sugestões flutuantes ao digitar `/` ou `:`;
-- Acento Rápido opcional para teclados sem teclas acentuadas;
-- estatísticas locais e atalhos mais usados;
-- temas claro, escuro profundo e automático;
-- minimização para a bandeja e inicialização opcional com o Windows;
-- um backup diário consolidado de atalhos, preferências e estatísticas,
-  com retenção dos últimos sete dias;
-- publicação self-contained e single-file para Windows x64.
+### Atalhos de texto
 
-## Variáveis
+- atalhos iniciados por `/` ou `:` em Outlook, Teams, navegadores e outros apps;
+- texto simples ou formatado com fonte, tamanho, cores, marca-texto, listas,
+  alinhamento, tabelas, imagens e hiperlinks;
+- variáveis preenchíveis, datas automáticas, cálculos de data e `{{tab}}`;
+- sugestões flutuantes, preview e estatísticas locais.
+
+### Acento Rápido
+
+- conjuntos configuráveis, incluindo somente Português (Brasil);
+- suporte a Caps Lock, Shift e layouts de teclado diferentes;
+- posição, atraso, ordenação e aplicativos excluídos configuráveis.
+
+### Captura local
+
+- monitor ativo;
+- seleção livre de região;
+- reconhecimento da janela sob o cursor;
+- atalho global independente para cada ação;
+- atalhos de teclado ou combinações com a roda do mouse, como
+  `Ctrl+Shift+WheelUp`;
+- pasta automática com variáveis `{year}`, `{month}`, `{month-name}` e `{day}`;
+- nome com `{date}`, `{time}`, `{type}` e `{app}`;
+- PNG ou JPEG com qualidade configurável;
+- salvamento automático, clipboard e histórico local das últimas capturas;
+- sem upload, conta ou compartilhamento externo.
+
+## Primeira inicialização e atualizações
+
+Na primeira abertura, o SlashDesk apresenta as funções principais e explica onde
+os dados permanecem. A verificação de atualização consulta somente o último
+GitHub Release e pode ser desativada em **Configurações**. Ela não envia atalhos,
+capturas, estatísticas ou identificadores pessoais.
+
+## Arquivos portáteis
+
+O pacote contém apenas:
+
+```text
+SlashDesk.exe
+SlashDeskData/
+└── snippets.md
+```
+
+Durante o uso, a pasta `SlashDeskData` também pode conter:
+
+- `settings.json`: preferências;
+- `usage.json`: contadores locais;
+- `capture-history.json`: tipo, horário, tamanho e caminho das capturas recentes;
+- `assets/`: imagens usadas nos atalhos;
+- `backups/`: um ZIP por dia, com retenção de sete dias.
+
+A atualização migra automaticamente `SlashTextData` para `SlashDeskData`, com
+prioridade para os dados reais do usuário.
+
+## Variáveis de texto
 
 | Variável | Resultado |
 |---|---|
 | `{{nome}}` | Solicita um valor antes de inserir |
 | `{{campo\|padrão}}` | Campo preenchível com valor sugerido |
-| `{{data}}` | Data atual |
-| `{{data_curta}}` | Data abreviada |
-| `{{data_extensa}}` | Data por extenso |
-| `{{hora}}` | Hora atual |
-| `{{datahora}}` ou `{{agora}}` | Data e hora |
-| `{{dia}}`, `{{mes}}`, `{{ano}}` | Partes numéricas da data |
-| `{{mes_nome}}`, `{{mes_curto}}` | Mês extenso ou abreviado |
-| `{{dia_semana}}`, `{{dia_semana_curto}}` | Dia extenso ou abreviado |
-| `{{ano_curto}}`, `{{semana}}` | Ano com 2 dígitos e semana |
-| `{{usuario}}` | Usuário atual do Windows |
+| `{{data}}`, `{{hora}}`, `{{agora}}` | Data e hora |
 | `{{data:+7d}}` | Data calculada; aceita `d`, `m` e `y` |
+| `{{usuario}}` | Usuário atual do Windows |
 | `{{tab}}` | Pressiona Tab e continua no próximo campo |
-
-Os formatos podem ser personalizados, por exemplo:
-`{{data:+7d|dddd, dd 'de' MMMM}}`.
 
 ## Executar e publicar
 
@@ -69,26 +96,26 @@ dotnet publish .\src\SlashText\SlashText.csproj `
   -o .\publish
 ```
 
-## Privacidade
+## Privacidade e limitações do Windows
 
-O SlashText não envia dados para a internet. O detector global mantém apenas um
-buffer curto iniciado por `/`. As estatísticas registram o identificador do atalho,
-a contagem, a data do último uso e a quantidade estimada de caracteres poupados.
+O conteúdo digitado e as imagens capturadas não saem do computador. O histórico
+de captura não armazena a imagem, apenas metadados locais necessários para a
+lista de recentes.
 
-## Arquivos portáteis
+O Windows pode bloquear capturas da área de trabalho segura, conteúdo com DRM ou
+aplicativos elevados quando o SlashDesk não está no mesmo nível de permissão.
+Atalhos já reservados pelo Windows ou por outro programa também podem ser
+recusados; o aplicativo informa o conflito.
 
-- `SlashText.exe`: aplicativo single-file;
-- `SlashTextData/snippets.md`: atalhos e formatação legível;
-- `SlashTextData/assets/`: imagens adicionadas aos atalhos;
-- `SlashTextData/settings.json`: preferências locais;
-- `SlashTextData/usage.json`: contadores anônimos de uso;
-- `SlashTextData/backups/`: um ZIP por dia, no máximo sete, contendo atalhos,
-  preferências e estatísticas.
+## Próximas etapas
 
-Os arquivos JSON são dados pequenos criados durante o uso, não dependências do app.
-DLLs permanecem incorporadas ao executável publicado. Ao iniciar a versão 1.4.0,
-arquivos de dados de versões anteriores são movidos automaticamente para
-`SlashTextData`.
+- editor de captura com setas, texto, marca-texto, recorte e desfoque;
+- gravação local de MP4 e GIF, com região/janela/monitor, FPS e cursor;
+- captura com atraso e captura com rolagem;
+- assinatura digital para facilitar distribuição corporativa.
+
+Gravação e GIF permanecem no roadmap até que o pipeline de mídia seja validado
+de ponta a ponta; a interface não mostra ações que ainda não funcionem.
 
 ## Licença
 

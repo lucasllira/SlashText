@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
@@ -24,6 +25,9 @@ public partial class MainWindow : Window
     private readonly UsageService _usageService = new();
     private readonly QuickAccentService _quickAccentService = new();
     private readonly BackupService _backupService = new();
+    private readonly CaptureService _captureService = new();
+    private readonly GlobalCaptureShortcutService _captureShortcuts = new();
+    private readonly UpdateService _updateService = new();
     private readonly JsonFileStore<AppSettings> _settingsStore = new(AppPaths.SettingsFile);
     private readonly ObservableCollection<Snippet> _snippets = [];
     private readonly SuggestionWindow _suggestionWindow = new();
@@ -50,6 +54,7 @@ public partial class MainWindow : Window
         _keyboardHook.SuggestionsChanged += KeyboardHook_OnSuggestionsChanged;
         _quickAccentService.Changed += QuickAccentService_OnChanged;
         _quickAccentService.CharacterInserted += QuickAccentService_OnCharacterInserted;
+        _captureShortcuts.Triggered += CaptureShortcuts_OnTriggered;
     }
 
     private async void MainWindow_OnLoaded(object sender, RoutedEventArgs e)
@@ -66,6 +71,7 @@ public partial class MainWindow : Window
             CloseToTrayCheckBox.IsChecked = _settings.CloseToTray;
             StartWithWindowsCheckBox.IsChecked = _settings.StartWithWindows;
             ShowSuggestionsCheckBox.IsChecked = _settings.ShowSuggestions;
+            CheckUpdatesCheckBox.IsChecked = _settings.CheckUpdatesOnStartup;
             SelectComboByTag(ThemeBox, _settings.Theme);
             QuickAccentEnabledCheckBox.IsChecked = _settings.QuickAccentEnabled;
             SelectComboByTag(QuickAccentActivationBox, _settings.QuickAccentActivationKey);
@@ -76,6 +82,8 @@ public partial class MainWindow : Window
             QuickAccentExcludedAppsBox.Text = _settings.QuickAccentExcludedApps;
             ApplyQuickAccentCharacterSetSelection(_settings.QuickAccentCharacterSets);
             ApplyQuickAccentSettings();
+            await _captureService.LoadAsync();
+            LoadCaptureSettings();
             _initialized = true;
 
             var loaded = await _repository.LoadAsync();
@@ -96,12 +104,26 @@ public partial class MainWindow : Window
             RefreshStatistics();
             ShowView(ShortcutsView, ShortcutsTabButton);
             StatusText.Text = $"{_snippets.Count} atalho(s) carregado(s)";
+            ConfigureCaptureShortcuts();
+            RefreshCaptureHistory();
+
+            if (!_settings.OnboardingCompleted)
+            {
+                var onboarding = new OnboardingWindow { Owner = this };
+                onboarding.ShowDialog();
+                _settings.OnboardingCompleted = true;
+                await _settingsStore.SaveAsync(_settings);
+            }
+            if (_settings.CheckUpdatesOnStartup)
+            {
+                _ = CheckUpdatesSilentlyAsync();
+            }
         }
         catch (Exception exception)
         {
             MessageBox.Show(
-                $"Não foi possível iniciar o SlashText.\n\n{exception.Message}",
-                "SlashText",
+                $"Não foi possível iniciar o SlashDesk.\n\n{exception.Message}",
+                "SlashDesk",
                 MessageBoxButton.OK,
                 MessageBoxImage.Warning);
             BeginNewSnippet();
@@ -124,7 +146,7 @@ public partial class MainWindow : Window
         }
 
         var menu = new Forms.ContextMenuStrip();
-        menu.Items.Add("Abrir SlashText", null, (_, _) => Dispatcher.Invoke(ShowFromTray));
+        menu.Items.Add("Abrir SlashDesk", null, (_, _) => Dispatcher.Invoke(ShowFromTray));
         menu.Items.Add("Novo atalho", null, (_, _) => Dispatcher.Invoke(() =>
         {
             ShowFromTray();
@@ -135,7 +157,7 @@ public partial class MainWindow : Window
 
         _trayIcon = new Forms.NotifyIcon
         {
-            Text = "SlashText · Monitoramento ativo",
+            Text = "SlashDesk · Monitoramento ativo",
             Icon = icon ?? DrawingSystemIcons.Application,
             ContextMenuStrip = menu,
             Visible = true
@@ -404,7 +426,7 @@ public partial class MainWindow : Window
             _keyboardHook.UpdateSnippets(_snippets);
             RefreshNavigation();
             RefreshStatistics();
-            StatusText.Text = "Salvo em SlashTextData/snippets.md";
+            StatusText.Text = "Salvo em SlashDeskData/snippets.md";
         }
         catch (Exception exception)
         {
@@ -425,7 +447,7 @@ public partial class MainWindow : Window
 
         if (MessageBox.Show(
                 $"Excluir o atalho {_selected.Trigger}?",
-                "SlashText",
+                "SlashDesk",
                 MessageBoxButton.YesNo,
                 MessageBoxImage.Question) != MessageBoxResult.Yes)
         {
@@ -746,6 +768,12 @@ public partial class MainWindow : Window
     private void QuickAccentTab_OnClick(object sender, RoutedEventArgs e) =>
         ShowView(QuickAccentView, QuickAccentTabButton);
 
+    private void CaptureTab_OnClick(object sender, RoutedEventArgs e)
+    {
+        RefreshCaptureHistory();
+        ShowView(CaptureView, CaptureTabButton);
+    }
+
     private void StatisticsTab_OnClick(object sender, RoutedEventArgs e)
     {
         RefreshStatistics();
@@ -762,7 +790,7 @@ public partial class MainWindow : Window
     {
         var views = new UIElement[]
         {
-            ShortcutsView, QuickAccentView, StatisticsView, SettingsView, AboutView
+            ShortcutsView, QuickAccentView, CaptureView, StatisticsView, SettingsView, AboutView
         };
         foreach (var item in views)
         {
@@ -773,7 +801,7 @@ public partial class MainWindow : Window
 
         var buttons = new[]
         {
-            ShortcutsTabButton, QuickAccentTabButton, StatisticsTabButton,
+            ShortcutsTabButton, QuickAccentTabButton, CaptureTabButton, StatisticsTabButton,
             SettingsTabButton, AboutTabButton
         };
         foreach (var button in buttons)
@@ -875,6 +903,7 @@ public partial class MainWindow : Window
         _settings.CloseToTray = CloseToTrayCheckBox.IsChecked == true;
         _settings.StartWithWindows = StartWithWindowsCheckBox.IsChecked == true;
         _settings.ShowSuggestions = ShowSuggestionsCheckBox.IsChecked == true;
+        _settings.CheckUpdatesOnStartup = CheckUpdatesCheckBox.IsChecked == true;
 
         try
         {
@@ -1084,6 +1113,302 @@ public partial class MainWindow : Window
         box.SelectedIndex = 0;
     }
 
+    private void LoadCaptureSettings()
+    {
+        var capture = _settings.Capture ??= new CaptureSettings();
+        CaptureMonitorShortcutBox.Text = capture.ActiveMonitorShortcut;
+        CaptureRegionShortcutBox.Text = capture.RegionShortcut;
+        CaptureWindowShortcutBox.Text = capture.WindowShortcut;
+        CaptureDirectoryBox.Text = capture.OutputDirectoryTemplate;
+        CaptureFileNameBox.Text = capture.FileNameTemplate;
+        SelectComboByTag(CaptureFormatBox, capture.ImageFormat);
+        CaptureQualityBox.Text = capture.JpegQuality.ToString();
+        CaptureClipboardCheckBox.IsChecked = capture.CopyToClipboard;
+        CaptureAutoSaveCheckBox.IsChecked = capture.SaveAutomatically;
+        CaptureQualityBox.IsEnabled =
+            capture.ImageFormat.Equals("JPEG", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private async void SaveCaptureSettings_OnClick(object sender, RoutedEventArgs e)
+    {
+        if (!TryReadCaptureSettings(out var error))
+        {
+            MessageBox.Show(
+                error,
+                "Configuração de captura",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+            return;
+        }
+
+        await _settingsStore.SaveAsync(_settings);
+        ConfigureCaptureShortcuts();
+        StatusText.Text = "Configurações de captura salvas";
+    }
+
+    private bool TryReadCaptureSettings(out string error)
+    {
+        error = string.Empty;
+        var shortcuts = new[]
+        {
+            CaptureMonitorShortcutBox.Text.Trim(),
+            CaptureRegionShortcutBox.Text.Trim(),
+            CaptureWindowShortcutBox.Text.Trim()
+        };
+        if (shortcuts.Any(item => !GlobalCaptureShortcutService.IsValid(item)))
+        {
+            error = "Use atalhos como Ctrl+Shift+PrintScreen ou Ctrl+Shift+WheelUp. " +
+                    "A roda do mouse sempre exige Ctrl, Alt, Shift ou Win.";
+            return false;
+        }
+        if (shortcuts.Distinct(StringComparer.OrdinalIgnoreCase).Count() != shortcuts.Length)
+        {
+            error = "Cada ação precisa ter um atalho diferente.";
+            return false;
+        }
+        if (string.IsNullOrWhiteSpace(CaptureDirectoryBox.Text) ||
+            string.IsNullOrWhiteSpace(CaptureFileNameBox.Text))
+        {
+            error = "Informe a pasta e o modelo de nome do arquivo.";
+            return false;
+        }
+
+        var quality = int.TryParse(CaptureQualityBox.Text, out var parsedQuality)
+            ? Math.Clamp(parsedQuality, 1, 100)
+            : 90;
+        _settings.Capture = new CaptureSettings
+        {
+            ActiveMonitorShortcut = shortcuts[0],
+            RegionShortcut = shortcuts[1],
+            WindowShortcut = shortcuts[2],
+            OutputDirectoryTemplate = CaptureDirectoryBox.Text.Trim(),
+            FileNameTemplate = CaptureFileNameBox.Text.Trim(),
+            ImageFormat = SelectedTag(CaptureFormatBox, "PNG"),
+            JpegQuality = quality,
+            CopyToClipboard = CaptureClipboardCheckBox.IsChecked == true,
+            SaveAutomatically = CaptureAutoSaveCheckBox.IsChecked == true,
+            HideSlashDeskDuringCapture = true
+        };
+        CaptureQualityBox.Text = quality.ToString();
+        return true;
+    }
+
+    private void ConfigureCaptureShortcuts()
+    {
+        var capture = _settings.Capture;
+        var errors = _captureShortcuts.Configure(
+            this,
+            capture.ActiveMonitorShortcut,
+            capture.RegionShortcut,
+            capture.WindowShortcut);
+        CaptureShortcutStatusText.Text = errors.Count == 0
+            ? "● Atalhos ativos"
+            : string.Join(Environment.NewLine, errors);
+        CaptureShortcutStatusText.Foreground = errors.Count == 0
+            ? (Brush)FindResource("SuccessBrush")
+            : (Brush)FindResource("MutedBrush");
+    }
+
+    private void CaptureShortcuts_OnTriggered(
+        object? sender,
+        CaptureShortcutEventArgs e) =>
+        _ = RunCaptureAsync(e.Action, invokedByShortcut: true);
+
+    private void CaptureActiveMonitor_OnClick(object sender, RoutedEventArgs e) =>
+        _ = RunCaptureAsync(CaptureShortcutAction.ActiveMonitor, invokedByShortcut: false);
+
+    private void CaptureRegion_OnClick(object sender, RoutedEventArgs e) =>
+        _ = RunCaptureAsync(CaptureShortcutAction.Region, invokedByShortcut: false);
+
+    private void CaptureWindow_OnClick(object sender, RoutedEventArgs e) =>
+        _ = RunCaptureAsync(CaptureShortcutAction.Window, invokedByShortcut: false);
+
+    private async Task RunCaptureAsync(
+        CaptureShortcutAction action,
+        bool invokedByShortcut)
+    {
+        try
+        {
+            System.Drawing.Rectangle? bounds = null;
+            var type = action switch
+            {
+                CaptureShortcutAction.ActiveMonitor => "monitor",
+                CaptureShortcutAction.Region => "regiao",
+                _ => "janela"
+            };
+
+            if (action == CaptureShortcutAction.ActiveMonitor)
+            {
+                bounds = _captureService.ActiveMonitorBounds();
+            }
+
+            var wasVisible = IsVisible;
+            var shouldHide =
+                _settings.Capture.HideSlashDeskDuringCapture &&
+                wasVisible &&
+                !invokedByShortcut;
+            if (shouldHide)
+            {
+                Hide();
+                await Task.Delay(180);
+            }
+
+            if (action == CaptureShortcutAction.Region)
+            {
+                var region = _captureService.SelectRegion(null);
+                if (region is not null)
+                {
+                    bounds = new System.Drawing.Rectangle(
+                        (int)Math.Round(region.Value.X),
+                        (int)Math.Round(region.Value.Y),
+                        (int)Math.Round(region.Value.Width),
+                        (int)Math.Round(region.Value.Height));
+                }
+            }
+            else if (action == CaptureShortcutAction.Window)
+            {
+                bounds = _captureService.WindowUnderCursorBounds();
+            }
+
+            if (bounds is not null)
+            {
+                var result = await _captureService.CaptureAndProcessAsync(
+                    bounds.Value,
+                    type,
+                    _settings.Capture);
+                if (result is not null)
+                {
+                    StatusText.Text = string.IsNullOrWhiteSpace(result.FilePath)
+                        ? $"Captura de {type} copiada"
+                        : $"Captura salva: {Path.GetFileName(result.FilePath)}";
+                    RefreshCaptureHistory();
+                    _trayIcon?.ShowBalloonTip(
+                        1500,
+                        "Captura concluída",
+                        string.IsNullOrWhiteSpace(result.FilePath)
+                            ? "Imagem copiada para o clipboard."
+                            : result.FilePath,
+                        Forms.ToolTipIcon.Info);
+                }
+            }
+
+            if (shouldHide)
+            {
+                ShowFromTray();
+            }
+        }
+        catch (Exception exception)
+        {
+            ShowFromTray();
+            MessageBox.Show(
+                exception.Message,
+                "Não foi possível capturar",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+        }
+    }
+
+    private void CaptureFormat_OnChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (CaptureQualityBox is not null && CaptureFormatBox is not null)
+        {
+            CaptureQualityBox.IsEnabled =
+                SelectedTag(CaptureFormatBox, "PNG").Equals(
+                    "JPEG",
+                    StringComparison.OrdinalIgnoreCase);
+        }
+    }
+
+    private void RefreshCaptureHistory()
+    {
+        if (CaptureHistoryPanel is null)
+        {
+            return;
+        }
+
+        CaptureHistoryPanel.Children.Clear();
+        foreach (var item in _captureService.History.Take(6))
+        {
+            var file = string.IsNullOrWhiteSpace(item.FilePath)
+                ? "Somente clipboard"
+                : Path.GetFileName(item.FilePath);
+            CaptureHistoryPanel.Children.Add(new TextBlock
+            {
+                Text = $"{item.CreatedAt:dd/MM HH:mm} · {item.Type} · " +
+                       $"{item.Width}×{item.Height} · {file}",
+                Margin = new Thickness(0, 0, 0, 7),
+                TextTrimming = TextTrimming.CharacterEllipsis,
+                Foreground = (Brush)FindResource("MutedBrush")
+            });
+        }
+        if (CaptureHistoryPanel.Children.Count == 0)
+        {
+            CaptureHistoryPanel.Children.Add(new TextBlock
+            {
+                Text = "As últimas capturas aparecerão aqui.",
+                Foreground = (Brush)FindResource("MutedBrush")
+            });
+        }
+    }
+
+    private void OpenCaptureFolder_OnClick(object sender, RoutedEventArgs e)
+    {
+        var directory = CaptureService.ResolveDirectoryTemplate(
+            Environment.ExpandEnvironmentVariables(_settings.Capture.OutputDirectoryTemplate),
+            DateTimeOffset.Now);
+        Directory.CreateDirectory(directory);
+        Process.Start(new ProcessStartInfo(directory) { UseShellExecute = true });
+    }
+
+    private async void CheckUpdates_OnClick(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var result = await _updateService.CheckAsync();
+            var choice = MessageBox.Show(
+                result.Message + (result.Url is null ? string.Empty : "\n\nAbrir a página de download?"),
+                "Atualizações do SlashDesk",
+                result.Url is null ? MessageBoxButton.OK : MessageBoxButton.YesNo,
+                result.UpdateAvailable ? MessageBoxImage.Information : MessageBoxImage.None);
+            if (choice == MessageBoxResult.Yes && result.Url is not null)
+            {
+                Process.Start(new ProcessStartInfo(result.Url) { UseShellExecute = true });
+            }
+        }
+        catch (Exception exception)
+        {
+            MessageBox.Show(
+                $"Não foi possível consultar o GitHub.\n\n{exception.Message}",
+                "Atualizações do SlashDesk",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+        }
+    }
+
+    private async Task CheckUpdatesSilentlyAsync()
+    {
+        try
+        {
+            var result = await _updateService.CheckAsync();
+            if (result.UpdateAvailable)
+            {
+                Dispatcher.Invoke(() =>
+                {
+                    StatusText.Text = result.Message;
+                    _trayIcon?.ShowBalloonTip(
+                        2500,
+                        "Atualização disponível",
+                        result.Message,
+                        Forms.ToolTipIcon.Info);
+                });
+            }
+        }
+        catch
+        {
+            // A inicialização nunca é bloqueada por uma consulta opcional.
+        }
+    }
+
     private void OpenGitHub_OnClick(object sender, RoutedEventArgs e)
     {
         Process.Start(new ProcessStartInfo(
@@ -1187,7 +1512,7 @@ public partial class MainWindow : Window
             Hide();
             _trayIcon?.ShowBalloonTip(
                 1800,
-                "SlashText continua ativo",
+                "SlashDesk continua ativo",
                 "Use o ícone da bandeja para abrir ou sair.",
                 Forms.ToolTipIcon.Info);
             return;
@@ -1230,6 +1555,8 @@ public partial class MainWindow : Window
         _quickAccentService.Changed -= QuickAccentService_OnChanged;
         _quickAccentService.CharacterInserted -= QuickAccentService_OnCharacterInserted;
         _quickAccentService.Dispose();
+        _captureShortcuts.Triggered -= CaptureShortcuts_OnTriggered;
+        _captureShortcuts.Dispose();
         _suggestionWindow.Close();
         _quickAccentWindow.Close();
         if (_trayIcon is not null)

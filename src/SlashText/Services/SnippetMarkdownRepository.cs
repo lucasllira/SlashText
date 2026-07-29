@@ -9,7 +9,7 @@ namespace SlashText.Services;
 public sealed partial class SnippetMarkdownRepository
 {
     private const string Header =
-        "# Meus atalhos\n\n<!-- Arquivo gerado pelo SlashText. A edição manual é opcional. -->\n\n";
+        "# Meus atalhos\n\n<!-- Arquivo gerado pelo SlashDesk. A edição manual é opcional. -->\n\n";
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,

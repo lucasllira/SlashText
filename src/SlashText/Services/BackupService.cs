@@ -34,7 +34,7 @@ public sealed class BackupService
         Directory.CreateDirectory(_backupDirectory);
         var destination = Path.Combine(
             _backupDirectory,
-            $"SlashText-backup-{DateTime.Now:yyyyMMdd}.zip");
+            $"SlashDesk-backup-{DateTime.Now:yyyyMMdd}.zip");
         if (!File.Exists(destination))
         {
             using var archive = ZipFile.Open(destination, ZipArchiveMode.Create);
@@ -48,7 +48,7 @@ public sealed class BackupService
         }
 
         foreach (var backup in new DirectoryInfo(_backupDirectory)
-                     .GetFiles("SlashText-backup-*.zip")
+                     .GetFiles("*-backup-*.zip")
                      .OrderByDescending(item => item.Name)
                      .Skip(RetentionDays))
         {

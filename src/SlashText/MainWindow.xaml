@@ -1,8 +1,8 @@
 <Window x:Class="SlashText.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="SlashText"
-        Icon="Assets/SlashText.ico"
+        Title="SlashDesk"
+        Icon="Assets/SlashDesk.ico"
         Width="1320"
         Height="850"
         MinWidth="1080"
@@ -25,18 +25,18 @@
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
             <StackPanel Orientation="Horizontal">
-                <Image Source="Assets/SlashText.png"
+                <Image Source="Assets/SlashDesk.png"
                        Width="40"
                        Height="40"
                        Margin="0,0,12,0"
                        RenderOptions.BitmapScalingMode="HighQuality"/>
                 <StackPanel>
-                    <TextBlock Text="SlashText"
+                    <TextBlock Text="SlashDesk"
                                FontFamily="Segoe UI Variable Display"
                                FontSize="27"
                                FontWeight="SemiBold"
                                Foreground="{DynamicResource InkBrush}"/>
-                    <TextBlock Text="Seus textos prontos, em qualquer lugar."
+                    <TextBlock Text="Produtividade local, em um só lugar."
                                Foreground="{DynamicResource MutedBrush}"/>
                 </StackPanel>
             </StackPanel>
@@ -66,6 +66,9 @@
                 <Button x:Name="QuickAccentTabButton" Content="Acento Rápido"
                         Style="{StaticResource NavButton}"
                         Click="QuickAccentTab_OnClick"/>
+                <Button x:Name="CaptureTabButton" Content="Captura"
+                        Style="{StaticResource NavButton}"
+                        Click="CaptureTab_OnClick"/>
                 <Button x:Name="StatisticsTabButton" Content="Estatísticas"
                         Style="{StaticResource NavButton}"
                         Click="StatisticsTab_OnClick"/>
@@ -192,10 +195,11 @@
                                     </StackPanel>
                                 </Grid>
 
-                                <WrapPanel x:Name="FormattingToolbar" Grid.Row="4" Visibility="Collapsed">
-                                    <TextBlock Text="Formatação" VerticalAlignment="Center" Margin="0,0,10,0"
-                                               Foreground="{DynamicResource MutedBrush}"/>
-                                    <ComboBox x:Name="FontFamilyBox"
+                                <StackPanel x:Name="FormattingToolbar" Grid.Row="4" Visibility="Collapsed">
+                                    <WrapPanel>
+                                        <TextBlock Text="Texto" VerticalAlignment="Center" Width="76"
+                                                   Foreground="{DynamicResource MutedBrush}"/>
+                                        <ComboBox x:Name="FontFamilyBox"
                                               Width="132"
                                               MinHeight="34"
                                               Margin="0,0,6,6"
@@ -207,8 +211,8 @@
                                         <ComboBoxItem Content="Calibri" Tag="Calibri"/>
                                         <ComboBoxItem Content="Georgia" Tag="Georgia"/>
                                         <ComboBoxItem Content="Consolas" Tag="Consolas"/>
-                                    </ComboBox>
-                                    <ComboBox x:Name="FontSizeBox"
+                                        </ComboBox>
+                                        <ComboBox x:Name="FontSizeBox"
                                               Width="68"
                                               MinHeight="34"
                                               Margin="0,0,6,6"
@@ -223,8 +227,8 @@
                                         <ComboBoxItem Content="16" Tag="21.333"/>
                                         <ComboBoxItem Content="18" Tag="24"/>
                                         <ComboBoxItem Content="24" Tag="32"/>
-                                    </ComboBox>
-                                    <Button Content="B" FontWeight="Bold"
+                                        </ComboBox>
+                                        <Button Content="B" FontWeight="Bold"
                                             Style="{StaticResource ToolbarButton}"
                                             ToolTip="Negrito" Click="Bold_OnClick"/>
                                     <Button Content="I" FontStyle="Italic"
@@ -236,11 +240,15 @@
                                     <Button Content="Cor"
                                             Style="{StaticResource ToolbarButton}"
                                             ToolTip="Cor do texto" Click="Color_OnClick"/>
-                                    <Button Content="Marca-texto"
+                                        <Button Content="Marca-texto"
                                             Style="{StaticResource ToolbarButton}"
                                             ToolTip="Cor de destaque do texto"
                                             Click="Highlight_OnClick"/>
-                                    <Button Content="Link"
+                                    </WrapPanel>
+                                    <WrapPanel>
+                                        <TextBlock Text="Inserir" VerticalAlignment="Center" Width="76"
+                                                   Foreground="{DynamicResource MutedBrush}"/>
+                                        <Button Content="Link"
                                             Style="{StaticResource ToolbarButton}"
                                             ToolTip="Inserir hiperlink" Click="Link_OnClick"/>
                                     <Button Content="Imagem"
@@ -250,11 +258,19 @@
                                             Style="{StaticResource ToolbarButton}"
                                             ToolTip="Lista com marcadores"
                                             Click="Bullets_OnClick"/>
-                                    <Button Content="1. Lista"
+                                        <Button Content="1. Lista"
                                             Style="{StaticResource ToolbarButton}"
                                             ToolTip="Lista numerada"
                                             Click="Numbering_OnClick"/>
-                                    <Button Content="≡ Esq."
+                                        <Button Content="Tabela"
+                                            Style="{StaticResource ToolbarButton}"
+                                            ToolTip="Inserir tabela"
+                                            Click="Table_OnClick"/>
+                                    </WrapPanel>
+                                    <WrapPanel>
+                                        <TextBlock Text="Parágrafo" VerticalAlignment="Center" Width="76"
+                                                   Foreground="{DynamicResource MutedBrush}"/>
+                                        <Button Content="≡ Esq."
                                             Style="{StaticResource ToolbarButton}"
                                             ToolTip="Alinhar à esquerda"
                                             Click="AlignLeft_OnClick"/>
@@ -266,11 +282,8 @@
                                             Style="{StaticResource ToolbarButton}"
                                             ToolTip="Alinhar à direita"
                                             Click="AlignRight_OnClick"/>
-                                    <Button Content="Tabela"
-                                            Style="{StaticResource ToolbarButton}"
-                                            ToolTip="Inserir tabela"
-                                            Click="Table_OnClick"/>
-                                </WrapPanel>
+                                    </WrapPanel>
+                                </StackPanel>
 
                                 <Border Grid.Row="6"
                                         BorderBrush="{DynamicResource DividerBrush}"
@@ -631,6 +644,172 @@
                         </Grid>
                     </ScrollViewer>
 
+                    <ScrollViewer x:Name="CaptureView" Visibility="Collapsed"
+                                  VerticalScrollBarVisibility="Auto">
+                        <Grid Margin="32" MaxWidth="1120" HorizontalAlignment="Center">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="20"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="20"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="20"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <StackPanel>
+                                <TextBlock Text="Captura" Style="{StaticResource PageTitle}"/>
+                                <TextBlock Text="Imagens locais com atalhos, organização automática e sem upload."
+                                           Style="{StaticResource PageDescription}"/>
+                            </StackPanel>
+
+                            <UniformGrid Grid.Row="2" Columns="3">
+                                <Border Style="{StaticResource MetricCard}">
+                                    <StackPanel>
+                                        <TextBlock Text="Monitor ativo"
+                                                   FontSize="17"
+                                                   FontWeight="SemiBold"/>
+                                        <TextBlock Text="Captura o monitor da janela em uso."
+                                                   Margin="0,6,0,12"
+                                                   TextWrapping="Wrap"
+                                                   Foreground="{DynamicResource MutedBrush}"/>
+                                        <Button Content="Capturar monitor"
+                                                Style="{StaticResource PrimaryButton}"
+                                                Click="CaptureActiveMonitor_OnClick"/>
+                                    </StackPanel>
+                                </Border>
+                                <Border Style="{StaticResource MetricCard}">
+                                    <StackPanel>
+                                        <TextBlock Text="Região"
+                                                   FontSize="17"
+                                                   FontWeight="SemiBold"/>
+                                        <TextBlock Text="Arraste para selecionar qualquer área."
+                                                   Margin="0,6,0,12"
+                                                   TextWrapping="Wrap"
+                                                   Foreground="{DynamicResource MutedBrush}"/>
+                                        <Button Content="Selecionar região"
+                                                Style="{StaticResource PrimaryButton}"
+                                                Click="CaptureRegion_OnClick"/>
+                                    </StackPanel>
+                                </Border>
+                                <Border Style="{StaticResource SettingsCard}">
+                                    <StackPanel>
+                                        <TextBlock Text="Janela reconhecida"
+                                                   FontSize="17"
+                                                   FontWeight="SemiBold"/>
+                                        <TextBlock Text="Captura a janela sob o cursor."
+                                                   Margin="0,6,0,12"
+                                                   TextWrapping="Wrap"
+                                                   Foreground="{DynamicResource MutedBrush}"/>
+                                        <Button Content="Capturar janela"
+                                                Style="{StaticResource PrimaryButton}"
+                                                Click="CaptureWindow_OnClick"/>
+                                    </StackPanel>
+                                </Border>
+                            </UniformGrid>
+
+                            <Grid Grid.Row="4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="20"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Border Style="{StaticResource SettingsCard}">
+                                    <StackPanel>
+                                        <TextBlock Text="Atalhos globais"
+                                                   FontSize="17"
+                                                   FontWeight="SemiBold"/>
+                                        <TextBlock Text="Também aceita Ctrl/Alt/Shift + WheelUp ou WheelDown."
+                                                   Margin="0,5,0,14"
+                                                   TextWrapping="Wrap"
+                                                   Foreground="{DynamicResource MutedBrush}"/>
+                                        <TextBlock Text="Monitor ativo" Foreground="{DynamicResource MutedBrush}"/>
+                                        <TextBox x:Name="CaptureMonitorShortcutBox" Margin="0,5,0,10"/>
+                                        <TextBlock Text="Região" Foreground="{DynamicResource MutedBrush}"/>
+                                        <TextBox x:Name="CaptureRegionShortcutBox" Margin="0,5,0,10"/>
+                                        <TextBlock Text="Janela" Foreground="{DynamicResource MutedBrush}"/>
+                                        <TextBox x:Name="CaptureWindowShortcutBox" Margin="0,5,0,12"/>
+                                        <TextBlock x:Name="CaptureShortcutStatusText"
+                                                   TextWrapping="Wrap"
+                                                   Foreground="{DynamicResource MutedBrush}"/>
+                                    </StackPanel>
+                                </Border>
+
+                                <Border Grid.Column="2" Style="{StaticResource SettingsCard}">
+                                    <StackPanel>
+                                        <TextBlock Text="Arquivo e organização"
+                                                   FontSize="17"
+                                                   FontWeight="SemiBold"/>
+                                        <TextBlock Text="Pasta" Margin="0,14,0,0"
+                                                   Foreground="{DynamicResource MutedBrush}"/>
+                                        <TextBox x:Name="CaptureDirectoryBox" Margin="0,5,0,0"/>
+                                        <TextBlock Text="Use {year}, {month}, {month-name} e {day}."
+                                                   Margin="0,5,0,10"
+                                                   FontSize="12"
+                                                   Foreground="{DynamicResource MutedBrush}"/>
+                                        <TextBlock Text="Nome" Foreground="{DynamicResource MutedBrush}"/>
+                                        <TextBox x:Name="CaptureFileNameBox" Margin="0,5,0,0"/>
+                                        <TextBlock Text="Use {date}, {time}, {type} e {app}."
+                                                   Margin="0,5,0,10"
+                                                   FontSize="12"
+                                                   Foreground="{DynamicResource MutedBrush}"/>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="12"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel>
+                                                <TextBlock Text="Formato"
+                                                           Foreground="{DynamicResource MutedBrush}"/>
+                                                <ComboBox x:Name="CaptureFormatBox"
+                                                          Margin="0,5,0,0"
+                                                          SelectionChanged="CaptureFormat_OnChanged">
+                                                    <ComboBoxItem Content="PNG" Tag="PNG"/>
+                                                    <ComboBoxItem Content="JPEG" Tag="JPEG"/>
+                                                </ComboBox>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="2">
+                                                <TextBlock Text="Qualidade JPEG"
+                                                           Foreground="{DynamicResource MutedBrush}"/>
+                                                <TextBox x:Name="CaptureQualityBox"
+                                                         Margin="0,5,0,0"/>
+                                            </StackPanel>
+                                        </Grid>
+                                        <CheckBox x:Name="CaptureClipboardCheckBox"
+                                                  Content="Copiar para o clipboard"
+                                                  Margin="0,14,0,6"/>
+                                        <CheckBox x:Name="CaptureAutoSaveCheckBox"
+                                                  Content="Salvar automaticamente"/>
+                                        <Button Content="Salvar configurações"
+                                                Style="{StaticResource PrimaryButton}"
+                                                HorizontalAlignment="Left"
+                                                Margin="0,14,0,0"
+                                                Click="SaveCaptureSettings_OnClick"/>
+                                    </StackPanel>
+                                </Border>
+                            </Grid>
+
+                            <Border Grid.Row="6" Style="{StaticResource SettingsCard}">
+                                <StackPanel>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="Capturas recentes"
+                                                   FontSize="17"
+                                                   FontWeight="SemiBold"/>
+                                        <Button Grid.Column="1"
+                                                Content="Abrir pasta"
+                                                Click="OpenCaptureFolder_OnClick"/>
+                                    </Grid>
+                                    <StackPanel x:Name="CaptureHistoryPanel" Margin="0,12,0,0"/>
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+                    </ScrollViewer>
+
                     <ScrollViewer x:Name="StatisticsView" Visibility="Collapsed"
                                   VerticalScrollBarVisibility="Auto">
                         <Grid Margin="32" MaxWidth="1120" HorizontalAlignment="Center">
@@ -779,7 +958,7 @@
                                         <TextBlock Text="Aparência"
                                                    FontSize="17"
                                                    FontWeight="SemiBold"/>
-                                        <TextBlock Text="Tema do SlashText"
+                                        <TextBlock Text="Tema do SlashDesk"
                                                    Margin="0,18,0,0"
                                                    Foreground="{DynamicResource MutedBrush}"/>
                                         <ComboBox x:Name="ThemeBox"
@@ -812,6 +991,9 @@
                                         <CheckBox x:Name="ShowSuggestionsCheckBox"
                                                   Content="Mostrar sugestões ao digitar / ou :"
                                                   Click="Settings_OnClick"/>
+                                        <CheckBox x:Name="CheckUpdatesCheckBox"
+                                                  Content="Verificar atualizações ao iniciar"
+                                                  Click="Settings_OnClick"/>
                                     </StackPanel>
                                 </Border>
                             </Grid>
@@ -830,7 +1012,7 @@
                                                    FontWeight="SemiBold"/>
                                         <TextBlock Margin="0,10,0,0"
                                                    TextWrapping="Wrap"
-                                                   Text="A pasta SlashTextData reúne snippets.md, preferências, estatísticas e imagens. O Markdown continua editável."
+                                                   Text="A pasta SlashDeskData reúne snippets.md, preferências, estatísticas, imagens e histórico de capturas."
                                                    Foreground="{DynamicResource MutedBrush}"/>
                                         <TextBlock Margin="0,9,0,0"
                                                    TextWrapping="Wrap"
@@ -883,22 +1065,22 @@
                                         <ColumnDefinition Width="22"/>
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
-                                    <Image Source="Assets/SlashText.png"
+                                    <Image Source="Assets/SlashDesk.png"
                                            Width="104"
                                            Height="104"
                                            Stretch="Uniform"
                                            RenderOptions.BitmapScalingMode="HighQuality"/>
                                     <StackPanel Grid.Column="2"
                                                 VerticalAlignment="Center">
-                                        <TextBlock Text="SlashText"
+                                        <TextBlock Text="SlashDesk"
                                                    FontFamily="Segoe UI Variable Display"
                                                    FontSize="32"
                                                    FontWeight="SemiBold"/>
-                                        <TextBlock Text="Expansor de textos e acentos para Windows"
+                                        <TextBlock Text="Texto, acentos e capturas locais para Windows"
                                                    Margin="0,4,0,0"
                                                    FontSize="16"
                                                    Foreground="{DynamicResource MutedBrush}"/>
-                                        <TextBlock Text="Versão 1.4.1 · Licença MIT · código aberto"
+                                        <TextBlock Text="Versão 2.0.0 · Licença MIT · código aberto"
                                                    Margin="0,12,0,0"
                                                    Foreground="{DynamicResource AccentBrush}"
                                                    FontWeight="SemiBold"/>
@@ -913,7 +1095,7 @@
                                 <TextBlock Margin="0,8,0,0"
                                            TextWrapping="Wrap"
                                            FontSize="15"
-                                           Text="Crie atalhos reutilizáveis, preencha variáveis, insira datas automaticamente, mantenha formatação onde o aplicativo permitir e digite acentos em teclados internacionais."/>
+                                           Text="Crie atalhos reutilizáveis, digite acentos em teclados internacionais e capture monitor, região ou janela com organização automática."/>
                             </StackPanel>
 
                             <UniformGrid Grid.Row="4" Columns="2">
@@ -925,7 +1107,7 @@
                                         <TextBlock Margin="0,10,0,0"
                                                    TextWrapping="Wrap"
                                                    Foreground="{DynamicResource MutedBrush}"
-                                                   Text="Atalhos / e :, variáveis, campos preenchíveis, Tab entre campos, texto formatado, imagens, preview, estatísticas e Acento Rápido."/>
+                                                   Text="Atalhos / e :, variáveis, texto formatado, Acento Rápido, monitor ativo, região, janela, atalhos globais e regras de pasta."/>
                                     </StackPanel>
                                 </Border>
                                 <Border Style="{StaticResource SettingsCard}">
@@ -942,6 +1124,10 @@
                                                 Margin="0,14,0,0"
                                                 Style="{StaticResource PrimaryButton}"
                                                 Click="OpenGitHub_OnClick"/>
+                                        <Button Content="Verificar atualizações"
+                                                HorizontalAlignment="Left"
+                                                Margin="0,8,0,0"
+                                                Click="CheckUpdates_OnClick"/>
                                     </StackPanel>
                                 </Border>
                             </UniformGrid>
