@@ -4,47 +4,48 @@
         xmlns:views="clr-namespace:SlashText.Views"
         Title="SlashDesk"
         Icon="Assets/SlashDesk.ico"
-        Width="1320"
-        Height="850"
-        MinWidth="1080"
-        MinHeight="800"
+        Width="1380"
+        Height="880"
+        MinWidth="1040"
+        MinHeight="720"
         SizeChanged="MainWindow_OnSizeChanged"
         WindowStartupLocation="CenterScreen"
         Background="{DynamicResource CanvasBrush}">
-    <Grid Margin="16">
+    <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="12"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="10"/>
+            <RowDefinition Height="62"/>
+            <RowDefinition Height="0"/>
+            <RowDefinition Height="49"/>
+            <RowDefinition Height="0"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <Grid>
+        <Grid Background="{DynamicResource SurfaceBrush}">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
-            <StackPanel Orientation="Horizontal" Margin="16,8,0,6">
+            <StackPanel Orientation="Horizontal" Margin="22,0,0,0">
                 <Image Source="Assets/SlashDesk.png"
-                       Width="46"
-                       Height="46"
-                       Margin="0,0,14,0"
+                       Width="32"
+                       Height="32"
+                       Margin="0,0,11,0"
                        RenderOptions.BitmapScalingMode="HighQuality"/>
                 <StackPanel VerticalAlignment="Center">
                     <TextBlock Text="SlashDesk"
                                FontFamily="Segoe UI Variable Display"
-                               FontSize="26"
+                               FontSize="18"
                                FontWeight="SemiBold"
                                Foreground="{DynamicResource InkBrush}"/>
                     <TextBlock Text="Textos, acentos e capturas. Tudo local."
-                               Margin="0,2,0,0"
+                               Margin="0,1,0,0"
+                               FontSize="11"
                                Foreground="{DynamicResource MutedBrush}"/>
                 </StackPanel>
             </StackPanel>
             <Border Grid.Column="1"
                     Style="{StaticResource StatusPill}"
-                    Margin="0,8,12,6"
+                    Margin="0,0,22,0"
                     VerticalAlignment="Center">
                 <TextBlock x:Name="MonitorStatusText"
                            Text="● Iniciando monitoramento"
@@ -57,8 +58,7 @@
                 HorizontalAlignment="Stretch"
                 Background="{DynamicResource SurfaceBrush}"
                 BorderBrush="{DynamicResource DividerBrush}"
-                BorderThickness="1"
-                CornerRadius="11">
+                BorderThickness="0,1,0,1">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
@@ -66,22 +66,22 @@
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <StackPanel Orientation="Horizontal">
-                    <Button x:Name="ShortcutsTabButton" Content="⌘  Atalhos"
+                    <Button x:Name="ShortcutsTabButton" Content="Atalhos"
                             Style="{StaticResource NavButton}"
                             Click="ShortcutsTab_OnClick"/>
-                    <Button x:Name="QuickAccentTabButton" Content="Á  Acento Rápido"
+                    <Button x:Name="QuickAccentTabButton" Content="Acento Rápido"
                             Style="{StaticResource NavButton}"
                             Click="QuickAccentTab_OnClick"/>
-                    <Button x:Name="CaptureTabButton" Content="▣  Captura"
+                    <Button x:Name="CaptureTabButton" Content="Captura"
                             Style="{StaticResource NavButton}"
                             Click="CaptureTab_OnClick"/>
-                    <Button x:Name="StatisticsTabButton" Content="↗  Estatísticas"
+                    <Button x:Name="StatisticsTabButton" Content="Estatísticas"
                             Style="{StaticResource NavButton}"
                             Click="StatisticsTab_OnClick"/>
-                    <Button x:Name="SettingsTabButton" Content="⚙  Configurações"
+                    <Button x:Name="SettingsTabButton" Content="Configurações"
                             Style="{StaticResource NavButton}"
                             Click="SettingsTab_OnClick"/>
-                    <Button x:Name="AboutTabButton" Content="ⓘ  Sobre"
+                    <Button x:Name="AboutTabButton" Content="Sobre"
                             Style="{StaticResource NavButton}"
                             Click="AboutTab_OnClick"/>
                 </StackPanel>
@@ -95,10 +95,8 @@
         </Border>
 
         <Border Grid.Row="4"
-                Background="{DynamicResource SurfaceBrush}"
-                BorderBrush="{DynamicResource DividerBrush}"
-                BorderThickness="1"
-                CornerRadius="12"
+                Background="{DynamicResource CanvasBrush}"
+                BorderThickness="0"
                 ClipToBounds="True">
                 <Grid>
                     <Grid x:Name="ShortcutsView">
@@ -1171,7 +1169,7 @@
                                                    Margin="0,4,0,0"
                                                    FontSize="16"
                                                    Foreground="{DynamicResource MutedBrush}"/>
-                                        <TextBlock Text="Versão 2.5.0 · Licença MIT · código aberto"
+                                        <TextBlock Text="Versão 2.6.0 · Licença MIT · código aberto"
                                                    Margin="0,12,0,0"
                                                    Foreground="{DynamicResource AccentBrush}"
                                                    FontWeight="SemiBold"/>
