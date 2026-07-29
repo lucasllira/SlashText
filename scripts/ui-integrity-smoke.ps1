@@ -55,8 +55,9 @@ foreach ($tool in @(
     }
 }
 
-if (-not $code.Contains('openEditor: action == CaptureShortcutAction.Region')) {
-    throw 'O fluxo de região não abre o editor.'
+if (-not $code.Contains('SelectAndEditRegion(null)') -or
+    -not $code.Contains('ProcessEditedRegionAsync(')) {
+    throw 'O fluxo de região não edita e processa no mesmo overlay.'
 }
 
 foreach ($resource in @(
@@ -97,16 +98,38 @@ if (-not $editor.Contains('UpdateToolSelection()')) {
 }
 
 foreach ($captureElement in @(
-    'CaptureVirtualDesktop()',
+    'CaptureVirtualDesktopBitmap()',
     'UpdateShade(',
     'PositionHandles()',
     'PositionToolbar()',
-    'PreferredTool',
-    'Selecionar novamente'
+    'Selecionar novamente',
+    'EditedBitmap',
+    'AddInlineTextEditor(',
+    'Undo()',
+    'Redo()'
 )) {
     if (-not $region.Contains($captureElement)) {
         throw "Seleção de região sem o elemento Snipping Tool: $captureElement"
     }
+}
+
+foreach ($tool in @(
+    'Arrow',
+    'Highlighter',
+    'Rectangle',
+    'Ellipse',
+    'Pencil',
+    'Text',
+    'Number'
+)) {
+    if (-not $region.Contains("CaptureAnnotationKind.$tool")) {
+        throw "Ferramenta ausente durante a seleção: $tool"
+    }
+}
+
+if ($xaml.Contains('Content="Á  Acento Rápido"') -or
+    -not $xaml.Contains('Content="Acento Rápido"')) {
+    throw 'Nome da aba Acento Rápido incorreto.'
 }
 
 if ($variable.Contains('window.SourceInitialized +=') -or
