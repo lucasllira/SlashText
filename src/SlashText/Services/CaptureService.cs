@@ -20,9 +20,6 @@ public sealed class CaptureService
     private List<CaptureRecord> _history = [];
 
     public IReadOnlyList<CaptureRecord> History => _history;
-    public CaptureAnnotationKind PreferredRegionTool { get; private set; } =
-        CaptureAnnotationKind.Arrow;
-
     public async Task LoadAsync()
     {
         _history = await _historyStore.LoadAsync();
@@ -65,7 +62,7 @@ public sealed class CaptureService
         return rect.ToRectangle();
     }
 
-    public Rect? SelectRegion(Window? owner)
+    public Bitmap? SelectAndEditRegion(Window? owner)
     {
         var selector = new RegionCaptureWindow();
         if (owner is not null)
@@ -77,8 +74,7 @@ public sealed class CaptureService
             return null;
         }
 
-        PreferredRegionTool = selector.PreferredTool;
-        return selector.SelectedRegion;
+        return selector.EditedBitmap;
     }
 
     public async Task<CaptureRecord?> CaptureAndProcessAsync(
@@ -95,6 +91,37 @@ public sealed class CaptureService
         }
 
         using var captured = CaptureBitmap(bounds);
+        return await ProcessBitmapAsync(
+            captured,
+            type,
+            settings,
+            openEditor,
+            owner,
+            initialTool);
+    }
+
+    public async Task<CaptureRecord?> ProcessEditedRegionAsync(
+        Bitmap captured,
+        string type,
+        CaptureSettings settings)
+    {
+        return await ProcessBitmapAsync(
+            captured,
+            type,
+            settings,
+            openEditor: false,
+            owner: null,
+            initialTool: CaptureAnnotationKind.Arrow);
+    }
+
+    private async Task<CaptureRecord?> ProcessBitmapAsync(
+        Bitmap captured,
+        string type,
+        CaptureSettings settings,
+        bool openEditor,
+        Window? owner,
+        CaptureAnnotationKind initialTool)
+    {
         Bitmap output = captured;
         var save = settings.SaveAutomatically;
         var copy = settings.CopyToClipboard;
