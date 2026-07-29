@@ -111,13 +111,19 @@ public sealed class GlobalCaptureShortcutService : IDisposable
             return null;
         }
 
-        var keyName = key switch
+        var keyName = key == Key.Snapshot
+            ? "PrintScreen"
+            : key.ToString();
+        var keyValue = (int)key;
+        if (keyValue >= (int)Key.D0 && keyValue <= (int)Key.D9)
         {
-            Key.Snapshot => "PrintScreen",
-            >= Key.D0 and <= Key.D9 => ((int)(key - Key.D0)).ToString(),
-            >= Key.NumPad0 and <= Key.NumPad9 => $"Num{(int)(key - Key.NumPad0)}",
-            _ => key.ToString()
-        };
+            keyName = (keyValue - (int)Key.D0).ToString();
+        }
+        else if (keyValue >= (int)Key.NumPad0 &&
+                 keyValue <= (int)Key.NumPad9)
+        {
+            keyName = $"Num{keyValue - (int)Key.NumPad0}";
+        }
         return JoinShortcut(modifiers, keyName);
     }
 
@@ -187,6 +193,7 @@ public sealed class GlobalCaptureShortcutService : IDisposable
         ref bool handled)
     {
         if (message == HotKeyMessage &&
+            Keyboard.FocusedElement is not SlashText.Views.ShortcutRecorderBox &&
             _actions.TryGetValue(wParam.ToInt32(), out var action))
         {
             handled = true;
@@ -197,7 +204,9 @@ public sealed class GlobalCaptureShortcutService : IDisposable
 
     private IntPtr MouseHook(int code, IntPtr wParam, IntPtr lParam)
     {
-        if (code < 0 || _mouseShortcuts.Length == 0)
+        if (code < 0 ||
+            _mouseShortcuts.Length == 0 ||
+            Keyboard.FocusedElement is SlashText.Views.ShortcutRecorderBox)
         {
             return CallNextHookEx(_mouseHook, code, wParam, lParam);
         }
