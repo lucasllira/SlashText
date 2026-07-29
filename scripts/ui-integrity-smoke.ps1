@@ -3,12 +3,17 @@ $ErrorActionPreference = 'Stop'
 $xamlPath = 'src/SlashText/MainWindow.xaml'
 $codePath = 'src/SlashText/MainWindow.xaml.cs'
 $editorPath = 'src/SlashText/Views/CaptureEditorWindow.cs'
+$resourcesPath = 'src/SlashText/App.xaml'
+$themePath = 'src/SlashText/Services/ThemeService.cs'
 
 $xaml = Get-Content $xamlPath -Raw
 $code = Get-Content $codePath -Raw
 $editor = Get-Content $editorPath -Raw
+$resources = Get-Content $resourcesPath -Raw
+$theme = Get-Content $themePath -Raw
 
 [xml]$null = $xaml
+[xml]$null = $resources
 
 $handlers = [regex]::Matches(
     $xaml,
@@ -42,6 +47,43 @@ foreach ($tool in @(
 
 if (-not $code.Contains('openEditor: action == CaptureShortcutAction.Region')) {
     throw 'O fluxo de região não abre o editor.'
+}
+
+foreach ($resource in @(
+    'PanelBrush',
+    'ChromeBrush',
+    'AccentSubtleBrush',
+    'NavButton',
+    'StatusPill',
+    'FeatureTile'
+)) {
+    if (-not $resources.Contains("`"$resource`"")) {
+        throw "Recurso do design system ausente: $resource"
+    }
+}
+
+foreach ($brush in @(
+    'CanvasBrush',
+    'SurfaceBrush',
+    'PanelBrush',
+    'ChromeBrush',
+    'InputBrush',
+    'InkBrush',
+    'MutedBrush',
+    'DividerBrush',
+    'AccentBrush'
+)) {
+    if (-not $theme.Contains("Set(`"$brush`"")) {
+        throw "Tema não atualiza o recurso: $brush"
+    }
+}
+
+if (-not $code.Contains('button.Tag = selected ? "Selected" : null')) {
+    throw 'A navegação não mantém estado visual selecionado.'
+}
+
+if (-not $editor.Contains('UpdateToolSelection()')) {
+    throw 'O editor não informa visualmente a ferramenta selecionada.'
 }
 
 Write-Host "UI integrity smoke: OK ($($handlers.Count) handlers)"
