@@ -27,6 +27,7 @@ public partial class MainWindow : Window
     private readonly UsageService _usageService = new();
     private readonly QuickAccentService _quickAccentService = new();
     private readonly BackupService _backupService = new();
+    private readonly SnippetImportService _snippetImportService = new();
     private readonly CaptureService _captureService = new();
     private readonly GlobalCaptureShortcutService _captureShortcuts = new();
     private readonly UpdateService _updateService = new();
@@ -796,8 +797,11 @@ public partial class MainWindow : Window
         ShowView(StatisticsView, StatisticsTabButton);
     }
 
-    private void SettingsTab_OnClick(object sender, RoutedEventArgs e) =>
+    private void SettingsTab_OnClick(object sender, RoutedEventArgs e)
+    {
+        RefreshBackupSummary();
         ShowView(SettingsView, SettingsTabButton);
+    }
 
     private void AboutTab_OnClick(object sender, RoutedEventArgs e) =>
         ShowView(AboutView, AboutTabButton);
@@ -967,6 +971,192 @@ public partial class MainWindow : Window
                 MessageBoxImage.Warning);
         }
     }
+
+    private async void ImportSnippets_OnClick(object sender, RoutedEventArgs e)
+    {
+        var source = ImportSourceBox.SelectedItem is ComboBoxItem { Tag: string sourceTag } &&
+                     Enum.TryParse<SnippetImportSource>(sourceTag, out var parsed)
+            ? parsed
+            : SnippetImportSource.SlashDesk;
+        var picker = new Microsoft.Win32.OpenFileDialog
+        {
+            Title = $"Importar atalhos do {ImportSourceName(source)}",
+            Filter = source switch
+            {
+                SnippetImportSource.SlashDesk => "Atalhos do SlashDesk|*.md",
+                SnippetImportSource.TextBlaze => "Exportação do Text Blaze|*.json",
+                SnippetImportSource.Espanso => "Configuração do Espanso|*.yml;*.yaml",
+                _ => "Todos os arquivos|*.*"
+            },
+            Multiselect = false
+        };
+        if (picker.ShowDialog(this) != true)
+        {
+            return;
+        }
+
+        try
+        {
+            var result = await _snippetImportService.ImportAsync(picker.FileName, source);
+            if (result.Snippets.Count == 0)
+            {
+                MessageBox.Show(
+                    "Nenhum atalho compatível foi encontrado no arquivo.",
+                    "Importação concluída",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+                return;
+            }
+
+            var conflicts = result.Snippets.Count(incoming =>
+                _snippets.Any(current =>
+                    current.Trigger.Equals(incoming.Trigger, StringComparison.OrdinalIgnoreCase)));
+            var mode = MessageBox.Show(
+                $"{result.Snippets.Count} atalho(s) compatível(is) encontrado(s)." +
+                (conflicts == 0
+                    ? "\n\nDeseja adicionar esses atalhos aos atuais?"
+                    : $"\n\n{conflicts} conflito(s) de comando. Sim substitui os conflitos; Não mantém os atuais e importa os demais."),
+                $"Importar do {ImportSourceName(source)}",
+                conflicts == 0 ? MessageBoxButton.YesNo : MessageBoxButton.YesNoCancel,
+                MessageBoxImage.Question);
+            if (mode is MessageBoxResult.Cancel or MessageBoxResult.None ||
+                (conflicts == 0 && mode == MessageBoxResult.No))
+            {
+                return;
+            }
+
+            _backupService.CreateManualSnapshot();
+            var replaceConflicts = mode == MessageBoxResult.Yes;
+            var incomingTriggers = result.Snippets
+                .Select(item => item.Trigger)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var merged = _snippets
+                .Where(current => !replaceConflicts || !incomingTriggers.Contains(current.Trigger))
+                .ToList();
+            foreach (var incoming in result.Snippets)
+            {
+                if (replaceConflicts ||
+                    !merged.Any(current =>
+                        current.Trigger.Equals(incoming.Trigger, StringComparison.OrdinalIgnoreCase)))
+                {
+                    merged.Add(incoming);
+                }
+            }
+
+            await _repository.SaveAsync(merged);
+            ReplaceList(merged);
+            _keyboardHook.UpdateSnippets(_snippets);
+            RefreshStatistics();
+            var warningSummary = result.Warnings.Count == 0
+                ? string.Empty
+                : $"\n\n{result.Warnings.Count} aviso(s) de compatibilidade. Os primeiros:\n• " +
+                  string.Join("\n• ", result.Warnings.Take(4));
+            MessageBox.Show(
+                $"{result.Snippets.Count} atalho(s) processado(s). O snippets.md foi atualizado e o estado anterior foi salvo em backup.{warningSummary}",
+                "Importação concluída",
+                MessageBoxButton.OK,
+                result.Warnings.Count == 0 ? MessageBoxImage.Information : MessageBoxImage.Warning);
+            StatusText.Text = $"Importação do {ImportSourceName(source)} concluída";
+        }
+        catch (Exception exception)
+        {
+            MessageBox.Show(
+                exception.Message,
+                "Não foi possível importar",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+        }
+    }
+
+    private void CreateBackup_OnClick(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var path = _backupService.CreateManualSnapshot();
+            RefreshBackupSummary();
+            StatusText.Text = $"Backup criado: {Path.GetFileName(path)}";
+        }
+        catch (Exception exception)
+        {
+            MessageBox.Show(
+                exception.Message,
+                "Não foi possível criar o backup",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+        }
+    }
+
+    private async void RestoreBackup_OnClick(object sender, RoutedEventArgs e)
+    {
+        var picker = new Microsoft.Win32.OpenFileDialog
+        {
+            Title = "Restaurar backup do SlashDesk",
+            InitialDirectory = AppPaths.BackupsDirectory,
+            Filter = "Backup do SlashDesk|SlashDesk-backup-*.zip|Arquivo ZIP|*.zip",
+            Multiselect = false
+        };
+        if (picker.ShowDialog(this) != true ||
+            MessageBox.Show(
+                "Restaurar este backup substituirá atalhos, preferências e estatísticas atuais. Um backup de segurança será criado antes de continuar.",
+                "Restaurar backup",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning) != MessageBoxResult.Yes)
+        {
+            return;
+        }
+
+        try
+        {
+            _backupService.RestoreSnapshot(picker.FileName);
+            _settings = await _settingsStore.LoadAsync();
+            ThemeService.Apply(_settings.Theme);
+            ReplaceList(await _repository.LoadAsync());
+            _keyboardHook.UpdateSnippets(_snippets);
+            await _usageService.LoadAsync();
+            RefreshStatistics();
+            RefreshBackupSummary();
+            MessageBox.Show(
+                "Backup restaurado. As preferências completas serão aplicadas na próxima abertura do SlashDesk.",
+                "Restauração concluída",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+        }
+        catch (Exception exception)
+        {
+            MessageBox.Show(
+                exception.Message,
+                "Não foi possível restaurar",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+        }
+    }
+
+    private void OpenBackupFolder_OnClick(object sender, RoutedEventArgs e)
+    {
+        Directory.CreateDirectory(AppPaths.BackupsDirectory);
+        Process.Start(new ProcessStartInfo(AppPaths.BackupsDirectory) { UseShellExecute = true });
+    }
+
+    private void RefreshBackupSummary()
+    {
+        if (BackupSummaryText is null)
+        {
+            return;
+        }
+
+        var snapshots = _backupService.ListSnapshots();
+        BackupSummaryText.Text = snapshots.Count == 0
+            ? "Nenhum backup criado ainda."
+            : $"{snapshots.Count} backup(s) · último em {snapshots[0].LastWriteTime:g}";
+    }
+
+    private static string ImportSourceName(SnippetImportSource source) => source switch
+    {
+        SnippetImportSource.SlashDesk => "SlashDesk",
+        SnippetImportSource.TextBlaze => "Text Blaze",
+        SnippetImportSource.Espanso => "Espanso",
+        _ => source.ToString()
+    };
 
     private async void ThemeBox_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
     {
