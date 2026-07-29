@@ -784,12 +784,12 @@
                                         <TextBlock Text="Destino" Margin="0,14,0,0"
                                                    Foreground="{DynamicResource MutedBrush}"/>
                                         <TextBox x:Name="CaptureDirectoryBox" Margin="0,5,0,0"/>
-                                        <TextBlock Text="{year}, {month}, {month-name} e {day}"
+                                        <TextBlock Text="Variáveis: {year}, {month}, {month-name} e {day}"
                                                    Margin="0,5,0,10" FontSize="12"
                                                    Foreground="{DynamicResource MutedBrush}"/>
                                         <TextBlock Text="Nome do arquivo" Foreground="{DynamicResource MutedBrush}"/>
                                         <TextBox x:Name="CaptureFileNameBox" Margin="0,5,0,0"/>
-                                        <TextBlock Text="{date}, {time}, {type} e {app}"
+                                        <TextBlock Text="Variáveis: {date}, {time}, {type} e {app}"
                                                    Margin="0,5,0,10" FontSize="12"
                                                    Foreground="{DynamicResource MutedBrush}"/>
                                         <Grid>
