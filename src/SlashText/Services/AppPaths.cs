@@ -4,7 +4,7 @@ namespace SlashText.Services;
 
 public static class AppPaths
 {
-    private const string DataFolderName = "SlashTextData";
+    private const string DataFolderName = "SlashDeskData";
 
     public static string BaseDirectory
     {
@@ -27,15 +27,29 @@ public static class AppPaths
     public static string SettingsFile => Path.Combine(DataDirectory, "settings.json");
     public static string UsageFile => Path.Combine(DataDirectory, "usage.json");
     public static string AssetsDirectory => Path.Combine(DataDirectory, "assets");
+    public static string CaptureHistoryFile => Path.Combine(DataDirectory, "capture-history.json");
 
     public static void EnsureDataLayout()
     {
         Directory.CreateDirectory(DataDirectory);
+        MigrateProductDataDirectory();
         MigrateFile("snippets.md", SnippetsFile);
         MigrateFile("settings.json", SettingsFile);
         MigrateFile("usage.json", UsageFile);
         MigrateDirectory("assets", AssetsDirectory);
         MigrateDirectory("backups", BackupsDirectory);
+    }
+
+    private static void MigrateProductDataDirectory()
+    {
+        var legacy = Path.Combine(BaseDirectory, "SlashTextData");
+        if (!Directory.Exists(legacy) ||
+            legacy.Equals(DataDirectory, StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        MigrateDirectory("SlashTextData", DataDirectory, overwriteExisting: true);
     }
 
     private static void MigrateFile(string legacyName, string destination)
@@ -53,7 +67,10 @@ public static class AppPaths
         File.Move(legacy, destination, overwrite: true);
     }
 
-    private static void MigrateDirectory(string legacyName, string destination)
+    private static void MigrateDirectory(
+        string legacyName,
+        string destination,
+        bool overwriteExisting = false)
     {
         var legacy = Path.Combine(BaseDirectory, legacyName);
         if (!Directory.Exists(legacy) ||
@@ -73,9 +90,9 @@ public static class AppPaths
             var relative = Path.GetRelativePath(legacy, file);
             var target = Path.Combine(destination, relative);
             Directory.CreateDirectory(Path.GetDirectoryName(target)!);
-            if (!File.Exists(target))
+            if (overwriteExisting || !File.Exists(target))
             {
-                File.Move(file, target);
+                File.Move(file, target, overwriteExisting);
             }
         }
 

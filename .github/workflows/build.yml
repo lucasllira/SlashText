@@ -48,11 +48,11 @@ jobs:
       - name: Assemble clean package
         shell: pwsh
         run: |
-          New-Item -ItemType Directory -Force package/SlashTextData | Out-Null
-          Copy-Item publish/SlashText.exe package/SlashText.exe
-          Copy-Item snippets.md package/SlashTextData/snippets.md
+          New-Item -ItemType Directory -Force package/SlashDeskData | Out-Null
+          Copy-Item publish/SlashDesk.exe package/SlashDesk.exe
+          Copy-Item snippets.md package/SlashDeskData/snippets.md
           $unexpected = Get-ChildItem package -File |
-            Where-Object { $_.Name -ne 'SlashText.exe' }
+            Where-Object { $_.Name -ne 'SlashDesk.exe' }
           if ($unexpected) {
             throw "O pacote contém arquivos inesperados na raiz: $($unexpected.Name -join ', ')"
           }
@@ -60,6 +60,6 @@ jobs:
       - name: Upload portable build
         uses: actions/upload-artifact@v4
         with:
-          name: SlashText-win-x64
+          name: SlashDesk-win-x64
           path: package/
           if-no-files-found: error

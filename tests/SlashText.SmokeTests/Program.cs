@@ -102,7 +102,7 @@ try
         [snippetsFile, settingsFile, usageFile]);
     backupService.CreateDailySnapshot();
     backupService.CreateDailySnapshot();
-    var backupFiles = Directory.GetFiles(backups, "SlashText-backup-*.zip");
+    var backupFiles = Directory.GetFiles(backups, "SlashDesk-backup-*.zip");
     Require(backupFiles.Length == 1, "um backup consolidado por dia");
     using (var archive = ZipFile.OpenRead(backupFiles[0]))
     {
@@ -133,6 +133,25 @@ try
     Require(
         richHtml.Contains("background-color:#FFF176", StringComparison.Ordinal),
         "marca-texto em HTML");
+
+    Require(
+        CaptureService.ResolveDirectoryTemplate(
+                @"C:\Capturas\{year}\{month}",
+                reference) ==
+            @"C:\Capturas\2026\07",
+        "pastas de captura por ano e mês");
+    Require(
+        CaptureService.SanitizeFileName("Outlook: chamado?") == "Outlook- chamado-",
+        "nome de captura remove caracteres inválidos");
+    Require(
+        GlobalCaptureShortcutService.IsValid("Ctrl+Shift+PrintScreen"),
+        "atalho de captura pelo teclado");
+    Require(
+        GlobalCaptureShortcutService.IsValid("Ctrl+Shift+WheelUp"),
+        "atalho de captura pela roda do mouse");
+    Require(
+        !GlobalCaptureShortcutService.IsValid("WheelUp"),
+        "roda do mouse exige modificador");
 }
 finally
 {

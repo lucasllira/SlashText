@@ -10,12 +10,14 @@ public partial class App : System.Windows.Application
 
     protected override void OnStartup(StartupEventArgs e)
     {
+        // Mantém o identificador legado para impedir que SlashText e SlashDesk
+        // monitorem o teclado ao mesmo tempo durante uma atualização.
         _singleInstance = new Mutex(true, "SlashText.SingleInstance", out var created);
         if (!created)
         {
             MessageBox.Show(
-                "O SlashText já está em execução na bandeja do Windows.",
-                "SlashText",
+                "O SlashDesk já está em execução na bandeja do Windows.",
+                "SlashDesk",
                 MessageBoxButton.OK,
                 MessageBoxImage.Information);
             Shutdown();
