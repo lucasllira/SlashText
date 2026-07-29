@@ -254,7 +254,7 @@ public sealed partial class SnippetImportService
 
     private static string ConvertTextBlazeVariables(string text, out int unsupported)
     {
-        unsupported = 0;
+        var unsupportedCount = 0;
         var converted = TextBlazeTabPattern().Replace(text, "{{tab}}");
         converted = TextBlazeTimePattern().Replace(converted, match =>
         {
@@ -269,9 +269,10 @@ public sealed partial class SnippetImportService
 
         converted = TextBlazeCommandPattern().Replace(converted, match =>
         {
-            unsupported++;
+            unsupportedCount++;
             return match.Value;
         });
+        unsupported = unsupportedCount;
         return converted;
     }
 
