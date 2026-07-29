@@ -158,6 +158,14 @@ try
             System.Windows.Input.ModifierKeys.None) == "F10",
         "grava tecla de função sem digitação manual");
     Require(
+        GlobalCaptureShortcutService.FormatKeyboardShortcut(
+            System.Windows.Input.Key.Snapshot,
+            System.Windows.Input.ModifierKeys.None) == "PrintScreen" &&
+        GlobalCaptureShortcutService.IsValid("Print") &&
+        GlobalCaptureShortcutService.IsValid("PrtSc") &&
+        GlobalCaptureShortcutService.IsValid("Snapshot"),
+        "grava Print Screen no pressionamento ou na liberação");
+    Require(
         GlobalCaptureShortcutService.FormatWheelShortcut(
             120,
             System.Windows.Input.ModifierKeys.Control |
