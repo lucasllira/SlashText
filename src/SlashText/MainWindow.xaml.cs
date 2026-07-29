@@ -1528,6 +1528,7 @@ public partial class MainWindow : Window
         try
         {
             System.Drawing.Rectangle? bounds = null;
+            System.Drawing.Bitmap? editedRegion = null;
             var type = action switch
             {
                 CaptureShortcutAction.ActiveMonitor => "monitor",
@@ -1553,46 +1554,47 @@ public partial class MainWindow : Window
 
             if (action == CaptureShortcutAction.Region)
             {
-                var region = _captureService.SelectRegion(null);
-                if (region is not null)
-                {
-                    bounds = new System.Drawing.Rectangle(
-                        (int)Math.Round(region.Value.X),
-                        (int)Math.Round(region.Value.Y),
-                        (int)Math.Round(region.Value.Width),
-                        (int)Math.Round(region.Value.Height));
-                }
+                editedRegion = _captureService.SelectAndEditRegion(null);
             }
             else if (action == CaptureShortcutAction.Window)
             {
                 bounds = _captureService.WindowUnderCursorBounds();
             }
 
-            if (bounds is not null)
+            CaptureRecord? result = null;
+            if (editedRegion is not null)
             {
-                var result = await _captureService.CaptureAndProcessAsync(
+                using (editedRegion)
+                {
+                    result = await _captureService.ProcessEditedRegionAsync(
+                        editedRegion,
+                        type,
+                        _settings.Capture);
+                }
+            }
+            else if (bounds is not null)
+            {
+                result = await _captureService.CaptureAndProcessAsync(
                     bounds.Value,
                     type,
                     _settings.Capture,
-                    openEditor: action == CaptureShortcutAction.Region,
-                    owner: shouldHide ? null : this,
-                    initialTool: action == CaptureShortcutAction.Region
-                        ? _captureService.PreferredRegionTool
-                        : CaptureAnnotationKind.Arrow);
-                if (result is not null)
-                {
-                    StatusText.Text = string.IsNullOrWhiteSpace(result.FilePath)
-                        ? $"Captura de {type} copiada"
-                        : $"Captura salva: {Path.GetFileName(result.FilePath)}";
-                    RefreshCaptureHistory();
-                    _trayIcon?.ShowBalloonTip(
-                        1500,
-                        "Captura concluída",
-                        string.IsNullOrWhiteSpace(result.FilePath)
-                            ? "Imagem copiada para o clipboard."
-                            : result.FilePath,
-                        Forms.ToolTipIcon.Info);
-                }
+                    openEditor: false,
+                    owner: shouldHide ? null : this);
+            }
+
+            if (result is not null)
+            {
+                StatusText.Text = string.IsNullOrWhiteSpace(result.FilePath)
+                    ? $"Captura de {type} copiada"
+                    : $"Captura salva: {Path.GetFileName(result.FilePath)}";
+                RefreshCaptureHistory();
+                _trayIcon?.ShowBalloonTip(
+                    1500,
+                    "Captura concluída",
+                    string.IsNullOrWhiteSpace(result.FilePath)
+                        ? "Imagem copiada para o clipboard."
+                        : result.FilePath,
+                    Forms.ToolTipIcon.Info);
             }
 
             if (shouldHide)
