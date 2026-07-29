@@ -28,12 +28,15 @@ onde instalar vários aplicativos ou enviar conteúdo para a nuvem não é uma o
 - monitor ativo;
 - seleção livre de região;
 - reconhecimento da janela sob o cursor;
-- atalho global independente para cada ação;
-- atalhos de teclado ou combinações com a roda do mouse, como
-  `Ctrl+Shift+WheelUp`;
+- atalho global independente para cada ação, gravado ao pressionar a combinação;
+- teclas de função, teclado, roda, botão central e botões laterais do mouse;
+- combinações como `F10`, `Ctrl+Shift+WheelUp` e `Alt+MouseX1`;
 - pasta automática com variáveis `{year}`, `{month}`, `{month-name}` e `{day}`;
 - nome com `{date}`, `{time}`, `{type}` e `{app}`;
 - PNG ou JPEG com qualidade configurável;
+- editor após captura de região com seta, marca-texto, retângulo, círculo,
+  lápis, texto, numeração, cores, espessura, desfazer e refazer;
+- ações de copiar, salvar ou concluir usando a regra ativa;
 - salvamento automático, clipboard e histórico local das últimas capturas;
 - sem upload, conta ou compartilhamento externo.
 
@@ -109,7 +112,7 @@ recusados; o aplicativo informa o conflito.
 
 ## Próximas etapas
 
-- editor de captura com setas, texto, marca-texto, recorte e desfoque;
+- recorte, desfoque e pixelização no editor de captura;
 - gravação local de MP4 e GIF, com região/janela/monitor, FPS e cursor;
 - captura com atraso e captura com rolagem;
 - assinatura digital para facilitar distribuição corporativa.
