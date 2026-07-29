@@ -3,12 +3,18 @@ $ErrorActionPreference = 'Stop'
 $xamlPath = 'src/SlashText/MainWindow.xaml'
 $codePath = 'src/SlashText/MainWindow.xaml.cs'
 $editorPath = 'src/SlashText/Views/CaptureEditorWindow.cs'
+$regionPath = 'src/SlashText/Views/RegionCaptureWindow.cs'
+$variablePath = 'src/SlashText/Views/VariableInputWindow.cs'
+$keyboardPath = 'src/SlashText/Services/KeyboardHookService.cs'
 $resourcesPath = 'src/SlashText/App.xaml'
 $themePath = 'src/SlashText/Services/ThemeService.cs'
 
 $xaml = Get-Content $xamlPath -Raw
 $code = Get-Content $codePath -Raw
 $editor = Get-Content $editorPath -Raw
+$region = Get-Content $regionPath -Raw
+$variable = Get-Content $variablePath -Raw
+$keyboard = Get-Content $keyboardPath -Raw
 $resources = Get-Content $resourcesPath -Raw
 $theme = Get-Content $themePath -Raw
 
@@ -84,6 +90,29 @@ if (-not $code.Contains('button.Tag = selected ? "Selected" : null')) {
 
 if (-not $editor.Contains('UpdateToolSelection()')) {
     throw 'O editor não informa visualmente a ferramenta selecionada.'
+}
+
+foreach ($captureElement in @(
+    'CaptureVirtualDesktop()',
+    'UpdateShade(',
+    'PositionHandles()',
+    'PositionToolbar()',
+    'PreferredTool',
+    'Selecionar novamente'
+)) {
+    if (-not $region.Contains($captureElement)) {
+        throw "Seleção de região sem o elemento Snipping Tool: $captureElement"
+    }
+}
+
+if ($variable.Contains('window.SourceInitialized +=') -or
+    -not $variable.Contains('new WindowInteropHelper(window).Owner = targetWindow;')) {
+    throw 'O proprietário do diálogo de variáveis não é definido antes de ShowDialog.'
+}
+
+if (-not $keyboard.Contains('ToUnicodeNoStateChange') -or
+    -not $keyboard.Contains('ToUnicodeNoStateChange,')) {
+    throw 'A tradução de teclado ainda pode alterar o estado de teclas mortas ABNT.'
 }
 
 foreach ($control in @(
