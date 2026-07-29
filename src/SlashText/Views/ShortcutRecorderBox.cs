@@ -13,6 +13,8 @@ public sealed class ShortcutRecorderBox : TextBox
     {
         IsReadOnly = true;
         Cursor = Cursors.Hand;
+        MinHeight = 42;
+        VerticalContentAlignment = System.Windows.VerticalAlignment.Center;
         ToolTip = "Clique e pressione a tecla, roda ou botão do mouse desejado";
         GotKeyboardFocus += (_, _) =>
         {
