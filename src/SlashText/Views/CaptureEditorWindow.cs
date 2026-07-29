@@ -40,9 +40,12 @@ public sealed class CaptureEditorWindow : Window
     public DrawingBitmap? EditedBitmap { get; private set; }
     public CaptureEditorOutput RequestedOutput { get; private set; }
 
-    public CaptureEditorWindow(DrawingBitmap source)
+    public CaptureEditorWindow(
+        DrawingBitmap source,
+        CaptureAnnotationKind initialTool = CaptureAnnotationKind.Arrow)
     {
         _source = source;
+        _tool = initialTool;
         Title = "Editar captura";
         Width = 1220;
         Height = 860;

@@ -30,6 +30,12 @@ Require(
 Require(
     !QuickAccentService.ShouldUseUppercase(shiftDown: true, capsLockOn: true),
     "Shift inverte Caps Lock");
+var translationFlags = typeof(KeyboardHookService).GetField(
+    "ToUnicodeNoStateChange",
+    BindingFlags.NonPublic | BindingFlags.Static);
+Require(
+    translationFlags?.GetRawConstantValue() is uint flags && flags == 0x04,
+    "leitura do teclado não altera o estado de acentos mortos em layouts ABNT");
 var portugueseCharacters = QuickAccentService.PreviewCharacters(["PortugueseBrazil"]);
 Require(
     portugueseCharacters.Contains('ã') && !portugueseCharacters.Contains('ä'),

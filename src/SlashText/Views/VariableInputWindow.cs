@@ -123,13 +123,13 @@ public sealed class VariableInputWindow : Window
         IntPtr targetWindow)
     {
         var window = new VariableInputWindow(fields);
-        window.SourceInitialized += (_, _) =>
+        if (targetWindow != IntPtr.Zero)
         {
-            if (targetWindow != IntPtr.Zero)
-            {
-                new WindowInteropHelper(window).Owner = targetWindow;
-            }
-        };
+            // O proprietário nativo precisa ser definido antes de ShowDialog.
+            // Fazer isso em SourceInitialized é tarde demais para uma janela modal
+            // e causa "Cannot set Owner property after Dialog is shown".
+            new WindowInteropHelper(window).Owner = targetWindow;
+        }
         window.ShowDialog();
         return window;
     }
