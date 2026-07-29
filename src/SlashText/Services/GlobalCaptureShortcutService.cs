@@ -22,12 +22,19 @@ public sealed class GlobalCaptureShortcutService : IDisposable
     private const int HotKeyMessage = 0x0312;
     private const int MouseLowLevel = 14;
     private const int MouseWheel = 0x020A;
+    private const int MouseMiddleDown = 0x0207;
+    private const int MouseXDown = 0x020B;
+    private const int WheelUp = 1;
+    private const int WheelDown = -1;
+    private const int MouseMiddle = 10;
+    private const int MouseX1 = 11;
+    private const int MouseX2 = 12;
     private readonly Dictionary<int, CaptureShortcutAction> _actions = [];
     private readonly HookProcedure _mouseProcedure;
     private HwndSource? _source;
     private IntPtr _window;
     private IntPtr _mouseHook;
-    private CaptureSettingsSnapshot[] _wheelShortcuts = [];
+    private CaptureSettingsSnapshot[] _mouseShortcuts = [];
 
     public event EventHandler<CaptureShortcutEventArgs>? Triggered;
 
@@ -54,7 +61,7 @@ public sealed class GlobalCaptureShortcutService : IDisposable
             (CaptureShortcutAction.Region, region),
             (CaptureShortcutAction.Window, window)
         };
-        var wheels = new List<CaptureSettingsSnapshot>();
+        var mouse = new List<CaptureSettingsSnapshot>();
         var id = 4100;
         foreach (var (action, text) in values)
         {
@@ -64,9 +71,9 @@ public sealed class GlobalCaptureShortcutService : IDisposable
                 continue;
             }
 
-            if (parsed.WheelDirection != 0)
+            if (parsed.MouseSignal != 0)
             {
-                wheels.Add(new CaptureSettingsSnapshot(action, parsed));
+                mouse.Add(new CaptureSettingsSnapshot(action, parsed));
                 continue;
             }
             if (!RegisterHotKey(_window, id, parsed.Modifiers, parsed.Key))
@@ -77,13 +84,17 @@ public sealed class GlobalCaptureShortcutService : IDisposable
             _actions[id++] = action;
         }
 
-        _wheelShortcuts = wheels.ToArray();
-        if (_wheelShortcuts.Length > 0)
+        _mouseShortcuts = mouse.ToArray();
+        if (_mouseShortcuts.Length > 0)
         {
-            _mouseHook = SetWindowsHookEx(MouseLowLevel, _mouseProcedure, IntPtr.Zero, 0);
+            _mouseHook = SetWindowsHookEx(
+                MouseLowLevel,
+                _mouseProcedure,
+                IntPtr.Zero,
+                0);
             if (_mouseHook == IntPtr.Zero)
             {
-                errors.Add("Não foi possível ativar atalhos com a roda do mouse.");
+                errors.Add("Não foi possível ativar atalhos com o mouse.");
             }
         }
         return errors;
@@ -91,10 +102,81 @@ public sealed class GlobalCaptureShortcutService : IDisposable
 
     public static bool IsValid(string value) => TryParse(value, out _);
 
+    public static string? FormatKeyboardShortcut(
+        Key key,
+        ModifierKeys modifiers)
+    {
+        if (key == Key.None)
+        {
+            return null;
+        }
+
+        var keyName = key switch
+        {
+            Key.Snapshot => "PrintScreen",
+            >= Key.D0 and <= Key.D9 => ((int)(key - Key.D0)).ToString(),
+            >= Key.NumPad0 and <= Key.NumPad9 => $"Num{(int)(key - Key.NumPad0)}",
+            _ => key.ToString()
+        };
+        return JoinShortcut(modifiers, keyName);
+    }
+
+    public static string? FormatWheelShortcut(
+        int delta,
+        ModifierKeys modifiers)
+    {
+        if (modifiers == ModifierKeys.None || delta == 0)
+        {
+            return null;
+        }
+        return JoinShortcut(
+            modifiers,
+            delta > 0 ? "WheelUp" : "WheelDown");
+    }
+
+    public static string? FormatMouseShortcut(
+        MouseButton button,
+        ModifierKeys modifiers)
+    {
+        var name = button switch
+        {
+            MouseButton.Middle => "MouseMiddle",
+            MouseButton.XButton1 => "MouseX1",
+            MouseButton.XButton2 => "MouseX2",
+            _ => null
+        };
+        return name is null ? null : JoinShortcut(modifiers, name);
+    }
+
     public void Dispose()
     {
         DisposeRegistrations();
         GC.SuppressFinalize(this);
+    }
+
+    private static string JoinShortcut(
+        ModifierKeys modifiers,
+        string action)
+    {
+        var parts = new List<string>();
+        if (modifiers.HasFlag(ModifierKeys.Control))
+        {
+            parts.Add("Ctrl");
+        }
+        if (modifiers.HasFlag(ModifierKeys.Alt))
+        {
+            parts.Add("Alt");
+        }
+        if (modifiers.HasFlag(ModifierKeys.Shift))
+        {
+            parts.Add("Shift");
+        }
+        if (modifiers.HasFlag(ModifierKeys.Windows))
+        {
+            parts.Add("Win");
+        }
+        parts.Add(action);
+        return string.Join("+", parts);
     }
 
     private IntPtr WindowHook(
@@ -104,7 +186,8 @@ public sealed class GlobalCaptureShortcutService : IDisposable
         IntPtr lParam,
         ref bool handled)
     {
-        if (message == HotKeyMessage && _actions.TryGetValue(wParam.ToInt32(), out var action))
+        if (message == HotKeyMessage &&
+            _actions.TryGetValue(wParam.ToInt32(), out var action))
         {
             handled = true;
             Triggered?.Invoke(this, new CaptureShortcutEventArgs(action));
@@ -114,21 +197,38 @@ public sealed class GlobalCaptureShortcutService : IDisposable
 
     private IntPtr MouseHook(int code, IntPtr wParam, IntPtr lParam)
     {
-        if (code >= 0 && wParam.ToInt32() == MouseWheel && _wheelShortcuts.Length > 0)
+        if (code < 0 || _mouseShortcuts.Length == 0)
         {
-            var data = Marshal.PtrToStructure<MouseHookData>(lParam);
-            var delta = (short)((data.MouseData >> 16) & 0xffff);
-            foreach (var item in _wheelShortcuts)
+            return CallNextHookEx(_mouseHook, code, wParam, lParam);
+        }
+
+        var message = wParam.ToInt32();
+        var data = Marshal.PtrToStructure<MouseHookData>(lParam);
+        var signal = message switch
+        {
+            MouseWheel => (short)((data.MouseData >> 16) & 0xffff) > 0
+                ? WheelUp
+                : WheelDown,
+            MouseMiddleDown => MouseMiddle,
+            MouseXDown when ((data.MouseData >> 16) & 0xffff) == 1 => MouseX1,
+            MouseXDown when ((data.MouseData >> 16) & 0xffff) == 2 => MouseX2,
+            _ => 0
+        };
+        if (signal == 0)
+        {
+            return CallNextHookEx(_mouseHook, code, wParam, lParam);
+        }
+
+        foreach (var item in _mouseShortcuts)
+        {
+            if (signal == item.Shortcut.MouseSignal &&
+                ModifiersDown(item.Shortcut.Modifiers))
             {
-                if (Math.Sign(delta) == item.Shortcut.WheelDirection &&
-                    ModifiersDown(item.Shortcut.Modifiers))
-                {
-                    Application.Current.Dispatcher.BeginInvoke(
-                        new Action(() => Triggered?.Invoke(
-                            this,
-                            new CaptureShortcutEventArgs(item.Action))));
-                    return (IntPtr)1;
-                }
+                Application.Current.Dispatcher.BeginInvoke(
+                    new Action(() => Triggered?.Invoke(
+                        this,
+                        new CaptureShortcutEventArgs(item.Action))));
+                return (IntPtr)1;
             }
         }
         return CallNextHookEx(_mouseHook, code, wParam, lParam);
@@ -154,16 +254,26 @@ public sealed class GlobalCaptureShortcutService : IDisposable
             UnhookWindowsHookEx(_mouseHook);
             _mouseHook = IntPtr.Zero;
         }
-        _wheelShortcuts = [];
+        _mouseShortcuts = [];
     }
 
     private static bool ModifiersDown(uint modifiers) =>
-        ((modifiers & 1) == 0 || Keyboard.IsKeyDown(Key.LeftAlt) || Keyboard.IsKeyDown(Key.RightAlt)) &&
-        ((modifiers & 2) == 0 || Keyboard.IsKeyDown(Key.LeftCtrl) || Keyboard.IsKeyDown(Key.RightCtrl)) &&
-        ((modifiers & 4) == 0 || Keyboard.IsKeyDown(Key.LeftShift) || Keyboard.IsKeyDown(Key.RightShift)) &&
-        ((modifiers & 8) == 0 || Keyboard.IsKeyDown(Key.LWin) || Keyboard.IsKeyDown(Key.RWin));
+        ((modifiers & 1) == 0 ||
+          Keyboard.IsKeyDown(Key.LeftAlt) ||
+          Keyboard.IsKeyDown(Key.RightAlt)) &&
+        ((modifiers & 2) == 0 ||
+          Keyboard.IsKeyDown(Key.LeftCtrl) ||
+          Keyboard.IsKeyDown(Key.RightCtrl)) &&
+        ((modifiers & 4) == 0 ||
+          Keyboard.IsKeyDown(Key.LeftShift) ||
+          Keyboard.IsKeyDown(Key.RightShift)) &&
+        ((modifiers & 8) == 0 ||
+          Keyboard.IsKeyDown(Key.LWin) ||
+          Keyboard.IsKeyDown(Key.RWin));
 
-    private static bool TryParse(string text, out ParsedShortcut result)
+    private static bool TryParse(
+        string text,
+        out ParsedShortcut result)
     {
         result = default;
         if (string.IsNullOrWhiteSpace(text))
@@ -173,23 +283,74 @@ public sealed class GlobalCaptureShortcutService : IDisposable
 
         uint modifiers = 0;
         uint key = 0;
-        var wheel = 0;
-        foreach (var rawPart in text.Split('+', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
+        var mouseSignal = 0;
+        foreach (var rawPart in text.Split(
+                     '+',
+                     StringSplitOptions.TrimEntries |
+                     StringSplitOptions.RemoveEmptyEntries))
         {
             var part = rawPart.ToLowerInvariant();
             switch (part)
             {
-                case "alt": modifiers |= 1; break;
+                case "alt":
+                    modifiers |= 1;
+                    break;
                 case "ctrl":
-                case "control": modifiers |= 2; break;
-                case "shift": modifiers |= 4; break;
+                case "control":
+                    modifiers |= 2;
+                    break;
+                case "shift":
+                    modifiers |= 4;
+                    break;
                 case "win":
-                case "windows": modifiers |= 8; break;
+                case "windows":
+                    modifiers |= 8;
+                    break;
                 case "wheelup":
-                case "scrollup": wheel = 1; break;
+                case "scrollup":
+                    if (mouseSignal != 0 || key != 0)
+                    {
+                        return false;
+                    }
+                    mouseSignal = WheelUp;
+                    break;
                 case "wheeldown":
-                case "scrolldown": wheel = -1; break;
+                case "scrolldown":
+                    if (mouseSignal != 0 || key != 0)
+                    {
+                        return false;
+                    }
+                    mouseSignal = WheelDown;
+                    break;
+                case "mousemiddle":
+                case "middlemouse":
+                    if (mouseSignal != 0 || key != 0)
+                    {
+                        return false;
+                    }
+                    mouseSignal = MouseMiddle;
+                    break;
+                case "mousex1":
+                case "xbutton1":
+                    if (mouseSignal != 0 || key != 0)
+                    {
+                        return false;
+                    }
+                    mouseSignal = MouseX1;
+                    break;
+                case "mousex2":
+                case "xbutton2":
+                    if (mouseSignal != 0 || key != 0)
+                    {
+                        return false;
+                    }
+                    mouseSignal = MouseX2;
+                    break;
                 default:
+                    if (key != 0 || mouseSignal != 0)
+                    {
+                        return false;
+                    }
                     var keyName = part switch
                     {
                         "printscreen" or "prtsc" => nameof(Key.Snapshot),
@@ -198,7 +359,20 @@ public sealed class GlobalCaptureShortcutService : IDisposable
                         "pagedown" => nameof(Key.PageDown),
                         _ => rawPart
                     };
-                    if (!Enum.TryParse<Key>(keyName, true, out var parsedKey))
+                    if (part.Length == 1 && char.IsDigit(part[0]))
+                    {
+                        keyName = $"D{part}";
+                    }
+                    else if (part.StartsWith("num", StringComparison.Ordinal) &&
+                             part.Length == 4 &&
+                             char.IsDigit(part[3]))
+                    {
+                        keyName = $"NumPad{part[3]}";
+                    }
+                    if (!Enum.TryParse<Key>(
+                            keyName,
+                            true,
+                            out var parsedKey))
                     {
                         return false;
                     }
@@ -207,24 +381,34 @@ public sealed class GlobalCaptureShortcutService : IDisposable
             }
         }
 
-        if (wheel != 0 && modifiers == 0)
+        if ((mouseSignal is WheelUp or WheelDown) && modifiers == 0)
         {
             return false;
         }
-        if (wheel == 0 && key == 0)
+        if (mouseSignal == 0 && key == 0)
         {
             return false;
         }
-        result = new ParsedShortcut(modifiers, key, wheel);
+        result = new ParsedShortcut(
+            modifiers,
+            key,
+            mouseSignal);
         return true;
     }
 
-    private readonly record struct ParsedShortcut(uint Modifiers, uint Key, int WheelDirection);
+    private readonly record struct ParsedShortcut(
+        uint Modifiers,
+        uint Key,
+        int MouseSignal);
+
     private readonly record struct CaptureSettingsSnapshot(
         CaptureShortcutAction Action,
         ParsedShortcut Shortcut);
 
-    private delegate IntPtr HookProcedure(int code, IntPtr wParam, IntPtr lParam);
+    private delegate IntPtr HookProcedure(
+        int code,
+        IntPtr wParam,
+        IntPtr lParam);
 
     [StructLayout(LayoutKind.Sequential)]
     private struct NativePoint
@@ -244,7 +428,11 @@ public sealed class GlobalCaptureShortcutService : IDisposable
     }
 
     [DllImport("user32.dll")]
-    private static extern bool RegisterHotKey(IntPtr window, int id, uint modifiers, uint key);
+    private static extern bool RegisterHotKey(
+        IntPtr window,
+        int id,
+        uint modifiers,
+        uint key);
 
     [DllImport("user32.dll")]
     private static extern bool UnregisterHotKey(IntPtr window, int id);
