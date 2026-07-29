@@ -13,6 +13,10 @@ public sealed class KeyboardHookService : IDisposable
     private const int WmKeyDown = 0x0100;
     private const int WmSysKeyDown = 0x0104;
     private const uint LlkhfInjected = 0x00000010;
+    // Windows 10 1607+: consulta a tradução sem alterar o estado interno das
+    // teclas mortas. Sem esta flag, acentos de layouts ABNT podem ser aplicados
+    // uma segunda vez quando o evento chega ao aplicativo de destino.
+    private const uint ToUnicodeNoStateChange = 0x04;
 
     private readonly object _sync = new();
     private readonly LowLevelKeyboardProc _hookCallback;
@@ -234,7 +238,7 @@ public sealed class KeyboardHookService : IDisposable
             keyboardState,
             buffer,
             buffer.Capacity,
-            0,
+            ToUnicodeNoStateChange,
             layout);
 
         if (count <= 0 || buffer.Length == 0)
