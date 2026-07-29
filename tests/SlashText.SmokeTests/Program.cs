@@ -83,6 +83,59 @@ try
     loaded = await repository.LoadAsync();
     Require(loaded.Any(item => item.Trigger == ":teste"), "gatilho com dois pontos");
 
+    var textBlazeFile = Path.Combine(root, "textblaze.json");
+    await File.WriteAllTextAsync(
+        textBlazeFile,
+        """
+        {
+          "version": 7,
+          "folders": [{
+            "name": "Atendimento",
+            "snippets": [{
+              "name": "Resposta diária",
+              "shortcut": "/diario",
+              "type": "html",
+              "text": "Data: {time: DD/MM/YYYY; shift=-1D} {key: tab}Pronto"
+            }]
+          }]
+        }
+        """);
+    var importService = new SnippetImportService();
+    var textBlazeImport = await importService.ImportAsync(
+        textBlazeFile,
+        SnippetImportSource.TextBlaze);
+    Require(
+        textBlazeImport.Snippets.Count == 1 &&
+        textBlazeImport.Snippets[0].Category == "Atendimento",
+        "importa pastas e atalhos do Text Blaze");
+    Require(
+        textBlazeImport.Snippets[0].Content.Contains(
+            "{{data:-1d|dd/MM/yyyy}} {{tab}}",
+            StringComparison.Ordinal),
+        "converte data e Tab do Text Blaze");
+
+    var espansoFile = Path.Combine(root, "base.yml");
+    await File.WriteAllTextAsync(
+        espansoFile,
+        """
+        matches:
+          - trigger: ":ola"
+            label: "Saudação"
+            replace: |
+              Olá!
+              Como posso ajudar?
+          - triggers: [":obg", ":thanks"]
+            replace: "Obrigado!"
+        """);
+    var espansoImport = await importService.ImportAsync(
+        espansoFile,
+        SnippetImportSource.Espanso);
+    Require(
+        espansoImport.Snippets.Count == 3 &&
+        espansoImport.Snippets.Any(item => item.Trigger == ":ola") &&
+        espansoImport.Snippets.Any(item => item.Trigger == ":thanks"),
+        "importa trigger, triggers e blocos do Espanso");
+
     var usageFile = Path.Combine(root, "usage.json");
     var settingsFile = Path.Combine(root, "settings.json");
     await File.WriteAllTextAsync(settingsFile, """{"theme":"System"}""");
@@ -117,6 +170,10 @@ try
                 .SequenceEqual(["settings.json", "snippets.md", "usage.json"]),
             "backup contém atalhos, preferências e estatísticas");
     }
+    var manualBackup = backupService.CreateManualSnapshot();
+    Require(
+        File.Exists(manualBackup) && backupService.ListSnapshots().Count == 2,
+        "backup manual e listagem de cópias");
 
     var code = "Antes\n```powershell\nGet-Date\n```\nDepois";
     Require(
