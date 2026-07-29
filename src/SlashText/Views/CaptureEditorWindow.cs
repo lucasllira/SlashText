@@ -26,6 +26,7 @@ public sealed class CaptureEditorWindow : Window
     private readonly Canvas _overlay = new();
     private readonly List<CaptureAnnotation> _annotations = [];
     private readonly Stack<CaptureAnnotation> _redo = new();
+    private readonly Dictionary<CaptureAnnotationKind, Button> _toolButtons = [];
     private readonly double _previewWidth;
     private readonly double _previewHeight;
     private CaptureAnnotationKind _tool = CaptureAnnotationKind.Arrow;
@@ -55,7 +56,7 @@ public sealed class CaptureEditorWindow : Window
         _previewWidth = Math.Max(1, source.Width * scale);
         _previewHeight = Math.Max(1, source.Height * scale);
 
-        var root = new Grid { Margin = new Thickness(20) };
+        var root = new Grid { Margin = new Thickness(16) };
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(14) });
         root.RowDefinitions.Add(new RowDefinition());
@@ -64,6 +65,7 @@ public sealed class CaptureEditorWindow : Window
 
         var toolbar = BuildToolbar();
         root.Children.Add(toolbar);
+        UpdateToolSelection();
 
         var surface = new Grid
         {
@@ -95,7 +97,9 @@ public sealed class CaptureEditorWindow : Window
             VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
             HorizontalContentAlignment = HorizontalAlignment.Center,
             VerticalContentAlignment = VerticalAlignment.Center,
-            Background = (Brush)Application.Current.FindResource("InputBrush")
+            Background = (Brush)Application.Current.FindResource("InputBrush"),
+            BorderBrush = (Brush)Application.Current.FindResource("DividerBrush"),
+            BorderThickness = new Thickness(1)
         };
         Grid.SetRow(viewer, 2);
         root.Children.Add(viewer);
@@ -126,18 +130,18 @@ public sealed class CaptureEditorWindow : Window
         PreviewKeyDown += OnPreviewKeyDown;
     }
 
-    private WrapPanel BuildToolbar()
+    private FrameworkElement BuildToolbar()
     {
         var panel = new WrapPanel();
-        panel.Children.Add(ToolButton("Seta", CaptureAnnotationKind.Arrow));
-        panel.Children.Add(ToolButton("Marca-texto", CaptureAnnotationKind.Highlighter));
-        panel.Children.Add(ToolButton("Retângulo", CaptureAnnotationKind.Rectangle));
-        panel.Children.Add(ToolButton("Círculo", CaptureAnnotationKind.Ellipse));
-        panel.Children.Add(ToolButton("Lápis", CaptureAnnotationKind.Pencil));
-        panel.Children.Add(ToolButton("Texto", CaptureAnnotationKind.Text));
-        panel.Children.Add(ToolButton("Número", CaptureAnnotationKind.Number));
-        panel.Children.Add(ActionButton("Desfazer", (_, _) => Undo()));
-        panel.Children.Add(ActionButton("Refazer", (_, _) => Redo()));
+        panel.Children.Add(ToolButton("↗  Seta", CaptureAnnotationKind.Arrow));
+        panel.Children.Add(ToolButton("▰  Marca-texto", CaptureAnnotationKind.Highlighter));
+        panel.Children.Add(ToolButton("□  Retângulo", CaptureAnnotationKind.Rectangle));
+        panel.Children.Add(ToolButton("○  Círculo", CaptureAnnotationKind.Ellipse));
+        panel.Children.Add(ToolButton("✎  Lápis", CaptureAnnotationKind.Pencil));
+        panel.Children.Add(ToolButton("T  Texto", CaptureAnnotationKind.Text));
+        panel.Children.Add(ToolButton("①  Número", CaptureAnnotationKind.Number));
+        panel.Children.Add(ActionButton("↶  Desfazer", (_, _) => Undo()));
+        panel.Children.Add(ActionButton("↷  Refazer", (_, _) => Redo()));
 
         panel.Children.Add(new TextBlock
         {
@@ -196,7 +200,12 @@ public sealed class CaptureEditorWindow : Window
             }
         };
         panel.Children.Add(thickness);
-        return panel;
+        return new Border
+        {
+            Style = (Style)Application.Current.FindResource("SettingsCard"),
+            Padding = new Thickness(12, 12, 6, 6),
+            Child = panel
+        };
     }
 
     private Button ToolButton(string text, CaptureAnnotationKind tool)
@@ -207,9 +216,25 @@ public sealed class CaptureEditorWindow : Window
             _overlay.Cursor = tool == CaptureAnnotationKind.Text
                 ? Cursors.IBeam
                 : Cursors.Cross;
+            UpdateToolSelection();
         });
         button.ToolTip = $"Ferramenta {text}";
+        _toolButtons[tool] = button;
         return button;
+    }
+
+    private void UpdateToolSelection()
+    {
+        foreach (var (tool, button) in _toolButtons)
+        {
+            var selected = tool == _tool;
+            button.Background = (Brush)Application.Current.FindResource(
+                selected ? "AccentSubtleBrush" : "ControlBrush");
+            button.BorderBrush = (Brush)Application.Current.FindResource(
+                selected ? "AccentBrush" : "DividerBrush");
+            button.Foreground = (Brush)Application.Current.FindResource(
+                selected ? "AccentBrush" : "InkBrush");
+        }
     }
 
     private static Button ActionButton(string text, RoutedEventHandler handler)

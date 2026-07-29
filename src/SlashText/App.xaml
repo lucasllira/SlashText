@@ -2,27 +2,30 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <Application.Resources>
-        <Color x:Key="CanvasColor">#F4F6FA</Color>
+        <Color x:Key="CanvasColor">#F6F8FA</Color>
         <Color x:Key="SurfaceColor">#FFFFFFFF</Color>
-        <Color x:Key="InkColor">#18202B</Color>
-        <Color x:Key="MutedColor">#697586</Color>
-        <Color x:Key="AccentColor">#087E8B</Color>
+        <Color x:Key="InkColor">#17212B</Color>
+        <Color x:Key="MutedColor">#64717E</Color>
+        <Color x:Key="AccentColor">#009EB3</Color>
 
         <SolidColorBrush x:Key="CanvasBrush" Color="{StaticResource CanvasColor}"/>
         <SolidColorBrush x:Key="SurfaceBrush" Color="{StaticResource SurfaceColor}"/>
         <SolidColorBrush x:Key="InkBrush" Color="{StaticResource InkColor}"/>
         <SolidColorBrush x:Key="MutedBrush" Color="{StaticResource MutedColor}"/>
         <SolidColorBrush x:Key="AccentBrush" Color="{StaticResource AccentColor}"/>
-        <SolidColorBrush x:Key="ElevatedBrush" Color="#F7F7FC"/>
+        <SolidColorBrush x:Key="ElevatedBrush" Color="#F8FAFB"/>
+        <SolidColorBrush x:Key="PanelBrush" Color="#FBFCFD"/>
+        <SolidColorBrush x:Key="ChromeBrush" Color="#F1F5F7"/>
         <SolidColorBrush x:Key="InputBrush" Color="#FFFFFFFF"/>
-        <SolidColorBrush x:Key="DividerBrush" Color="#E2E6ED"/>
+        <SolidColorBrush x:Key="DividerBrush" Color="#DCE3E8"/>
         <SolidColorBrush x:Key="CodeBrush" Color="#151821"/>
         <SolidColorBrush x:Key="HoverBrush" Color="#EEF0F6"/>
-        <SolidColorBrush x:Key="SelectedBrush" Color="#DDF4F5"/>
-        <SolidColorBrush x:Key="ControlBrush" Color="#EDF1F5"/>
+        <SolidColorBrush x:Key="SelectedBrush" Color="#DDF6F8"/>
+        <SolidColorBrush x:Key="ControlBrush" Color="#F2F5F7"/>
         <SolidColorBrush x:Key="ControlHoverBrush" Color="#E4EAEE"/>
         <SolidColorBrush x:Key="ControlPressedBrush" Color="#D8E1E6"/>
-        <SolidColorBrush x:Key="AccentSubtleBrush" Color="#DDF4F5"/>
+        <SolidColorBrush x:Key="AccentSubtleBrush" Color="#E3F7F9"/>
+        <SolidColorBrush x:Key="FocusBrush" Color="#50009EB3"/>
         <SolidColorBrush x:Key="DangerBrush" Color="#C63C4A"/>
         <SolidColorBrush x:Key="DangerSubtleBrush" Color="#FCE8EA"/>
         <SolidColorBrush x:Key="SuccessBrush" Color="#188A62"/>
@@ -93,8 +96,47 @@
                BasedOn="{StaticResource {x:Type Button}}">
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderBrush" Value="Transparent"/>
-            <Setter Property="Margin" Value="2"/>
-            <Setter Property="Padding" Value="18,9"/>
+            <Setter Property="Margin" Value="0"/>
+            <Setter Property="Padding" Value="18,14,18,13"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Grid Background="Transparent">
+                            <Border x:Name="NavSurface"
+                                    Margin="4,4,4,3"
+                                    Background="Transparent"
+                                    CornerRadius="8"
+                                    Padding="{TemplateBinding Padding}">
+                                <ContentPresenter HorizontalAlignment="Center"
+                                                  VerticalAlignment="Center"/>
+                            </Border>
+                            <Border x:Name="SelectionLine"
+                                    Height="3"
+                                    Margin="12,0"
+                                    VerticalAlignment="Bottom"
+                                    Background="{DynamicResource AccentBrush}"
+                                    CornerRadius="2"
+                                    Opacity="0"/>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="NavSurface"
+                                        Property="Background"
+                                        Value="{DynamicResource HoverBrush}"/>
+                            </Trigger>
+                            <Trigger Property="Tag" Value="Selected">
+                                <Setter Property="Foreground"
+                                        Value="{DynamicResource InkBrush}"/>
+                                <Setter Property="FontWeight" Value="SemiBold"/>
+                                <Setter TargetName="SelectionLine"
+                                        Property="Opacity"
+                                        Value="1"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
 
         <Style x:Key="ToolbarButton" TargetType="Button"
@@ -128,6 +170,41 @@
             <Setter Property="SelectionBrush" Value="{DynamicResource AccentBrush}"/>
             <Setter Property="SelectionOpacity" Value="0.3"/>
             <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Border x:Name="TextBoxSurface"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="8">
+                            <ScrollViewer x:Name="PART_ContentHost"
+                                          Margin="{TemplateBinding Padding}"
+                                          SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="TextBoxSurface"
+                                        Property="BorderBrush"
+                                        Value="{DynamicResource MutedBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="TextBoxSurface"
+                                        Property="BorderBrush"
+                                        Value="{DynamicResource AccentBrush}"/>
+                                <Setter TargetName="TextBoxSurface"
+                                        Property="BorderThickness"
+                                        Value="1.5"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="TextBoxSurface"
+                                        Property="Opacity"
+                                        Value="0.55"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
 
         <Style TargetType="CheckBox">
@@ -458,7 +535,7 @@
 
         <Style x:Key="PageTitle" TargetType="TextBlock">
             <Setter Property="FontFamily" Value="Segoe UI Variable Display"/>
-            <Setter Property="FontSize" Value="26"/>
+            <Setter Property="FontSize" Value="25"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="Foreground" Value="{DynamicResource InkBrush}"/>
         </Style>
@@ -477,11 +554,11 @@
         </Style>
 
         <Style x:Key="SettingsCard" TargetType="Border">
-            <Setter Property="Background" Value="{DynamicResource ElevatedBrush}"/>
+            <Setter Property="Background" Value="{DynamicResource PanelBrush}"/>
             <Setter Property="BorderBrush" Value="{DynamicResource DividerBrush}"/>
             <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="CornerRadius" Value="12"/>
-            <Setter Property="Padding" Value="18"/>
+            <Setter Property="CornerRadius" Value="11"/>
+            <Setter Property="Padding" Value="20"/>
         </Style>
 
         <Style x:Key="MetricCard" TargetType="Border"
@@ -494,6 +571,27 @@
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="Margin" Value="0,6,0,0"/>
             <Setter Property="Foreground" Value="{DynamicResource InkBrush}"/>
+        </Style>
+
+        <Style x:Key="Eyebrow" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="TextOptions.TextFormattingMode" Value="Display"/>
+        </Style>
+
+        <Style x:Key="StatusPill" TargetType="Border">
+            <Setter Property="Background" Value="{DynamicResource ChromeBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource DividerBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="9"/>
+            <Setter Property="Padding" Value="12,8"/>
+        </Style>
+
+        <Style x:Key="FeatureTile" TargetType="Border"
+               BasedOn="{StaticResource SettingsCard}">
+            <Setter Property="Padding" Value="16"/>
+            <Setter Property="Margin" Value="0,0,10,0"/>
         </Style>
     </Application.Resources>
 </Application>

@@ -9,6 +9,14 @@ onde instalar vários aplicativos ou enviar conteúdo para a nuvem não é uma o
 
 ## Recursos
 
+### Interface
+
+- design system próprio com grafite, branco quente e ciano funcional;
+- temas claro, escuro ou sincronizado com o Windows;
+- navegação consistente, foco visível e estados claros de seleção;
+- layout responsivo a partir do tamanho mínimo de 1080 × 800;
+- onboarding e editor de captura usando os mesmos componentes visuais.
+
 ### Atalhos de texto
 
 - atalhos iniciados por `/` ou `:` em Outlook, Teams, navegadores e outros apps;

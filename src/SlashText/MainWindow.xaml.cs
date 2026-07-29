@@ -806,12 +806,12 @@ public partial class MainWindow : Window
         };
         foreach (var button in buttons)
         {
-            button.Background = ReferenceEquals(button, selectedButton)
-                ? (Brush)FindResource("SelectedBrush")
-                : Brushes.Transparent;
-            button.Foreground = ReferenceEquals(button, selectedButton)
-                ? (Brush)FindResource("AccentBrush")
-                : (Brush)FindResource("InkBrush");
+            var selected = ReferenceEquals(button, selectedButton);
+            button.Tag = selected ? "Selected" : null;
+            button.Background = Brushes.Transparent;
+            button.Foreground = selected
+                ? (Brush)FindResource("InkBrush")
+                : (Brush)FindResource("MutedBrush");
         }
     }
 
