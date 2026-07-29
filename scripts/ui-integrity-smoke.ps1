@@ -8,6 +8,8 @@ $variablePath = 'src/SlashText/Views/VariableInputWindow.cs'
 $keyboardPath = 'src/SlashText/Services/KeyboardHookService.cs'
 $resourcesPath = 'src/SlashText/App.xaml'
 $themePath = 'src/SlashText/Services/ThemeService.cs'
+$importPath = 'src/SlashText/Services/SnippetImportService.cs'
+$backupPath = 'src/SlashText/Services/BackupService.cs'
 
 $xaml = Get-Content $xamlPath -Raw
 $code = Get-Content $codePath -Raw
@@ -17,6 +19,8 @@ $variable = Get-Content $variablePath -Raw
 $keyboard = Get-Content $keyboardPath -Raw
 $resources = Get-Content $resourcesPath -Raw
 $theme = Get-Content $themePath -Raw
+$import = Get-Content $importPath -Raw
+$backup = Get-Content $backupPath -Raw
 
 [xml]$null = $xaml
 [xml]$null = $resources
@@ -121,10 +125,46 @@ foreach ($control in @(
     'CapturePreviewImage',
     'CaptureTotalText',
     'CaptureRegionTotalText',
-    'AverageCharactersText'
+    'AverageCharactersText',
+    'ImportSourceBox',
+    'BackupSummaryText'
 )) {
     if (-not $xaml.Contains("x:Name=`"$control`"")) {
         throw "Controle do novo layout ausente: $control"
+    }
+}
+
+foreach ($source in @(
+    'SnippetImportSource.SlashDesk',
+    'SnippetImportSource.TextBlaze',
+    'SnippetImportSource.Espanso',
+    'ConvertTextBlazeVariables',
+    'EspansoReplacePattern'
+)) {
+    if (-not $import.Contains($source)) {
+        throw "Importador ausente ou incompleto: $source"
+    }
+}
+
+foreach ($backupFeature in @(
+    'CreateManualSnapshot()',
+    'RestoreSnapshot(',
+    'CreateSnapshot(',
+    'capture-history.json'
+)) {
+    if (-not $backup.Contains($backupFeature)) {
+        throw "Backup ausente ou incompleto: $backupFeature"
+    }
+}
+
+foreach ($handler in @(
+    'ImportSnippets_OnClick',
+    'CreateBackup_OnClick',
+    'RestoreBackup_OnClick',
+    'OpenBackupFolder_OnClick'
+)) {
+    if (-not $code.Contains("$handler(")) {
+        throw "Fluxo de dados ausente: $handler"
     }
 }
 
