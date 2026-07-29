@@ -1385,7 +1385,10 @@ public partial class MainWindow : Window
                     type,
                     _settings.Capture,
                     openEditor: action == CaptureShortcutAction.Region,
-                    owner: shouldHide ? null : this);
+                    owner: shouldHide ? null : this,
+                    initialTool: action == CaptureShortcutAction.Region
+                        ? _captureService.PreferredRegionTool
+                        : CaptureAnnotationKind.Arrow);
                 if (result is not null)
                 {
                     StatusText.Text = string.IsNullOrWhiteSpace(result.FilePath)
