@@ -16,6 +16,13 @@ public sealed class RegionCaptureWindow : Window
         Fill = new SolidColorBrush(Color.FromArgb(45, 0, 184, 212)),
         Visibility = Visibility.Collapsed
     };
+    private readonly Border _sizeBadge = new()
+    {
+        Background = new SolidColorBrush(Color.FromArgb(230, 24, 32, 43)),
+        CornerRadius = new CornerRadius(6),
+        Padding = new Thickness(9, 5, 9, 5),
+        Visibility = Visibility.Collapsed
+    };
     private Point _start;
     private bool _dragging;
 
@@ -43,7 +50,7 @@ public sealed class RegionCaptureWindow : Window
             Padding = new Thickness(14, 9, 14, 9),
             Child = new TextBlock
             {
-                Text = "Arraste para selecionar · Esc cancela",
+                Text = "Arraste para selecionar · ao soltar, o editor será aberto · Esc cancela",
                 Foreground = Brushes.White,
                 FontSize = 14
             }
@@ -52,6 +59,13 @@ public sealed class RegionCaptureWindow : Window
         Canvas.SetTop(help, 24);
         _canvas.Children.Add(help);
         _canvas.Children.Add(_selection);
+        _sizeBadge.Child = new TextBlock
+        {
+            Foreground = Brushes.White,
+            FontFamily = new FontFamily("Cascadia Mono, Consolas"),
+            FontSize = 12
+        };
+        _canvas.Children.Add(_sizeBadge);
         Content = _canvas;
 
         MouseLeftButtonDown += OnMouseDown;
@@ -71,6 +85,7 @@ public sealed class RegionCaptureWindow : Window
         _start = e.GetPosition(_canvas);
         _dragging = true;
         _selection.Visibility = Visibility.Visible;
+        _sizeBadge.Visibility = Visibility.Visible;
         CaptureMouse();
     }
 
@@ -118,6 +133,12 @@ public sealed class RegionCaptureWindow : Window
         Canvas.SetTop(_selection, rect.Top);
         _selection.Width = rect.Width;
         _selection.Height = rect.Height;
+        if (_sizeBadge.Child is TextBlock size)
+        {
+            size.Text = $"{Math.Round(rect.Width):N0} × {Math.Round(rect.Height):N0}";
+        }
+        Canvas.SetLeft(_sizeBadge, rect.Left);
+        Canvas.SetTop(_sizeBadge, Math.Max(8, rect.Top - 32));
     }
 
     private static Rect Normalize(Point start, Point end) =>
