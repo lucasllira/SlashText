@@ -17,7 +17,7 @@ $theme = Get-Content $themePath -Raw
 
 $handlers = [regex]::Matches(
     $xaml,
-    '(?:Click|Loaded|Closing|Closed|Activated|SizeChanged|StateChanged|TextChanged|SelectionChanged|Checked|Unchecked|LostFocus)="([A-Za-z_][A-Za-z0-9_]*)"'
+    '(?:Click|Loaded|Closing|Closed|Activated|SizeChanged|StateChanged|TextChanged|SelectionChanged|ValueChanged|Checked|Unchecked|LostFocus|MouseLeftButtonDown)="([A-Za-z_][A-Za-z0-9_]*)"'
 ) | ForEach-Object { $_.Groups[1].Value } | Sort-Object -Unique
 
 foreach ($handler in $handlers) {
@@ -84,6 +84,30 @@ if (-not $code.Contains('button.Tag = selected ? "Selected" : null')) {
 
 if (-not $editor.Contains('UpdateToolSelection()')) {
     throw 'O editor não informa visualmente a ferramenta selecionada.'
+}
+
+foreach ($control in @(
+    'QuickAccentPreviewChoice0',
+    'QuickAccentDelaySlider',
+    'CapturePreviewImage',
+    'CaptureTotalText',
+    'CaptureRegionTotalText',
+    'AverageCharactersText'
+)) {
+    if (-not $xaml.Contains("x:Name=`"$control`"")) {
+        throw "Controle do novo layout ausente: $control"
+    }
+}
+
+$recorder = Get-Content 'src/SlashText/Views/ShortcutRecorderBox.cs' -Raw
+if (-not $recorder.Contains('PreviewKeyUp += OnPreviewKeyUp') -or
+    -not $recorder.Contains('Key.Snapshot')) {
+    throw 'O gravador não trata Print Screen na liberação da tecla.'
+}
+
+$quickAccent = Get-Content 'src/SlashText/Services/QuickAccentService.cs' -Raw
+if (-not $quickAccent.Contains('_activationDown')) {
+    throw 'O Acento Rápido não bloqueia o auto-repeat da tecla de ativação.'
 }
 
 Write-Host "UI integrity smoke: OK ($($handlers.Count) handlers)"
