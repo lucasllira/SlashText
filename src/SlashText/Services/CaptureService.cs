@@ -20,6 +20,8 @@ public sealed class CaptureService
     private List<CaptureRecord> _history = [];
 
     public IReadOnlyList<CaptureRecord> History => _history;
+    public CaptureAnnotationKind PreferredRegionTool { get; private set; } =
+        CaptureAnnotationKind.Arrow;
 
     public async Task LoadAsync()
     {
@@ -70,7 +72,13 @@ public sealed class CaptureService
         {
             selector.Owner = owner;
         }
-        return selector.ShowDialog() == true ? selector.SelectedRegion : null;
+        if (selector.ShowDialog() != true)
+        {
+            return null;
+        }
+
+        PreferredRegionTool = selector.PreferredTool;
+        return selector.SelectedRegion;
     }
 
     public async Task<CaptureRecord?> CaptureAndProcessAsync(
@@ -78,7 +86,8 @@ public sealed class CaptureService
         string type,
         CaptureSettings settings,
         bool openEditor = false,
-        Window? owner = null)
+        Window? owner = null,
+        CaptureAnnotationKind initialTool = CaptureAnnotationKind.Arrow)
     {
         if (bounds.Width <= 0 || bounds.Height <= 0)
         {
@@ -93,7 +102,7 @@ public sealed class CaptureService
         {
             if (openEditor)
             {
-                var editor = new CaptureEditorWindow(captured);
+                var editor = new CaptureEditorWindow(captured, initialTool);
                 if (owner is { IsVisible: true })
                 {
                     editor.Owner = owner;
