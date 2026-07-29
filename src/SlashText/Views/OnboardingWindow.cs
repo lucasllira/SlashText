@@ -61,7 +61,10 @@ public sealed class OnboardingWindow : Window
         features.Children.Add(Card("01", "Atalhos de texto", "Digite /atalho ou :atalho e confirme para inserir textos reutilizáveis."));
         features.Children.Add(Card("02", "Acento Rápido", "Segure a tecla configurada após uma letra para escolher o caractere."));
         features.Children.Add(Card("03", "Captura local", "Capture monitor, região ou janela e marque a imagem antes de salvar."));
-        features.Children.Add(Card("04", "Privacidade", "Preferências, estatísticas e capturas permanecem neste computador."));
+        features.Children.Add(Card(
+            "04",
+            "Traga seus atalhos",
+            "Importe arquivos do Text Blaze, Espanso ou outro SlashDesk; o original fica protegido por backup."));
         root.Children.Add(features);
 
         var footer = new Grid();

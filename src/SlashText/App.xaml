@@ -6,7 +6,7 @@
         <Color x:Key="SurfaceColor">#FFFFFFFF</Color>
         <Color x:Key="InkColor">#17212B</Color>
         <Color x:Key="MutedColor">#64717E</Color>
-        <Color x:Key="AccentColor">#009EB3</Color>
+        <Color x:Key="AccentColor">#0AA9BB</Color>
 
         <SolidColorBrush x:Key="CanvasBrush" Color="{StaticResource CanvasColor}"/>
         <SolidColorBrush x:Key="SurfaceBrush" Color="{StaticResource SurfaceColor}"/>
@@ -557,7 +557,7 @@
             <Setter Property="Background" Value="{DynamicResource PanelBrush}"/>
             <Setter Property="BorderBrush" Value="{DynamicResource DividerBrush}"/>
             <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="CornerRadius" Value="11"/>
+            <Setter Property="CornerRadius" Value="12"/>
             <Setter Property="Padding" Value="20"/>
         </Style>
 

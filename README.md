@@ -24,6 +24,8 @@ onde instalar vários aplicativos ou enviar conteúdo para a nuvem não é uma o
   alinhamento, tabelas, imagens e hiperlinks;
 - variáveis preenchíveis, datas automáticas, cálculos de data e `{{tab}}`;
 - sugestões flutuantes, preview e estatísticas locais.
+- importação de `snippets.md`, exportações JSON do Text Blaze e arquivos YAML
+  do Espanso, com conversão das variáveis compatíveis e proteção contra conflitos.
 
 ### Acento Rápido
 
@@ -75,7 +77,8 @@ Durante o uso, a pasta `SlashDeskData` também pode conter:
 - `usage.json`: contadores locais;
 - `capture-history.json`: tipo, horário, tamanho e caminho das capturas recentes;
 - `assets/`: imagens usadas nos atalhos;
-- `backups/`: um ZIP por dia, com retenção de sete dias.
+- `backups/`: um ZIP por dia ou sob demanda, com restauração e retenção das sete
+  cópias mais recentes.
 
 A atualização migra automaticamente `SlashTextData` para `SlashDeskData`, com
 prioridade para os dados reais do usuário.
