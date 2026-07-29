@@ -66,22 +66,22 @@
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <StackPanel Orientation="Horizontal">
-                    <Button x:Name="ShortcutsTabButton" Content="Atalhos"
+                    <Button x:Name="ShortcutsTabButton" Content="⌘  Atalhos"
                             Style="{StaticResource NavButton}"
                             Click="ShortcutsTab_OnClick"/>
-                    <Button x:Name="QuickAccentTabButton" Content="Acento Rápido"
+                    <Button x:Name="QuickAccentTabButton" Content="Á  Acento Rápido"
                             Style="{StaticResource NavButton}"
                             Click="QuickAccentTab_OnClick"/>
-                    <Button x:Name="CaptureTabButton" Content="Captura"
+                    <Button x:Name="CaptureTabButton" Content="▣  Captura"
                             Style="{StaticResource NavButton}"
                             Click="CaptureTab_OnClick"/>
-                    <Button x:Name="StatisticsTabButton" Content="Estatísticas"
+                    <Button x:Name="StatisticsTabButton" Content="↗  Estatísticas"
                             Style="{StaticResource NavButton}"
                             Click="StatisticsTab_OnClick"/>
-                    <Button x:Name="SettingsTabButton" Content="Configurações"
+                    <Button x:Name="SettingsTabButton" Content="⚙  Configurações"
                             Style="{StaticResource NavButton}"
                             Click="SettingsTab_OnClick"/>
-                    <Button x:Name="AboutTabButton" Content="Sobre"
+                    <Button x:Name="AboutTabButton" Content="ⓘ  Sobre"
                             Style="{StaticResource NavButton}"
                             Click="AboutTab_OnClick"/>
                 </StackPanel>
@@ -1071,16 +1071,31 @@
 
                                 <Border Style="{StaticResource SettingsCard}">
                                     <StackPanel>
-                                        <TextBlock Text="Arquivos e backup"
+                                        <TextBlock Text="Importar atalhos"
                                                    FontSize="17"
                                                    FontWeight="SemiBold"/>
                                         <TextBlock Margin="0,10,0,0"
                                                    TextWrapping="Wrap"
-                                                   Text="A pasta SlashDeskData reúne snippets.md, preferências, estatísticas, imagens e histórico de capturas."
+                                                   Text="Migre seus atalhos sem recriar tudo. O SlashDesk converte formatos conhecidos e informa o que precisa de revisão."
                                                    Foreground="{DynamicResource MutedBrush}"/>
-                                        <TextBlock Margin="0,9,0,0"
+                                        <TextBlock Text="Origem"
+                                                   Margin="0,16,0,0"
+                                                   Foreground="{DynamicResource MutedBrush}"/>
+                                        <ComboBox x:Name="ImportSourceBox"
+                                                  SelectedIndex="0"
+                                                  Margin="0,7,0,0">
+                                            <ComboBoxItem Content="SlashDesk (snippets.md)" Tag="SlashDesk"/>
+                                            <ComboBoxItem Content="Text Blaze (JSON)" Tag="TextBlaze"/>
+                                            <ComboBoxItem Content="Espanso (YAML)" Tag="Espanso"/>
+                                        </ComboBox>
+                                        <Button Content="Selecionar arquivo e importar"
+                                                Style="{StaticResource PrimaryButton}"
+                                                Margin="0,12,0,0"
+                                                HorizontalAlignment="Left"
+                                                Click="ImportSnippets_OnClick"/>
+                                        <TextBlock Margin="0,10,0,0"
                                                    TextWrapping="Wrap"
-                                                   Text="A pasta backups mantém um ZIP por dia, no máximo sete, com atalhos, preferências e estatísticas."
+                                                   Text="Antes de alterar o snippets.md, o estado atual é salvo automaticamente."
                                                    Foreground="{DynamicResource MutedBrush}"/>
                                     </StackPanel>
                                 </Border>
@@ -1088,22 +1103,34 @@
                                 <Border Grid.Column="2"
                                         Style="{StaticResource SettingsCard}">
                                     <StackPanel>
-                                        <TextBlock Text="Privacidade"
+                                        <TextBlock Text="Backup e restauração"
                                                    FontSize="17"
                                                    FontWeight="SemiBold"/>
                                         <TextBlock Margin="0,10,0,0"
                                                    TextWrapping="Wrap"
-                                                   Text="Sem conta, telemetria ou conexão obrigatória. O conteúdo digitado permanece no computador."
+                                                   Text="Um ZIP local é criado por dia. O SlashDesk mantém as sete cópias mais recentes com atalhos, preferências, estatísticas e histórico."
                                                    Foreground="{DynamicResource MutedBrush}"/>
-                                        <Border Background="{DynamicResource AccentSubtleBrush}"
-                                                CornerRadius="8"
-                                                Padding="10,7"
-                                                Margin="0,12,0,0"
-                                                HorizontalAlignment="Left">
-                                            <TextBlock Text="100% local"
-                                                       Foreground="{DynamicResource AccentBrush}"
-                                                       FontWeight="SemiBold"/>
-                                        </Border>
+                                        <TextBlock x:Name="BackupSummaryText"
+                                                   Text="Carregando backups..."
+                                                   Margin="0,12,0,0"
+                                                   Foreground="{DynamicResource AccentBrush}"
+                                                   FontWeight="SemiBold"/>
+                                        <WrapPanel Margin="0,14,0,0">
+                                            <Button Content="Criar agora"
+                                                    Style="{StaticResource PrimaryButton}"
+                                                    Margin="0,0,8,8"
+                                                    Click="CreateBackup_OnClick"/>
+                                            <Button Content="Restaurar ZIP"
+                                                    Margin="0,0,8,8"
+                                                    Click="RestoreBackup_OnClick"/>
+                                            <Button Content="Abrir pasta"
+                                                    Margin="0,0,0,8"
+                                                    Click="OpenBackupFolder_OnClick"/>
+                                        </WrapPanel>
+                                        <TextBlock Margin="0,6,0,0"
+                                                   TextWrapping="Wrap"
+                                                   Text="Tudo permanece em SlashDeskData. Nenhum arquivo é enviado para a nuvem."
+                                                   Foreground="{DynamicResource MutedBrush}"/>
                                     </StackPanel>
                                 </Border>
                             </Grid>
@@ -1144,7 +1171,7 @@
                                                    Margin="0,4,0,0"
                                                    FontSize="16"
                                                    Foreground="{DynamicResource MutedBrush}"/>
-                                        <TextBlock Text="Versão 2.4.0 · Licença MIT · código aberto"
+                                        <TextBlock Text="Versão 2.5.0 · Licença MIT · código aberto"
                                                    Margin="0,12,0,0"
                                                    Foreground="{DynamicResource AccentBrush}"
                                                    FontWeight="SemiBold"/>
