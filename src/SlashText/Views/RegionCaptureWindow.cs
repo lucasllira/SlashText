@@ -24,8 +24,8 @@ public sealed class RegionCaptureWindow : Window
     };
     private readonly Rectangle _selection = new()
     {
-        Stroke = Brushes.White,
-        StrokeThickness = 1.5,
+        Stroke = new SolidColorBrush(Color.FromRgb(39, 200, 218)),
+        StrokeThickness = 2,
         StrokeDashArray = new DoubleCollection { 3, 2 },
         Fill = Brushes.Transparent,
         Visibility = Visibility.Collapsed,
@@ -116,6 +116,8 @@ public sealed class RegionCaptureWindow : Window
         _canvas.Children.Add(_selection);
 
         _annotationLayer.ClipToBounds = true;
+        _annotationLayer.Cursor = Cursors.Cross;
+        _annotationLayer.MouseLeftButtonDown += OnAnnotationMouseDown;
         _canvas.Children.Add(_annotationLayer);
 
         _handles =
@@ -150,22 +152,44 @@ public sealed class RegionCaptureWindow : Window
 
     private Border BuildToolbar()
     {
-        var tools = new StackPanel { Orientation = Orientation.Horizontal };
+        var root = new Grid();
+        root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+
+        var tools = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            HorizontalAlignment = HorizontalAlignment.Center
+        };
         tools.Children.Add(ToolbarButton(
             "Capturar",
             "Finalizar usando a regra configurada",
             primary: true,
             (_, _) => Complete()));
         tools.Children.Add(Separator());
-        tools.Children.Add(ToolButton("↗", "Seta", CaptureAnnotationKind.Arrow));
-        tools.Children.Add(ToolButton("▰", "Marca-texto", CaptureAnnotationKind.Highlighter));
-        tools.Children.Add(ToolButton("□", "Retângulo", CaptureAnnotationKind.Rectangle));
-        tools.Children.Add(ToolButton("○", "Círculo", CaptureAnnotationKind.Ellipse));
-        tools.Children.Add(ToolButton("✎", "Lápis", CaptureAnnotationKind.Pencil));
-        tools.Children.Add(ToolButton("T", "Texto", CaptureAnnotationKind.Text));
-        tools.Children.Add(ToolButton("①", "Número", CaptureAnnotationKind.Number));
-        tools.Children.Add(Separator());
+        tools.Children.Add(ToolButton("Seta", "Desenhar seta", CaptureAnnotationKind.Arrow));
+        tools.Children.Add(ToolButton("Marca-texto", "Realçar uma área", CaptureAnnotationKind.Highlighter));
+        tools.Children.Add(ToolButton("Retângulo", "Desenhar retângulo", CaptureAnnotationKind.Rectangle));
+        tools.Children.Add(ToolButton("Elipse", "Desenhar elipse", CaptureAnnotationKind.Ellipse));
+        tools.Children.Add(ToolButton("Lápis", "Desenho livre", CaptureAnnotationKind.Pencil));
+        tools.Children.Add(ToolButton("Texto", "Inserir texto", CaptureAnnotationKind.Text));
+        tools.Children.Add(ToolButton("Número", "Inserir marcador numerado", CaptureAnnotationKind.Number));
+        root.Children.Add(tools);
 
+        var options = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            Margin = new Thickness(0, 3, 0, 0)
+        };
+        options.Children.Add(new TextBlock
+        {
+            Text = "Cor",
+            Foreground = Brushes.White,
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(7, 0, 5, 0),
+            FontSize = 12
+        });
         foreach (var color in new[]
                  {
                      DrawingColor.Red,
@@ -193,7 +217,7 @@ public sealed class RegionCaptureWindow : Window
                 Cursor = Cursors.Hand
             };
             choice.Click += (_, _) => _color = (int)choice.Tag;
-            tools.Children.Add(choice);
+            options.Children.Add(choice);
         }
 
         var thickness = new ComboBox
@@ -224,12 +248,14 @@ public sealed class RegionCaptureWindow : Window
                 _thickness = value;
             }
         };
-        tools.Children.Add(thickness);
-        tools.Children.Add(Separator());
-        tools.Children.Add(ToolbarButton("↶", "Desfazer (Ctrl+Z)", false, (_, _) => Undo()));
-        tools.Children.Add(ToolbarButton("↷", "Refazer (Ctrl+Y)", false, (_, _) => Redo()));
-        tools.Children.Add(ToolbarButton("⟳", "Selecionar novamente", false, (_, _) => ResetSelection()));
-        tools.Children.Add(ToolbarButton("×", "Cancelar", false, (_, _) => DialogResult = false));
+        options.Children.Add(thickness);
+        options.Children.Add(Separator());
+        options.Children.Add(ToolbarButton("Desfazer", "Desfazer (Ctrl+Z)", false, (_, _) => Undo()));
+        options.Children.Add(ToolbarButton("Refazer", "Refazer (Ctrl+Y)", false, (_, _) => Redo()));
+        options.Children.Add(ToolbarButton("Refazer seleção", "Selecionar novamente (R)", false, (_, _) => ResetSelection()));
+        options.Children.Add(ToolbarButton("Cancelar", "Cancelar captura (Esc)", false, (_, _) => DialogResult = false));
+        Grid.SetRow(options, 1);
+        root.Children.Add(options);
 
         var toolbar = new Border
         {
@@ -238,7 +264,7 @@ public sealed class RegionCaptureWindow : Window
             BorderBrush = new SolidColorBrush(Color.FromArgb(110, 255, 255, 255)),
             BorderThickness = new Thickness(1),
             CornerRadius = new CornerRadius(11),
-            Padding = new Thickness(6),
+            Padding = new Thickness(7),
             Effect = new System.Windows.Media.Effects.DropShadowEffect
             {
                 BlurRadius = 20,
@@ -246,7 +272,7 @@ public sealed class RegionCaptureWindow : Window
                 Opacity = .38,
                 Color = Colors.Black
             },
-            Child = tools
+            Child = root
         };
         return toolbar;
     }
@@ -278,7 +304,7 @@ public sealed class RegionCaptureWindow : Window
         {
             Content = text,
             ToolTip = toolTip,
-            MinWidth = primary ? 104 : 38,
+            MinWidth = primary ? 104 : 58,
             Height = 38,
             Margin = new Thickness(2),
             Padding = primary
@@ -292,7 +318,7 @@ public sealed class RegionCaptureWindow : Window
                 ? new SolidColorBrush(Color.FromRgb(43, 201, 218))
                 : new SolidColorBrush(Color.FromRgb(66, 80, 94)),
             BorderThickness = new Thickness(1),
-            FontSize = primary ? 13 : 17,
+            FontSize = 12,
             FontWeight = primary ? FontWeights.SemiBold : FontWeights.Normal,
             Cursor = Cursors.Hand
         };
@@ -310,7 +336,8 @@ public sealed class RegionCaptureWindow : Window
 
     private void OnMouseDown(object sender, MouseButtonEventArgs e)
     {
-        if (e.ChangedButton != MouseButton.Left ||
+        if (e.Handled ||
+            e.ChangedButton != MouseButton.Left ||
             IsToolbarSource(e.OriginalSource as DependencyObject))
         {
             return;
@@ -337,6 +364,36 @@ public sealed class RegionCaptureWindow : Window
         CaptureMouse();
         UpdateSelection(_start);
         e.Handled = true;
+    }
+
+    private void OnAnnotationMouseDown(object sender, MouseButtonEventArgs e)
+    {
+        if (!_selectionReady ||
+            e.ChangedButton != MouseButton.Left ||
+            IsTextInputSource(e.OriginalSource as DependencyObject))
+        {
+            return;
+        }
+
+        var local = e.GetPosition(_annotationLayer);
+        var canvasPoint = new Point(
+            _localSelection.Left + local.X,
+            _localSelection.Top + local.Y);
+        BeginAnnotation(canvasPoint);
+        e.Handled = true;
+    }
+
+    private static bool IsTextInputSource(DependencyObject? source)
+    {
+        while (source is not null)
+        {
+            if (source is TextBox)
+            {
+                return true;
+            }
+            source = VisualTreeHelper.GetParent(source);
+        }
+        return false;
     }
 
     private void OnMouseMove(object sender, MouseEventArgs e)
