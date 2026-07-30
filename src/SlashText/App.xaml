@@ -97,36 +97,45 @@
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderBrush" Value="Transparent"/>
             <Setter Property="Foreground" Value="{DynamicResource MutedBrush}"/>
-            <Setter Property="Margin" Value="1"/>
-            <Setter Property="Padding" Value="12,9"/>
-            <Setter Property="FontSize" Value="12.5"/>
+            <Setter Property="Margin" Value="0"/>
+            <Setter Property="Padding" Value="18,13,18,11"/>
+            <Setter Property="FontSize" Value="13"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border x:Name="NavSurface"
-                                Background="{TemplateBinding Background}"
-                                BorderBrush="{TemplateBinding BorderBrush}"
-                                BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="8"
-                                Padding="{TemplateBinding Padding}">
-                            <ContentPresenter HorizontalAlignment="Center"
-                                              VerticalAlignment="Center"
-                                              TextElement.Foreground="{TemplateBinding Foreground}"/>
-                        </Border>
+                        <Grid Background="Transparent">
+                            <Border x:Name="NavSurface"
+                                    Margin="4,4,4,5"
+                                    Background="{TemplateBinding Background}"
+                                    CornerRadius="7"
+                                    Padding="{TemplateBinding Padding}">
+                                <ContentPresenter HorizontalAlignment="Center"
+                                                  VerticalAlignment="Center"
+                                                  TextElement.Foreground="{TemplateBinding Foreground}"/>
+                            </Border>
+                            <Border x:Name="SelectionIndicator"
+                                    Height="3"
+                                    Margin="13,0"
+                                    CornerRadius="2,2,0,0"
+                                    Background="{DynamicResource AccentBrush}"
+                                    VerticalAlignment="Bottom"
+                                    Opacity="0"/>
+                        </Grid>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter TargetName="NavSurface"
                                         Property="Background"
                                         Value="{DynamicResource HoverBrush}"/>
+                                <Setter Property="Foreground"
+                                        Value="{DynamicResource InkBrush}"/>
                             </Trigger>
                             <Trigger Property="Tag" Value="Selected">
                                 <Setter Property="Foreground"
-                                        Value="{DynamicResource AccentBrush}"/>
-                                <Setter Property="Background"
-                                        Value="{DynamicResource AccentSubtleBrush}"/>
+                                        Value="{DynamicResource InkBrush}"/>
                                 <Setter Property="FontWeight" Value="SemiBold"/>
-                                <Setter Property="BorderBrush"
-                                        Value="{DynamicResource FocusBrush}"/>
+                                <Setter TargetName="SelectionIndicator"
+                                        Property="Opacity"
+                                        Value="1"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -530,7 +539,7 @@
 
         <Style x:Key="PageTitle" TargetType="TextBlock">
             <Setter Property="FontFamily" Value="Segoe UI Variable Display"/>
-            <Setter Property="FontSize" Value="27"/>
+            <Setter Property="FontSize" Value="24"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="Foreground" Value="{DynamicResource InkBrush}"/>
         </Style>
@@ -549,11 +558,11 @@
         </Style>
 
         <Style x:Key="SettingsCard" TargetType="Border">
-            <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
+            <Setter Property="Background" Value="{DynamicResource PanelBrush}"/>
             <Setter Property="BorderBrush" Value="{DynamicResource DividerBrush}"/>
             <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="CornerRadius" Value="12"/>
-            <Setter Property="Padding" Value="20"/>
+            <Setter Property="CornerRadius" Value="10"/>
+            <Setter Property="Padding" Value="16"/>
         </Style>
 
         <Style x:Key="MetricCard" TargetType="Border"
@@ -562,7 +571,7 @@
         </Style>
 
         <Style x:Key="MetricValue" TargetType="TextBlock">
-            <Setter Property="FontSize" Value="26"/>
+            <Setter Property="FontSize" Value="24"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="Margin" Value="0,6,0,0"/>
             <Setter Property="Foreground" Value="{DynamicResource InkBrush}"/>

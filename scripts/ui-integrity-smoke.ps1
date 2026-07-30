@@ -73,6 +73,23 @@ foreach ($resource in @(
     }
 }
 
+foreach ($shellElement in @(
+    '<RowDefinition Height="64"/>',
+    '<RowDefinition Height="49"/>',
+    'BorderThickness="0,1,0,1"',
+    'Produtividade local para Windows',
+    'SelectionIndicator'
+)) {
+    $source = if ($shellElement -eq 'SelectionIndicator') {
+        $resources
+    } else {
+        $xaml
+    }
+    if (-not $source.Contains($shellElement)) {
+        throw "Shell visual novo ausente: $shellElement"
+    }
+}
+
 foreach ($brush in @(
     'CanvasBrush',
     'SurfaceBrush',
@@ -145,6 +162,23 @@ foreach ($label in @(
     if (-not $region.Contains("`"$label`"")) {
         throw "Barra de captura sem rótulo legível: $label"
     }
+}
+
+foreach ($themeElement in @(
+    'ThemeService.IsDark',
+    '_isDark ? "#F2121922" : "#F8FFFFFF"',
+    '_isDark ? "#FA121922" : "#FCF8FAFC"',
+    '_isDark ? "#F5F8FA" : "#25313D"',
+    '_isDark ? "#1E2834" : "#FFFFFF"'
+)) {
+    if (-not $region.Contains($themeElement)) {
+        throw "Overlay de região sem variante clara/escura: $themeElement"
+    }
+}
+
+if ($region.Contains(
+        'Background = new SolidColorBrush(Color.FromArgb(250, 18, 25, 34))')) {
+    throw 'A barra de captura ainda força o tema escuro.'
 }
 
 if (-not $region.Contains('_annotationLayer.MouseLeftButtonDown += OnAnnotationMouseDown') -or

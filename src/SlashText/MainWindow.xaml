@@ -13,7 +13,8 @@
         Background="{DynamicResource CanvasBrush}">
     <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="78"/>
+            <RowDefinition Height="64"/>
+            <RowDefinition Height="49"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
@@ -25,36 +26,59 @@
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
-            <StackPanel Orientation="Horizontal" Margin="24,0,0,0">
-                <Image Source="Assets/SlashDesk.png"
-                       Width="30"
-                       Height="30"
-                       Margin="0,0,10,0"
-                       RenderOptions.BitmapScalingMode="HighQuality"/>
+            <StackPanel Orientation="Horizontal" Margin="20,0,0,0">
+                <Border Width="36"
+                        Height="36"
+                        Background="{DynamicResource AccentSubtleBrush}"
+                        BorderBrush="{DynamicResource FocusBrush}"
+                        BorderThickness="1"
+                        CornerRadius="9"
+                        Margin="0,0,10,0">
+                    <Image Source="Assets/SlashDesk.png"
+                           Width="27"
+                           Height="27"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"
+                           RenderOptions.BitmapScalingMode="HighQuality"/>
+                </Border>
                 <StackPanel VerticalAlignment="Center">
                     <TextBlock Text="SlashDesk"
                                FontFamily="Segoe UI Variable Display"
-                               FontSize="17"
+                               FontSize="18"
                                FontWeight="SemiBold"
                                Foreground="{DynamicResource InkBrush}"/>
+                    <TextBlock Text="Produtividade local para Windows"
+                               FontSize="11"
+                               Margin="0,1,0,0"
+                               Foreground="{DynamicResource MutedBrush}"/>
                 </StackPanel>
             </StackPanel>
 
-            <Border Grid.Column="1"
-                    HorizontalAlignment="Center"
-                    VerticalAlignment="Center"
-                    Background="{DynamicResource ChromeBrush}"
-                    BorderBrush="{DynamicResource DividerBrush}"
-                    BorderThickness="1"
-                    CornerRadius="12"
-                    Padding="4">
-                <Border.Resources>
+            <Border Grid.Column="2"
+                    Style="{StaticResource StatusPill}"
+                    Margin="16,0,20,0"
+                    VerticalAlignment="Center">
+                <TextBlock x:Name="MonitorStatusText"
+                           Text="● Iniciando monitoramento"
+                           Foreground="{DynamicResource SuccessBrush}"
+                           FontSize="12"/>
+            </Border>
+        </Grid>
+
+        <Border Grid.Row="1"
+                Background="{DynamicResource PanelBrush}"
+                BorderBrush="{DynamicResource DividerBrush}"
+                BorderThickness="0,1,0,1">
+            <Grid>
+                <Grid.Resources>
                     <Style TargetType="TextBlock">
                         <Setter Property="Foreground"
                                 Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Button}}}"/>
                     </Style>
-                </Border.Resources>
-                <StackPanel Orientation="Horizontal">
+                </Grid.Resources>
+                <StackPanel Orientation="Horizontal"
+                            HorizontalAlignment="Left"
+                            Margin="16,0,0,0">
                     <Button x:Name="ShortcutsTabButton"
                             Style="{StaticResource NavButton}"
                             Click="ShortcutsTab_OnClick">
@@ -104,25 +128,15 @@
                         </StackPanel>
                     </Button>
                 </StackPanel>
-            </Border>
+            </Grid>
+        </Border>
 
-            <Border Grid.Column="2"
-                    Style="{StaticResource StatusPill}"
-                    Margin="16,0,24,0"
-                    VerticalAlignment="Center">
-                <TextBlock x:Name="MonitorStatusText"
-                           Text="● Iniciando monitoramento"
-                           Foreground="{DynamicResource SuccessBrush}"
-                           FontSize="12"/>
-            </Border>
-        </Grid>
-
-        <Border Grid.Row="1"
-                Margin="16,0,16,16"
+        <Border Grid.Row="2"
+                Margin="16"
                 Background="{DynamicResource SurfaceBrush}"
                 BorderBrush="{DynamicResource DividerBrush}"
                 BorderThickness="1"
-                CornerRadius="14"
+                CornerRadius="12"
                 ClipToBounds="True">
                 <Grid>
                     <Grid x:Name="ShortcutsView">
@@ -474,7 +488,7 @@
 
                     <ScrollViewer x:Name="QuickAccentView" Visibility="Collapsed"
                                   VerticalScrollBarVisibility="Auto">
-                        <Grid Margin="32,28,32,32" MaxWidth="1180" HorizontalAlignment="Center">
+                        <Grid Margin="24" MaxWidth="1180" HorizontalAlignment="Center">
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="18"/>
@@ -692,7 +706,7 @@
 
                     <ScrollViewer x:Name="CaptureView" Visibility="Collapsed"
                                   VerticalScrollBarVisibility="Auto">
-                        <Grid Margin="32,28,32,32" MaxWidth="1180" HorizontalAlignment="Center">
+                        <Grid Margin="24" MaxWidth="1180" HorizontalAlignment="Center">
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="20"/>
@@ -896,7 +910,7 @@
 
                     <ScrollViewer x:Name="StatisticsView" Visibility="Collapsed"
                                   VerticalScrollBarVisibility="Auto">
-                        <Grid Margin="32,28,32,32" MaxWidth="1180" HorizontalAlignment="Center">
+                        <Grid Margin="24" MaxWidth="1180" HorizontalAlignment="Center">
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="20"/>
@@ -1042,7 +1056,7 @@
 
                     <ScrollViewer x:Name="SettingsView" Visibility="Collapsed"
                                   VerticalScrollBarVisibility="Auto">
-                        <Grid Margin="32" MaxWidth="1000" HorizontalAlignment="Center">
+                        <Grid Margin="24" MaxWidth="1060" HorizontalAlignment="Center">
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="22"/>
@@ -1186,7 +1200,7 @@
 
                     <ScrollViewer x:Name="AboutView" Visibility="Collapsed"
                                   VerticalScrollBarVisibility="Auto">
-                        <Grid Margin="40" MaxWidth="920" HorizontalAlignment="Center">
+                        <Grid Margin="24" MaxWidth="980" HorizontalAlignment="Center">
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="22"/>
@@ -1218,7 +1232,7 @@
                                                    Margin="0,4,0,0"
                                                    FontSize="16"
                                                    Foreground="{DynamicResource MutedBrush}"/>
-                                        <TextBlock Text="Versão 2.7.0 · Licença MIT · código aberto"
+                                        <TextBlock Text="Versão 2.8.0 · Licença MIT · código aberto"
                                                    Margin="0,12,0,0"
                                                    Foreground="{DynamicResource AccentBrush}"
                                                    FontWeight="SemiBold"/>

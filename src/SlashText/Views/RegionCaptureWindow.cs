@@ -37,8 +37,6 @@ public sealed class RegionCaptureWindow : Window
     ];
     private readonly Border _sizeBadge = new()
     {
-        Background = new SolidColorBrush(Color.FromArgb(242, 18, 25, 34)),
-        BorderBrush = new SolidColorBrush(Color.FromArgb(110, 255, 255, 255)),
         BorderThickness = new Thickness(1),
         CornerRadius = new CornerRadius(7),
         Padding = new Thickness(9, 5, 9, 5),
@@ -52,6 +50,7 @@ public sealed class RegionCaptureWindow : Window
     private readonly Stack<CaptureAnnotation> _redo = new();
     private readonly Dictionary<CaptureAnnotationKind, Button> _toolButtons = [];
     private readonly List<Point> _pencilPoints = [];
+    private readonly bool _isDark = ThemeService.IsDark;
     private Point _start;
     private Point _annotationStart;
     private Rect _localSelection;
@@ -81,6 +80,10 @@ public sealed class RegionCaptureWindow : Window
         Height = SystemParameters.VirtualScreenHeight;
 
         _desktopBitmap = CaptureVirtualDesktopBitmap();
+        _sizeBadge.Background = Brush(
+            _isDark ? "#F2121922" : "#F8FFFFFF");
+        _sizeBadge.BorderBrush = Brush(
+            _isDark ? "#6EFFFFFF" : "#CBD5DF");
         _canvas.Children.Add(new Image
         {
             Source = ToBitmapSource(_desktopBitmap),
@@ -96,8 +99,8 @@ public sealed class RegionCaptureWindow : Window
 
         var help = new Border
         {
-            Background = new SolidColorBrush(Color.FromArgb(242, 18, 25, 34)),
-            BorderBrush = new SolidColorBrush(Color.FromArgb(100, 255, 255, 255)),
+            Background = Brush(_isDark ? "#F2121922" : "#F8FFFFFF"),
+            BorderBrush = Brush(_isDark ? "#64FFFFFF" : "#CBD5DF"),
             BorderThickness = new Thickness(1),
             CornerRadius = new CornerRadius(9),
             Padding = new Thickness(14, 9, 14, 9),
@@ -105,7 +108,7 @@ public sealed class RegionCaptureWindow : Window
             Child = new TextBlock
             {
                 Text = "Selecione uma região e edite sem sair desta tela  ·  Esc cancela",
-                Foreground = Brushes.White,
+                Foreground = Brush(_isDark ? "#F5F8FA" : "#17212B"),
                 FontFamily = new FontFamily("Segoe UI Variable Text"),
                 FontSize = 13
             }
@@ -132,7 +135,7 @@ public sealed class RegionCaptureWindow : Window
 
         _sizeBadge.Child = new TextBlock
         {
-            Foreground = Brushes.White,
+            Foreground = Brush(_isDark ? "#F5F8FA" : "#17212B"),
             FontFamily = new FontFamily("Cascadia Mono, Consolas"),
             FontSize = 12
         };
@@ -185,7 +188,7 @@ public sealed class RegionCaptureWindow : Window
         options.Children.Add(new TextBlock
         {
             Text = "Cor",
-            Foreground = Brushes.White,
+            Foreground = Brush(_isDark ? "#F5F8FA" : "#25313D"),
             VerticalAlignment = VerticalAlignment.Center,
             Margin = new Thickness(7, 0, 5, 0),
             FontSize = 12
@@ -209,8 +212,8 @@ public sealed class RegionCaptureWindow : Window
                 Background = new SolidColorBrush(
                     Color.FromArgb(color.A, color.R, color.G, color.B)),
                 BorderBrush = color == DrawingColor.White
-                    ? new SolidColorBrush(Color.FromRgb(120, 130, 140))
-                    : new SolidColorBrush(Color.FromArgb(100, 255, 255, 255)),
+                    ? Brush("#78828C")
+                    : Brush(_isDark ? "#64FFFFFF" : "#94A3AF"),
                 BorderThickness = new Thickness(2),
                 ToolTip = $"Cor {color.Name}",
                 Tag = color.ToArgb(),
@@ -227,9 +230,9 @@ public sealed class RegionCaptureWindow : Window
             Margin = new Thickness(7, 4, 3, 4),
             ToolTip = "Espessura",
             SelectedIndex = 1,
-            Foreground = Brushes.White,
-            Background = new SolidColorBrush(Color.FromRgb(30, 40, 52)),
-            BorderBrush = new SolidColorBrush(Color.FromRgb(66, 80, 94))
+            Foreground = Brush(_isDark ? "#F5F8FA" : "#17212B"),
+            Background = Brush(_isDark ? "#1E2834" : "#FFFFFF"),
+            BorderBrush = Brush(_isDark ? "#42505E" : "#CBD5DF")
         };
         foreach (var value in new[] { 2f, 4f, 8f, 12f })
         {
@@ -237,8 +240,8 @@ public sealed class RegionCaptureWindow : Window
             {
                 Content = $"{value:0} px",
                 Tag = value,
-                Foreground = Brushes.White,
-                Background = new SolidColorBrush(Color.FromRgb(30, 40, 52))
+                Foreground = Brush(_isDark ? "#F5F8FA" : "#17212B"),
+                Background = Brush(_isDark ? "#1E2834" : "#FFFFFF")
             });
         }
         thickness.SelectionChanged += (_, _) =>
@@ -260,8 +263,8 @@ public sealed class RegionCaptureWindow : Window
         var toolbar = new Border
         {
             Visibility = Visibility.Collapsed,
-            Background = new SolidColorBrush(Color.FromArgb(250, 18, 25, 34)),
-            BorderBrush = new SolidColorBrush(Color.FromArgb(110, 255, 255, 255)),
+            Background = Brush(_isDark ? "#FA121922" : "#FCF8FAFC"),
+            BorderBrush = Brush(_isDark ? "#6EFFFFFF" : "#C6D1DA"),
             BorderThickness = new Thickness(1),
             CornerRadius = new CornerRadius(11),
             Padding = new Thickness(7),
@@ -294,7 +297,7 @@ public sealed class RegionCaptureWindow : Window
         return button;
     }
 
-    private static Button ToolbarButton(
+    private Button ToolbarButton(
         string text,
         string toolTip,
         bool primary,
@@ -310,13 +313,15 @@ public sealed class RegionCaptureWindow : Window
             Padding = primary
                 ? new Thickness(15, 5, 15, 5)
                 : new Thickness(8, 5, 8, 5),
-            Foreground = Brushes.White,
+            Foreground = primary
+                ? Brushes.White
+                : Brush(_isDark ? "#F5F8FA" : "#25313D"),
             Background = primary
-                ? new SolidColorBrush(Color.FromRgb(10, 169, 187))
-                : new SolidColorBrush(Color.FromRgb(24, 34, 45)),
+                ? Brush("#0AA9BB")
+                : Brush(_isDark ? "#18222D" : "#FFFFFF"),
             BorderBrush = primary
-                ? new SolidColorBrush(Color.FromRgb(43, 201, 218))
-                : new SolidColorBrush(Color.FromRgb(66, 80, 94)),
+                ? Brush("#2BC9DA")
+                : Brush(_isDark ? "#42505E" : "#CBD5DF"),
             BorderThickness = new Thickness(1),
             FontSize = 12,
             FontWeight = primary ? FontWeights.SemiBold : FontWeights.Normal,
@@ -326,12 +331,12 @@ public sealed class RegionCaptureWindow : Window
         return button;
     }
 
-    private static Border Separator() => new()
+    private Border Separator() => new()
     {
         Width = 1,
         Height = 26,
         Margin = new Thickness(5, 7, 5, 7),
-        Background = new SolidColorBrush(Color.FromRgb(66, 80, 94))
+        Background = Brush(_isDark ? "#42505E" : "#D5DDE4")
     };
 
     private void OnMouseDown(object sender, MouseButtonEventArgs e)
@@ -517,10 +522,10 @@ public sealed class RegionCaptureWindow : Window
             MaxWidth = Math.Max(180, _localSelection.Width - point.X),
             Padding = new Thickness(7, 5, 7, 5),
             FontSize = 16,
-            Foreground = Brushes.White,
-            CaretBrush = Brushes.White,
-            Background = new SolidColorBrush(Color.FromArgb(230, 18, 25, 34)),
-            BorderBrush = new SolidColorBrush(Color.FromRgb(43, 201, 218)),
+            Foreground = Brush(_isDark ? "#FFFFFF" : "#17212B"),
+            CaretBrush = Brush(_isDark ? "#FFFFFF" : "#17212B"),
+            Background = Brush(_isDark ? "#F0121922" : "#F8FFFFFF"),
+            BorderBrush = Brush("#2BC9DA"),
             BorderThickness = new Thickness(1)
         };
         Canvas.SetLeft(input, point.X);
@@ -730,13 +735,14 @@ public sealed class RegionCaptureWindow : Window
         foreach (var (tool, button) in _toolButtons)
         {
             var selected = tool == _tool;
-            button.Background = new SolidColorBrush(selected
-                ? Color.FromRgb(13, 92, 104)
-                : Color.FromRgb(24, 34, 45));
-            button.BorderBrush = new SolidColorBrush(selected
-                ? Color.FromRgb(43, 201, 218)
-                : Color.FromRgb(66, 80, 94));
-            button.Foreground = Brushes.White;
+            button.Background = Brush(selected
+                ? _isDark ? "#0D5C68" : "#DDF6F8"
+                : _isDark ? "#18222D" : "#FFFFFF");
+            button.BorderBrush = Brush(selected
+                ? "#2BC9DA"
+                : _isDark ? "#42505E" : "#CBD5DF");
+            button.Foreground = Brush(
+                _isDark ? "#F5F8FA" : selected ? "#075A66" : "#25313D");
         }
     }
 
@@ -1002,6 +1008,9 @@ public sealed class RegionCaptureWindow : Window
         Math.Min(start.Y, end.Y),
         Math.Abs(end.X - start.X),
         Math.Abs(end.Y - start.Y));
+
+    private static SolidColorBrush Brush(string color) =>
+        new((Color)ColorConverter.ConvertFromString(color));
 
     private static DrawingBitmap CaptureVirtualDesktopBitmap()
     {
