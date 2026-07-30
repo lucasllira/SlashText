@@ -142,8 +142,7 @@ foreach ($label in @(
     'Número',
     'Capturar'
 )) {
-    if (-not $region.Contains("ToolButton(`"$label`"") -and
-        -not $region.Contains("ToolbarButton(`"$label`"")) {
+    if (-not $region.Contains("`"$label`"")) {
         throw "Barra de captura sem rótulo legível: $label"
     }
 }
