@@ -828,9 +828,14 @@ public partial class MainWindow : Window
         {
             var selected = ReferenceEquals(button, selectedButton);
             button.Tag = selected ? "Selected" : null;
-            button.Background = Brushes.Transparent;
+            button.Background = selected
+                ? (Brush)FindResource("AccentSubtleBrush")
+                : Brushes.Transparent;
+            button.BorderBrush = selected
+                ? (Brush)FindResource("FocusBrush")
+                : Brushes.Transparent;
             button.Foreground = selected
-                ? (Brush)FindResource("InkBrush")
+                ? (Brush)FindResource("AccentBrush")
                 : (Brush)FindResource("MutedBrush");
         }
 
