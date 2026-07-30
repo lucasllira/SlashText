@@ -13,8 +13,8 @@ onde instalar vários aplicativos ou enviar conteúdo para a nuvem não é uma o
 
 - design system próprio com grafite, branco quente e ciano funcional;
 - temas claro, escuro ou sincronizado com o Windows;
-- navegação consistente, foco visível e estados claros de seleção;
-- layout responsivo a partir do tamanho mínimo de 1080 × 800;
+- menu horizontal compacto, foco visível e estados claros de seleção;
+- layout responsivo a partir do tamanho mínimo de 980 × 680;
 - onboarding e editor de captura usando os mesmos componentes visuais.
 
 ### Atalhos de texto
@@ -47,8 +47,9 @@ onde instalar vários aplicativos ou enviar conteúdo para a nuvem não é uma o
 - pasta automática com variáveis `{year}`, `{month}`, `{month-name}` e `{day}`;
 - nome com `{date}`, `{time}`, `{type}` e `{app}`;
 - PNG ou JPEG com qualidade configurável;
-- editor após captura de região com seta, marca-texto, retângulo, círculo,
-  lápis, texto, numeração, cores, espessura, desfazer e refazer;
+- edição durante a própria seleção de região, sem abrir outra janela, com seta,
+  marca-texto, retângulo, círculo, lápis, texto, numeração, cores, espessura,
+  desfazer e refazer;
 - ações de copiar, salvar ou concluir usando a regra ativa;
 - salvamento automático, clipboard e histórico local das últimas capturas;
 - estatísticas integradas de atalhos, acentos e capturas por tipo;
