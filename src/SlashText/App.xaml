@@ -96,29 +96,23 @@
                BasedOn="{StaticResource {x:Type Button}}">
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderBrush" Value="Transparent"/>
-            <Setter Property="Margin" Value="0"/>
-            <Setter Property="Padding" Value="18,12,18,11"/>
-            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Foreground" Value="{DynamicResource MutedBrush}"/>
+            <Setter Property="Margin" Value="1"/>
+            <Setter Property="Padding" Value="12,9"/>
+            <Setter Property="FontSize" Value="12.5"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Grid Background="Transparent">
-                            <Border x:Name="NavSurface"
-                                    Margin="2,3,2,2"
-                                    Background="Transparent"
-                                    CornerRadius="6"
-                                    Padding="{TemplateBinding Padding}">
-                                <ContentPresenter HorizontalAlignment="Center"
-                                                  VerticalAlignment="Center"/>
-                            </Border>
-                            <Border x:Name="SelectionLine"
-                                    Height="3"
-                                    Margin="12,0"
-                                    VerticalAlignment="Bottom"
-                                    Background="{DynamicResource AccentBrush}"
-                                    CornerRadius="2"
-                                    Opacity="0"/>
-                        </Grid>
+                        <Border x:Name="NavSurface"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="8"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"
+                                              TextElement.Foreground="{TemplateBinding Foreground}"/>
+                        </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter TargetName="NavSurface"
@@ -127,11 +121,12 @@
                             </Trigger>
                             <Trigger Property="Tag" Value="Selected">
                                 <Setter Property="Foreground"
-                                        Value="{DynamicResource InkBrush}"/>
+                                        Value="{DynamicResource AccentBrush}"/>
+                                <Setter Property="Background"
+                                        Value="{DynamicResource AccentSubtleBrush}"/>
                                 <Setter Property="FontWeight" Value="SemiBold"/>
-                                <Setter TargetName="SelectionLine"
-                                        Property="Opacity"
-                                        Value="1"/>
+                                <Setter Property="BorderBrush"
+                                        Value="{DynamicResource FocusBrush}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -535,7 +530,7 @@
 
         <Style x:Key="PageTitle" TargetType="TextBlock">
             <Setter Property="FontFamily" Value="Segoe UI Variable Display"/>
-            <Setter Property="FontSize" Value="26"/>
+            <Setter Property="FontSize" Value="27"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="Foreground" Value="{DynamicResource InkBrush}"/>
         </Style>
@@ -557,8 +552,8 @@
             <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
             <Setter Property="BorderBrush" Value="{DynamicResource DividerBrush}"/>
             <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="CornerRadius" Value="10"/>
-            <Setter Property="Padding" Value="18"/>
+            <Setter Property="CornerRadius" Value="12"/>
+            <Setter Property="Padding" Value="20"/>
         </Style>
 
         <Style x:Key="MetricCard" TargetType="Border"
@@ -581,11 +576,11 @@
         </Style>
 
         <Style x:Key="StatusPill" TargetType="Border">
-            <Setter Property="Background" Value="{DynamicResource ChromeBrush}"/>
-            <Setter Property="BorderBrush" Value="{DynamicResource DividerBrush}"/>
+            <Setter Property="Background" Value="{DynamicResource AccentSubtleBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource FocusBrush}"/>
             <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="CornerRadius" Value="9"/>
-            <Setter Property="Padding" Value="12,8"/>
+            <Setter Property="CornerRadius" Value="10"/>
+            <Setter Property="Padding" Value="11,7"/>
         </Style>
 
         <Style x:Key="FeatureTile" TargetType="Border"

@@ -127,9 +127,29 @@ foreach ($tool in @(
     }
 }
 
-if ($xaml.Contains('Content="Á  Acento Rápido"') -or
-    -not $xaml.Contains('Content="Acento Rápido"')) {
+if ($xaml.Contains('Á  Acento Rápido') -or
+    -not $xaml.Contains('Text="Acento Rápido"')) {
     throw 'Nome da aba Acento Rápido incorreto.'
+}
+
+foreach ($label in @(
+    'Seta',
+    'Marca-texto',
+    'Retângulo',
+    'Elipse',
+    'Lápis',
+    'Texto',
+    'Número',
+    'Capturar'
+)) {
+    if (-not $region.Contains("`"$label`"")) {
+        throw "Barra de captura sem rótulo legível: $label"
+    }
+}
+
+if (-not $region.Contains('_annotationLayer.MouseLeftButtonDown += OnAnnotationMouseDown') -or
+    -not $region.Contains('BeginAnnotation(canvasPoint)')) {
+    throw 'A camada selecionada não recebe a edição inline diretamente.'
 }
 
 if ($variable.Contains('window.SourceInitialized +=') -or
