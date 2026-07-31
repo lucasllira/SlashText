@@ -13,6 +13,10 @@ $projectPath = 'src/SlashText/SlashText.csproj'
 $themePath = 'src/SlashText/Services/ThemeService.cs'
 $importPath = 'src/SlashText/Services/SnippetImportService.cs'
 $backupPath = 'src/SlashText/Services/BackupService.cs'
+$recordingPath = 'src/SlashText/Services/ScreenRecordingService.cs'
+$gifPath = 'src/SlashText/Services/GifRecordingService.cs'
+$recordingBarPath = 'src/SlashText/Views/RecordingControlWindow.cs'
+$gifPreviewPath = 'src/SlashText/Views/GifPreviewWindow.cs'
 
 $xaml = Get-Content $xamlPath -Raw
 $code = Get-Content $codePath -Raw
@@ -27,6 +31,10 @@ $project = Get-Content $projectPath -Raw
 $theme = Get-Content $themePath -Raw
 $import = Get-Content $importPath -Raw
 $backup = Get-Content $backupPath -Raw
+$recording = Get-Content $recordingPath -Raw
+$gif = Get-Content $gifPath -Raw
+$recordingBar = Get-Content $recordingBarPath -Raw
+$gifPreview = Get-Content $gifPreviewPath -Raw
 
 [xml]$null = $xaml
 [xml]$null = $resources
@@ -150,8 +158,68 @@ foreach ($guideSection in @(
     }
 }
 
-if (-not $project.Contains('<Version>2.8.1</Version>')) {
-    throw 'Versão do design system deve ser 2.8.1.'
+if (-not $project.Contains('<Version>2.9.0</Version>')) {
+    throw 'Versão funcional deve ser 2.9.0.'
+}
+
+if (-not $project.Contains('ScreenRecorderLib') -or
+    -not $recording.Contains('Recorder.CreateRecorder') -or
+    -not $recording.Contains('H264VideoEncoder') -or
+    -not $recording.Contains('.Pause()') -or
+    -not $recording.Contains('.Resume()') -or
+    -not $recording.Contains('.Stop()')) {
+    throw 'Gravação MP4 local incompleta.'
+}
+
+foreach ($control in @(
+    'RecordingTargetBox',
+    'RecordingFpsBox',
+    'RecordingQualityBox',
+    'RecordingCursorCheckBox',
+    'StartMp4RecordingButton',
+    'GifFpsBox',
+    'GifDurationBox',
+    'GifWidthBox',
+    'GifQualityBox',
+    'StartGifRecordingButton',
+    'CaptureDelayBox',
+    'CaptureCursorCheckBox',
+    'CaptureEditorCheckBox',
+    'CaptureHistoryFilterBox',
+    'CaptureRetentionBox'
+)) {
+    if (-not $xaml.Contains("x:Name=`"$control`"")) {
+        throw "Controle de captura/gravação ausente: $control"
+    }
+}
+
+if (-not $gif.Contains('GifBitmapEncoder') -or
+    -not $gifPreview.Contains('Prévia antes de salvar') -or
+    -not $recordingBar.Contains('Finalizar')) {
+    throw 'GIF ou barra flutuante incompletos.'
+}
+
+foreach ($historyAction in @(
+    'OpenHistoryItem_OnClick',
+    'CopyHistoryItem_OnClick',
+    'EditHistoryItem_OnClick',
+    'DeleteHistoryItem_OnClick',
+    'CleanCaptureHistory_OnClick'
+)) {
+    if (-not $code.Contains("$historyAction(")) {
+        throw "Ação de histórico ausente: $historyAction"
+    }
+}
+
+foreach ($editorTool in @(
+    'CaptureAnnotationKind.Blur',
+    'CaptureAnnotationKind.Pixelate',
+    'ConfigureResize()',
+    '_cropRect'
+)) {
+    if (-not $editor.Contains($editorTool)) {
+        throw "Melhoria do editor ausente: $editorTool"
+    }
 }
 
 foreach ($brush in @(
