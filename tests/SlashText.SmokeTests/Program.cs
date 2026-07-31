@@ -206,6 +206,23 @@ try
     Require(
         CaptureService.SanitizeFileName("Outlook: chamado?") == "Outlook- chamado-",
         "nome de captura remove caracteres inválidos");
+    var captureDefaults = new CaptureSettings();
+    Require(
+        captureDefaults.Recording.VideoFps == 30 &&
+        captureDefaults.Recording.GifFps == 10 &&
+        captureDefaults.HistoryRetentionDays == 90,
+        "padrões seguros de gravação e histórico");
+    Require(
+        ScreenRecordingService.CreateMediaPath(
+                new CaptureSettings
+                {
+                    OutputDirectoryTemplate = root,
+                    FileNameTemplate = "{type}_{date}_{time}"
+                },
+                "video",
+                ".mp4")
+            .EndsWith(".mp4", StringComparison.OrdinalIgnoreCase),
+        "nome local para gravação MP4");
     Require(
         GlobalCaptureShortcutService.IsValid("Ctrl+Shift+PrintScreen"),
         "atalho de captura pelo teclado");
