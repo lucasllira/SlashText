@@ -7,6 +7,9 @@ $regionPath = 'src/SlashText/Views/RegionCaptureWindow.cs'
 $variablePath = 'src/SlashText/Views/VariableInputWindow.cs'
 $keyboardPath = 'src/SlashText/Services/KeyboardHookService.cs'
 $resourcesPath = 'src/SlashText/App.xaml'
+$foundationPath = 'src/SlashText/Styles/Foundation.xaml'
+$designGuidePath = 'docs/design-system.md'
+$projectPath = 'src/SlashText/SlashText.csproj'
 $themePath = 'src/SlashText/Services/ThemeService.cs'
 $importPath = 'src/SlashText/Services/SnippetImportService.cs'
 $backupPath = 'src/SlashText/Services/BackupService.cs'
@@ -18,12 +21,16 @@ $region = Get-Content $regionPath -Raw
 $variable = Get-Content $variablePath -Raw
 $keyboard = Get-Content $keyboardPath -Raw
 $resources = Get-Content $resourcesPath -Raw
+$foundation = Get-Content $foundationPath -Raw
+$designGuide = Get-Content $designGuidePath -Raw
+$project = Get-Content $projectPath -Raw
 $theme = Get-Content $themePath -Raw
 $import = Get-Content $importPath -Raw
 $backup = Get-Content $backupPath -Raw
 
 [xml]$null = $xaml
 [xml]$null = $resources
+[xml]$null = $foundation
 
 $handlers = [regex]::Matches(
     $xaml,
@@ -74,20 +81,77 @@ foreach ($resource in @(
 }
 
 foreach ($shellElement in @(
-    '<RowDefinition Height="64"/>',
-    '<RowDefinition Height="49"/>',
-    'BorderThickness="0,1,0,1"',
+    '<RowDefinition Height="60"/>',
+    '<RowDefinition Height="46"/>',
+    'Style="{StaticResource AppShellHeader}"',
+    'Style="{StaticResource AppNavigationBar}"',
     'Produtividade local para Windows',
-    'SelectionIndicator'
+    'Style="{StaticResource AppNavigationButton}"'
 )) {
-    $source = if ($shellElement -eq 'SelectionIndicator') {
-        $resources
-    } else {
-        $xaml
-    }
-    if (-not $source.Contains($shellElement)) {
+    if (-not $xaml.Contains($shellElement)) {
         throw "Shell visual novo ausente: $shellElement"
     }
+}
+
+if (-not $resources.Contains('Source="Styles/Foundation.xaml"')) {
+    throw 'O App.xaml não carrega o design system.'
+}
+
+foreach ($token in @(
+    'FontFamily.Body',
+    'FontSize.Title',
+    'Space.4',
+    'Radius.Control',
+    'Padding.Card'
+)) {
+    if (-not $foundation.Contains("x:Key=`"$token`"")) {
+        throw "Token do design system ausente: $token"
+    }
+}
+
+foreach ($component in @(
+    'AppShellHeader',
+    'AppNavigationBar',
+    'AppNavigationButton',
+    'AppWorkspace',
+    'WorkspaceSidebar',
+    'PageHeading',
+    'FieldLabel',
+    'SubtlePanel'
+)) {
+    if (-not $foundation.Contains("x:Key=`"$component`"")) {
+        throw "Componente do design system ausente: $component"
+    }
+}
+
+foreach ($referenceStyle in @(
+    'Style="{StaticResource WorkspaceSidebar}"',
+    'Style="{StaticResource PageHeading}"',
+    'Style="{StaticResource FieldLabel}"',
+    'Style="{StaticResource SubtlePanel}"'
+)) {
+    if (-not $xaml.Contains($referenceStyle)) {
+        throw "Tela Atalhos não adotou o design system: $referenceStyle"
+    }
+}
+
+if ([regex]::IsMatch($xaml, '#[0-9A-Fa-f]{6,8}')) {
+    throw 'MainWindow.xaml contém cor fixa; use um token semântico.'
+}
+
+foreach ($guideSection in @(
+    '## 1. Princípios',
+    '## 3. Cores semânticas',
+    '## 8. Captura e gravação',
+    '## 10. Checklist por PR'
+)) {
+    if (-not $designGuide.Contains($guideSection)) {
+        throw "Style guide incompleto: $guideSection"
+    }
+}
+
+if (-not $project.Contains('<Version>2.8.1</Version>')) {
+    throw 'Versão do design system deve ser 2.8.1.'
 }
 
 foreach ($brush in @(
