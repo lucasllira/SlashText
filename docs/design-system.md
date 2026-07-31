@@ -1,7 +1,8 @@
 # SlashDesk Design System
 
 Versão do guia: 1.0  
-Aplicação inicial: SlashDesk 2.8.1
+Aplicação inicial: SlashDesk 2.8.1  
+Extensão funcional validada: SlashDesk 2.9.0
 
 Este documento é a referência visual e de implementação do SlashDesk. Novas telas
 devem ser compostas com os tokens e estilos existentes. Um estilo local só deve ser
@@ -155,6 +156,16 @@ sem uso serão removidos.
   deve possuir borda, indicador ou rótulo;
 - atalhos de teclado devem permanecer visíveis;
 - gravação de tela deve reutilizar o seletor de região e os tokens do overlay.
+- a barra flutuante de gravação usa `PanelBrush`, `DividerBrush`, `InkBrush`,
+  `MutedBrush`, `DangerBrush` e a ação principal existente;
+- configurações de MP4 e GIF ficam no painel Captura, não em uma tela ou padrão
+  visual paralelo;
+- MP4 usa H.264/Media Foundation localmente; o pacote não baixa, executa nem exige
+  FFmpeg;
+- a prévia do GIF acontece antes da gravação ser persistida no histórico;
+- desfoque e pixelização sempre exibem indicação textual na prévia, além da cor;
+- captura com rolagem é experimental e deve informar limitações em aplicativos que
+  ignoram navegação por Page Down.
 
 ## 9. Responsividade WPF
 
