@@ -64,7 +64,7 @@ public sealed class RegionCaptureWindow : Window
 
     public DrawingBitmap? EditedBitmap { get; private set; }
 
-    public RegionCaptureWindow()
+    public RegionCaptureWindow(bool includeCursor = false)
     {
         Title = "Selecionar e editar região";
         WindowStyle = WindowStyle.None;
@@ -79,7 +79,7 @@ public sealed class RegionCaptureWindow : Window
         Width = SystemParameters.VirtualScreenWidth;
         Height = SystemParameters.VirtualScreenHeight;
 
-        _desktopBitmap = CaptureVirtualDesktopBitmap();
+        _desktopBitmap = CaptureVirtualDesktopBitmap(includeCursor);
         _sizeBadge.Background = Brush(
             _isDark ? "#F2121922" : "#F8FFFFFF");
         _sizeBadge.BorderBrush = Brush(
@@ -1012,22 +1012,13 @@ public sealed class RegionCaptureWindow : Window
     private static SolidColorBrush Brush(string color) =>
         new((Color)ColorConverter.ConvertFromString(color));
 
-    private static DrawingBitmap CaptureVirtualDesktopBitmap()
+    private static DrawingBitmap CaptureVirtualDesktopBitmap() =>
+        CaptureVirtualDesktopBitmap(false);
+
+    private static DrawingBitmap CaptureVirtualDesktopBitmap(bool includeCursor)
     {
         var virtualScreen = System.Windows.Forms.SystemInformation.VirtualScreen;
-        var bitmap = new DrawingBitmap(
-            Math.Max(1, virtualScreen.Width),
-            Math.Max(1, virtualScreen.Height),
-            DrawingPixelFormat.Format32bppPArgb);
-        using var graphics = DrawingGraphics.FromImage(bitmap);
-        graphics.CopyFromScreen(
-            virtualScreen.Left,
-            virtualScreen.Top,
-            0,
-            0,
-            bitmap.Size,
-            System.Drawing.CopyPixelOperation.SourceCopy);
-        return bitmap;
+        return CaptureService.CaptureBitmap(virtualScreen, includeCursor);
     }
 
     private static BitmapSource ToBitmapSource(DrawingBitmap bitmap)

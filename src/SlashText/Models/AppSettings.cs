@@ -37,4 +37,20 @@ public sealed class CaptureSettings
     public bool CopyToClipboard { get; set; } = true;
     public bool SaveAutomatically { get; set; } = true;
     public bool HideSlashDeskDuringCapture { get; set; } = true;
+    public int DelaySeconds { get; set; }
+    public bool IncludeCursor { get; set; }
+    public bool OpenEditorForMonitorAndWindow { get; set; } = true;
+    public int HistoryRetentionDays { get; set; } = 90;
+    public RecordingSettings Recording { get; set; } = new();
+}
+
+public sealed class RecordingSettings
+{
+    public int VideoFps { get; set; } = 30;
+    public string VideoQuality { get; set; } = "Alta";
+    public bool IncludeCursor { get; set; } = true;
+    public int GifFps { get; set; } = 10;
+    public int GifDurationSeconds { get; set; } = 5;
+    public int GifWidth { get; set; } = 960;
+    public int GifQuality { get; set; } = 80;
 }

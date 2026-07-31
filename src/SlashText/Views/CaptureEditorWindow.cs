@@ -36,6 +36,9 @@ public sealed class CaptureEditorWindow : Window
     private bool _drawing;
     private readonly List<WpfPoint> _pencilPoints = [];
     private int _nextNumber = 1;
+    private Rect? _cropRect;
+    private int? _resizeWidth;
+    private bool _cropSelecting;
 
     public DrawingBitmap? EditedBitmap { get; private set; }
     public CaptureEditorOutput RequestedOutput { get; private set; }
@@ -143,6 +146,18 @@ public sealed class CaptureEditorWindow : Window
         panel.Children.Add(ToolButton("✎  Lápis", CaptureAnnotationKind.Pencil));
         panel.Children.Add(ToolButton("T  Texto", CaptureAnnotationKind.Text));
         panel.Children.Add(ToolButton("①  Número", CaptureAnnotationKind.Number));
+        panel.Children.Add(ToolButton("▦  Desfoque", CaptureAnnotationKind.Blur));
+        panel.Children.Add(ToolButton("▩  Pixelizar", CaptureAnnotationKind.Pixelate));
+        panel.Children.Add(ActionButton("✂  Recortar", (_, _) =>
+        {
+            _cropRect = null;
+            _cropSelecting = true;
+            _tool = CaptureAnnotationKind.Rectangle;
+            _overlay.Cursor = Cursors.Cross;
+            UpdateToolSelection();
+            _overlay.ToolTip = "Arraste o recorte e clique novamente em Recortar para aplicar";
+        }));
+        panel.Children.Add(ActionButton("↔  Redimensionar", (_, _) => ConfigureResize()));
         panel.Children.Add(ActionButton("↶  Desfazer", (_, _) => Undo()));
         panel.Children.Add(ActionButton("↷  Refazer", (_, _) => Redo()));
 
@@ -215,6 +230,7 @@ public sealed class CaptureEditorWindow : Window
     {
         var button = ActionButton(text, (_, _) =>
         {
+            _cropSelecting = false;
             _tool = tool;
             _overlay.Cursor = tool == CaptureAnnotationKind.Text
                 ? Cursors.IBeam
@@ -328,6 +344,17 @@ public sealed class CaptureEditorWindow : Window
         {
             _pencilPoints.Add(end);
         }
+        if (_cropSelecting)
+        {
+            _cropRect = new Rect(
+                Math.Min(_start.X, end.X),
+                Math.Min(_start.Y, end.Y),
+                Math.Abs(end.X - _start.X),
+                Math.Abs(end.Y - _start.Y));
+            _cropSelecting = false;
+            Rebuild();
+            return;
+        }
         Add(new CaptureAnnotation
         {
             Kind = _tool,
@@ -378,6 +405,22 @@ public sealed class CaptureEditorWindow : Window
         if (pending is not null)
         {
             AddVisual(pending);
+        }
+        if (_cropRect is { Width: > 1, Height: > 1 } crop)
+        {
+            var outline = new Rectangle
+            {
+                Width = crop.Width,
+                Height = crop.Height,
+                Stroke = (Brush)Application.Current.FindResource("AccentBrush"),
+                StrokeThickness = 2,
+                StrokeDashArray = new DoubleCollection { 4, 2 },
+                Fill = Brushes.Transparent,
+                IsHitTestVisible = false
+            };
+            Canvas.SetLeft(outline, crop.Left);
+            Canvas.SetTop(outline, crop.Top);
+            _overlay.Children.Add(outline);
         }
     }
 
@@ -470,6 +513,31 @@ public sealed class CaptureEditorWindow : Window
                 Canvas.SetTop(badge, annotation.Start.Y - 15);
                 _overlay.Children.Add(badge);
                 break;
+            case CaptureAnnotationKind.Blur:
+            case CaptureAnnotationKind.Pixelate:
+                var privacy = new Border
+                {
+                    Width = Math.Abs(annotation.End.X - annotation.Start.X),
+                    Height = Math.Abs(annotation.End.Y - annotation.Start.Y),
+                    Background = (Brush)Application.Current.FindResource("AccentSubtleBrush"),
+                    BorderBrush = (Brush)Application.Current.FindResource("AccentBrush"),
+                    BorderThickness = new Thickness(2),
+                    Opacity = .72,
+                    Child = new TextBlock
+                    {
+                        Text = annotation.Kind == CaptureAnnotationKind.Blur
+                            ? "Desfoque"
+                            : "Pixelização",
+                        HorizontalAlignment = HorizontalAlignment.Center,
+                        VerticalAlignment = VerticalAlignment.Center,
+                        Foreground = (Brush)Application.Current.FindResource("AccentBrush"),
+                        FontWeight = FontWeights.SemiBold
+                    }
+                };
+                Canvas.SetLeft(privacy, Math.Min(annotation.Start.X, annotation.End.X));
+                Canvas.SetTop(privacy, Math.Min(annotation.Start.Y, annotation.End.Y));
+                _overlay.Children.Add(privacy);
+                break;
         }
     }
 
@@ -521,13 +589,81 @@ public sealed class CaptureEditorWindow : Window
     private void Complete(CaptureEditorOutput output)
     {
         EditedBitmap?.Dispose();
-        EditedBitmap = CaptureAnnotationRenderer.Render(
+        using var rendered = CaptureAnnotationRenderer.Render(
             _source,
             _annotations,
             _previewWidth,
             _previewHeight);
+        var crop = _cropRect is { Width: > 1, Height: > 1 }
+            ? ScaleCrop(_cropRect.Value, rendered.Width, rendered.Height)
+            : new System.Drawing.Rectangle(0, 0, rendered.Width, rendered.Height);
+        using var cropped = rendered.Clone(
+            crop,
+            System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+        if (_resizeWidth is > 0 && _resizeWidth.Value != cropped.Width)
+        {
+            var width = _resizeWidth.Value;
+            var height = Math.Max(1, (int)Math.Round(cropped.Height * width / (double)cropped.Width));
+            EditedBitmap = new DrawingBitmap(width, height);
+            using var graphics = System.Drawing.Graphics.FromImage(EditedBitmap);
+            graphics.InterpolationMode =
+                System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+            graphics.DrawImage(cropped, 0, 0, width, height);
+        }
+        else
+        {
+            EditedBitmap = new DrawingBitmap(cropped);
+        }
         RequestedOutput = output;
         DialogResult = true;
+    }
+
+    private void ConfigureResize()
+    {
+        var input = new TextBox
+        {
+            Text = (_resizeWidth ?? _source.Width).ToString(),
+            MinWidth = 180,
+            Margin = new Thickness(0, 8, 0, 12)
+        };
+        var dialog = new Window
+        {
+            Title = "Redimensionar",
+            Owner = this,
+            Width = 340,
+            Height = 180,
+            ResizeMode = ResizeMode.NoResize,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            Background = (Brush)Application.Current.FindResource("CanvasBrush"),
+            Foreground = (Brush)Application.Current.FindResource("InkBrush")
+        };
+        var panel = new StackPanel { Margin = new Thickness(20) };
+        panel.Children.Add(new TextBlock { Text = "Nova largura em pixels" });
+        panel.Children.Add(input);
+        var apply = ActionButton("Aplicar", (_, _) => dialog.DialogResult = true);
+        apply.Style = (Style)Application.Current.FindResource("PrimaryButton");
+        apply.HorizontalAlignment = HorizontalAlignment.Right;
+        panel.Children.Add(apply);
+        dialog.Content = panel;
+        if (dialog.ShowDialog() == true &&
+            int.TryParse(input.Text, out var width))
+        {
+            _resizeWidth = Math.Clamp(width, 64, 7680);
+        }
+    }
+
+    private System.Drawing.Rectangle ScaleCrop(Rect crop, int width, int height)
+    {
+        var scaleX = width / _previewWidth;
+        var scaleY = height / _previewHeight;
+        var result = new System.Drawing.Rectangle(
+            Math.Clamp((int)Math.Round(crop.Left * scaleX), 0, width - 1),
+            Math.Clamp((int)Math.Round(crop.Top * scaleY), 0, height - 1),
+            Math.Max(1, (int)Math.Round(crop.Width * scaleX)),
+            Math.Max(1, (int)Math.Round(crop.Height * scaleY)));
+        result.Width = Math.Min(result.Width, width - result.Left);
+        result.Height = Math.Min(result.Height, height - result.Top);
+        return result;
     }
 
     private void OnPreviewKeyDown(object sender, KeyEventArgs e)

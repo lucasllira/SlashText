@@ -23,6 +23,23 @@ public sealed class CaptureService
     public async Task LoadAsync()
     {
         _history = await _historyStore.LoadAsync();
+        foreach (var record in _history)
+        {
+            if (string.IsNullOrWhiteSpace(record.Id))
+            {
+                record.Id = Guid.NewGuid().ToString("N");
+            }
+            if (string.IsNullOrWhiteSpace(record.MediaKind))
+            {
+                record.MediaKind = Path.GetExtension(record.FilePath)
+                    .Equals(".mp4", StringComparison.OrdinalIgnoreCase)
+                    ? "video"
+                    : Path.GetExtension(record.FilePath)
+                        .Equals(".gif", StringComparison.OrdinalIgnoreCase)
+                        ? "gif"
+                        : "image";
+            }
+        }
     }
 
     public Rectangle ActiveMonitorBounds()
@@ -38,12 +55,7 @@ public sealed class CaptureService
 
     public Rectangle? WindowUnderCursorBounds()
     {
-        if (!GetCursorPos(out var point))
-        {
-            return null;
-        }
-
-        var window = GetAncestor(WindowFromPoint(point), 2);
+        var window = WindowUnderCursorHandle();
         if (window == IntPtr.Zero)
         {
             return null;
@@ -62,9 +74,56 @@ public sealed class CaptureService
         return rect.ToRectangle();
     }
 
-    public Bitmap? SelectAndEditRegion(Window? owner)
+    public IntPtr WindowUnderCursorHandle()
     {
-        var selector = new RegionCaptureWindow();
+        if (!GetCursorPos(out var point))
+        {
+            return IntPtr.Zero;
+        }
+        return GetAncestor(WindowFromPoint(point), 2);
+    }
+
+    public RecordingTarget ActiveMonitorTarget()
+    {
+        var bounds = ActiveMonitorBounds();
+        var screen = System.Windows.Forms.Screen.FromRectangle(bounds);
+        return new RecordingTarget(
+            RecordingTargetKind.Monitor,
+            bounds,
+            DisplayDeviceName: screen.DeviceName);
+    }
+
+    public RecordingTarget? WindowUnderCursorTarget()
+    {
+        var handle = WindowUnderCursorHandle();
+        var bounds = WindowUnderCursorBounds();
+        return handle == IntPtr.Zero || bounds is null
+            ? null
+            : new RecordingTarget(RecordingTargetKind.Window, bounds.Value, handle);
+    }
+
+    public RecordingTarget? SelectRecordingRegion(Window? owner, string purpose)
+    {
+        var selector = new RegionSelectionWindow(purpose);
+        if (owner is not null)
+        {
+            selector.Owner = owner;
+        }
+        if (selector.ShowDialog() != true)
+        {
+            return null;
+        }
+        var bounds = selector.SelectedBounds;
+        var screen = System.Windows.Forms.Screen.FromRectangle(bounds);
+        return new RecordingTarget(
+            RecordingTargetKind.Region,
+            bounds,
+            DisplayDeviceName: screen.DeviceName);
+    }
+
+    public Bitmap? SelectAndEditRegion(Window? owner, bool includeCursor = false)
+    {
+        var selector = new RegionCaptureWindow(includeCursor);
         if (owner is not null)
         {
             selector.Owner = owner;
@@ -90,7 +149,7 @@ public sealed class CaptureService
             return null;
         }
 
-        using var captured = CaptureBitmap(bounds);
+        using var captured = CaptureBitmap(bounds, settings.IncludeCursor);
         return await ProcessBitmapAsync(
             captured,
             type,
@@ -98,6 +157,130 @@ public sealed class CaptureService
             openEditor,
             owner,
             initialTool);
+    }
+
+    public async Task AddMediaRecordAsync(CaptureRecord record)
+    {
+        _history.Insert(0, record);
+        if (_history.Count > 1000)
+        {
+            _history.RemoveRange(1000, _history.Count - 1000);
+        }
+        await _historyStore.SaveAsync(_history);
+    }
+
+    public async Task<bool> DeleteAsync(string id, bool deleteFile)
+    {
+        var record = _history.FirstOrDefault(item => item.Id == id);
+        if (record is null)
+        {
+            return false;
+        }
+        if (deleteFile &&
+            !string.IsNullOrWhiteSpace(record.FilePath) &&
+            File.Exists(record.FilePath))
+        {
+            File.Delete(record.FilePath);
+        }
+        _history.Remove(record);
+        await _historyStore.SaveAsync(_history);
+        return true;
+    }
+
+    public async Task<int> CleanOlderThanAsync(int days, bool deleteFiles)
+    {
+        if (days <= 0)
+        {
+            return 0;
+        }
+        var threshold = DateTimeOffset.Now.AddDays(-days);
+        var expired = _history.Where(item => item.CreatedAt < threshold).ToList();
+        foreach (var record in expired)
+        {
+            if (deleteFiles &&
+                !string.IsNullOrWhiteSpace(record.FilePath) &&
+                File.Exists(record.FilePath))
+            {
+                try
+                {
+                    File.Delete(record.FilePath);
+                }
+                catch (IOException)
+                {
+                    // A entrada é removida mesmo quando outro aplicativo mantém o arquivo aberto.
+                }
+            }
+            _history.Remove(record);
+        }
+        if (expired.Count > 0)
+        {
+            await _historyStore.SaveAsync(_history);
+        }
+        return expired.Count;
+    }
+
+    public async Task<bool> EditExistingAsync(
+        string id,
+        CaptureSettings settings,
+        Window owner)
+    {
+        var record = _history.FirstOrDefault(item => item.Id == id);
+        if (record is null ||
+            !record.MediaKind.Equals("image", StringComparison.OrdinalIgnoreCase) ||
+            string.IsNullOrWhiteSpace(record.FilePath) ||
+            !File.Exists(record.FilePath))
+        {
+            return false;
+        }
+
+        using var sourceFile = new Bitmap(record.FilePath);
+        using var source = new Bitmap(sourceFile);
+        var editor = new CaptureEditorWindow(source)
+        {
+            Owner = owner,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner
+        };
+        if (editor.ShowDialog() != true || editor.EditedBitmap is null)
+        {
+            return false;
+        }
+
+        using var edited = editor.EditedBitmap;
+        var extension = Path.GetExtension(record.FilePath);
+        var temporary = record.FilePath + ".editing";
+        if (extension.Equals(".jpg", StringComparison.OrdinalIgnoreCase) ||
+            extension.Equals(".jpeg", StringComparison.OrdinalIgnoreCase))
+        {
+            var encoder = ImageCodecInfo.GetImageEncoders()
+                .First(item => item.FormatID == ImageFormat.Jpeg.Guid);
+            using var parameters = new EncoderParameters(1);
+            parameters.Param[0] = new EncoderParameter(
+                System.Drawing.Imaging.Encoder.Quality,
+                Math.Clamp(settings.JpegQuality, 1, 100));
+            edited.Save(temporary, encoder, parameters);
+        }
+        else
+        {
+            edited.Save(temporary, ImageFormat.Png);
+        }
+        File.Move(temporary, record.FilePath, true);
+        record.Width = edited.Width;
+        record.Height = edited.Height;
+        await _historyStore.SaveAsync(_history);
+        return true;
+    }
+
+    public static void CopyFileToClipboard(string path)
+    {
+        if (!File.Exists(path))
+        {
+            throw new FileNotFoundException("O arquivo não está mais disponível.", path);
+        }
+        var collection = new System.Collections.Specialized.StringCollection
+        {
+            path
+        };
+        Clipboard.SetFileDropList(collection);
     }
 
     public async Task<CaptureRecord?> ProcessEditedRegionAsync(
@@ -112,6 +295,68 @@ public sealed class CaptureService
             openEditor: false,
             owner: null,
             initialTool: CaptureAnnotationKind.Arrow);
+    }
+
+    public async Task<CaptureRecord?> CaptureScrollingAsync(
+        IntPtr window,
+        Rectangle bounds,
+        CaptureSettings settings,
+        Window? owner)
+    {
+        if (window == IntPtr.Zero || bounds.Width <= 0 || bounds.Height <= 0)
+        {
+            return null;
+        }
+        SetForegroundWindow(window);
+        await Task.Delay(250);
+        var frames = new List<Bitmap>();
+        try
+        {
+            const int frameCount = 5;
+            for (var index = 0; index < frameCount; index++)
+            {
+                frames.Add(CaptureBitmap(bounds, settings.IncludeCursor && index == 0));
+                if (index < frameCount - 1)
+                {
+                    KeybdEvent(VirtualKeyPageDown, 0, 0, UIntPtr.Zero);
+                    KeybdEvent(VirtualKeyPageDown, 0, KeyEventKeyUp, UIntPtr.Zero);
+                    await Task.Delay(450);
+                }
+            }
+
+            var overlap = Math.Max(1, bounds.Height / 6);
+            var contentHeight = bounds.Height - overlap;
+            using var stitched = new Bitmap(
+                bounds.Width,
+                bounds.Height + contentHeight * (frames.Count - 1),
+                PixelFormat.Format32bppArgb);
+            using (var graphics = Graphics.FromImage(stitched))
+            {
+                graphics.DrawImageUnscaled(frames[0], 0, 0);
+                for (var index = 1; index < frames.Count; index++)
+                {
+                    graphics.DrawImage(
+                        frames[index],
+                        new Rectangle(0, bounds.Height + contentHeight * (index - 1), bounds.Width, contentHeight),
+                        new Rectangle(0, overlap, bounds.Width, contentHeight),
+                        GraphicsUnit.Pixel);
+                }
+            }
+            return await ProcessBitmapAsync(
+                stitched,
+                "rolagem",
+                settings,
+                openEditor: true,
+                owner,
+                CaptureAnnotationKind.Arrow);
+        }
+        finally
+        {
+            foreach (var frame in frames)
+            {
+                frame.Dispose();
+            }
+        }
     }
 
     private async Task<CaptureRecord?> ProcessBitmapAsync(
@@ -191,7 +436,7 @@ public sealed class CaptureService
         }
     }
 
-    public static Bitmap CaptureBitmap(Rectangle bounds)
+    public static Bitmap CaptureBitmap(Rectangle bounds, bool includeCursor = false)
     {
         var bitmap = new Bitmap(
             bounds.Width,
@@ -205,7 +450,57 @@ public sealed class CaptureService
             0,
             bounds.Size,
             CopyPixelOperation.SourceCopy);
+        if (includeCursor)
+        {
+            DrawCursor(graphics, bounds);
+        }
         return bitmap;
+    }
+
+    private static void DrawCursor(Graphics graphics, Rectangle bounds)
+    {
+        var info = new CursorInfo { Size = Marshal.SizeOf<CursorInfo>() };
+        if (!GetCursorInfo(ref info) ||
+            info.Flags != CursorShowing ||
+            info.Handle == IntPtr.Zero ||
+            !bounds.Contains(info.Position.X, info.Position.Y))
+        {
+            return;
+        }
+        var icon = new IconInfo();
+        var hotspotX = 0;
+        var hotspotY = 0;
+        if (GetIconInfo(info.Handle, out icon))
+        {
+            hotspotX = (int)icon.HotspotX;
+            hotspotY = (int)icon.HotspotY;
+            if (icon.ColorBitmap != IntPtr.Zero)
+            {
+                DeleteObject(icon.ColorBitmap);
+            }
+            if (icon.MaskBitmap != IntPtr.Zero)
+            {
+                DeleteObject(icon.MaskBitmap);
+            }
+        }
+        var device = graphics.GetHdc();
+        try
+        {
+            DrawIconEx(
+                device,
+                info.Position.X - bounds.Left - hotspotX,
+                info.Position.Y - bounds.Top - hotspotY,
+                info.Handle,
+                0,
+                0,
+                0,
+                IntPtr.Zero,
+                3);
+        }
+        finally
+        {
+            graphics.ReleaseHdc(device);
+        }
     }
 
     public static string ResolveDirectoryTemplate(string template, DateTimeOffset now)
@@ -312,6 +607,16 @@ public sealed class CaptureService
     private static extern IntPtr GetForegroundWindow();
 
     [DllImport("user32.dll")]
+    private static extern bool SetForegroundWindow(IntPtr window);
+
+    [DllImport("user32.dll", EntryPoint = "keybd_event")]
+    private static extern void KeybdEvent(
+        byte virtualKey,
+        byte scanCode,
+        uint flags,
+        UIntPtr extraInfo);
+
+    [DllImport("user32.dll")]
     private static extern IntPtr MonitorFromWindow(IntPtr window, uint flags);
 
     [DllImport("user32.dll", CharSet = CharSet.Auto)]
@@ -319,6 +624,24 @@ public sealed class CaptureService
 
     [DllImport("user32.dll")]
     private static extern bool GetCursorPos(out NativePoint point);
+
+    [DllImport("user32.dll")]
+    private static extern bool GetCursorInfo(ref CursorInfo info);
+
+    [DllImport("user32.dll")]
+    private static extern bool GetIconInfo(IntPtr icon, out IconInfo info);
+
+    [DllImport("user32.dll")]
+    private static extern bool DrawIconEx(
+        IntPtr device,
+        int x,
+        int y,
+        IntPtr icon,
+        int width,
+        int height,
+        int step,
+        IntPtr brush,
+        int flags);
 
     [DllImport("user32.dll")]
     private static extern IntPtr WindowFromPoint(NativePoint point);
@@ -347,6 +670,30 @@ public sealed class CaptureService
     {
         public int X;
         public int Y;
+    }
+
+    private const int CursorShowing = 1;
+    private const byte VirtualKeyPageDown = 0x22;
+    private const uint KeyEventKeyUp = 0x0002;
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct CursorInfo
+    {
+        public int Size;
+        public int Flags;
+        public IntPtr Handle;
+        public NativePoint Position;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct IconInfo
+    {
+        [MarshalAs(UnmanagedType.Bool)]
+        public bool IsIcon;
+        public uint HotspotX;
+        public uint HotspotY;
+        public IntPtr MaskBitmap;
+        public IntPtr ColorBitmap;
     }
 
     [StructLayout(LayoutKind.Sequential)]

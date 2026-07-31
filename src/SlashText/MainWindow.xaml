@@ -703,6 +703,8 @@
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="20"/>
                                 <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="20"/>
+                                <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
 
                             <Grid>
@@ -769,11 +771,137 @@
                                         <Button Content="Capturar janela"
                                                 Style="{StaticResource PrimaryButton}"
                                                 Click="CaptureWindow_OnClick"/>
+                                        <Button Content="Captura com rolagem"
+                                                Margin="0,8,0,0"
+                                                ToolTip="Captura vertical experimental da janela sob o cursor"
+                                                Click="CaptureScrolling_OnClick"/>
                                     </StackPanel>
                                 </Border>
                             </UniformGrid>
 
-                            <Grid Grid.Row="4">
+                            <Border Grid.Row="4" Style="{StaticResource SettingsCard}">
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="16"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel>
+                                            <TextBlock Text="Gravação local" FontSize="17" FontWeight="SemiBold"/>
+                                            <TextBlock Text="MP4 H.264 e GIF sem upload e sem FFmpeg instalado."
+                                                       Margin="0,4,0,0"
+                                                       Foreground="{DynamicResource MutedBrush}"/>
+                                        </StackPanel>
+                                        <Border Grid.Column="1" Style="{StaticResource CompactStatusPill}">
+                                            <TextBlock Text="Media Foundation"
+                                                       Foreground="{DynamicResource AccentBrush}"/>
+                                        </Border>
+                                    </Grid>
+                                    <Grid Grid.Row="2">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="1.15*"/>
+                                            <ColumnDefinition Width="18"/>
+                                            <ColumnDefinition Width="1*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Border Style="{StaticResource SubtlePanel}">
+                                            <StackPanel>
+                                                <TextBlock Text="Vídeo MP4" Style="{StaticResource FieldLabel}"/>
+                                                <Grid Margin="0,10,0,0">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="10"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="10"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <StackPanel>
+                                                        <TextBlock Text="Destino" Foreground="{DynamicResource MutedBrush}"/>
+                                                        <ComboBox x:Name="RecordingTargetBox" Margin="0,5,0,0">
+                                                            <ComboBoxItem Content="Monitor ativo" Tag="Monitor"/>
+                                                            <ComboBoxItem Content="Região" Tag="Region"/>
+                                                            <ComboBoxItem Content="Janela sob o cursor" Tag="Window"/>
+                                                        </ComboBox>
+                                                    </StackPanel>
+                                                    <StackPanel Grid.Column="2">
+                                                        <TextBlock Text="FPS" Foreground="{DynamicResource MutedBrush}"/>
+                                                        <ComboBox x:Name="RecordingFpsBox" Margin="0,5,0,0">
+                                                            <ComboBoxItem Content="24" Tag="24"/>
+                                                            <ComboBoxItem Content="30" Tag="30"/>
+                                                            <ComboBoxItem Content="60" Tag="60"/>
+                                                        </ComboBox>
+                                                    </StackPanel>
+                                                    <StackPanel Grid.Column="4">
+                                                        <TextBlock Text="Qualidade" Foreground="{DynamicResource MutedBrush}"/>
+                                                        <ComboBox x:Name="RecordingQualityBox" Margin="0,5,0,0">
+                                                            <ComboBoxItem Content="Baixa" Tag="Baixa"/>
+                                                            <ComboBoxItem Content="Média" Tag="Média"/>
+                                                            <ComboBoxItem Content="Alta" Tag="Alta"/>
+                                                            <ComboBoxItem Content="Máxima" Tag="Máxima"/>
+                                                        </ComboBox>
+                                                    </StackPanel>
+                                                </Grid>
+                                                <CheckBox x:Name="RecordingCursorCheckBox"
+                                                          Content="Mostrar cursor na gravação"
+                                                          Margin="0,12,0,0"/>
+                                                <Button x:Name="StartMp4RecordingButton"
+                                                        Content="Iniciar gravação MP4"
+                                                        Style="{StaticResource PrimaryButton}"
+                                                        HorizontalAlignment="Stretch"
+                                                        Margin="0,12,0,0"
+                                                        Click="StartMp4Recording_OnClick"/>
+                                            </StackPanel>
+                                        </Border>
+                                        <Border Grid.Column="2" Style="{StaticResource SubtlePanel}">
+                                            <StackPanel>
+                                                <TextBlock Text="GIF animado" Style="{StaticResource FieldLabel}"/>
+                                                <Grid Margin="0,10,0,0">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="8"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="8"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="8"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <StackPanel>
+                                                        <TextBlock Text="FPS" Foreground="{DynamicResource MutedBrush}"/>
+                                                        <TextBox x:Name="GifFpsBox" Margin="0,5,0,0"/>
+                                                    </StackPanel>
+                                                    <StackPanel Grid.Column="2">
+                                                        <TextBlock Text="Duração (s)" Foreground="{DynamicResource MutedBrush}"/>
+                                                        <TextBox x:Name="GifDurationBox" Margin="0,5,0,0"/>
+                                                    </StackPanel>
+                                                    <StackPanel Grid.Column="4">
+                                                        <TextBlock Text="Largura" Foreground="{DynamicResource MutedBrush}"/>
+                                                        <TextBox x:Name="GifWidthBox" Margin="0,5,0,0"/>
+                                                    </StackPanel>
+                                                    <StackPanel Grid.Column="6">
+                                                        <TextBlock Text="Qualidade" Foreground="{DynamicResource MutedBrush}"/>
+                                                        <TextBox x:Name="GifQualityBox" Margin="0,5,0,0"/>
+                                                    </StackPanel>
+                                                </Grid>
+                                                <TextBlock Text="A região é selecionada antes da captura. Você revisa a animação antes de salvar."
+                                                           Margin="0,12,0,0"
+                                                           TextWrapping="Wrap"
+                                                           Foreground="{DynamicResource MutedBrush}"/>
+                                                <Button x:Name="StartGifRecordingButton"
+                                                        Content="Gravar GIF de região"
+                                                        HorizontalAlignment="Stretch"
+                                                        Margin="0,12,0,0"
+                                                        Click="StartGifRecording_OnClick"/>
+                                            </StackPanel>
+                                        </Border>
+                                    </Grid>
+                                </Grid>
+                            </Border>
+
+                            <Grid Grid.Row="6">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="1.28*"/>
                                     <ColumnDefinition Width="20"/>
@@ -864,6 +992,35 @@
                                                   Content="Copiar após capturar" Margin="0,14,0,5"/>
                                         <CheckBox x:Name="CaptureAutoSaveCheckBox"
                                                   Content="Salvar automaticamente" Margin="0,5"/>
+                                        <CheckBox x:Name="CaptureCursorCheckBox"
+                                                  Content="Incluir cursor na imagem" Margin="0,5"/>
+                                        <CheckBox x:Name="CaptureEditorCheckBox"
+                                                  Content="Abrir editor para monitor e janela" Margin="0,5"/>
+                                        <Grid Margin="0,10,0,0">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="12"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel>
+                                                <TextBlock Text="Atraso" Foreground="{DynamicResource MutedBrush}"/>
+                                                <ComboBox x:Name="CaptureDelayBox" Margin="0,5,0,0">
+                                                    <ComboBoxItem Content="Sem atraso" Tag="0"/>
+                                                    <ComboBoxItem Content="3 segundos" Tag="3"/>
+                                                    <ComboBoxItem Content="5 segundos" Tag="5"/>
+                                                    <ComboBoxItem Content="10 segundos" Tag="10"/>
+                                                </ComboBox>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="2">
+                                                <TextBlock Text="Limpar histórico após" Foreground="{DynamicResource MutedBrush}"/>
+                                                <ComboBox x:Name="CaptureRetentionBox" Margin="0,5,0,0">
+                                                    <ComboBoxItem Content="30 dias" Tag="30"/>
+                                                    <ComboBoxItem Content="90 dias" Tag="90"/>
+                                                    <ComboBoxItem Content="180 dias" Tag="180"/>
+                                                    <ComboBoxItem Content="Nunca" Tag="0"/>
+                                                </ComboBox>
+                                            </StackPanel>
+                                        </Grid>
                                         <Button Content="Salvar regra" Style="{StaticResource PrimaryButton}"
                                                 HorizontalAlignment="Stretch" Margin="0,14,0,0"
                                                 Click="SaveCaptureSettings_OnClick"/>
@@ -877,7 +1034,7 @@
                                 </Border>
                             </Grid>
 
-                            <Border Grid.Row="6" Style="{StaticResource SettingsCard}">
+                            <Border Grid.Row="8" Style="{StaticResource SettingsCard}">
                                 <StackPanel>
                                     <Grid>
                                         <Grid.ColumnDefinitions>
@@ -890,6 +1047,28 @@
                                         <TextBlock Grid.Column="1" Text="sem upload  ·  sua privacidade é prioridade"
                                                    Foreground="{DynamicResource MutedBrush}"/>
                                     </Grid>
+                                    <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+                                        <TextBlock Text="Filtro" VerticalAlignment="Center"
+                                                   Foreground="{DynamicResource MutedBrush}"/>
+                                        <ComboBox x:Name="CaptureHistoryFilterBox"
+                                                  Width="180"
+                                                  Margin="10,0,0,0"
+                                                  SelectionChanged="CaptureHistoryFilter_OnChanged">
+                                            <ComboBoxItem Content="Todos" Tag="all"/>
+                                            <ComboBoxItem Content="Monitor" Tag="monitor"/>
+                                            <ComboBoxItem Content="Região" Tag="regiao"/>
+                                            <ComboBoxItem Content="Janela" Tag="janela"/>
+                                            <ComboBoxItem Content="Vídeo MP4" Tag="video"/>
+                                            <ComboBoxItem Content="GIF" Tag="gif"/>
+                                        </ComboBox>
+                                        <Button Content="Limpar agora"
+                                                Margin="10,0,0,0"
+                                                Click="CleanCaptureHistory_OnClick"/>
+                                        <TextBlock x:Name="CaptureHistoryStatusText"
+                                                   Margin="12,0,0,0"
+                                                   VerticalAlignment="Center"
+                                                   Foreground="{DynamicResource MutedBrush}"/>
+                                    </StackPanel>
                                     <StackPanel x:Name="CaptureHistoryPanel" Margin="0,12,0,0"/>
                                 </StackPanel>
                             </Border>
