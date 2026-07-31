@@ -11,13 +11,17 @@
     <ApplicationIcon>Assets\SlashDesk.ico</ApplicationIcon>
     <AssemblyName>SlashDesk</AssemblyName>
     <RootNamespace>SlashText</RootNamespace>
-    <Version>2.8.1</Version>
-    <AssemblyVersion>2.8.1.0</AssemblyVersion>
-    <FileVersion>2.8.1.0</FileVersion>
+    <Version>2.9.0</Version>
+    <AssemblyVersion>2.9.0.0</AssemblyVersion>
+    <FileVersion>2.9.0.0</FileVersion>
     <DebugType>embedded</DebugType>
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
     <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
   </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="ScreenRecorderLib" Version="6.6.0" />
+  </ItemGroup>
 
   <ItemGroup>
     <Resource Include="Assets\SlashDesk.ico" />
