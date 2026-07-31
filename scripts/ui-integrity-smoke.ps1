@@ -70,7 +70,8 @@ foreach ($tool in @(
     }
 }
 
-if (-not $code.Contains('SelectAndEditRegion(null)') -or
+if (-not $code.Contains('SelectAndEditRegion(') -or
+    -not $code.Contains('_settings.Capture.IncludeCursor') -or
     -not $code.Contains('ProcessEditedRegionAsync(')) {
     throw 'O fluxo de região não edita e processa no mesmo overlay.'
 }
