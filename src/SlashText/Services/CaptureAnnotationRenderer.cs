@@ -11,7 +11,9 @@ public enum CaptureAnnotationKind
     Ellipse,
     Pencil,
     Text,
-    Number
+    Number,
+    Blur,
+    Pixelate
 }
 
 public sealed class CaptureAnnotation
@@ -41,16 +43,59 @@ public static class CaptureAnnotationRenderer
 
         var scaleX = source.Width / previewWidth;
         var scaleY = source.Height / previewHeight;
+        foreach (var annotation in annotations.Where(item =>
+                     item.Kind is CaptureAnnotationKind.Blur or CaptureAnnotationKind.Pixelate))
+        {
+            ApplyPrivacyEffect(output, annotation, scaleX, scaleY);
+        }
         using var graphics = Graphics.FromImage(output);
         graphics.SmoothingMode = SmoothingMode.AntiAlias;
         graphics.TextRenderingHint =
             System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
 
-        foreach (var annotation in annotations)
+        foreach (var annotation in annotations.Where(item =>
+                     item.Kind is not CaptureAnnotationKind.Blur and not CaptureAnnotationKind.Pixelate))
         {
             Draw(graphics, annotation, scaleX, scaleY);
         }
         return output;
+    }
+
+    private static void ApplyPrivacyEffect(
+        Bitmap output,
+        CaptureAnnotation annotation,
+        double scaleX,
+        double scaleY)
+    {
+        var region = Rectangle.Round(Normalize(
+            Scale(annotation.Start, scaleX, scaleY),
+            Scale(annotation.End, scaleX, scaleY)));
+        region.Intersect(new Rectangle(0, 0, output.Width, output.Height));
+        if (region.Width < 2 || region.Height < 2)
+        {
+            return;
+        }
+        var divisor = annotation.Kind == CaptureAnnotationKind.Pixelate ? 18 : 7;
+        var smallWidth = Math.Max(1, region.Width / divisor);
+        var smallHeight = Math.Max(1, region.Height / divisor);
+        using var small = new Bitmap(smallWidth, smallHeight);
+        using (var down = Graphics.FromImage(small))
+        {
+            down.InterpolationMode = InterpolationMode.HighQualityBilinear;
+            down.DrawImage(
+                output,
+                new Rectangle(0, 0, small.Width, small.Height),
+                region,
+                GraphicsUnit.Pixel);
+        }
+        using var up = Graphics.FromImage(output);
+        up.InterpolationMode = annotation.Kind == CaptureAnnotationKind.Pixelate
+            ? InterpolationMode.NearestNeighbor
+            : InterpolationMode.HighQualityBicubic;
+        up.PixelOffsetMode = annotation.Kind == CaptureAnnotationKind.Pixelate
+            ? PixelOffsetMode.Half
+            : PixelOffsetMode.HighQuality;
+        up.DrawImage(small, region);
     }
 
     private static void Draw(
