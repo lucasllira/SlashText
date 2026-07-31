@@ -29,6 +29,7 @@ public partial class MainWindow : Window
     private readonly BackupService _backupService = new();
     private readonly SnippetImportService _snippetImportService = new();
     private readonly CaptureService _captureService = new();
+    private readonly GifRecordingService _gifRecordingService = new();
     private readonly GlobalCaptureShortcutService _captureShortcuts = new();
     private readonly UpdateService _updateService = new();
     private readonly JsonFileStore<AppSettings> _settingsStore = new(AppPaths.SettingsFile);
@@ -46,6 +47,8 @@ public partial class MainWindow : Window
     private readonly DispatcherTimer _quickAccentPreviewTimer =
         new() { Interval = TimeSpan.FromMilliseconds(900) };
     private int _quickAccentPreviewIndex = 1;
+    private ScreenRecordingService? _recordingService;
+    private RecordingControlWindow? _recordingControl;
 
     public MainWindow()
     {
@@ -100,6 +103,9 @@ public partial class MainWindow : Window
             ApplyQuickAccentCharacterSetSelection(_settings.QuickAccentCharacterSets);
             ApplyQuickAccentSettings();
             await _captureService.LoadAsync();
+            await _captureService.CleanOlderThanAsync(
+                _settings.Capture.HistoryRetentionDays,
+                deleteFiles: false);
             LoadCaptureSettings();
             _initialized = true;
 
@@ -1428,6 +1434,19 @@ public partial class MainWindow : Window
         CaptureQualityBox.Text = capture.JpegQuality.ToString();
         CaptureClipboardCheckBox.IsChecked = capture.CopyToClipboard;
         CaptureAutoSaveCheckBox.IsChecked = capture.SaveAutomatically;
+        CaptureCursorCheckBox.IsChecked = capture.IncludeCursor;
+        CaptureEditorCheckBox.IsChecked = capture.OpenEditorForMonitorAndWindow;
+        SelectComboByTag(CaptureDelayBox, capture.DelaySeconds.ToString());
+        SelectComboByTag(CaptureRetentionBox, capture.HistoryRetentionDays.ToString());
+        SelectComboByTag(RecordingTargetBox, "Monitor");
+        SelectComboByTag(RecordingFpsBox, capture.Recording.VideoFps.ToString());
+        SelectComboByTag(RecordingQualityBox, capture.Recording.VideoQuality);
+        RecordingCursorCheckBox.IsChecked = capture.Recording.IncludeCursor;
+        GifFpsBox.Text = capture.Recording.GifFps.ToString();
+        GifDurationBox.Text = capture.Recording.GifDurationSeconds.ToString();
+        GifWidthBox.Text = capture.Recording.GifWidth.ToString();
+        GifQualityBox.Text = capture.Recording.GifQuality.ToString();
+        SelectComboByTag(CaptureHistoryFilterBox, "all");
         CaptureQualityBox.IsEnabled =
             capture.ImageFormat.Equals("JPEG", StringComparison.OrdinalIgnoreCase);
     }
@@ -1490,7 +1509,21 @@ public partial class MainWindow : Window
             JpegQuality = quality,
             CopyToClipboard = CaptureClipboardCheckBox.IsChecked == true,
             SaveAutomatically = CaptureAutoSaveCheckBox.IsChecked == true,
-            HideSlashDeskDuringCapture = true
+            HideSlashDeskDuringCapture = true,
+            IncludeCursor = CaptureCursorCheckBox.IsChecked == true,
+            OpenEditorForMonitorAndWindow = CaptureEditorCheckBox.IsChecked == true,
+            DelaySeconds = ParseSelectedInt(CaptureDelayBox, 0),
+            HistoryRetentionDays = ParseSelectedInt(CaptureRetentionBox, 90),
+            Recording = new RecordingSettings
+            {
+                VideoFps = ParseSelectedInt(RecordingFpsBox, 30),
+                VideoQuality = SelectedTag(RecordingQualityBox, "Alta"),
+                IncludeCursor = RecordingCursorCheckBox.IsChecked == true,
+                GifFps = ParseBounded(GifFpsBox.Text, 10, 2, 20),
+                GifDurationSeconds = ParseBounded(GifDurationBox.Text, 5, 1, 30),
+                GifWidth = ParseBounded(GifWidthBox.Text, 960, 240, 1920),
+                GifQuality = ParseBounded(GifQualityBox.Text, 80, 1, 100)
+            }
         };
         CaptureQualityBox.Text = quality.ToString();
         return true;
@@ -1526,12 +1559,52 @@ public partial class MainWindow : Window
     private void CaptureWindow_OnClick(object sender, RoutedEventArgs e) =>
         _ = RunCaptureAsync(CaptureShortcutAction.Window, invokedByShortcut: false);
 
+    private async void CaptureScrolling_OnClick(object sender, RoutedEventArgs e)
+    {
+        var target = _captureService.WindowUnderCursorTarget();
+        if (target is null)
+        {
+            MessageBox.Show(
+                "Posicione o cursor sobre a janela que será capturada.",
+                "Captura com rolagem",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+            return;
+        }
+        try
+        {
+            Hide();
+            await Task.Delay(180);
+            var result = await _captureService.CaptureScrollingAsync(
+                target.WindowHandle,
+                target.Bounds,
+                _settings.Capture,
+                owner: null);
+            ShowFromTray();
+            if (result is not null)
+            {
+                StatusText.Text = $"Captura com rolagem salva: {Path.GetFileName(result.FilePath)}";
+                RefreshCaptureHistory();
+            }
+        }
+        catch (Exception exception)
+        {
+            ShowFromTray();
+            MessageBox.Show(
+                exception.Message,
+                "Captura com rolagem",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+        }
+    }
+
     private async Task RunCaptureAsync(
         CaptureShortcutAction action,
         bool invokedByShortcut)
     {
         try
         {
+            await WaitForCaptureDelayAsync();
             System.Drawing.Rectangle? bounds = null;
             System.Drawing.Bitmap? editedRegion = null;
             var type = action switch
@@ -1559,7 +1632,9 @@ public partial class MainWindow : Window
 
             if (action == CaptureShortcutAction.Region)
             {
-                editedRegion = _captureService.SelectAndEditRegion(null);
+                editedRegion = _captureService.SelectAndEditRegion(
+                    null,
+                    _settings.Capture.IncludeCursor);
             }
             else if (action == CaptureShortcutAction.Window)
             {
@@ -1583,7 +1658,7 @@ public partial class MainWindow : Window
                     bounds.Value,
                     type,
                     _settings.Capture,
-                    openEditor: false,
+                    openEditor: _settings.Capture.OpenEditorForMonitorAndWindow,
                     owner: shouldHide ? null : this);
             }
 
@@ -1618,6 +1693,177 @@ public partial class MainWindow : Window
         }
     }
 
+    private async Task WaitForCaptureDelayAsync()
+    {
+        var seconds = _settings.Capture.DelaySeconds;
+        if (seconds <= 0)
+        {
+            return;
+        }
+        for (var remaining = seconds; remaining > 0; remaining--)
+        {
+            StatusText.Text = $"Captura em {remaining}s…";
+            await Task.Delay(1000);
+        }
+    }
+
+    private async void StartMp4Recording_OnClick(object sender, RoutedEventArgs e)
+    {
+        if (_recordingService?.IsRecording == true)
+        {
+            _recordingControl?.Activate();
+            return;
+        }
+        if (!TryReadCaptureSettings(out var settingsError))
+        {
+            MessageBox.Show(settingsError, "Gravação", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+        await _settingsStore.SaveAsync(_settings);
+
+        try
+        {
+            var target = ResolveRecordingTarget("Selecione a região do vídeo");
+            if (target is null)
+            {
+                return;
+            }
+
+            Hide();
+            await Task.Delay(180);
+            _recordingService = new ScreenRecordingService();
+            _recordingService.RecordingFailed += (_, message) =>
+                Dispatcher.Invoke(() => StatusText.Text = message);
+            var completion = _recordingService.StartAsync(
+                target,
+                _settings.Capture,
+                _settings.Capture.Recording);
+            _recordingControl = new RecordingControlWindow(_recordingService);
+            _recordingControl.Show();
+            var path = await completion;
+            var elapsed = _recordingService.Elapsed;
+            _recordingControl.Close();
+            _recordingControl = null;
+            _recordingService.Dispose();
+            _recordingService = null;
+            await _captureService.AddMediaRecordAsync(new CaptureRecord
+            {
+                CreatedAt = DateTimeOffset.Now,
+                Type = target.Type,
+                MediaKind = "video",
+                FilePath = path,
+                Width = target.Bounds.Width,
+                Height = target.Bounds.Height,
+                DurationSeconds = elapsed.TotalSeconds
+            });
+            ShowFromTray();
+            StatusText.Text = $"Vídeo salvo: {Path.GetFileName(path)}";
+            RefreshCaptureHistory();
+        }
+        catch (Exception exception)
+        {
+            _recordingControl?.Close();
+            _recordingControl = null;
+            _recordingService?.Dispose();
+            _recordingService = null;
+            ShowFromTray();
+            MessageBox.Show(
+                exception.Message +
+                "\n\nO SlashDesk usa o encoder H.264 do Windows. Em edições N/KN, instale o Media Feature Pack do Windows.",
+                "Não foi possível gravar",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+        }
+    }
+
+    private async void StartGifRecording_OnClick(object sender, RoutedEventArgs e)
+    {
+        if (!TryReadCaptureSettings(out var settingsError))
+        {
+            MessageBox.Show(settingsError, "GIF", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+        await _settingsStore.SaveAsync(_settings);
+        var target = _captureService.SelectRecordingRegion(this, "Selecione a região do GIF");
+        if (target is null)
+        {
+            return;
+        }
+
+        try
+        {
+            Hide();
+            await Task.Delay(180);
+            var progress = new Progress<RecordingProgress>(item =>
+                StatusText.Text = $"{item.Status} · {item.Elapsed:mm\\:ss}");
+            using var recording = await _gifRecordingService.CaptureAsync(
+                target.Bounds,
+                _settings.Capture.Recording,
+                progress);
+            ShowFromTray();
+            var preview = new GifPreviewWindow(recording) { Owner = this };
+            if (preview.ShowDialog() != true)
+            {
+                StatusText.Text = "GIF descartado";
+                return;
+            }
+            var path = _gifRecordingService.Save(
+                recording,
+                _settings.Capture,
+                target.Type);
+            await _captureService.AddMediaRecordAsync(new CaptureRecord
+            {
+                CreatedAt = DateTimeOffset.Now,
+                Type = target.Type,
+                MediaKind = "gif",
+                FilePath = path,
+                Width = recording.Frames[0].Width,
+                Height = recording.Frames[0].Height,
+                DurationSeconds = recording.Duration.TotalSeconds
+            });
+            StatusText.Text = $"GIF salvo: {Path.GetFileName(path)}";
+            RefreshCaptureHistory();
+        }
+        catch (OperationCanceledException)
+        {
+            ShowFromTray();
+            StatusText.Text = "Gravação de GIF cancelada";
+        }
+        catch (Exception exception)
+        {
+            ShowFromTray();
+            MessageBox.Show(
+                exception.Message,
+                "Não foi possível criar o GIF",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+        }
+    }
+
+    private RecordingTarget? ResolveRecordingTarget(string regionPurpose)
+    {
+        var selected = SelectedTag(RecordingTargetBox, "Monitor");
+        if (selected.Equals("Region", StringComparison.OrdinalIgnoreCase))
+        {
+            return _captureService.SelectRecordingRegion(this, regionPurpose);
+        }
+        if (selected.Equals("Window", StringComparison.OrdinalIgnoreCase))
+        {
+            return _captureService.WindowUnderCursorTarget();
+        }
+        return _captureService.ActiveMonitorTarget();
+    }
+
+    private static int ParseSelectedInt(ComboBox box, int fallback) =>
+        int.TryParse(SelectedTag(box, fallback.ToString()), out var value)
+            ? value
+            : fallback;
+
+    private static int ParseBounded(string text, int fallback, int minimum, int maximum) =>
+        int.TryParse(text, out var value)
+            ? Math.Clamp(value, minimum, maximum)
+            : fallback;
+
     private void CaptureFormat_OnChanged(object sender, SelectionChangedEventArgs e)
     {
         if (CaptureQualityBox is not null && CaptureFormatBox is not null)
@@ -1647,7 +1893,8 @@ public partial class MainWindow : Window
             CapturePreviewDetailsText.Text =
                 $"{mostRecent.CreatedAt:dd/MM/yyyy HH:mm}  ·  {mostRecent.Type}  ·  " +
                 $"{mostRecent.Width}×{mostRecent.Height}";
-            if (!string.IsNullOrWhiteSpace(mostRecent.FilePath) &&
+            if (!mostRecent.MediaKind.Equals("video", StringComparison.OrdinalIgnoreCase) &&
+                !string.IsNullOrWhiteSpace(mostRecent.FilePath) &&
                 File.Exists(mostRecent.FilePath))
             {
                 try
@@ -1673,19 +1920,49 @@ public partial class MainWindow : Window
             }
         }
 
-        foreach (var item in _captureService.History.Take(6))
+        var filter = CaptureHistoryFilterBox is null
+            ? "all"
+            : SelectedTag(CaptureHistoryFilterBox, "all");
+        var filtered = _captureService.History.Where(item =>
+            filter.Equals("all", StringComparison.OrdinalIgnoreCase) ||
+            filter.Equals("video", StringComparison.OrdinalIgnoreCase) &&
+            item.MediaKind.Equals("video", StringComparison.OrdinalIgnoreCase) ||
+            filter.Equals("gif", StringComparison.OrdinalIgnoreCase) &&
+            item.MediaKind.Equals("gif", StringComparison.OrdinalIgnoreCase) ||
+            item.Type.Equals(filter, StringComparison.OrdinalIgnoreCase));
+        foreach (var item in filtered.Take(40))
         {
             var file = string.IsNullOrWhiteSpace(item.FilePath)
                 ? "Somente clipboard"
                 : Path.GetFileName(item.FilePath);
-            CaptureHistoryPanel.Children.Add(new TextBlock
+            var row = new Grid
+            {
+                Margin = new Thickness(0, 0, 0, 7)
+            };
+            row.ColumnDefinitions.Add(new ColumnDefinition());
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            var duration = item.DurationSeconds > 0
+                ? $" · {TimeSpan.FromSeconds(item.DurationSeconds):mm\\:ss}"
+                : string.Empty;
+            row.Children.Add(new TextBlock
             {
                 Text = $"{item.CreatedAt:dd/MM HH:mm} · {item.Type} · " +
-                       $"{item.Width}×{item.Height} · {file}",
-                Margin = new Thickness(0, 0, 0, 7),
+                       $"{item.MediaKind} · {item.Width}×{item.Height}{duration} · {file}",
+                VerticalAlignment = VerticalAlignment.Center,
                 TextTrimming = TextTrimming.CharacterEllipsis,
                 Foreground = (Brush)FindResource("MutedBrush")
             });
+            var actions = new StackPanel { Orientation = Orientation.Horizontal };
+            actions.Children.Add(HistoryButton("Abrir", item, OpenHistoryItem_OnClick));
+            actions.Children.Add(HistoryButton("Copiar", item, CopyHistoryItem_OnClick));
+            if (item.MediaKind.Equals("image", StringComparison.OrdinalIgnoreCase))
+            {
+                actions.Children.Add(HistoryButton("Editar", item, EditHistoryItem_OnClick));
+            }
+            actions.Children.Add(HistoryButton("Excluir", item, DeleteHistoryItem_OnClick));
+            Grid.SetColumn(actions, 1);
+            row.Children.Add(actions);
+            CaptureHistoryPanel.Children.Add(row);
         }
         if (CaptureHistoryPanel.Children.Count == 0)
         {
@@ -1695,6 +1972,113 @@ public partial class MainWindow : Window
                 Foreground = (Brush)FindResource("MutedBrush")
             });
         }
+        CaptureHistoryStatusText.Text =
+            $"{filtered.Count():N0} de {_captureService.History.Count:N0} item(ns)";
+    }
+
+    private static Button HistoryButton(
+        string label,
+        CaptureRecord record,
+        RoutedEventHandler handler)
+    {
+        var button = new Button
+        {
+            Content = label,
+            Tag = record,
+            MinWidth = 62,
+            Height = 32,
+            Margin = new Thickness(6, 0, 0, 0),
+            Padding = new Thickness(8, 3, 8, 3)
+        };
+        button.Click += handler;
+        return button;
+    }
+
+    private void CaptureHistoryFilter_OnChanged(object sender, SelectionChangedEventArgs e) =>
+        RefreshCaptureHistory();
+
+    private void OpenHistoryItem_OnClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: CaptureRecord record } ||
+            string.IsNullOrWhiteSpace(record.FilePath) ||
+            !File.Exists(record.FilePath))
+        {
+            MessageBox.Show(
+                "O arquivo não está mais disponível.",
+                "Histórico",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+            return;
+        }
+        Process.Start(new ProcessStartInfo(record.FilePath) { UseShellExecute = true });
+    }
+
+    private void CopyHistoryItem_OnClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: CaptureRecord record })
+        {
+            return;
+        }
+        try
+        {
+            CaptureService.CopyFileToClipboard(record.FilePath);
+            StatusText.Text = $"Arquivo copiado: {Path.GetFileName(record.FilePath)}";
+        }
+        catch (Exception exception)
+        {
+            MessageBox.Show(
+                exception.Message,
+                "Histórico",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+        }
+    }
+
+    private async void EditHistoryItem_OnClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: CaptureRecord record })
+        {
+            return;
+        }
+        if (await _captureService.EditExistingAsync(record.Id, _settings.Capture, this))
+        {
+            StatusText.Text = $"Captura atualizada: {Path.GetFileName(record.FilePath)}";
+            RefreshCaptureHistory();
+        }
+    }
+
+    private async void DeleteHistoryItem_OnClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: CaptureRecord record })
+        {
+            return;
+        }
+        var choice = MessageBox.Show(
+            "Sim: excluir também o arquivo local.\nNão: remover somente do histórico.",
+            "Excluir captura",
+            MessageBoxButton.YesNoCancel,
+            MessageBoxImage.Warning);
+        if (choice == MessageBoxResult.Cancel)
+        {
+            return;
+        }
+        await _captureService.DeleteAsync(
+            record.Id,
+            deleteFile: choice == MessageBoxResult.Yes);
+        RefreshCaptureHistory();
+    }
+
+    private async void CleanCaptureHistory_OnClick(object sender, RoutedEventArgs e)
+    {
+        var days = ParseSelectedInt(CaptureRetentionBox, 90);
+        if (days <= 0)
+        {
+            CaptureHistoryStatusText.Text = "Limpeza automática desativada";
+            return;
+        }
+        var count = await _captureService.CleanOlderThanAsync(days, deleteFiles: false);
+        CaptureHistoryStatusText.Text = $"{count:N0} entrada(s) antiga(s) removida(s)";
+        RefreshCaptureHistory();
     }
 
     private void OpenCaptureFolder_OnClick(object sender, RoutedEventArgs e)
@@ -1903,6 +2287,8 @@ public partial class MainWindow : Window
         _quickAccentService.Dispose();
         _captureShortcuts.Triggered -= CaptureShortcuts_OnTriggered;
         _captureShortcuts.Dispose();
+        _recordingControl?.Close();
+        _recordingService?.Dispose();
         _suggestionWindow.Close();
         _quickAccentWindow.Close();
         if (_trayIcon is not null)
