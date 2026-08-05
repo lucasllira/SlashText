@@ -128,13 +128,9 @@ recusados; o aplicativo informa o conflito.
 
 ## Próximas etapas
 
-- recorte, desfoque e pixelização no editor de captura;
-- gravação local de MP4 e GIF, com região/janela/monitor, FPS e cursor;
-- captura com atraso e captura com rolagem;
-- assinatura digital para facilitar distribuição corporativa.
-
-Gravação e GIF permanecem no roadmap até que o pipeline de mídia seja validado
-de ponta a ponta; a interface não mostra ações que ainda não funcionem.
+O SlashDesk 2.9.1 estabiliza a gravação local de MP4 e GIF. A próxima versão
+fica reservada para captura com rolagem, ações de captura/gravação no menu da
+bandeja e revisão visual, além da assinatura digital para distribuição corporativa.
 
 ## Licença
 

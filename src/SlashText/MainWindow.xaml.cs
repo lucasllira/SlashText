@@ -1723,13 +1723,29 @@ public partial class MainWindow : Window
 
         try
         {
-            var target = ResolveRecordingTarget("Selecione a região do vídeo");
+            RecordingTarget? target;
+            if (SelectedTag(RecordingTargetBox, "Monitor").Equals(
+                    "Window",
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                Hide();
+                await Task.Delay(250);
+                target = _captureService.WindowUnderCursorTarget();
+            }
+            else
+            {
+                target = ResolveRecordingTarget("Selecione a região do vídeo");
+            }
             if (target is null)
             {
+                ShowFromTray();
                 return;
             }
 
-            Hide();
+            if (IsVisible)
+            {
+                Hide();
+            }
             await Task.Delay(180);
             _recordingService = new ScreenRecordingService();
             _recordingService.RecordingFailed += (_, message) =>
@@ -1846,10 +1862,6 @@ public partial class MainWindow : Window
         if (selected.Equals("Region", StringComparison.OrdinalIgnoreCase))
         {
             return _captureService.SelectRecordingRegion(this, regionPurpose);
-        }
-        if (selected.Equals("Window", StringComparison.OrdinalIgnoreCase))
-        {
-            return _captureService.WindowUnderCursorTarget();
         }
         return _captureService.ActiveMonitorTarget();
     }

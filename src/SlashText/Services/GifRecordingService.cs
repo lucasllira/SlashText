@@ -58,10 +58,16 @@ public sealed class GifRecordingService
         CaptureSettings captureSettings,
         string type)
     {
+        if (recording.Frames.Count == 0)
+        {
+            throw new InvalidOperationException("O GIF não contém quadros para salvar.");
+        }
+
         var path = ScreenRecordingService.CreateMediaPath(
             captureSettings,
             type,
             ".gif");
+        var temporaryPath = path + $".{Guid.NewGuid():N}.tmp";
         var encoder = new GifBitmapEncoder();
         var delay = Math.Max(2, (int)Math.Round(100d / recording.Fps));
         for (var index = 0; index < recording.Frames.Count; index++)
@@ -71,20 +77,87 @@ public sealed class GifRecordingService
             var metadata = new BitmapMetadata("gif");
             metadata.SetQuery("/grctlext/Delay", (ushort)delay);
             metadata.SetQuery("/grctlext/Disposal", (byte)2);
-            if (index == 0)
-            {
-                metadata.SetQuery("/appext/application", "NETSCAPE2.0");
-                metadata.SetQuery("/appext/data", new byte[] { 3, 1, 0, 0, 0 });
-            }
             encoder.Frames.Add(BitmapFrame.Create(
                 source,
                 null,
                 metadata,
                 null));
         }
-        using var stream = File.Create(path);
-        encoder.Save(stream);
-        return path;
+
+        try
+        {
+            using (var stream = File.Create(temporaryPath))
+            {
+                encoder.Save(stream);
+                stream.Flush(flushToDisk: true);
+            }
+            EnsureLoopExtension(temporaryPath);
+            File.Move(temporaryPath, path);
+            return path;
+        }
+        catch
+        {
+            TryDelete(temporaryPath);
+            throw;
+        }
+    }
+
+    private static void EnsureLoopExtension(string path)
+    {
+        var gif = File.ReadAllBytes(path);
+        if (gif.Length < 13 ||
+            gif[0] != (byte)'G' ||
+            gif[1] != (byte)'I' ||
+            gif[2] != (byte)'F')
+        {
+            throw new InvalidDataException("O encoder criou um contêiner GIF inválido.");
+        }
+
+        ReadOnlySpan<byte> applicationId = "NETSCAPE2.0"u8;
+        if (gif.AsSpan().IndexOf(applicationId) >= 0)
+        {
+            return;
+        }
+
+        var packedFields = gif[10];
+        var colorTableLength = (packedFields & 0x80) == 0
+            ? 0
+            : 3 * (1 << ((packedFields & 0x07) + 1));
+        var insertionOffset = 13 + colorTableLength;
+        if (insertionOffset > gif.Length)
+        {
+            throw new InvalidDataException("A tabela de cores do GIF está incompleta.");
+        }
+
+        ReadOnlySpan<byte> loopExtension =
+        [
+            0x21, 0xFF, 0x0B,
+            (byte)'N', (byte)'E', (byte)'T', (byte)'S', (byte)'C', (byte)'A',
+            (byte)'P', (byte)'E', (byte)'2', (byte)'.', (byte)'0',
+            0x03, 0x01, 0x00, 0x00, 0x00
+        ];
+        var result = new byte[gif.Length + loopExtension.Length];
+        gif.AsSpan(0, insertionOffset).CopyTo(result);
+        loopExtension.CopyTo(result.AsSpan(insertionOffset));
+        gif.AsSpan(insertionOffset).CopyTo(
+            result.AsSpan(insertionOffset + loopExtension.Length));
+        File.WriteAllBytes(path, result);
+    }
+
+    private static void TryDelete(string path)
+    {
+        try
+        {
+            File.Delete(path);
+        }
+        catch (IOException)
+        {
+            // Um arquivo temporário bloqueado não deve ocultar o erro original.
+        }
+        catch (UnauthorizedAccessException)
+        {
+            // Um arquivo temporário bloqueado não deve ocultar o erro original.
+        }
     }
 
     private static Bitmap Resize(Bitmap source, int requestedWidth, int quality)

@@ -16,6 +16,7 @@ public sealed class ScreenRecordingService : IDisposable
     private TimeSpan _elapsed;
     private TaskCompletionSource<string>? _completion;
     private string _path = string.Empty;
+    private string _workingPath = string.Empty;
 
     public bool IsRecording => _recorder is not null;
     public bool IsPaused => _paused;
@@ -39,6 +40,7 @@ public sealed class ScreenRecordingService : IDisposable
             }
 
             _path = CreateMediaPath(captureSettings, target.Type, ".mp4");
+            _workingPath = CreateWorkingPath(_path);
             _completion = new TaskCompletionSource<string>(
                 TaskCreationOptions.RunContinuationsAsynchronously);
             _recorder = Recorder.CreateRecorder(BuildOptions(target, settings));
@@ -48,7 +50,7 @@ public sealed class ScreenRecordingService : IDisposable
             _pausedAt = TimeSpan.Zero;
             _elapsed = TimeSpan.Zero;
             _paused = false;
-            _recorder.Record(_path);
+            _recorder.Record(_workingPath);
             ProgressChanged?.Invoke(
                 this,
                 new RecordingProgress(TimeSpan.Zero, false, "Gravando"));
@@ -93,10 +95,12 @@ public sealed class ScreenRecordingService : IDisposable
 
     public void Stop()
     {
+        Recorder? recorder;
         lock (_gate)
         {
-            _recorder?.Stop();
+            recorder = _recorder;
         }
+        recorder?.Stop();
     }
 
     public void PublishTick()
@@ -198,30 +202,33 @@ public sealed class ScreenRecordingService : IDisposable
 
     private static int Even(int value) => Math.Max(2, value - value % 2);
 
-    private void OnRecordingComplete(object sender, RecordingCompleteEventArgs e)
+    private void OnRecordingComplete(object? sender, RecordingCompleteEventArgs e)
     {
-        var path = string.IsNullOrWhiteSpace(e.FilePath) ? _path : e.FilePath;
+        var recordedPath = string.IsNullOrWhiteSpace(e.FilePath)
+            ? _workingPath
+            : e.FilePath;
         CleanupRecorder();
-        _completion?.TrySetResult(path);
+        try
+        {
+            ValidateMp4File(recordedPath);
+            File.Move(recordedPath, _path);
+            _completion?.TrySetResult(_path);
+        }
+        catch (Exception exception)
+        {
+            TryDelete(recordedPath);
+            RecordingFailed?.Invoke(this, exception.Message);
+            _completion?.TrySetException(exception);
+        }
     }
 
-    private void OnRecordingFailed(object sender, RecordingFailedEventArgs e)
+    private void OnRecordingFailed(object? sender, RecordingFailedEventArgs e)
     {
         var error = string.IsNullOrWhiteSpace(e.Error)
             ? "O encoder de vídeo do Windows não conseguiu concluir a gravação."
             : e.Error;
         CleanupRecorder();
-        if (File.Exists(_path))
-        {
-            try
-            {
-                File.Delete(_path);
-            }
-            catch (IOException)
-            {
-                // O arquivo incompleto será ignorado pelo histórico.
-            }
-        }
+        TryDelete(_workingPath);
         RecordingFailed?.Invoke(this, error);
         _completion?.TrySetException(new InvalidOperationException(error));
     }
@@ -268,19 +275,93 @@ public sealed class ScreenRecordingService : IDisposable
         return path;
     }
 
+    public static void ValidateMp4File(string path)
+    {
+        if (!File.Exists(path))
+        {
+            throw new InvalidDataException("O encoder não criou o arquivo MP4.");
+        }
+
+        using var stream = File.OpenRead(path);
+        if (stream.Length < 12)
+        {
+            throw new InvalidDataException("O encoder criou um arquivo MP4 vazio ou incompleto.");
+        }
+
+        Span<byte> header = stackalloc byte[12];
+        if (stream.Read(header) != header.Length ||
+            header[4] != (byte)'f' ||
+            header[5] != (byte)'t' ||
+            header[6] != (byte)'y' ||
+            header[7] != (byte)'p')
+        {
+            throw new InvalidDataException("O encoder criou um contêiner MP4 inválido.");
+        }
+    }
+
+    private static string CreateWorkingPath(string finalPath)
+    {
+        var directory = Path.GetDirectoryName(finalPath) ?? string.Empty;
+        var name = Path.GetFileNameWithoutExtension(finalPath);
+        return Path.Combine(
+            directory,
+            $".{name}.{Guid.NewGuid():N}.recording.mp4");
+    }
+
+    private static void TryDelete(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return;
+        }
+
+        try
+        {
+            File.Delete(path);
+        }
+        catch (IOException)
+        {
+            // O arquivo incompleto será ignorado pelo histórico.
+        }
+        catch (UnauthorizedAccessException)
+        {
+            // O arquivo incompleto será ignorado pelo histórico.
+        }
+    }
+
     public void Dispose()
     {
-        if (_recorder is not null)
+        Task<string>? completion;
+        lock (_gate)
+        {
+            completion = _recorder is null ? null : _completion?.Task;
+        }
+
+        try
+        {
+            Stop();
+        }
+        catch
+        {
+            // O encerramento do aplicativo não deve ficar preso no encoder.
+        }
+
+        if (completion is not null && !completion.IsCompleted)
         {
             try
             {
-                _recorder.Stop();
+                completion.Wait(TimeSpan.FromSeconds(5));
             }
             catch
             {
-                // O encerramento do aplicativo não deve ficar preso no encoder.
+                // A limpeza abaixo remove qualquer MP4 incompleto.
             }
         }
-        CleanupRecorder();
+
+        if (_recorder is not null)
+        {
+            CleanupRecorder();
+            TryDelete(_workingPath);
+        }
     }
 }

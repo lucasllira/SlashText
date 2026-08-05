@@ -159,8 +159,8 @@ foreach ($guideSection in @(
     }
 }
 
-if (-not $project.Contains('<Version>2.9.0</Version>')) {
-    throw 'Versão funcional deve ser 2.9.0.'
+if (-not $project.Contains('<Version>2.9.1</Version>')) {
+    throw 'Versão funcional deve ser 2.9.1.'
 }
 
 if (-not $project.Contains('ScreenRecorderLib') -or
@@ -195,9 +195,25 @@ foreach ($control in @(
 }
 
 if (-not $gif.Contains('GifBitmapEncoder') -or
+    -not $gif.Contains('EnsureLoopExtension(temporaryPath)') -or
+    -not $gif.Contains('"NETSCAPE2.0"u8') -or
+    -not $gif.Contains('File.Move(temporaryPath, path)') -or
+    -not $recording.Contains('ValidateMp4File(recordedPath)') -or
+    -not $recording.Contains('recording.mp4') -or
     -not $gifPreview.Contains('Prévia antes de salvar') -or
     -not $recordingBar.Contains('Finalizar')) {
-    throw 'GIF ou barra flutuante incompletos.'
+    throw 'Correções críticas de GIF ou MP4 incompletas.'
+}
+
+$windowTargetIndex = $code.LastIndexOf('target = _captureService.WindowUnderCursorTarget();')
+$hideBeforeWindowIndex = if ($windowTargetIndex -ge 0) {
+    $code.LastIndexOf('Hide();', $windowTargetIndex)
+} else {
+    -1
+}
+if ($hideBeforeWindowIndex -lt 0 -or
+    $windowTargetIndex - $hideBeforeWindowIndex -gt 300) {
+    throw 'A seleção de janela MP4 deve ocorrer após ocultar o SlashDesk.'
 }
 
 foreach ($historyAction in @(

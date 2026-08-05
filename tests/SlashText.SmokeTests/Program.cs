@@ -223,6 +223,48 @@ try
                 ".mp4")
             .EndsWith(".mp4", StringComparison.OrdinalIgnoreCase),
         "nome local para gravação MP4");
+    var validMp4 = Path.Combine(root, "valid.mp4");
+    await File.WriteAllBytesAsync(
+        validMp4,
+        [0, 0, 0, 24, (byte)'f', (byte)'t', (byte)'y', (byte)'p', 0, 0, 0, 0]);
+    ScreenRecordingService.ValidateMp4File(validMp4);
+    var invalidMp4 = Path.Combine(root, "invalid.mp4");
+    await File.WriteAllBytesAsync(invalidMp4, [0, 1, 2, 3]);
+    RequireThrows<InvalidDataException>(
+        () => ScreenRecordingService.ValidateMp4File(invalidMp4),
+        "MP4 vazio ou sem contêiner não entra no histórico");
+
+    using (var frame1 = new System.Drawing.Bitmap(4, 4))
+    using (var frame2 = new System.Drawing.Bitmap(4, 4))
+    {
+        frame1.SetPixel(0, 0, System.Drawing.Color.Red);
+        frame2.SetPixel(0, 0, System.Drawing.Color.Blue);
+        using var gifRecording = new GifRecordingResult(
+            [frame1.Clone() as System.Drawing.Bitmap ?? throw new InvalidOperationException(),
+             frame2.Clone() as System.Drawing.Bitmap ?? throw new InvalidOperationException()],
+            10,
+            new System.Drawing.Rectangle(0, 0, 4, 4));
+        var gifPath = new GifRecordingService().Save(
+            gifRecording,
+            new CaptureSettings
+            {
+                OutputDirectoryTemplate = root,
+                FileNameTemplate = "animated"
+            },
+            "gif");
+        var gifBytes = await File.ReadAllBytesAsync(gifPath);
+        Require(
+            System.Text.Encoding.ASCII.GetString(gifBytes).Contains(
+                "NETSCAPE2.0",
+                StringComparison.Ordinal),
+            "GIF inclui extensão de repetição NETSCAPE");
+        using var gifStream = File.OpenRead(gifPath);
+        var decoder = new System.Windows.Media.Imaging.GifBitmapDecoder(
+            gifStream,
+            System.Windows.Media.Imaging.BitmapCreateOptions.PreservePixelFormat,
+            System.Windows.Media.Imaging.BitmapCacheOption.OnLoad);
+        Require(decoder.Frames.Count == 2, "GIF preserva todos os quadros");
+    }
     Require(
         GlobalCaptureShortcutService.IsValid("Ctrl+Shift+PrintScreen"),
         "atalho de captura pelo teclado");
@@ -371,4 +413,19 @@ static void Require(bool condition, string scenario)
     {
         throw new InvalidOperationException($"Falha no cenário: {scenario}");
     }
+}
+
+static void RequireThrows<TException>(Action action, string scenario)
+    where TException : Exception
+{
+    try
+    {
+        action();
+    }
+    catch (TException)
+    {
+        return;
+    }
+
+    throw new InvalidOperationException($"Falha no smoke test: {scenario}");
 }
