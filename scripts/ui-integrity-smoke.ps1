@@ -172,6 +172,19 @@ if (-not $project.Contains('ScreenRecorderLib') -or
     throw 'Gravação MP4 local incompleta.'
 }
 
+$recorderDisposeCount = ([regex]::Matches(
+    $recording,
+    [regex]::Escape('recorder?.Dispose()')
+)).Count
+if ($recording.Contains('CleanupRecorder') -or
+    $recorderDisposeCount -ne 1 -or
+    -not $recording.Contains('Task.Run(() => FinalizeRecording(request))') -or
+    -not $recording.Contains('Interlocked.CompareExchange(ref _finalizationState, 1, 0)') -or
+    -not $recording.Contains('IsHardwareEncodingEnabled = HardwareEncodingEnabled') -or
+    -not $recording.Contains('private const bool HardwareEncodingEnabled = false;')) {
+    throw 'Ciclo de finalização MP4 inseguro ou dependente de aceleração de hardware.'
+}
+
 foreach ($control in @(
     'RecordingTargetBox',
     'RecordingFpsBox',

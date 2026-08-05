@@ -233,6 +233,12 @@ try
     RequireThrows<InvalidDataException>(
         () => ScreenRecordingService.ValidateMp4File(invalidMp4),
         "MP4 vazio ou sem contêiner não entra no histórico");
+    var hardwareEncodingField = typeof(ScreenRecordingService).GetField(
+        "HardwareEncodingEnabled",
+        BindingFlags.NonPublic | BindingFlags.Static);
+    Require(
+        hardwareEncodingField?.GetRawConstantValue() is false,
+        "MP4 usa codificação por software sem dependência obrigatória de GPU");
 
     using (var frame1 = new System.Drawing.Bitmap(4, 4))
     using (var frame2 = new System.Drawing.Bitmap(4, 4))
