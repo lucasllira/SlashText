@@ -447,7 +447,14 @@ public sealed class ScreenRecordingService : IDisposable
             }
             source = display;
         }
-        source.IsCursorCaptureEnabled = settings.IncludeCursor;
+        if (source is DisplayRecordingSource displaySource)
+        {
+            displaySource.IsCursorCaptureEnabled = settings.IncludeCursor;
+        }
+        else if (source is WindowRecordingSource windowSource)
+        {
+            windowSource.IsCursorCaptureEnabled = settings.IncludeCursor;
+        }
 
         var (bitrate, quality) = settings.VideoQuality switch
         {
@@ -538,6 +545,7 @@ public sealed class ScreenRecordingService : IDisposable
         var foundMoov = false;
         var foundMdat = false;
         Span<byte> header = stackalloc byte[8];
+        Span<byte> extended = stackalloc byte[8];
         while (stream.Position + header.Length <= stream.Length)
         {
             if (stream.Read(header) != header.Length)
@@ -549,7 +557,6 @@ public sealed class ScreenRecordingService : IDisposable
             long boxSize = size;
             if (size == 1)
             {
-                Span<byte> extended = stackalloc byte[8];
                 if (stream.Read(extended) != extended.Length)
                 {
                     break;
