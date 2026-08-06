@@ -3,6 +3,8 @@ using SlashText.Services;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.IO.Compression;
+using System.Diagnostics;
+using ScreenRecorderLib;
 
 var engine = new TemplateEngine();
 var reference = new DateTimeOffset(2026, 7, 27, 14, 35, 0, TimeSpan.FromHours(-3));
@@ -224,21 +226,144 @@ try
             .EndsWith(".mp4", StringComparison.OrdinalIgnoreCase),
         "nome local para gravação MP4");
     var validMp4 = Path.Combine(root, "valid.mp4");
-    await File.WriteAllBytesAsync(
-        validMp4,
-        [0, 0, 0, 24, (byte)'f', (byte)'t', (byte)'y', (byte)'p', 0, 0, 0, 0]);
+    await WriteValidMp4Async(validMp4);
     ScreenRecordingService.ValidateMp4File(validMp4);
     var invalidMp4 = Path.Combine(root, "invalid.mp4");
     await File.WriteAllBytesAsync(invalidMp4, [0, 1, 2, 3]);
     RequireThrows<InvalidDataException>(
         () => ScreenRecordingService.ValidateMp4File(invalidMp4),
         "MP4 vazio ou sem contêiner não entra no histórico");
-    var hardwareEncodingField = typeof(ScreenRecordingService).GetField(
-        "HardwareEncodingEnabled",
-        BindingFlags.NonPublic | BindingFlags.Static);
+    var recorderOptions = ScreenRecordingService.BuildOptions(
+        new RecordingTarget(
+            RecordingTargetKind.Window,
+            new System.Drawing.Rectangle(0, 0, 1280, 720),
+            new IntPtr(1)),
+        new RecordingSettings { VideoFps = 30, VideoQuality = "Alta" },
+        Path.Combine(root, "screenrecorderlib.log"));
     Require(
-        hardwareEncodingField?.GetRawConstantValue() is false,
-        "MP4 usa codificação por software sem dependência obrigatória de GPU");
+        recorderOptions.VideoEncoderOptions.IsHardwareEncodingEnabled &&
+        !recorderOptions.VideoEncoderOptions.IsFixedFramerate &&
+        !recorderOptions.VideoEncoderOptions.IsThrottlingDisabled &&
+        recorderOptions.VideoEncoderOptions.Encoder is H264VideoEncoder h264 &&
+        h264.BitrateMode == H264BitrateControlMode.Quality &&
+        recorderOptions.LogOptions.IsLogEnabled &&
+        recorderOptions.LogOptions.LogSeverityLevel == LogLevel.Trace,
+        "MP4 prefere hardware com fallback Media Foundation, sem quadros fixos e com log nativo");
+
+    var fakeFactory = new FakeRecorderBackendFactory();
+    using (var lifecycle = new ScreenRecordingService(fakeFactory, TimeSpan.FromSeconds(1)))
+    {
+        var lifecycleTask = lifecycle.StartAsync(
+            new RecordingTarget(
+                RecordingTargetKind.Window,
+                new System.Drawing.Rectangle(0, 0, 640, 480),
+                new IntPtr(1)),
+            new CaptureSettings
+            {
+                OutputDirectoryTemplate = root,
+                FileNameTemplate = "lifecycle"
+            },
+            new RecordingSettings { VideoFps = 30 });
+        Require(fakeFactory.Backend.RecordCalled.Wait(TimeSpan.FromSeconds(2)), "MP4 inicia backend");
+        await WaitUntilAsync(
+            () => lifecycle.State == ScreenRecordingState.Recording,
+            "estado Recording");
+        lifecycle.Pause();
+        await WaitUntilAsync(
+            () => lifecycle.State == ScreenRecordingState.Paused,
+            "estado Paused");
+        lifecycle.Resume();
+        await WaitUntilAsync(
+            () => lifecycle.State == ScreenRecordingState.Recording,
+            "retorno ao estado Recording");
+        lifecycle.Stop();
+        var lifecyclePath = await lifecycleTask.WaitAsync(TimeSpan.FromSeconds(3));
+        Require(File.Exists(lifecyclePath), "MP4 finaliza e publica arquivo");
+        Require(lifecycle.State == ScreenRecordingState.Completed, "estado Completed");
+        Require(fakeFactory.Backend.DisposeCalls == 1, "Recorder descartado uma única vez");
+        Require(fakeFactory.Backend.MaximumConcurrentCalls == 1, "chamadas nativas serializadas");
+    }
+
+    var duplicateFactory = new FakeRecorderBackendFactory { SendDuplicateCallbacks = true };
+    using (var lifecycle = new ScreenRecordingService(duplicateFactory, TimeSpan.FromSeconds(1)))
+    {
+        var task = lifecycle.StartAsync(
+            new RecordingTarget(
+                RecordingTargetKind.Window,
+                new System.Drawing.Rectangle(0, 0, 320, 240),
+                new IntPtr(1)),
+            new CaptureSettings
+            {
+                OutputDirectoryTemplate = root,
+                FileNameTemplate = "duplicate-callback"
+            },
+            new RecordingSettings());
+        Require(duplicateFactory.Backend.RecordCalled.Wait(TimeSpan.FromSeconds(2)), "backend para callback duplicado");
+        lifecycle.Stop();
+        await task.WaitAsync(TimeSpan.FromSeconds(3));
+        Require(duplicateFactory.Backend.DisposeCalls == 1, "callback duplicado não duplica descarte");
+    }
+
+    var timeoutFactory = new FakeRecorderBackendFactory { CompleteOnStop = false };
+    using (var lifecycle = new ScreenRecordingService(timeoutFactory, TimeSpan.FromMilliseconds(80)))
+    {
+        var task = lifecycle.StartAsync(
+            new RecordingTarget(
+                RecordingTargetKind.Window,
+                new System.Drawing.Rectangle(0, 0, 320, 240),
+                new IntPtr(1)),
+            new CaptureSettings
+            {
+                OutputDirectoryTemplate = root,
+                FileNameTemplate = "late-callback"
+            },
+            new RecordingSettings());
+        Require(timeoutFactory.Backend.RecordCalled.Wait(TimeSpan.FromSeconds(2)), "backend para timeout");
+        lifecycle.Stop();
+        await RequireThrowsAsync<TimeoutException>(() => task, "timeout nativo controlado");
+        Require(timeoutFactory.Backend.DisposeCalls == 0, "timeout não descarta Recorder durante callback nativo");
+        timeoutFactory.Backend.CompleteLater();
+        await WaitUntilAsync(
+            () => lifecycle.State == ScreenRecordingState.Completed,
+            "callback tardio conclui limpeza");
+        Require(timeoutFactory.Backend.DisposeCalls == 1, "callback tardio executa descarte único");
+    }
+
+    var captureThread = Environment.CurrentManagedThreadId;
+    var gifCaptureThreads = new System.Collections.Concurrent.ConcurrentBag<int>();
+    var pipeline = new GifRecordingService((_, _) =>
+    {
+        gifCaptureThreads.Add(Environment.CurrentManagedThreadId);
+        var bitmap = new System.Drawing.Bitmap(16, 12);
+        using var graphics = System.Drawing.Graphics.FromImage(bitmap);
+        graphics.Clear(System.Drawing.Color.CornflowerBlue);
+        return bitmap;
+    });
+    using (var pipelineResult = await pipeline.CaptureAsync(
+               new System.Drawing.Rectangle(0, 0, 16, 12),
+               new RecordingSettings
+               {
+                   GifFps = 2,
+                   GifDurationSeconds = 1,
+                   GifWidth = 240,
+                   GifQuality = 80
+               }))
+    {
+        Require(
+            pipelineResult.Metrics is
+            {
+                CapturedFrames: 2,
+                StoredFrames: 1,
+                DuplicateFrames: 1
+            },
+            "pipeline GIF descarta quadro idêntico preservando duração");
+        Require(
+            pipelineResult.Duration == TimeSpan.FromSeconds(1),
+            "deduplicação GIF preserva tempo configurado");
+        Require(
+            gifCaptureThreads.All(thread => thread != captureThread),
+            "captura e redimensionamento GIF fora da UI thread");
+    }
 
     using (var frame1 = new System.Drawing.Bitmap(4, 4))
     using (var frame2 = new System.Drawing.Bitmap(4, 4))
@@ -434,4 +559,155 @@ static void RequireThrows<TException>(Action action, string scenario)
     }
 
     throw new InvalidOperationException($"Falha no smoke test: {scenario}");
+}
+
+static async Task WaitUntilAsync(Func<bool> condition, string scenario)
+{
+    var timeout = Stopwatch.StartNew();
+    while (!condition())
+    {
+        if (timeout.Elapsed > TimeSpan.FromSeconds(2))
+        {
+            throw new InvalidOperationException($"Timeout no cenário: {scenario}");
+        }
+        await Task.Delay(10);
+    }
+}
+
+static async Task RequireThrowsAsync<TException>(Func<Task> action, string scenario)
+    where TException : Exception
+{
+    try
+    {
+        await action();
+    }
+    catch (TException)
+    {
+        return;
+    }
+    throw new InvalidOperationException($"Falha no smoke test: {scenario}");
+}
+
+static Task WriteValidMp4Async(string path) => File.WriteAllBytesAsync(
+    path,
+    [
+        0, 0, 0, 12, (byte)'f', (byte)'t', (byte)'y', (byte)'p', 0, 0, 0, 0,
+        0, 0, 0, 12, (byte)'m', (byte)'d', (byte)'a', (byte)'t', 1, 2, 3, 4,
+        0, 0, 0, 8, (byte)'m', (byte)'o', (byte)'o', (byte)'v'
+    ]);
+
+sealed class FakeRecorderBackendFactory : IScreenRecorderBackendFactory
+{
+    public FakeRecorderBackend Backend { get; } = new();
+    public bool SendDuplicateCallbacks
+    {
+        get => Backend.SendDuplicateCallbacks;
+        init => Backend.SendDuplicateCallbacks = value;
+    }
+    public bool CompleteOnStop
+    {
+        get => Backend.CompleteOnStop;
+        init => Backend.CompleteOnStop = value;
+    }
+
+    public IScreenRecorderBackend Create(RecorderOptions options) => Backend;
+}
+
+sealed class FakeRecorderBackend : IScreenRecorderBackend
+{
+    private int _activeCalls;
+    private int _maximumConcurrentCalls;
+    private int _disposeCalls;
+    private string _path = string.Empty;
+
+    public event EventHandler<RecordingCompleteEventArgs>? Completed;
+    public event EventHandler<RecordingFailedEventArgs>? Failed;
+    public event EventHandler<RecordingStatusEventArgs>? StatusChanged;
+    public ManualResetEventSlim RecordCalled { get; } = new(false);
+    public bool SendDuplicateCallbacks { get; set; }
+    public bool CompleteOnStop { get; set; } = true;
+    public int DisposeCalls => Volatile.Read(ref _disposeCalls);
+    public int MaximumConcurrentCalls => Volatile.Read(ref _maximumConcurrentCalls);
+
+    public void Record(string path)
+    {
+        NativeCall(() =>
+        {
+            _path = path;
+            RecordCalled.Set();
+            StatusChanged?.Invoke(this, new RecordingStatusEventArgs(RecorderStatus.Recording));
+        });
+    }
+
+    public void Pause() => NativeCall(() =>
+        StatusChanged?.Invoke(this, new RecordingStatusEventArgs(RecorderStatus.Paused)));
+
+    public void Resume() => NativeCall(() =>
+        StatusChanged?.Invoke(this, new RecordingStatusEventArgs(RecorderStatus.Recording)));
+
+    public void Stop()
+    {
+        NativeCall(() =>
+        {
+            if (CompleteOnStop)
+            {
+                CompleteLater();
+            }
+        });
+    }
+
+    public void CompleteLater()
+    {
+        WriteValidMp4(_path);
+        Completed?.Invoke(
+            this,
+            new RecordingCompleteEventArgs(_path, new List<FrameData>()));
+        if (SendDuplicateCallbacks)
+        {
+            Failed?.Invoke(
+                this,
+                new RecordingFailedEventArgs("callback tardio", _path));
+        }
+    }
+
+    public void Dispose()
+    {
+        NativeCall(() => Interlocked.Increment(ref _disposeCalls));
+    }
+
+    private void NativeCall(Action action)
+    {
+        var concurrent = Interlocked.Increment(ref _activeCalls);
+        UpdateMaximum(concurrent);
+        try
+        {
+            Thread.Sleep(15);
+            action();
+        }
+        finally
+        {
+            Interlocked.Decrement(ref _activeCalls);
+        }
+    }
+
+    private void UpdateMaximum(int value)
+    {
+        while (true)
+        {
+            var current = Volatile.Read(ref _maximumConcurrentCalls);
+            if (current >= value ||
+                Interlocked.CompareExchange(ref _maximumConcurrentCalls, value, current) == current)
+            {
+                return;
+            }
+        }
+    }
+
+    private static void WriteValidMp4(string path) => File.WriteAllBytes(
+        path,
+        [
+            0, 0, 0, 12, (byte)'f', (byte)'t', (byte)'y', (byte)'p', 0, 0, 0, 0,
+            0, 0, 0, 12, (byte)'m', (byte)'d', (byte)'a', (byte)'t', 1, 2, 3, 4,
+            0, 0, 0, 8, (byte)'m', (byte)'o', (byte)'o', (byte)'v'
+        ]);
 }

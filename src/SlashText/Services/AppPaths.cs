@@ -28,10 +28,15 @@ public static class AppPaths
     public static string UsageFile => Path.Combine(DataDirectory, "usage.json");
     public static string AssetsDirectory => Path.Combine(DataDirectory, "assets");
     public static string CaptureHistoryFile => Path.Combine(DataDirectory, "capture-history.json");
+    public static string LogsDirectory => Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        "SlashDesk",
+        "Logs");
 
     public static void EnsureDataLayout()
     {
         Directory.CreateDirectory(DataDirectory);
+        Directory.CreateDirectory(LogsDirectory);
         MigrateProductDataDirectory();
         MigrateFile("snippets.md", SnippetsFile);
         MigrateFile("settings.json", SettingsFile);

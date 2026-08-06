@@ -14,6 +14,7 @@ $themePath = 'src/SlashText/Services/ThemeService.cs'
 $importPath = 'src/SlashText/Services/SnippetImportService.cs'
 $backupPath = 'src/SlashText/Services/BackupService.cs'
 $recordingPath = 'src/SlashText/Services/ScreenRecordingService.cs'
+$recordingBackendPath = 'src/SlashText/Services/ScreenRecorderBackend.cs'
 $gifPath = 'src/SlashText/Services/GifRecordingService.cs'
 $recordingBarPath = 'src/SlashText/Views/RecordingControlWindow.cs'
 $gifPreviewPath = 'src/SlashText/Views/GifPreviewWindow.cs'
@@ -32,6 +33,8 @@ $theme = Get-Content $themePath -Raw
 $import = Get-Content $importPath -Raw
 $backup = Get-Content $backupPath -Raw
 $recording = Get-Content $recordingPath -Raw
+$recordingBackend = Get-Content $recordingBackendPath -Raw
+$recordingCode = $recording + $recordingBackend
 $gif = Get-Content $gifPath -Raw
 $recordingBar = Get-Content $recordingBarPath -Raw
 $gifPreview = Get-Content $gifPreviewPath -Raw
@@ -164,24 +167,20 @@ if (-not $project.Contains('<Version>2.9.1</Version>')) {
 }
 
 if (-not $project.Contains('ScreenRecorderLib') -or
-    -not $recording.Contains('Recorder.CreateRecorder') -or
-    -not $recording.Contains('H264VideoEncoder') -or
-    -not $recording.Contains('.Pause()') -or
-    -not $recording.Contains('.Resume()') -or
-    -not $recording.Contains('.Stop()')) {
+    -not $recordingCode.Contains('Recorder.CreateRecorder') -or
+    -not $recordingCode.Contains('H264VideoEncoder') -or
+    -not $recordingCode.Contains('.Pause()') -or
+    -not $recordingCode.Contains('.Resume()') -or
+    -not $recordingCode.Contains('.Stop()')) {
     throw 'Gravação MP4 local incompleta.'
 }
 
-$recorderDisposeCount = ([regex]::Matches(
-    $recording,
-    [regex]::Escape('recorder?.Dispose()')
-)).Count
 if ($recording.Contains('CleanupRecorder') -or
-    $recorderDisposeCount -ne 1 -or
-    -not $recording.Contains('Task.Run(() => FinalizeRecording(request))') -or
-    -not $recording.Contains('Interlocked.CompareExchange(ref _finalizationState, 1, 0)') -or
-    -not $recording.Contains('IsHardwareEncodingEnabled = HardwareEncodingEnabled') -or
-    -not $recording.Contains('private const bool HardwareEncodingEnabled = false;')) {
+    -not $recording.Contains('EnqueueNative("recording.finalize"') -or
+    -not $recording.Contains('Interlocked.CompareExchange(ref _finalizationClaimed, 1, 0)') -or
+    -not $recording.Contains('IsHardwareEncodingEnabled = true') -or
+    -not $recording.Contains('IsFixedFramerate = false') -or
+    -not $recording.Contains('IsLogEnabled = true')) {
     throw 'Ciclo de finalização MP4 inseguro ou dependente de aceleração de hardware.'
 }
 

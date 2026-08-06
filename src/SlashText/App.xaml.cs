@@ -10,6 +10,28 @@ public partial class App : System.Windows.Application
 
     protected override void OnStartup(StartupEventArgs e)
     {
+        AppDiagnosticLog.Initialize();
+        DispatcherUnhandledException += (_, args) =>
+            AppDiagnosticLog.WriteException("exception.wpf-dispatcher", args.Exception);
+        AppDomain.CurrentDomain.UnhandledException += (_, args) =>
+        {
+            if (args.ExceptionObject is Exception exception)
+            {
+                AppDiagnosticLog.WriteException("exception.app-domain", exception);
+            }
+            else
+            {
+                AppDiagnosticLog.Write(
+                    "exception.app-domain",
+                    ("exceptionType", args.ExceptionObject?.GetType().FullName ?? "unknown"));
+            }
+        };
+        TaskScheduler.UnobservedTaskException += (_, args) =>
+        {
+            AppDiagnosticLog.WriteException("exception.unobserved-task", args.Exception);
+            args.SetObserved();
+        };
+
         // Mantém o identificador legado para impedir que SlashText e SlashDesk
         // monitorem o teclado ao mesmo tempo durante uma atualização.
         _singleInstance = new Mutex(true, "SlashText.SingleInstance", out var created);
@@ -39,6 +61,7 @@ public partial class App : System.Windows.Application
 
     protected override void OnExit(ExitEventArgs e)
     {
+        AppDiagnosticLog.Write("application.exit", ("exitCode", e.ApplicationExitCode));
         _singleInstance?.ReleaseMutex();
         _singleInstance?.Dispose();
         base.OnExit(e);

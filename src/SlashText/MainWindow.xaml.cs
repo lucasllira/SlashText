@@ -1494,6 +1494,14 @@ public partial class MainWindow : Window
             error = "Informe a pasta e o modelo de nome do arquivo.";
             return false;
         }
+        if (!TryParseBounded(GifFpsBox.Text, 2, 20, out var gifFps) ||
+            !TryParseBounded(GifDurationBox.Text, 1, 30, out var gifDuration) ||
+            !TryParseBounded(GifWidthBox.Text, 240, 1920, out var gifWidth) ||
+            !TryParseBounded(GifQualityBox.Text, 1, 100, out var gifQuality))
+        {
+            error = "GIF: use FPS 2–20, duração 1–30 s, largura 240–1920 e qualidade 1–100.";
+            return false;
+        }
 
         var quality = int.TryParse(CaptureQualityBox.Text, out var parsedQuality)
             ? Math.Clamp(parsedQuality, 1, 100)
@@ -1519,10 +1527,10 @@ public partial class MainWindow : Window
                 VideoFps = ParseSelectedInt(RecordingFpsBox, 30),
                 VideoQuality = SelectedTag(RecordingQualityBox, "Alta"),
                 IncludeCursor = RecordingCursorCheckBox.IsChecked == true,
-                GifFps = ParseBounded(GifFpsBox.Text, 10, 2, 20),
-                GifDurationSeconds = ParseBounded(GifDurationBox.Text, 5, 1, 30),
-                GifWidth = ParseBounded(GifWidthBox.Text, 960, 240, 1920),
-                GifQuality = ParseBounded(GifQualityBox.Text, 80, 1, 100)
+                GifFps = gifFps,
+                GifDurationSeconds = gifDuration,
+                GifWidth = gifWidth,
+                GifQuality = gifQuality
             }
         };
         CaptureQualityBox.Text = quality.ToString();
@@ -1785,7 +1793,8 @@ public partial class MainWindow : Window
             ShowFromTray();
             MessageBox.Show(
                 exception.Message +
-                "\n\nO SlashDesk usa o encoder H.264 do Windows. Em edições N/KN, instale o Media Feature Pack do Windows.",
+                "\n\nO SlashDesk usa H.264/Media Foundation. Em edições N/KN, instale o Media Feature Pack do Windows." +
+                $"\nLogs: {AppPaths.LogsDirectory}",
                 "Não foi possível gravar",
                 MessageBoxButton.OK,
                 MessageBoxImage.Warning);
@@ -1823,7 +1832,7 @@ public partial class MainWindow : Window
                 StatusText.Text = "GIF descartado";
                 return;
             }
-            var path = _gifRecordingService.Save(
+            var path = await _gifRecordingService.SaveAsync(
                 recording,
                 _settings.Capture,
                 target.Type);
@@ -1871,10 +1880,12 @@ public partial class MainWindow : Window
             ? value
             : fallback;
 
-    private static int ParseBounded(string text, int fallback, int minimum, int maximum) =>
-        int.TryParse(text, out var value)
-            ? Math.Clamp(value, minimum, maximum)
-            : fallback;
+    private static bool TryParseBounded(
+        string text,
+        int minimum,
+        int maximum,
+        out int value) =>
+        int.TryParse(text, out value) && value >= minimum && value <= maximum;
 
     private void CaptureFormat_OnChanged(object sender, SelectionChangedEventArgs e)
     {

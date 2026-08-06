@@ -870,19 +870,19 @@
                                                         <ColumnDefinition Width="*"/>
                                                     </Grid.ColumnDefinitions>
                                                     <StackPanel>
-                                                        <TextBlock Text="FPS" Foreground="{DynamicResource MutedBrush}"/>
+                                                        <TextBlock Text="FPS (2–20)" Foreground="{DynamicResource MutedBrush}"/>
                                                         <TextBox x:Name="GifFpsBox" Margin="0,5,0,0"/>
                                                     </StackPanel>
                                                     <StackPanel Grid.Column="2">
-                                                        <TextBlock Text="Duração (s)" Foreground="{DynamicResource MutedBrush}"/>
+                                                        <TextBlock Text="Duração (1–30 s)" Foreground="{DynamicResource MutedBrush}"/>
                                                         <TextBox x:Name="GifDurationBox" Margin="0,5,0,0"/>
                                                     </StackPanel>
                                                     <StackPanel Grid.Column="4">
-                                                        <TextBlock Text="Largura" Foreground="{DynamicResource MutedBrush}"/>
+                                                        <TextBlock Text="Largura (240–1920)" Foreground="{DynamicResource MutedBrush}"/>
                                                         <TextBox x:Name="GifWidthBox" Margin="0,5,0,0"/>
                                                     </StackPanel>
                                                     <StackPanel Grid.Column="6">
-                                                        <TextBlock Text="Qualidade" Foreground="{DynamicResource MutedBrush}"/>
+                                                        <TextBlock Text="Qualidade (1–100)" Foreground="{DynamicResource MutedBrush}"/>
                                                         <TextBox x:Name="GifQualityBox" Margin="0,5,0,0"/>
                                                     </StackPanel>
                                                 </Grid>

@@ -9,6 +9,19 @@ public enum RecordingTargetKind
     Window
 }
 
+public enum ScreenRecordingState
+{
+    Idle,
+    Starting,
+    Recording,
+    Paused,
+    Stopping,
+    Finalizing,
+    Completed,
+    Failed,
+    Disposed
+}
+
 public sealed record RecordingTarget(
     RecordingTargetKind Kind,
     Rectangle Bounds,
@@ -28,12 +41,39 @@ public sealed record RecordingProgress(
     bool IsPaused,
     string Status);
 
-public sealed record GifRecordingResult(
-    IReadOnlyList<System.Drawing.Bitmap> Frames,
-    int Fps,
-    Rectangle Bounds) : IDisposable
+public sealed record GifCaptureMetrics(
+    int CapturedFrames,
+    int StoredFrames,
+    int DuplicateFrames,
+    double CaptureMilliseconds,
+    double ResizeMilliseconds,
+    double QueueWaitMilliseconds);
+
+public sealed class GifRecordingResult : IDisposable
 {
-    public TimeSpan Duration => TimeSpan.FromSeconds(Frames.Count / (double)Math.Max(1, Fps));
+    public GifRecordingResult(
+        IReadOnlyList<System.Drawing.Bitmap> frames,
+        int fps,
+        Rectangle bounds,
+        IReadOnlyList<int>? frameDelaysCentiseconds = null,
+        GifCaptureMetrics? metrics = null)
+    {
+        Frames = frames;
+        Fps = fps;
+        Bounds = bounds;
+        FrameDelaysCentiseconds = frameDelaysCentiseconds ??
+            Enumerable.Repeat(Math.Max(2, (int)Math.Round(100d / Math.Max(1, fps))), frames.Count)
+                .ToArray();
+        Metrics = metrics;
+    }
+
+    public IReadOnlyList<System.Drawing.Bitmap> Frames { get; }
+    public int Fps { get; }
+    public Rectangle Bounds { get; }
+    public IReadOnlyList<int> FrameDelaysCentiseconds { get; }
+    public GifCaptureMetrics? Metrics { get; }
+    public TimeSpan Duration => TimeSpan.FromMilliseconds(
+        FrameDelaysCentiseconds.Sum() * 10d);
 
     public void Dispose()
     {
