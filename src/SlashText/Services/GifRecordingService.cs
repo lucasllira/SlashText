@@ -406,7 +406,10 @@ public sealed class GifRecordingService
         ref int previousLength)
     {
         var rect = new Rectangle(0, 0, bitmap.Width, bitmap.Height);
-        var data = bitmap.LockBits(rect, ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
+        var data = bitmap.LockBits(
+            rect,
+            ImageLockMode.ReadOnly,
+            System.Drawing.Imaging.PixelFormat.Format32bppArgb);
         byte[]? current = null;
         try
         {
