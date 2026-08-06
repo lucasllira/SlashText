@@ -45,12 +45,18 @@ public sealed record GifCaptureMetrics(
     int CapturedFrames,
     int StoredFrames,
     int DuplicateFrames,
+    int DroppedFrames,
     double CaptureMilliseconds,
     double ResizeMilliseconds,
-    double QueueWaitMilliseconds);
+    double QueueWaitMilliseconds,
+    long TemporaryBytes);
 
 public sealed class GifRecordingResult : IDisposable
 {
+    private readonly IReadOnlyList<System.Drawing.Bitmap>? _memoryFrames;
+    private readonly IReadOnlyList<string>? _framePaths;
+    private readonly string? _temporaryDirectory;
+
     public GifRecordingResult(
         IReadOnlyList<System.Drawing.Bitmap> frames,
         int fps,
@@ -58,7 +64,7 @@ public sealed class GifRecordingResult : IDisposable
         IReadOnlyList<int>? frameDelaysCentiseconds = null,
         GifCaptureMetrics? metrics = null)
     {
-        Frames = frames;
+        _memoryFrames = frames;
         Fps = fps;
         Bounds = bounds;
         FrameDelaysCentiseconds = frameDelaysCentiseconds ??
@@ -67,19 +73,66 @@ public sealed class GifRecordingResult : IDisposable
         Metrics = metrics;
     }
 
-    public IReadOnlyList<System.Drawing.Bitmap> Frames { get; }
+    internal GifRecordingResult(
+        IReadOnlyList<string> framePaths,
+        string temporaryDirectory,
+        int fps,
+        Rectangle bounds,
+        IReadOnlyList<int> frameDelaysCentiseconds,
+        GifCaptureMetrics metrics)
+    {
+        _framePaths = framePaths;
+        _temporaryDirectory = temporaryDirectory;
+        Fps = fps;
+        Bounds = bounds;
+        FrameDelaysCentiseconds = frameDelaysCentiseconds;
+        Metrics = metrics;
+    }
+
     public int Fps { get; }
     public Rectangle Bounds { get; }
+    public int FrameCount => _memoryFrames?.Count ?? _framePaths?.Count ?? 0;
+    public int Width => Bounds.Width;
+    public int Height => Bounds.Height;
     public IReadOnlyList<int> FrameDelaysCentiseconds { get; }
     public GifCaptureMetrics? Metrics { get; }
     public TimeSpan Duration => TimeSpan.FromMilliseconds(
         FrameDelaysCentiseconds.Sum() * 10d);
 
+    public System.Drawing.Bitmap LoadFrame(int index)
+    {
+        if (_memoryFrames is not null)
+        {
+            return (System.Drawing.Bitmap)_memoryFrames[index].Clone();
+        }
+        if (_framePaths is null)
+        {
+            throw new ObjectDisposedException(nameof(GifRecordingResult));
+        }
+        return new System.Drawing.Bitmap(_framePaths[index]);
+    }
+
     public void Dispose()
     {
-        foreach (var frame in Frames)
+        if (_memoryFrames is not null)
         {
-            frame.Dispose();
+            foreach (var frame in _memoryFrames)
+            {
+                frame.Dispose();
+            }
+        }
+        if (!string.IsNullOrWhiteSpace(_temporaryDirectory))
+        {
+            try
+            {
+                Directory.Delete(_temporaryDirectory, recursive: true);
+            }
+            catch (IOException)
+            {
+            }
+            catch (UnauthorizedAccessException)
+            {
+            }
         }
     }
 }

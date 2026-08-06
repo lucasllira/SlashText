@@ -50,7 +50,9 @@ public sealed class RecordingSettings
     public string VideoQuality { get; set; } = "Alta";
     public bool IncludeCursor { get; set; } = true;
     public int GifFps { get; set; } = 10;
+    // Legacy fields remain readable so existing settings.json files keep loading.
+    // Continuous GIF recording no longer uses either value.
     public int GifDurationSeconds { get; set; } = 5;
     public int GifWidth { get; set; } = 960;
-    public int GifQuality { get; set; } = 80;
+    public int GifQuality { get; set; } = 128;
 }

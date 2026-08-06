@@ -837,14 +837,16 @@
                                                     </StackPanel>
                                                     <StackPanel Grid.Column="4">
                                                         <TextBlock Text="Qualidade" Foreground="{DynamicResource MutedBrush}"/>
-                                                        <ComboBox x:Name="RecordingQualityBox" Margin="0,5,0,0">
-                                                            <ComboBoxItem Content="Baixa" Tag="Baixa"/>
-                                                            <ComboBoxItem Content="Média" Tag="Média"/>
-                                                            <ComboBoxItem Content="Alta" Tag="Alta"/>
-                                                            <ComboBoxItem Content="Máxima" Tag="Máxima"/>
-                                                        </ComboBox>
+                                                        <ComboBox x:Name="RecordingQualityBox"
+                                                                  Margin="0,5,0,0"
+                                                                  SelectionChanged="RecordingPreset_OnChanged"/>
                                                     </StackPanel>
                                                 </Grid>
+                                                <TextBlock x:Name="RecordingQualityDescriptionText"
+                                                           Margin="0,8,0,0"
+                                                           TextWrapping="Wrap"
+                                                           FontSize="11"
+                                                           Foreground="{DynamicResource MutedBrush}"/>
                                                 <CheckBox x:Name="RecordingCursorCheckBox"
                                                           Content="Mostrar cursor na gravação"
                                                           Margin="0,12,0,0"/>
@@ -862,31 +864,35 @@
                                                 <Grid Margin="0,10,0,0">
                                                     <Grid.ColumnDefinitions>
                                                         <ColumnDefinition Width="*"/>
-                                                        <ColumnDefinition Width="8"/>
-                                                        <ColumnDefinition Width="*"/>
-                                                        <ColumnDefinition Width="8"/>
-                                                        <ColumnDefinition Width="*"/>
-                                                        <ColumnDefinition Width="8"/>
+                                                        <ColumnDefinition Width="12"/>
                                                         <ColumnDefinition Width="*"/>
                                                     </Grid.ColumnDefinitions>
                                                     <StackPanel>
-                                                        <TextBlock Text="FPS (2–20)" Foreground="{DynamicResource MutedBrush}"/>
-                                                        <TextBox x:Name="GifFpsBox" Margin="0,5,0,0"/>
+                                                        <TextBlock Text="FPS" Foreground="{DynamicResource MutedBrush}"/>
+                                                        <ComboBox x:Name="GifFpsBox"
+                                                                  Margin="0,5,0,0"
+                                                                  IsEditable="False"
+                                                                  SelectionChanged="RecordingPreset_OnChanged"/>
+                                                        <TextBlock x:Name="GifFpsDescriptionText"
+                                                                   Margin="0,6,0,0"
+                                                                   TextWrapping="Wrap"
+                                                                   FontSize="11"
+                                                                   Foreground="{DynamicResource MutedBrush}"/>
                                                     </StackPanel>
                                                     <StackPanel Grid.Column="2">
-                                                        <TextBlock Text="Duração (1–30 s)" Foreground="{DynamicResource MutedBrush}"/>
-                                                        <TextBox x:Name="GifDurationBox" Margin="0,5,0,0"/>
-                                                    </StackPanel>
-                                                    <StackPanel Grid.Column="4">
-                                                        <TextBlock Text="Largura (240–1920)" Foreground="{DynamicResource MutedBrush}"/>
-                                                        <TextBox x:Name="GifWidthBox" Margin="0,5,0,0"/>
-                                                    </StackPanel>
-                                                    <StackPanel Grid.Column="6">
-                                                        <TextBlock Text="Qualidade (1–100)" Foreground="{DynamicResource MutedBrush}"/>
-                                                        <TextBox x:Name="GifQualityBox" Margin="0,5,0,0"/>
+                                                        <TextBlock Text="Qualidade" Foreground="{DynamicResource MutedBrush}"/>
+                                                        <ComboBox x:Name="GifQualityBox"
+                                                                  Margin="0,5,0,0"
+                                                                  IsEditable="False"
+                                                                  SelectionChanged="RecordingPreset_OnChanged"/>
+                                                        <TextBlock x:Name="GifQualityDescriptionText"
+                                                                   Margin="0,6,0,0"
+                                                                   TextWrapping="Wrap"
+                                                                   FontSize="11"
+                                                                   Foreground="{DynamicResource MutedBrush}"/>
                                                     </StackPanel>
                                                 </Grid>
-                                                <TextBlock Text="A região é selecionada antes da captura. Você revisa a animação antes de salvar."
+                                                <TextBlock Text="A região define as dimensões do GIF. A gravação continua até pausar ou finalizar; a prévia aparece antes de salvar."
                                                            Margin="0,12,0,0"
                                                            TextWrapping="Wrap"
                                                            Foreground="{DynamicResource MutedBrush}"/>

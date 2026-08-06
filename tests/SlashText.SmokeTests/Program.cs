@@ -212,8 +212,50 @@ try
     Require(
         captureDefaults.Recording.VideoFps == 30 &&
         captureDefaults.Recording.GifFps == 10 &&
+        captureDefaults.Recording.GifQuality == 128 &&
         captureDefaults.HistoryRetentionDays == 90,
         "padrões seguros de gravação e histórico");
+    Require(
+        RecordingPresetCatalog.GifFps.Select(item => item.Value).SequenceEqual([5, 10, 15, 20]) &&
+        RecordingPresetCatalog.GifQuality.Select(item => item.Value).SequenceEqual([32, 64, 128, 256]) &&
+        RecordingPresetCatalog.Mp4Quality.Select(item => item.Value)
+            .SequenceEqual(["Baixa", "Média", "Alta", "Muito alta"]),
+        "catálogo expõe somente presets seguros e consistentes");
+    var migratedRecording = new RecordingSettings
+    {
+        GifFps = 17,
+        GifQuality = 80,
+        GifDurationSeconds = 27,
+        GifWidth = 1440,
+        VideoQuality = "Máxima"
+    };
+    RecordingPresetCatalog.Normalize(migratedRecording);
+    Require(
+        migratedRecording.GifFps == 15 &&
+        migratedRecording.GifQuality == 64 &&
+        migratedRecording.GifDurationSeconds == 27 &&
+        migratedRecording.GifWidth == 1440 &&
+        migratedRecording.VideoQuality == "Muito alta",
+        "configuração antiga migra para preset próximo sem perder campos legados");
+    RequireThrows<ArgumentOutOfRangeException>(
+        () => GifRecordingService.ValidateSettings(
+            new RecordingSettings { GifFps = 12, GifQuality = 128 }),
+        "GIF bloqueia FPS arbitrário");
+
+    var settingsPath = Path.Combine(root, "legacy-settings.json");
+    var settingsStore = new JsonFileStore<AppSettings>(settingsPath);
+    await File.WriteAllTextAsync(settingsPath,
+        """{"capture":{"recording":{"gifFps":17,"gifQuality":80,"gifDurationSeconds":27,"gifWidth":1440,"videoQuality":"Máxima"}}}""");
+    var loadedLegacy = await settingsStore.LoadAsync();
+    RecordingPresetCatalog.Normalize(loadedLegacy.Capture.Recording);
+    await settingsStore.SaveAsync(loadedLegacy);
+    var persistedLegacy = await settingsStore.LoadAsync();
+    Require(
+        persistedLegacy.Capture.Recording.GifFps == 15 &&
+        persistedLegacy.Capture.Recording.GifQuality == 64 &&
+        persistedLegacy.Capture.Recording.GifDurationSeconds == 27 &&
+        persistedLegacy.Capture.Recording.GifWidth == 1440,
+        "migração de GIF antigo persiste sem quebrar inicialização");
     Require(
         ScreenRecordingService.CreateMediaPath(
                 new CaptureSettings
@@ -249,6 +291,42 @@ try
         recorderOptions.LogOptions.IsLogEnabled &&
         recorderOptions.LogOptions.LogSeverityLevel == LogLevel.Trace,
         "MP4 prefere hardware com fallback Media Foundation, sem quadros fixos e com log nativo");
+    var mp4TechnicalValues = new Dictionary<string, (int Bitrate, int Quality)>
+    {
+        ["Baixa"] = (2_500_000, 55),
+        ["Média"] = (5_000_000, 70),
+        ["Alta"] = (9_000_000, 85),
+        ["Muito alta"] = (16_000_000, 95)
+    };
+    foreach (var preset in RecordingPresetCatalog.Mp4Quality)
+    {
+        var options = ScreenRecordingService.BuildOptions(
+            new RecordingTarget(
+                RecordingTargetKind.Window,
+                new System.Drawing.Rectangle(0, 0, 640, 480),
+                new IntPtr(1)),
+            new RecordingSettings { VideoFps = 30, VideoQuality = preset.Value },
+            Path.Combine(root, $"mp4-{preset.Value}.log"));
+        var expected = mp4TechnicalValues[preset.Value];
+        Require(
+            options.VideoEncoderOptions.Bitrate == expected.Bitrate &&
+            options.VideoEncoderOptions.Quality == expected.Quality &&
+            preset.Description.Contains(expected.Quality.ToString(), StringComparison.Ordinal),
+            $"preset MP4 {preset.Name} aplica os valores descritos");
+    }
+
+    using (var paletteBitmap = new System.Drawing.Bitmap(8, 8))
+    {
+        var paletteSource = GifRecordingService.ToBitmapSource(paletteBitmap);
+        foreach (var preset in RecordingPresetCatalog.GifQuality)
+        {
+            var quantized = GifRecordingService.Quantize(paletteSource, preset.Value);
+            Require(
+                quantized.Palette?.Colors.Count == preset.Value &&
+                preset.Description.Contains(preset.Value.ToString(), StringComparison.Ordinal),
+                $"preset GIF {preset.Name} aplica a paleta descrita");
+        }
+    }
 
     var fakeFactory = new FakeRecorderBackendFactory();
     using (var lifecycle = new ScreenRecordingService(fakeFactory, TimeSpan.FromSeconds(1)))
@@ -268,20 +346,33 @@ try
         await WaitUntilAsync(
             () => lifecycle.State == ScreenRecordingState.Recording,
             "estado Recording");
+        await Task.Delay(100);
+        Require(lifecycle.Elapsed >= TimeSpan.FromMilliseconds(60), "contador MP4 avança");
         lifecycle.Pause();
         await WaitUntilAsync(
             () => lifecycle.State == ScreenRecordingState.Paused,
             "estado Paused");
+        var pausedElapsed = lifecycle.Elapsed;
+        await Task.Delay(80);
+        Require(
+            lifecycle.Elapsed - pausedElapsed < TimeSpan.FromMilliseconds(30),
+            "contador MP4 não inclui tempo pausado");
         lifecycle.Resume();
         await WaitUntilAsync(
             () => lifecycle.State == ScreenRecordingState.Recording,
             "retorno ao estado Recording");
+        await Task.Delay(80);
+        Require(lifecycle.Elapsed > pausedElapsed, "contador MP4 retoma do acumulado");
         lifecycle.Stop();
+        var stoppedElapsed = lifecycle.Elapsed;
         var lifecyclePath = await lifecycleTask.WaitAsync(TimeSpan.FromSeconds(3));
         Require(File.Exists(lifecyclePath), "MP4 finaliza e publica arquivo");
         Require(lifecycle.State == ScreenRecordingState.Completed, "estado Completed");
         Require(fakeFactory.Backend.DisposeCalls == 1, "Recorder descartado uma única vez");
         Require(fakeFactory.Backend.MaximumConcurrentCalls == 1, "chamadas nativas serializadas");
+        Require(
+            lifecycle.Elapsed - stoppedElapsed < TimeSpan.FromMilliseconds(30),
+            "contador MP4 para no pedido de finalização");
     }
 
     var duplicateFactory = new FakeRecorderBackendFactory { SendDuplicateCallbacks = true };
@@ -300,8 +391,58 @@ try
             new RecordingSettings());
         Require(duplicateFactory.Backend.RecordCalled.Wait(TimeSpan.FromSeconds(2)), "backend para callback duplicado");
         lifecycle.Stop();
+        lifecycle.Stop();
         await task.WaitAsync(TimeSpan.FromSeconds(3));
         Require(duplicateFactory.Backend.DisposeCalls == 1, "callback duplicado não duplica descarte");
+        Require(duplicateFactory.Backend.StopCalls == 1, "dois cliques em finalizar chamam Stop uma vez");
+    }
+
+    var failureFactory = new FakeRecorderBackendFactory { FailOnStop = true };
+    using (var lifecycle = new ScreenRecordingService(failureFactory, TimeSpan.FromSeconds(1)))
+    {
+        var task = lifecycle.StartAsync(
+            new RecordingTarget(RecordingTargetKind.Window,
+                new System.Drawing.Rectangle(0, 0, 320, 240), new IntPtr(1)),
+            new CaptureSettings { OutputDirectoryTemplate = root, FileNameTemplate = "failed-callback" },
+            new RecordingSettings());
+        Require(failureFactory.Backend.RecordCalled.Wait(TimeSpan.FromSeconds(2)), "backend para callback de falha");
+        lifecycle.Stop();
+        await RequireThrowsAsync<InvalidOperationException>(() => task, "callback de falha conclui task");
+        Require(lifecycle.State == ScreenRecordingState.Failed, "callback de falha restaura estado terminal");
+        Require(failureFactory.Backend.DisposeCalls == 1, "falha descarta Recorder uma vez");
+    }
+
+    var delayedFactory = new FakeRecorderBackendFactory { CallbackDelayMs = 120 };
+    using (var lifecycle = new ScreenRecordingService(delayedFactory, TimeSpan.FromSeconds(1)))
+    {
+        var task = lifecycle.StartAsync(
+            new RecordingTarget(RecordingTargetKind.Window,
+                new System.Drawing.Rectangle(0, 0, 320, 240), new IntPtr(1)),
+            new CaptureSettings { OutputDirectoryTemplate = root, FileNameTemplate = "delayed-callback" },
+            new RecordingSettings());
+        Require(delayedFactory.Backend.RecordCalled.Wait(TimeSpan.FromSeconds(2)), "backend para callback atrasado");
+        lifecycle.Stop();
+        await task.WaitAsync(TimeSpan.FromSeconds(3));
+        Require(delayedFactory.Backend.DisposeCalls == 1, "callback atrasado finaliza uma vez");
+    }
+
+    var blockingFactory = new FakeRecorderBackendFactory { BlockStop = true };
+    using (var lifecycle = new ScreenRecordingService(blockingFactory, TimeSpan.FromSeconds(2)))
+    {
+        var task = lifecycle.StartAsync(
+            new RecordingTarget(RecordingTargetKind.Window,
+                new System.Drawing.Rectangle(0, 0, 320, 240), new IntPtr(1)),
+            new CaptureSettings { OutputDirectoryTemplate = root, FileNameTemplate = "closing-finalization" },
+            new RecordingSettings());
+        Require(blockingFactory.Backend.RecordCalled.Wait(TimeSpan.FromSeconds(2)), "backend para Stop bloqueante");
+        var uiClock = Stopwatch.StartNew();
+        lifecycle.Stop();
+        lifecycle.Dispose();
+        Require(uiClock.Elapsed < TimeSpan.FromMilliseconds(100), "Stop e Dispose não bloqueiam a UI");
+        Require(blockingFactory.Backend.StopEntered.Wait(TimeSpan.FromSeconds(2)), "Stop nativo entrou");
+        blockingFactory.Backend.ReleaseStop();
+        await task.WaitAsync(TimeSpan.FromSeconds(3));
+        Require(blockingFactory.Backend.DisposeCalls == 1, "fechamento durante finalização descarta uma vez");
     }
 
     var timeoutFactory = new FakeRecorderBackendFactory { CompleteOnStop = false };
@@ -324,7 +465,7 @@ try
         Require(timeoutFactory.Backend.DisposeCalls == 0, "timeout não descarta Recorder durante callback nativo");
         timeoutFactory.Backend.CompleteLater();
         await WaitUntilAsync(
-            () => lifecycle.State == ScreenRecordingState.Completed,
+            () => lifecycle.State == ScreenRecordingState.Failed,
             "callback tardio conclui limpeza");
         Require(timeoutFactory.Backend.DisposeCalls == 1, "callback tardio executa descarte único");
     }
@@ -350,10 +491,10 @@ try
                 new System.Drawing.Rectangle(0, 0, 16, 12),
                 new RecordingSettings
                 {
-                    GifFps = 2,
+                    GifFps = 5,
                     GifDurationSeconds = 1,
                     GifWidth = 240,
-                    GifQuality = 80
+                    GifQuality = 128
                 }).GetAwaiter().GetResult();
         }
         catch (Exception exception)
@@ -373,17 +514,49 @@ try
         Require(
             pipelineResult.Metrics is
             {
-                CapturedFrames: 2,
+                CapturedFrames: 5,
                 StoredFrames: 1,
-                DuplicateFrames: 1
+                DuplicateFrames: 4
             },
             "pipeline GIF descarta quadro idêntico preservando duração");
         Require(
-            pipelineResult.Duration == TimeSpan.FromSeconds(1),
-            "deduplicação GIF preserva tempo configurado");
+            pipelineResult.Duration >= TimeSpan.FromMilliseconds(900) &&
+            pipelineResult.Duration <= TimeSpan.FromMilliseconds(1100),
+            "deduplicação GIF preserva o tempo monotônico da sessão");
         Require(
             gifCaptureThreads.All(thread => thread != callerThread),
             "captura e redimensionamento GIF fora da UI thread");
+    }
+
+    foreach (var fpsPreset in RecordingPresetCatalog.GifFps)
+    {
+        using var session = pipeline.StartRecording(
+            new System.Drawing.Rectangle(0, 0, 16, 12),
+            new RecordingSettings { GifFps = fpsPreset.Value, GifQuality = 128 });
+        IRecordingController counter = session;
+        Require(counter.Elapsed < TimeSpan.FromMilliseconds(80),
+            $"contador GIF inicia em zero a {fpsPreset.Value} FPS");
+        await Task.Delay(120);
+        Require(counter.Elapsed >= TimeSpan.FromMilliseconds(70),
+            $"contador GIF avança a {fpsPreset.Value} FPS");
+        counter.Pause();
+        var gifPausedAt = counter.Elapsed;
+        await Task.Delay(80);
+        Require(counter.Elapsed - gifPausedAt < TimeSpan.FromMilliseconds(30),
+            $"contador GIF pausa a {fpsPreset.Value} FPS");
+        counter.Resume();
+        await Task.Delay(80);
+        Require(counter.Elapsed > gifPausedAt,
+            $"contador GIF retoma a {fpsPreset.Value} FPS");
+        counter.Stop();
+        var gifStoppedAt = counter.Elapsed;
+        using var presetResult = await session.Completion.WaitAsync(TimeSpan.FromSeconds(3));
+        Require(presetResult.Fps == fpsPreset.Value,
+            $"pipeline mantÃ©m preset de {fpsPreset.Value} FPS");
+        Require(counter.Elapsed - gifStoppedAt < TimeSpan.FromMilliseconds(30),
+            $"contador GIF para ao finalizar a {fpsPreset.Value} FPS");
+        Require(GifRecordingService.QueueCapacity == 2,
+            $"fila GIF limitada no preset de {fpsPreset.Value} FPS");
     }
 
     using (var frame1 = new System.Drawing.Bitmap(4, 4))
@@ -531,6 +704,30 @@ try
                 $"renderiza ferramenta {annotation.Kind}");
         }
     }
+
+    var noCallbackFactory = new FakeRecorderBackendFactory { CompleteOnStop = false };
+    using (var lifecycle = new ScreenRecordingService(
+               noCallbackFactory,
+               TimeSpan.FromMilliseconds(60)))
+    {
+        var task = lifecycle.StartAsync(
+            new RecordingTarget(RecordingTargetKind.Window,
+                new System.Drawing.Rectangle(0, 0, 320, 240), new IntPtr(1)),
+            new CaptureSettings { OutputDirectoryTemplate = root, FileNameTemplate = "no-callback" },
+            new RecordingSettings());
+        Require(noCallbackFactory.Backend.RecordCalled.Wait(TimeSpan.FromSeconds(2)),
+            "backend para timeout sem callback");
+        lifecycle.Stop();
+        await RequireThrowsAsync<TimeoutException>(() => task, "timeout real sem callback");
+        var disposeClock = Stopwatch.StartNew();
+        lifecycle.Dispose();
+        Require(disposeClock.Elapsed < TimeSpan.FromMilliseconds(100),
+            "Dispose após timeout não bloqueia UI");
+        Require(noCallbackFactory.Backend.DisposeCalls == 0,
+            "timeout sem callback não concorre Dispose com código nativo");
+        Require(lifecycle.State == ScreenRecordingState.Failed,
+            "timeout sem callback encerra estado Finalizando");
+    }
 }
 finally
 {
@@ -630,6 +827,21 @@ sealed class FakeRecorderBackendFactory : IScreenRecorderBackendFactory
         get => Backend.CompleteOnStop;
         init => Backend.CompleteOnStop = value;
     }
+    public bool FailOnStop
+    {
+        get => Backend.FailOnStop;
+        init => Backend.FailOnStop = value;
+    }
+    public int CallbackDelayMs
+    {
+        get => Backend.CallbackDelayMs;
+        init => Backend.CallbackDelayMs = value;
+    }
+    public bool BlockStop
+    {
+        get => Backend.BlockStop;
+        init => Backend.BlockStop = value;
+    }
 
     public IScreenRecorderBackend Create(RecorderOptions options) => Backend;
 }
@@ -639,15 +851,22 @@ sealed class FakeRecorderBackend : IScreenRecorderBackend
     private int _activeCalls;
     private int _maximumConcurrentCalls;
     private int _disposeCalls;
+    private int _stopCalls;
     private string _path = string.Empty;
+    private readonly ManualResetEventSlim _stopRelease = new(false);
 
     public event EventHandler<RecordingCompleteEventArgs>? Completed;
     public event EventHandler<RecordingFailedEventArgs>? Failed;
     public event EventHandler<RecordingStatusEventArgs>? StatusChanged;
     public ManualResetEventSlim RecordCalled { get; } = new(false);
+    public ManualResetEventSlim StopEntered { get; } = new(false);
     public bool SendDuplicateCallbacks { get; set; }
     public bool CompleteOnStop { get; set; } = true;
+    public bool FailOnStop { get; set; }
+    public int CallbackDelayMs { get; set; }
+    public bool BlockStop { get; set; }
     public int DisposeCalls => Volatile.Read(ref _disposeCalls);
+    public int StopCalls => Volatile.Read(ref _stopCalls);
     public int MaximumConcurrentCalls => Volatile.Read(ref _maximumConcurrentCalls);
 
     public void Record(string path)
@@ -670,12 +889,36 @@ sealed class FakeRecorderBackend : IScreenRecorderBackend
     {
         NativeCall(() =>
         {
+            Interlocked.Increment(ref _stopCalls);
+            StopEntered.Set();
+            if (BlockStop)
+            {
+                _stopRelease.Wait(TimeSpan.FromSeconds(3));
+            }
+            if (FailOnStop)
+            {
+                Failed?.Invoke(this, new RecordingFailedEventArgs("falha simulada", _path));
+                return;
+            }
             if (CompleteOnStop)
             {
-                CompleteLater();
+                if (CallbackDelayMs > 0)
+                {
+                    _ = Task.Run(async () =>
+                    {
+                        await Task.Delay(CallbackDelayMs);
+                        CompleteLater();
+                    });
+                }
+                else
+                {
+                    CompleteLater();
+                }
             }
         });
     }
+
+    public void ReleaseStop() => _stopRelease.Set();
 
     public void CompleteLater()
     {

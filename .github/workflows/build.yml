@@ -47,19 +47,20 @@ jobs:
           -p:Platform=x64
           --self-contained true
           --no-restore
-          -p:PublishSingleFile=true
+          -p:PublishSingleFile=false
           --output publish
 
       - name: Assemble clean package
         shell: pwsh
         run: |
-          New-Item -ItemType Directory -Force package/SlashDeskData | Out-Null
-          Copy-Item publish/SlashDesk.exe package/SlashDesk.exe
-          Copy-Item snippets.md package/SlashDeskData/snippets.md
-          $unexpected = Get-ChildItem package -File |
-            Where-Object { $_.Name -ne 'SlashDesk.exe' }
-          if ($unexpected) {
-            throw "O pacote contém arquivos inesperados na raiz: $($unexpected.Name -join ', ')"
+          Copy-Item publish package -Recurse
+          if (-not (Test-Path package/SlashDesk.exe)) {
+            throw "O executável x64 não foi publicado."
+          }
+          $recorderFiles = Get-ChildItem package -Recurse -File |
+            Where-Object { $_.Name -like 'ScreenRecorderLib*' }
+          if ($recorderFiles.Count -lt 1) {
+            throw "Os componentes do ScreenRecorderLib não foram publicados."
           }
 
       - name: Upload portable build

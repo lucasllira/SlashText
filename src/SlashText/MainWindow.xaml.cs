@@ -48,11 +48,13 @@ public partial class MainWindow : Window
         new() { Interval = TimeSpan.FromMilliseconds(900) };
     private int _quickAccentPreviewIndex = 1;
     private ScreenRecordingService? _recordingService;
+    private GifRecordingSession? _gifRecordingSession;
     private RecordingControlWindow? _recordingControl;
 
     public MainWindow()
     {
         InitializeComponent();
+        InitializeRecordingPresetControls();
         InitializeTray();
         Loaded += MainWindow_OnLoaded;
         Closing += MainWindow_OnClosing;
@@ -82,6 +84,9 @@ public partial class MainWindow : Window
         try
         {
             _settings = await _settingsStore.LoadAsync();
+            _settings.Capture ??= new CaptureSettings();
+            _settings.Capture.Recording ??= new RecordingSettings();
+            RecordingPresetCatalog.Normalize(_settings.Capture.Recording);
             ThemeService.Apply(_settings.Theme);
             await _usageService.LoadAsync();
             CloseToTrayCheckBox.IsChecked = _settings.CloseToTray;
@@ -1408,6 +1413,50 @@ public partial class MainWindow : Window
     private static string SelectedTag(ComboBox box, string fallback) =>
         box.SelectedItem is ComboBoxItem { Tag: string tag } ? tag : fallback;
 
+    private void InitializeRecordingPresetControls()
+    {
+        AddPresetItems(RecordingQualityBox, RecordingPresetCatalog.Mp4Quality,
+            item => item.Name, item => item.Value);
+        AddPresetItems(GifFpsBox, RecordingPresetCatalog.GifFps,
+            item => $"{item.Value} FPS — {item.Name}", item => item.Value.ToString());
+        AddPresetItems(GifQualityBox, RecordingPresetCatalog.GifQuality,
+            item => item.Name, item => item.Value.ToString());
+    }
+
+    private static void AddPresetItems<T>(
+        ComboBox box,
+        IReadOnlyList<RecordingPreset<T>> presets,
+        Func<RecordingPreset<T>, string> content,
+        Func<RecordingPreset<T>, string> tag)
+    {
+        box.Items.Clear();
+        foreach (var preset in presets)
+        {
+            box.Items.Add(new ComboBoxItem
+            {
+                Content = content(preset),
+                Tag = tag(preset),
+                ToolTip = preset.Description
+            });
+        }
+    }
+
+    private void RecordingPreset_OnChanged(object sender, SelectionChangedEventArgs e)
+    {
+        UpdatePresetDescription(RecordingQualityBox, RecordingQualityDescriptionText);
+        UpdatePresetDescription(GifFpsBox, GifFpsDescriptionText);
+        UpdatePresetDescription(GifQualityBox, GifQualityDescriptionText);
+    }
+
+    private static void UpdatePresetDescription(ComboBox box, TextBlock description)
+    {
+        var text = box.SelectedItem is ComboBoxItem { ToolTip: string value }
+            ? value
+            : string.Empty;
+        description.Text = text;
+        box.ToolTip = text;
+    }
+
     private static void SelectComboByTag(ComboBox box, string value)
     {
         foreach (var item in box.Items.OfType<ComboBoxItem>())
@@ -1425,6 +1474,8 @@ public partial class MainWindow : Window
     private void LoadCaptureSettings()
     {
         var capture = _settings.Capture ??= new CaptureSettings();
+        capture.Recording ??= new RecordingSettings();
+        RecordingPresetCatalog.Normalize(capture.Recording);
         CaptureMonitorShortcutBox.Text = capture.ActiveMonitorShortcut;
         CaptureRegionShortcutBox.Text = capture.RegionShortcut;
         CaptureWindowShortcutBox.Text = capture.WindowShortcut;
@@ -1442,10 +1493,9 @@ public partial class MainWindow : Window
         SelectComboByTag(RecordingFpsBox, capture.Recording.VideoFps.ToString());
         SelectComboByTag(RecordingQualityBox, capture.Recording.VideoQuality);
         RecordingCursorCheckBox.IsChecked = capture.Recording.IncludeCursor;
-        GifFpsBox.Text = capture.Recording.GifFps.ToString();
-        GifDurationBox.Text = capture.Recording.GifDurationSeconds.ToString();
-        GifWidthBox.Text = capture.Recording.GifWidth.ToString();
-        GifQualityBox.Text = capture.Recording.GifQuality.ToString();
+        SelectComboByTag(GifFpsBox, capture.Recording.GifFps.ToString());
+        SelectComboByTag(GifQualityBox, capture.Recording.GifQuality.ToString());
+        RecordingPreset_OnChanged(this, null!);
         SelectComboByTag(CaptureHistoryFilterBox, "all");
         CaptureQualityBox.IsEnabled =
             capture.ImageFormat.Equals("JPEG", StringComparison.OrdinalIgnoreCase);
@@ -1494,14 +1544,17 @@ public partial class MainWindow : Window
             error = "Informe a pasta e o modelo de nome do arquivo.";
             return false;
         }
-        if (!TryParseBounded(GifFpsBox.Text, 2, 20, out var gifFps) ||
-            !TryParseBounded(GifDurationBox.Text, 1, 30, out var gifDuration) ||
-            !TryParseBounded(GifWidthBox.Text, 240, 1920, out var gifWidth) ||
-            !TryParseBounded(GifQualityBox.Text, 1, 100, out var gifQuality))
+        var gifFps = ParseSelectedInt(GifFpsBox, 10);
+        var gifQuality = ParseSelectedInt(GifQualityBox, 128);
+        if (!RecordingPresetCatalog.GifFps.Any(item => item.Value == gifFps) ||
+            !RecordingPresetCatalog.GifQuality.Any(item => item.Value == gifQuality))
         {
-            error = "GIF: use FPS 2–20, duração 1–30 s, largura 240–1920 e qualidade 1–100.";
+            error = "Selecione um preset disponível de FPS e qualidade do GIF.";
             return false;
         }
+
+        var legacyGifDuration = _settings.Capture.Recording.GifDurationSeconds;
+        var legacyGifWidth = _settings.Capture.Recording.GifWidth;
 
         var quality = int.TryParse(CaptureQualityBox.Text, out var parsedQuality)
             ? Math.Clamp(parsedQuality, 1, 100)
@@ -1528,8 +1581,8 @@ public partial class MainWindow : Window
                 VideoQuality = SelectedTag(RecordingQualityBox, "Alta"),
                 IncludeCursor = RecordingCursorCheckBox.IsChecked == true,
                 GifFps = gifFps,
-                GifDurationSeconds = gifDuration,
-                GifWidth = gifWidth,
+                GifDurationSeconds = legacyGifDuration,
+                GifWidth = legacyGifWidth,
                 GifQuality = gifQuality
             }
         };
@@ -1717,7 +1770,7 @@ public partial class MainWindow : Window
 
     private async void StartMp4Recording_OnClick(object sender, RoutedEventArgs e)
     {
-        if (_recordingService?.IsRecording == true)
+        if (_recordingControl is not null || _recordingService?.IsRecording == true)
         {
             _recordingControl?.Activate();
             return;
@@ -1757,19 +1810,22 @@ public partial class MainWindow : Window
             await Task.Delay(180);
             _recordingService = new ScreenRecordingService();
             _recordingService.RecordingFailed += (_, message) =>
-                Dispatcher.Invoke(() => StatusText.Text = message);
+                _ = Dispatcher.BeginInvoke(() => StatusText.Text = message);
             var completion = _recordingService.StartAsync(
                 target,
                 _settings.Capture,
                 _settings.Capture.Recording);
-            _recordingControl = new RecordingControlWindow(_recordingService);
+            _recordingControl = new RecordingControlWindow(_recordingService, "MP4");
             _recordingControl.Show();
             var path = await completion;
             var elapsed = _recordingService.Elapsed;
+            var completedRecordingId = _recordingService.RecordingId.ToString("N");
             _recordingControl.Close();
             _recordingControl = null;
             _recordingService.Dispose();
             _recordingService = null;
+            AppDiagnosticLog.Write("recording.interface-restored",
+                ("recordingId", completedRecordingId), ("media", "MP4"), ("result", "success"));
             await _captureService.AddMediaRecordAsync(new CaptureRecord
             {
                 CreatedAt = DateTimeOffset.Now,
@@ -1786,11 +1842,14 @@ public partial class MainWindow : Window
         }
         catch (Exception exception)
         {
+            var failedRecordingId = _recordingService?.RecordingId.ToString("N") ?? "unknown";
             _recordingControl?.Close();
             _recordingControl = null;
             _recordingService?.Dispose();
             _recordingService = null;
             ShowFromTray();
+            AppDiagnosticLog.Write("recording.interface-restored",
+                ("recordingId", failedRecordingId), ("media", "MP4"), ("result", "failure"));
             MessageBox.Show(
                 exception.Message +
                 "\n\nO SlashDesk usa H.264/Media Foundation. Em edições N/KN, instale o Media Feature Pack do Windows." +
@@ -1803,6 +1862,11 @@ public partial class MainWindow : Window
 
     private async void StartGifRecording_OnClick(object sender, RoutedEventArgs e)
     {
+        if (_recordingControl is not null)
+        {
+            _recordingControl.Activate();
+            return;
+        }
         if (!TryReadCaptureSettings(out var settingsError))
         {
             MessageBox.Show(settingsError, "GIF", MessageBoxButton.OK, MessageBoxImage.Warning);
@@ -1819,13 +1883,29 @@ public partial class MainWindow : Window
         {
             Hide();
             await Task.Delay(180);
-            var progress = new Progress<RecordingProgress>(item =>
-                StatusText.Text = $"{item.Status} · {item.Elapsed:mm\\:ss}");
-            using var recording = await _gifRecordingService.CaptureAsync(
+            _gifRecordingSession = _gifRecordingService.StartRecording(
                 target.Bounds,
-                _settings.Capture.Recording,
-                progress);
+                _settings.Capture.Recording);
+            _recordingControl = new RecordingControlWindow(_gifRecordingSession, "GIF");
+            _recordingControl.Show();
+            using var recording = await _gifRecordingSession.Completion;
+            var completedRecordingId = _gifRecordingSession.RecordingId.ToString("N");
+            _recordingControl.Close();
+            _recordingControl = null;
+            _gifRecordingSession.Dispose();
+            _gifRecordingSession = null;
             ShowFromTray();
+            AppDiagnosticLog.Write("recording.interface-restored",
+                ("recordingId", completedRecordingId), ("media", "GIF"), ("result", "captured"));
+            if (recording.Metrics?.DroppedFrames > 0)
+            {
+                MessageBox.Show(
+                    $"O pipeline descartou {recording.Metrics.DroppedFrames:N0} quadro(s) por sobrecarga. " +
+                    "O tempo foi preservado no GIF e o evento foi registrado nos logs.",
+                    "GIF finalizado com sobrecarga",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+            }
             var preview = new GifPreviewWindow(recording) { Owner = this };
             if (preview.ShowDialog() != true)
             {
@@ -1835,15 +1915,16 @@ public partial class MainWindow : Window
             var path = await _gifRecordingService.SaveAsync(
                 recording,
                 _settings.Capture,
-                target.Type);
+                target.Type,
+                _settings.Capture.Recording.GifQuality);
             await _captureService.AddMediaRecordAsync(new CaptureRecord
             {
                 CreatedAt = DateTimeOffset.Now,
                 Type = target.Type,
                 MediaKind = "gif",
                 FilePath = path,
-                Width = recording.Frames[0].Width,
-                Height = recording.Frames[0].Height,
+                Width = recording.Width,
+                Height = recording.Height,
                 DurationSeconds = recording.Duration.TotalSeconds
             });
             StatusText.Text = $"GIF salvo: {Path.GetFileName(path)}";
@@ -1851,12 +1932,26 @@ public partial class MainWindow : Window
         }
         catch (OperationCanceledException)
         {
+            var cancelledRecordingId = _gifRecordingSession?.RecordingId.ToString("N") ?? "unknown";
+            _recordingControl?.Close();
+            _recordingControl = null;
+            _gifRecordingSession?.Dispose();
+            _gifRecordingSession = null;
             ShowFromTray();
+            AppDiagnosticLog.Write("recording.interface-restored",
+                ("recordingId", cancelledRecordingId), ("media", "GIF"), ("result", "cancelled"));
             StatusText.Text = "Gravação de GIF cancelada";
         }
         catch (Exception exception)
         {
+            var failedRecordingId = _gifRecordingSession?.RecordingId.ToString("N") ?? "unknown";
+            _recordingControl?.Close();
+            _recordingControl = null;
+            _gifRecordingSession?.Dispose();
+            _gifRecordingSession = null;
             ShowFromTray();
+            AppDiagnosticLog.Write("recording.interface-restored",
+                ("recordingId", failedRecordingId), ("media", "GIF"), ("result", "failure"));
             MessageBox.Show(
                 exception.Message,
                 "Não foi possível criar o GIF",
@@ -1879,13 +1974,6 @@ public partial class MainWindow : Window
         int.TryParse(SelectedTag(box, fallback.ToString()), out var value)
             ? value
             : fallback;
-
-    private static bool TryParseBounded(
-        string text,
-        int minimum,
-        int maximum,
-        out int value) =>
-        int.TryParse(text, out value) && value >= minimum && value <= maximum;
 
     private void CaptureFormat_OnChanged(object sender, SelectionChangedEventArgs e)
     {
@@ -2312,6 +2400,7 @@ public partial class MainWindow : Window
         _captureShortcuts.Dispose();
         _recordingControl?.Close();
         _recordingService?.Dispose();
+        _gifRecordingSession?.Dispose();
         _suggestionWindow.Close();
         _quickAccentWindow.Close();
         if (_trayIcon is not null)

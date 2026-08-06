@@ -78,15 +78,17 @@ public static class AppDiagnosticLog
             ("message", Sanitize(exception.Message)));
     }
 
-    public static string CreateLibraryLogPath()
+    public static string CreateLibraryLogPath(Guid? recordingId = null)
     {
         Directory.CreateDirectory(AppPaths.LogsDirectory);
+        var suffix = recordingId is null ? string.Empty : $"-{recordingId.Value:N}";
         return Path.Combine(
             AppPaths.LogsDirectory,
-            $"screenrecorderlib-{DateTimeOffset.Now:yyyyMMdd-HHmmss-fff}.log");
+            $"screenrecorderlib-{DateTimeOffset.Now:yyyyMMdd-HHmmss-fff}{suffix}.log");
     }
 
     public static void MarkRecordingActive(
+        Guid recordingId,
         RecordingTarget target,
         RecordingSettings settings,
         string encoderPolicy)
@@ -96,6 +98,7 @@ public static class AppDiagnosticLog
             Directory.CreateDirectory(AppPaths.LogsDirectory);
             var marker = JsonSerializer.Serialize(new
             {
+                recordingId = recordingId.ToString("N"),
                 timestampUtc = DateTimeOffset.UtcNow,
                 target = target.Kind.ToString(),
                 width = target.Bounds.Width,
