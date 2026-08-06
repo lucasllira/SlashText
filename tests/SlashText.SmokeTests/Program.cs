@@ -329,7 +329,7 @@ try
         Require(timeoutFactory.Backend.DisposeCalls == 1, "callback tardio executa descarte único");
     }
 
-    var captureThread = Environment.CurrentManagedThreadId;
+    var callerThread = 0;
     var gifCaptureThreads = new System.Collections.Concurrent.ConcurrentBag<int>();
     var pipeline = new GifRecordingService((_, _) =>
     {
@@ -339,15 +339,36 @@ try
         graphics.Clear(System.Drawing.Color.CornflowerBlue);
         return bitmap;
     });
-    using (var pipelineResult = await pipeline.CaptureAsync(
-               new System.Drawing.Rectangle(0, 0, 16, 12),
-               new RecordingSettings
-               {
-                   GifFps = 2,
-                   GifDurationSeconds = 1,
-                   GifWidth = 240,
-                   GifQuality = 80
-               }))
+    GifRecordingResult? pipelineResult = null;
+    Exception? pipelineFailure = null;
+    var caller = new Thread(() =>
+    {
+        callerThread = Environment.CurrentManagedThreadId;
+        try
+        {
+            pipelineResult = pipeline.CaptureAsync(
+                new System.Drawing.Rectangle(0, 0, 16, 12),
+                new RecordingSettings
+                {
+                    GifFps = 2,
+                    GifDurationSeconds = 1,
+                    GifWidth = 240,
+                    GifQuality = 80
+                }).GetAwaiter().GetResult();
+        }
+        catch (Exception exception)
+        {
+            pipelineFailure = exception;
+        }
+    });
+    caller.Start();
+    caller.Join();
+    if (pipelineFailure is not null)
+    {
+        throw new InvalidOperationException("Pipeline GIF falhou.", pipelineFailure);
+    }
+
+    using (pipelineResult ?? throw new InvalidOperationException("Pipeline GIF sem resultado."))
     {
         Require(
             pipelineResult.Metrics is
@@ -361,7 +382,7 @@ try
             pipelineResult.Duration == TimeSpan.FromSeconds(1),
             "deduplicação GIF preserva tempo configurado");
         Require(
-            gifCaptureThreads.All(thread => thread != captureThread),
+            gifCaptureThreads.All(thread => thread != callerThread),
             "captura e redimensionamento GIF fora da UI thread");
     }
 
