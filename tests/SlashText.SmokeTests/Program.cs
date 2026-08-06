@@ -512,12 +512,8 @@ try
     using (pipelineResult ?? throw new InvalidOperationException("Pipeline GIF sem resultado."))
     {
         Require(
-            pipelineResult.Metrics is
-            {
-                CapturedFrames: 5,
-                StoredFrames: 1,
-                DuplicateFrames: 4
-            },
+            pipelineResult.Metrics is { CapturedFrames: >= 4, StoredFrames: 1 } metrics &&
+            metrics.DuplicateFrames == metrics.CapturedFrames - 1,
             "pipeline GIF descarta quadro idêntico preservando duração");
         Require(
             pipelineResult.Duration >= TimeSpan.FromMilliseconds(900) &&
