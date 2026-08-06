@@ -353,7 +353,6 @@ public sealed class GifRecordingService
             PixelFormats.Indexed8,
             BuildPalette(colorCount),
             0);
-        converted.Freeze();
         return converted;
     }
 
