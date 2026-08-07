@@ -1,0 +1,127 @@
+name: Release Windows
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+
+jobs:
+  validate-build-release:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout tag
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate SemVer tag and project version
+        id: version
+        shell: pwsh
+        run: |
+          $tag = '${{ github.ref_name }}'
+          if ($tag -notmatch '^v(?<base>(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*))(?<suffix>-[0-9A-Za-z.-]+)?$') {
+            throw "A tag '$tag' não segue vX.Y.Z ou SemVer prerelease."
+          }
+          [xml]$project = Get-Content src/SlashText/SlashText.csproj
+          $projectVersion = $project.Project.PropertyGroup.Version | Select-Object -First 1
+          $tagVersion = $Matches.base
+          if ($projectVersion -ne $tagVersion) {
+            throw "A tag $tag não corresponde à versão $projectVersion do projeto."
+          }
+          "version=$($tag.TrimStart('v'))" >> $env:GITHUB_OUTPUT
+          "stableVersion=$projectVersion" >> $env:GITHUB_OUTPUT
+          "prerelease=$($tag.Contains('-').ToString().ToLowerInvariant())" >> $env:GITHUB_OUTPUT
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore
+        run: dotnet restore SlashText.sln -p:Platform=x64
+
+      - name: Build Release x64
+        run: dotnet build SlashText.sln --configuration Release --no-restore -p:Platform=x64
+
+      - name: UI integrity smoke
+        shell: pwsh
+        run: ./scripts/ui-integrity-smoke.ps1
+
+      - name: Behavioral smoke tests
+        run: dotnet run --project tests/SlashText.SmokeTests/SlashText.SmokeTests.csproj --configuration Release --no-build -p:Platform=x64
+
+      - name: Restore win-x64 runtime
+        run: dotnet restore src/SlashText/SlashText.csproj --runtime win-x64 -p:Platform=x64
+
+      - name: Publish portable single file
+        run: >
+          dotnet publish src/SlashText/SlashText.csproj
+          --configuration Release
+          -p:Platform=x64
+          -p:PublishProfile=Portable
+          --no-restore
+          --output publish-portable
+
+      - name: Publish installed staging
+        run: >
+          dotnet publish src/SlashText/SlashText.csproj
+          --configuration Release
+          -p:Platform=x64
+          -p:PublishProfile=Installed
+          --no-restore
+          --output publish-installed
+
+      - name: Package and calculate SHA-256
+        id: package
+        shell: pwsh
+        run: |
+          $version = '${{ steps.version.outputs.version }}'
+          $portableFiles = Get-ChildItem publish-portable -Force
+          if ($portableFiles.Count -ne 1 -or $portableFiles[0].Name -ne 'SlashDesk.exe') {
+            throw 'A Release portátil deve conter somente SlashDesk.exe.'
+          }
+          New-Item release-assets -ItemType Directory | Out-Null
+          $portableZip = "release-assets/SlashDesk-$version-portable-win-x64.zip"
+          Compress-Archive -Path publish-portable/SlashDesk.exe -DestinationPath $portableZip
+          $portableHash = (Get-FileHash $portableZip -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$portableHash  $(Split-Path $portableZip -Leaf)" |
+            Set-Content "$portableZip.sha256" -Encoding ascii -NoNewline
+
+          $installedZip = "release-assets/SlashDesk-$version-installed-staging-win-x64.zip"
+          Compress-Archive -Path publish-installed/* -DestinationPath $installedZip
+          $installedHash = (Get-FileHash $installedZip -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$installedHash  $(Split-Path $installedZip -Leaf)" |
+            Set-Content "$installedZip.sha256" -Encoding ascii -NoNewline
+
+          "portableZip=$portableZip" >> $env:GITHUB_OUTPUT
+          "portableChecksum=$portableZip.sha256" >> $env:GITHUB_OUTPUT
+
+      - name: Upload temporary Actions artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: SlashDesk-${{ steps.version.outputs.version }}-release-validation
+          path: release-assets/
+          if-no-files-found: error
+
+      - name: Create GitHub Release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $arguments = @(
+            'release', 'create', '${{ github.ref_name }}',
+            '${{ steps.package.outputs.portableZip }}',
+            '${{ steps.package.outputs.portableChecksum }}',
+            '--repo', '${{ github.repository }}',
+            '--verify-tag',
+            '--generate-notes',
+            '--title', "SlashDesk ${{ steps.version.outputs.version }}"
+          )
+          if ('${{ steps.version.outputs.prerelease }}' -eq 'true') {
+            $arguments += '--prerelease'
+          }
+          gh @arguments

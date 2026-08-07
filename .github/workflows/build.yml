@@ -31,7 +31,9 @@ jobs:
 
       - name: UI integrity smoke
         shell: pwsh
-        run: ./scripts/ui-integrity-smoke.ps1
+        run: |
+          ./scripts/ui-integrity-smoke.ps1
+          ./scripts/release-workflow-smoke.ps1
 
       - name: Smoke tests
         run: dotnet run --project tests/SlashText.SmokeTests/SlashText.SmokeTests.csproj --configuration Release --no-build -p:Platform=x64
