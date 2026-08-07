@@ -329,5 +329,679 @@ try
             options.VideoEncoderOptions.Bitrate == expected.Bitrate &&
             options.VideoEncoderOptions.Quality == expected.Quality &&
             preset.Description.Contains(expected.Quality.ToString(), StringComparison.Ordinal),
-            $"preset MP4 {preset.Name} aplica os valores descﬂŒ<∂âûÀk∫wµÁQÕÂπå°Q•µïM¡Ö∏π…ΩµMïçΩπëÃ†Ã§§Ï(ÄÄÄÄÄÄÄÅIï≈’•…î°¡…ïÕï—IïÕ’±–π¡ÃÄÙÙÅô¡ÕA…ïÕï–πYÖ±’î∞(ÄÄÄÄÄÄÄÄÄÄÄÄêâ¡•¡ï±•πîÅµÖπ”
-•¥Å¡…ïÕï–ÅëîÅÌô¡ÕA…ïÕï–πYÖ±’ïÙÅALà§Ï(ÄÄÄÄÄÄÄÅIï≈’•…î°çΩ’π—ï»π±Ö¡ÕïêÄ¥Åù•ôM—Ω¡¡ïë–ÄÅQ•µïM¡Ö∏π…Ωµ5•±±•ÕïçΩπëÃ†Ã¿§∞(ÄÄÄÄÄÄÄÄÄÄÄÄêâçΩπ—ÖëΩ»Å%Å¡Ö…ÑÅÖºÅô•πÖ±•ÈÖ»ÅÑÅÌô¡ÕA…ïÕï–πYÖ±’ïÙÅALà§Ï(ÄÄÄÄÄÄÄÅIï≈’•…î°•ôIïçΩ…ë•πùMï…Ÿ•çîπE’ï’ïÖ¡Öç•—‰ÄÙÙÄ»∞(ÄÄÄÄÄÄÄÄÄÄÄÄêâô•±ÑÅ%Å±•µ•—ÖëÑÅπºÅ¡…ïÕï–ÅëîÅÌô¡ÕA…ïÕï–πYÖ±’ïÙÅALà§Ï(ÄÄÄÅÙ((ÄÄÄÅIï≈’•…î†(ÄÄÄÄÄÄÄÅ¡¡AÖ—°ÃπÖ—Ö•…ïç—Ω…‰π≈’Ö±Ã†(ÄÄÄÄÄÄÄÄÄÄÄÅAÖ—†πΩµâ•πî†(ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÅπŸ•…Ωπµïπ–πï—Ω±ëï…AÖ—†°πŸ•…Ωπµïπ–πM¡ïç•Ö±Ω±ëï»π1ΩçÖ±¡¡±•çÖ—•ΩπÖ—Ñ§∞(ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄâM±ÖÕ°ïÕ¨à§∞(ÄÄÄÄÄÄÄÄÄÄÄÅM—…•πùΩµ¡Ö…•ÕΩ∏π=…ë•πÖ±%ùπΩ…ïÖÕî§Äòò(ÄÄÄÄÄÄÄÄÖ¡¡AÖ—°ÃπÖ—Ö•…ïç—Ω…‰πM—Ö…—Õ]•—†°¡¡AÖ—°Ãπ	ÖÕï•…ïç—Ω…‰Ä¨ÅAÖ—†π•…ïç—Ω…ÂMï¡Ö…Ö—Ω…°Ö»∞(ÄÄÄÄÄÄÄÄÄÄÄÅM—…•πùΩµ¡Ö…•ÕΩ∏π=…ë•πÖ±%ùπΩ…ïÖÕî§∞(ÄÄÄÄÄÄÄÄâëÖëΩÃÅ¡ï…µÖπïπ—ïÃÅô•çÖ¥ÅôΩ…ÑÅëÑÅ¡ÖÕ—ÑÅëºÅï·ïç’”ÖŸï∞Åï¥Äï1ΩçÖ±¡¡Ö—ÑïqqM±ÖÕ°ïÕ¨à§Ï((ÄÄÄÅ’Õ•πúÄ°ŸÖ»Åô…ÖµîƒÄÙÅπï‹ÅMÂÕ—ï¥π…Ö›•πúπ	•—µÖ¿†–∞Ä–§§(ÄÄÄÅ’Õ•πúÄ°ŸÖ»Åô…Öµî»ÄÙÅπï‹ÅMÂÕ—ï¥π…Ö›•πúπ	•—µÖ¿†–∞Ä–§§(ÄÄÄÅÏ(ÄÄÄÄÄÄÄÅô…ÖµîƒπMï—A•·ï∞†¿∞Ä¿∞ÅMÂÕ—ï¥π…Ö›•πúπΩ±Ω»πIïê§Ï(ÄÄÄÄÄÄÄÅô…Öµî»πMï—A•·ï∞†¿∞Ä¿∞ÅMÂÕ—ï¥π…Ö›•πúπΩ±Ω»π	±’î§Ï(ÄÄÄÄÄÄÄÅ’Õ•πúÅŸÖ»Åù•ôIïçΩ…ë•πúÄÙÅπï‹Å•ôIïçΩ…ë•πùIïÕ’±–†(ÄÄÄÄÄÄÄÄÄÄÄÅmô…Öµîƒπ±Ωπî†§ÅÖÃÅMÂÕ—ï¥π…Ö›•πúπ	•—µÖ¿Ä¸¸Å—°…Ω‹Åπï‹Å%πŸÖ±•ë=¡ï…Ö—•Ωπ·çï¡—•Ω∏†§∞(ÄÄÄÄÄÄÄÄÄÄÄÄÅô…Öµî»π±Ωπî†§ÅÖÃÅMÂÕ—ï¥π…Ö›•πúπ	•—µÖ¿Ä¸¸Å—°…Ω‹Åπï‹Å%πŸÖ±•ë=¡ï…Ö—•Ωπ·çï¡—•Ω∏†•t∞(ÄÄÄÄÄÄÄÄÄÄÄÄƒ¿∞(ÄÄÄÄÄÄÄÄÄÄÄÅπï‹ÅMÂÕ—ï¥π…Ö›•πúπIïç—Öπù±î†¿∞Ä¿∞Ä–∞Ä–§§Ï(ÄÄÄÄÄÄÄÅŸÖ»Åù•ôAÖ—†ÄÙÅπï‹Å•ôIïçΩ…ë•πùMï…Ÿ•çî†§πMÖŸî†(ÄÄÄÄÄÄÄÄÄÄÄÅù•ôIïçΩ…ë•πú∞(ÄÄÄÄÄÄÄÄÄÄÄÅπï‹ÅÖ¡—’…ïMï——•πùÃ(ÄÄÄÄÄÄÄÄÄÄÄÅÏ(ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÅ=’—¡’—•…ïç—Ω…ÂQïµ¡±Ö—îÄÙÅ…ΩΩ–∞(ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÅ•±ï9ÖµïQïµ¡±Ö—îÄÙÄâÖπ•µÖ—ïêà(ÄÄÄÄÄÄÄÄÄÄÄÅÙ∞(ÄÄÄÄÄÄÄÄÄÄÄÄâù•òà§Ï(ÄÄÄÄÄÄÄÅŸÖ»Åù•ô	Â—ïÃÄÙÅÖ›Ö•–Å•±îπIïÖë±±	Â—ïÕÕÂπå°ù•ôAÖ—†§Ï(ÄÄÄÄÄÄÄÅIï≈’•…î†(ÄÄÄÄÄÄÄÄÄÄÄÅMÂÕ—ï¥πQï·–ππçΩë•πúπM%$πï—M—…•πú°ù•ô	Â—ïÃ§πΩπ—Ö•πÃ†(ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄâ9QMA»∏¿à∞(ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÅM—…•πùΩµ¡Ö…•ÕΩ∏π=…ë•πÖ∞§∞(ÄÄÄÄÄÄÄÄÄÄÄÄâ%Å•πç±’§Åï·—ïπœçºÅëîÅ…ï¡ï—ßüçºÅ9QMAà§Ï(ÄÄÄÄÄÄÄÅ’Õ•πúÅŸÖ»Åù•ôM—…ïÖ¥ÄÙÅ•±îπ=¡ïπIïÖê°ù•ôAÖ—†§Ï(ÄÄÄÄÄÄÄÅŸÖ»ÅëïçΩëï»ÄÙÅπï‹ÅMÂÕ—ï¥π]•πëΩ›Ãπ5ïë•Ñπ%µÖù•πúπ•ô	•—µÖ¡ïçΩëï»†(ÄÄÄÄÄÄÄÄÄÄÄÅù•ôM—…ïÖ¥∞(ÄÄÄÄÄÄÄÄÄÄÄÅMÂÕ—ï¥π]•πëΩ›Ãπ5ïë•Ñπ%µÖù•πúπ	•—µÖ¡…ïÖ—ï=¡—•ΩπÃπA…ïÕï…ŸïA•·ï±Ω…µÖ–∞(ÄÄÄÄÄÄÄÄÄÄÄÅMÂÕ—ï¥π]•πëΩ›Ãπ5ïë•Ñπ%µÖù•πúπ	•—µÖ¡Öç°ï=¡—•Ω∏π=π1ΩÖê§Ï(ÄÄÄÄÄÄÄÅIï≈’•…î°ëïçΩëï»π…ÖµïÃπΩ’π–ÄÙÙÄ»∞Äâ%Å¡…ïÕï…ŸÑÅ—ΩëΩÃÅΩÃÅ≈’Öë…ΩÃà§Ï(ÄÄÄÅÙ(ÄÄÄÅIï≈’•…î†(ÄÄÄÄÄÄÄÅ±ΩâÖ±Ö¡—’…ïM°Ω…—ç’—Mï…Ÿ•çîπ%ÕYÖ±•ê†â—…∞≠M°•ô–≠A…•π—Mç…ïï∏à§∞(ÄÄÄÄÄÄÄÄâÖ—Ö±°ºÅëîÅçÖ¡—’…ÑÅ¡ï±ºÅ—ïç±Öëºà§Ï4(ÄÄÄÅIï≈’•…î†4(ÄÄÄÄÄÄÄÅ±ΩâÖ±Ö¡—’…ïM°Ω…—ç’—Mï…Ÿ•çîπ%ÕYÖ±•ê†â—…∞≠M°•ô–≠]°ïï±U¿à§∞4(ÄÄÄÄÄÄÄÄâÖ—Ö±°ºÅëîÅçÖ¡—’…ÑÅ¡ï±ÑÅ…ΩëÑÅëºÅµΩ’Õîà§Ï4(ÄÄÄÅIï≈’•…î†4(ÄÄÄÄÄÄÄÄÖ±ΩâÖ±Ö¡—’…ïM°Ω…—ç’—Mï…Ÿ•çîπ%ÕYÖ±•ê†â]°ïï±U¿à§∞4(ÄÄÄÄÄÄÄÄâ…ΩëÑÅëºÅµΩ’ÕîÅï·•ùîÅµΩë•ô•çÖëΩ»à§Ï4(ÄÄÄÅIï≈’•…î†4(ÄÄÄÄÄÄÄÅ±ΩâÖ±Ö¡—’…ïM°Ω…—ç’—Mï…Ÿ•çîπΩ…µÖ—-ïÂâΩÖ…ëM°Ω…—ç’–†4(ÄÄÄÄÄÄÄÄÄÄÄÅMÂÕ—ï¥π]•πëΩ›Ãπ%π¡’–π-ï‰πƒ¿∞4(ÄÄÄÄÄÄÄÄÄÄÄÅMÂÕ—ï¥π]•πëΩ›Ãπ%π¡’–π5Ωë•ô•ï…-ïÂÃπ9Ωπî§ÄÙÙÄâƒ¿à∞4(ÄÄÄÄÄÄÄÄâù…ÖŸÑÅ—ïç±ÑÅëîÅô’ªüçºÅÕï¥Åë•ù•—áüçºÅµÖπ’Ö∞à§Ï4(ÄÄÄÅIï≈’•…î†4(ÄÄÄÄÄÄÄÅ±ΩâÖ±Ö¡—’…ïM°Ω…—ç’—Mï…Ÿ•çîπΩ…µÖ—-ïÂâΩÖ…ëM°Ω…—ç’–†4(ÄÄÄÄÄÄÄÄÄÄÄÅMÂÕ—ï¥π]•πëΩ›Ãπ%π¡’–π-ï‰πMπÖ¡Õ°Ω–∞4(ÄÄÄÄÄÄÄÄÄÄÄÅMÂÕ—ï¥π]•πëΩ›Ãπ%π¡’–π5Ωë•ô•ï…-ïÂÃπ9Ωπî§ÄÙÙÄâA…•π—Mç…ïï∏àÄòò4(ÄÄÄÄÄÄÄÅ±ΩâÖ±Ö¡—’…ïM°Ω…—ç’—Mï…Ÿ•çîπ%ÕYÖ±•ê†âA…•π–à§Äòò4(ÄÄÄÄÄÄÄÅ±ΩâÖ±Ö¡—’…ïM°Ω…—ç’—Mï…Ÿ•çîπ%ÕYÖ±•ê†âA…—Måà§Äòò4(ÄÄÄÄÄÄÄÅ±ΩâÖ±Ö¡—’…ïM°Ω…—ç’—Mï…Ÿ•çîπ%ÕYÖ±•ê†âMπÖ¡Õ°Ω–à§∞4(ÄÄÄÄÄÄÄÄâù…ÖŸÑÅA…•π–ÅMç…ïï∏ÅπºÅ¡…ïÕÕ•ΩπÖµïπ—ºÅΩ‘ÅπÑÅ±•âï…áüçºà§Ï4(ÄÄÄÅIï≈’•…î†4(ÄÄÄÄÄÄÄÅ±ΩâÖ±Ö¡—’…ïM°Ω…—ç’—Mï…Ÿ•çîπΩ…µÖ—]°ïï±M°Ω…—ç’–†4(ÄÄÄÄÄÄÄÄÄÄÄÄƒ»¿∞4(ÄÄÄÄÄÄÄÄÄÄÄÅMÂÕ—ï¥π]•πëΩ›Ãπ%π¡’–π5Ωë•ô•ï…-ïÂÃπΩπ—…Ω∞Å4(ÄÄÄÄÄÄÄÄÄÄÄÅMÂÕ—ï¥π]•πëΩ›Ãπ%π¡’–π5Ωë•ô•ï…-ïÂÃπM°•ô–§ÄÙÙ4(ÄÄÄÄÄÄÄÄÄÄÄÄâ—…∞≠M°•ô–≠]°ïï±U¿à∞4(ÄÄÄÄÄÄÄÄâù…ÖŸÑÅçΩµâ•πáüçºÅçΩ¥Å…ΩëÑÅëºÅµΩ’Õîà§Ï4(ÄÄÄÅIï≈’•…î†4(ÄÄÄÄÄÄÄÅ±ΩâÖ±Ö¡—’…ïM°Ω…—ç’—Mï…Ÿ•çîπΩ…µÖ—5Ω’ÕïM°Ω…—ç’–†4(ÄÄÄÄÄÄÄÄÄÄÄÅMÂÕ—ï¥π]•πëΩ›Ãπ%π¡’–π5Ω’Õï	’——Ω∏πa	’——Ω∏ƒ∞4(ÄÄÄÄÄÄÄÄÄÄÄÅMÂÕ—ï¥π]•πëΩ›Ãπ%π¡’–π5Ωë•ô•ï…-ïÂÃπ±–§ÄÙÙ4(ÄÄÄÄÄÄÄÄÄÄÄÄâ±–≠5Ω’Õï`ƒà∞4(ÄÄÄÄÄÄÄÄâù…ÖŸÑÅâΩ”çºÅ±Ö—ï…Ö∞ÅëºÅµΩ’Õîà§Ï4(ÄÄÄÅIï≈’•…î†4(ÄÄÄÄÄÄÄÅ±ΩâÖ±Ö¡—’…ïM°Ω…—ç’—Mï…Ÿ•çîπ%ÕYÖ±•ê†â5Ω’Õï`»à§Äòò4(ÄÄÄÄÄÄÄÅ±ΩâÖ±Ö¡—’…ïM°Ω…—ç’—Mï…Ÿ•çîπ%ÕYÖ±•ê†â—…∞≠5Ω’Õï5•ëë±îà§∞4(ÄÄÄÄÄÄÄÄââΩ”’ïÃÅëºÅµΩ’ÕîÅœçºÅÖ—Ö±°ΩÃÅ€Ö±•ëΩÃà§Ï4(ÄÄÄÅIï≈’•…î†4(ÄÄÄÄÄÄÄÄÖ±ΩâÖ±Ö¡—’…ïM°Ω…—ç’—Mï…Ÿ•çîπ%ÕYÖ±•ê†â5Ω’Õï1ïô–à§Äòò4(ÄÄÄÄÄÄÄÄÖ±ΩâÖ±Ö¡—’…ïM°Ω…—ç’—Mï…Ÿ•çîπ%ÕYÖ±•ê†â5Ω’ÕïI•ù°–à§∞4(ÄÄÄÄÄÄÄÄâç±•≈’ïÃÅïÕÕïπç•Ö•ÃÅëºÅµΩ’ÕîÅ¡ï…µÖπïçï¥Å±•Ÿ…ïÃà§Ï4(4(ÄÄÄÅ’Õ•πúÄ°ŸÖ»ÅÕΩ’…çîÄÙÅπï‹ÅMÂÕ—ï¥π…Ö›•πúπ	•—µÖ¿†ƒ»¿∞Ä‰¿§§4(ÄÄÄÅÏ4(ÄÄÄÄÄÄÄÅ’Õ•πúÄ°ŸÖ»Åù…Ö¡°•çÃÄÙÅMÂÕ—ï¥π…Ö›•πúπ…Ö¡°•çÃπ…Ωµ%µÖùî°ÕΩ’…çî§§4(ÄÄÄÄÄÄÄÅÏ4(ÄÄÄÄÄÄÄÄÄÄÄÅù…Ö¡°•çÃπ±ïÖ»°MÂÕ—ï¥π…Ö›•πúπΩ±Ω»π]°•—î§Ï4(ÄÄÄÄÄÄÄÅÙ4(4(ÄÄÄÄÄÄÄÅŸÖ»ÅÖππΩ—Ö—•ΩπMçïπÖ…•ΩÃÄÙÅπï›mt4(ÄÄÄÄÄÄÄÅÏ4(ÄÄÄÄÄÄÄÄÄÄÄÅπï‹ÅÖ¡—’…ïππΩ—Ö—•Ω∏4(ÄÄÄÄÄÄÄÄÄÄÄÅÏ4(ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÅ-•πêÄÙÅÖ¡—’…ïππΩ—Ö—•Ωπ-•πêπ……Ω‹∞4(ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÅM—Ö…–ÄÙÅπï‹ÅMÂÕ—ï¥π]•πëΩ›ÃπAΩ•π–†ƒ¿∞Äƒ¿§∞4(ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÅπêÄÙÅπï‹ÅMÂÕ—ï¥π]•πëΩ›ÃπAΩ•π–†‰¿∞Äÿ¿§4(ÄÄÄÄÄÄÄÄÄÄÄÅÙ∞4(ÄÄÄÄÄÄÄÄÄÄÄÅπï‹ÅÖ¡—’…ïππΩ—Ö—•Ω∏4(ÄÄÄÄÄÄÄÄÄÄÄÅÏ4(ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÅ-•πêÄÙÅÖ¡—’…ïππΩ—Ö—•Ωπ-•πêπ!•ù°±•ù°—ï»∞4(ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÅM—Ö…–ÄÙÅπï‹ÅMÂÕ—ï¥π]•πëΩ›ÃπAΩ•π–†‡∞Ä–‘§∞4(ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÅπêÄÙÅπï‹ÅMÂÕ—ï¥π]•πëΩ›ÃπAΩ•π–†ƒ¿¿∞Ä–‘§∞4(ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÅ…ùàÄÙÅMÂÕ—ï¥π…Ö›•πúπΩ±Ω»πΩ±êπQΩ…ùà†§4(ÄÄÄÄÄÄÄÄÄÄÄÅÙ∞4(ÄÄÄÄÄÄÄÄÄÄÄÅπï‹ÅÖ¡—’…ïππΩ—Ö—•Ω∏4(ÄÄÄÄÄÄÄÄÄÄÄÅÏ4(ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÅ-•πêÄÙÅÖ¡—’…ïππΩ—Ö—•Ωπ-•πêπIïç—Öπù±î∞4(ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÅM—Ö…–ÄÙÅπï‹ÅMÂÕ—ï¥π]•πëΩ›ÃπAΩ•π–†ƒ‘∞Äƒ‘§∞4(ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÅπêÄÙÅπï‹ÅMÂÕ—ï¥π]•πëΩ›ÃπAΩ•π–†‡¿∞Äÿ‘§4(ÄÄÄÄÄÄÄÄÄÄÄÅÙ∞4(ÄÄÄÄÄÄÄÄÄÄÄÅπï‹ÅÖ¡—’…ïππΩ—Ö—•Ω∏4(ÄÄÄÄÄÄÄÄÄÄÄÅÏ4(ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÅ-•πêÄÙÅÖ¡—’…ïππΩ—Ö—•Ωπ-•πêπ±±•¡Õî∞4(ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÅM—Ö…–ÄÙÅπï‹ÅMÂÕ—ï¥π]•πëΩ›ÃπAΩ•π–†»¿∞Äƒ‘§∞4(ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÅπêÄÙÅπï‹ÅMÂÕ—ï¥π]•πëΩ›ÃπAΩ•π–†‡‘∞Ä‹¿§4(ÄÄÄÄÄÄÄÄÄÄÄÅÙ∞4(ÄÄÄÄÄÄÄÄÄÄÄÅπï‹ÅÖ¡—’…ïππΩ—Ö—•Ω∏4(ÄÄÄÄÄÄÄÄÄÄÄÅÏ4(ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÅ-•πêÄÙÅÖ¡—’…ïππΩ—Ö—•Ωπ-•πêπAïπç•∞∞4(ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÅAΩ•π—ÃÄÙ4(ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÅl4(ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÅπï‹ÅMÂÕ—ï¥π]•πëΩ›ÃπAΩ•π–†‘∞Ä‘§∞4(ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÅπï‹ÅMÂÕ—ï¥π]•πëΩ›ÃπAΩ•π–†–¿∞ÄÃ¿§∞4(ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÅπï‹ÅMÂÕ—ï¥π]•πëΩ›ÃπAΩ•π–†‹‘∞Äƒ»§4(ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÅt4(ÄÄÄÄÄÄÄÄÄÄÄÅÙ∞4(ÄÄÄÄÄÄÄÄÄÄÄÅπï‹ÅÖ¡—’…ïππΩ—Ö—•Ω∏4(ÄÄÄÄÄÄÄÄÄÄÄÅÏ4(ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÅ-•πêÄÙÅÖ¡—’…ïππΩ—Ö—•Ωπ-•πêπQï·–∞4(ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÅM—Ö…–ÄÙÅπï‹ÅMÂÕ—ï¥π]•πëΩ›ÃπAΩ•π–†ƒ¿∞Ä»¿§∞4(ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÅQï·–ÄÙÄâQïÕ—îà4(ÄÄÄÄÄÄÄÄÄÄÄÅÙ∞4(ÄÄÄÄÄÄÄÄÄÄÄÅπï‹ÅÖ¡—’…ïππΩ—Ö—•Ω∏4(ÄÄÄÄÄÄÄÄÄÄÄÅÏ4(ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÅ-•πêÄÙÅÖ¡—’…ïππΩ—Ö—•Ωπ-•πêπ9’µâï»∞4(ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÅM—Ö…–ÄÙÅπï‹ÅMÂÕ—ï¥π]•πëΩ›ÃπAΩ•π–†‘‘∞Ä–»§∞4(ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÅQï·–ÄÙÄàƒà4(ÄÄÄÄÄÄÄÄÄÄÄÅÙ4(ÄÄÄÄÄÄÄÅÙÏ4(4(ÄÄÄÄÄÄÄÅôΩ…ïÖç†Ä°ŸÖ»ÅÖππΩ—Ö—•Ω∏Å•∏ÅÖππΩ—Ö—•ΩπMçïπÖ…•ΩÃ§(ÄÄÄÄÄÄÄÅÏ(ÄÄÄÄÄÄÄÄÄÄÄÅ’Õ•πúÅŸÖ»Å…ïπëï…ïëÖ¡—’…îÄÙÅÖ¡—’…ïππΩ—Ö—•ΩπIïπëï…ï»πIïπëï»†4(ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÅÕΩ’…çî∞4(ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÅmÖππΩ—Ö—•Ωπt∞4(ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄƒ»¿∞4(ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ‰¿§Ï4(ÄÄÄÄÄÄÄÄÄÄÄÅIï≈’•…î†4(ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÅ!ÖÕ°ÖπùïëA•·ï∞°…ïπëï…ïëÖ¡—’…î§∞4(ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄêâ…ïπëï…•ÈÑÅôï……Öµïπ—ÑÅÌÖππΩ—Ö—•Ω∏π-•πëÙà§Ï(ÄÄÄÄÄÄÄÅÙ(ÄÄÄÅÙ((ÄÄÄÅŸÖ»ÅπΩÖ±±âÖç≠Öç—Ω…‰ÄÙÅπï‹ÅÖ≠ïIïçΩ…ëï…	Öç≠ïπëÖç—Ω…‰ÅÏÅΩµ¡±ï—ï=πM—Ω¿ÄÙÅôÖ±ÕîÅÙÏ(ÄÄÄÅ’Õ•πúÄ°ŸÖ»Å±•ôïçÂç±îÄÙÅπï‹ÅMç…ïïπIïçΩ…ë•πùMï…Ÿ•çî†(ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÅπΩÖ±±âÖç≠Öç—Ω…‰∞(ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÅQ•µïM¡Ö∏π…Ωµ5•±±•ÕïçΩπëÃ†ÿ¿§§§(ÄÄÄÅÏ(ÄÄÄÄÄÄÄÅŸÖ»Å—ÖÕ¨ÄÙÅ±•ôïçÂç±îπM—Ö…—ÕÂπå†(ÄÄÄÄÄÄÄÄÄÄÄÅπï‹ÅIïçΩ…ë•πùQÖ…ùï–°IïçΩ…ë•πùQÖ…ùï—-•πêπ]•πëΩ‹∞(ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÅπï‹ÅMÂÕ—ï¥π…Ö›•πúπIïç—Öπù±î†¿∞Ä¿∞ÄÃ»¿∞Ä»–¿§∞Åπï‹Å%π—A—»†ƒ§§∞(ÄÄÄÄÄÄÄÄÄÄÄÅπï‹ÅÖ¡—’…ïMï——•πùÃÅÏÅ=’—¡’—•…ïç—Ω…ÂQïµ¡±Ö—îÄÙÅ…ΩΩ–∞Å•±ï9ÖµïQïµ¡±Ö—îÄÙÄâπºµçÖ±±âÖç¨àÅÙ∞(ÄÄÄÄÄÄÄÄÄÄÄÅπï‹ÅIïçΩ…ë•πùMï——•πùÃ†§§Ï(ÄÄÄÄÄÄÄÅIï≈’•…î°πΩÖ±±âÖç≠Öç—Ω…‰π	Öç≠ïπêπIïçΩ…ëÖ±±ïêπ]Ö•–°Q•µïM¡Ö∏π…ΩµMïçΩπëÃ†»§§∞(ÄÄÄÄÄÄÄÄÄÄÄÄââÖç≠ïπêÅ¡Ö…ÑÅ—•µïΩ’–ÅÕï¥ÅçÖ±±âÖç¨à§Ï(ÄÄÄÄÄÄÄÅ±•ôïçÂç±îπM—Ω¿†§Ï(ÄÄÄÄÄÄÄÅÖ›Ö•–ÅIï≈’•…ïQ°…Ω›ÕÕÂπåÒQ•µïΩ’—·çï¡—•Ω∏¯††§ÄÙ¯Å—ÖÕ¨∞Äâ—•µïΩ’–Å…ïÖ∞ÅÕï¥ÅçÖ±±âÖç¨à§Ï(ÄÄÄÄÄÄÄÅŸÖ»Åë•Õ¡ΩÕï±Ωç¨ÄÙÅM—Ω¡›Ö—ç†πM—Ö…—9ï‹†§Ï(ÄÄÄÄÄÄÄÅ±•ôïçÂç±îπ•Õ¡ΩÕî†§Ï(ÄÄÄÄÄÄÄÅIï≈’•…î°ë•Õ¡ΩÕï±Ωç¨π±Ö¡ÕïêÄÅQ•µïM¡Ö∏π…Ωµ5•±±•ÕïçΩπëÃ†ƒ¿¿§∞(ÄÄÄÄÄÄÄÄÄÄÄÄâ•Õ¡ΩÕîÅÖ√ÕÃÅ—•µïΩ’–ÅªçºÅâ±Ω≈’ï•ÑÅU$à§Ï(ÄÄÄÄÄÄÄÅIï≈’•…î°πΩÖ±±âÖç≠Öç—Ω…‰π	Öç≠ïπêπ•Õ¡ΩÕïÖ±±ÃÄÙÙÄ¿∞(ÄÄÄÄÄÄÄÄÄÄÄÄâ—•µïΩ’–ÅÕï¥ÅçÖ±±âÖç¨ÅªçºÅçΩπçΩ……îÅ•Õ¡ΩÕîÅçΩ¥ÅèÕë•ùºÅπÖ—•Ÿºà§Ï(ÄÄÄÄÄÄÄÅIï≈’•…î°±•ôïçÂç±îπM—Ö—îÄÙÙÅMç…ïïπIïçΩ…ë•πùM—Ö—îπÖ•±ïê∞(ÄÄÄÄÄÄÄÄÄÄÄÄâ—•µïΩ’–ÅÕï¥ÅçÖ±±âÖç¨Åïπçï……ÑÅïÕ—ÖëºÅ•πÖ±•ÈÖπëºà§Ï(ÄÄÄÅÙ)Ù)ô•πÖ±±‰4)Ï4(ÄÄÄÅ•òÄ°•…ïç—Ω…‰π·•Õ—Ã°…ΩΩ–§§4(ÄÄÄÅÏ4(ÄÄÄÄÄÄÄÅ•…ïç—Ω…‰πï±ï—î°…ΩΩ–∞Å—…’î§Ï4(ÄÄÄÅÙ4)Ù4(4)ΩπÕΩ±îπ]…•—ï1•πî†âM±ÖÕ°Qï·–ÅÕµΩ≠îÅ—ïÕ—ÃËÅ=,à§Ï4)…ï—’…∏Ï4(4)Õ—Ö—•åÅâΩΩ∞Å!ÖÕ°ÖπùïëA•·ï∞°MÂÕ—ï¥π…Ö›•πúπ	•—µÖ¿Åâ•—µÖ¿§4)Ï4(ÄÄÄÅôΩ»Ä°ŸÖ»Å‰ÄÙÄ¿ÏÅ‰ÄÅâ•—µÖ¿π!ï•ù°–ÏÅ‰Ä¨ÙÄ»§4(ÄÄÄÅÏ4(ÄÄÄÄÄÄÄÅôΩ»Ä°ŸÖ»Å‡ÄÙÄ¿ÏÅ‡ÄÅâ•—µÖ¿π]•ë—†ÏÅ‡Ä¨ÙÄ»§4(ÄÄÄÄÄÄÄÅÏ4(ÄÄÄÄÄÄÄÄÄÄÄÅ•òÄ°â•—µÖ¿πï—A•·ï∞°‡∞Å‰§πQΩ…ùà†§ÄÑÙ4(ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÅMÂÕ—ï¥π…Ö›•πúπΩ±Ω»π]°•—îπQΩ…ùà†§§4(ÄÄÄÄÄÄÄÄÄÄÄÅÏ4(ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÅ…ï—’…∏Å—…’îÏ4(ÄÄÄÄÄÄÄÄÄÄÄÅÙ4(ÄÄÄÄÄÄÄÅÙ4(ÄÄÄÅÙ4(ÄÄÄÅ…ï—’…∏ÅôÖ±ÕîÏ4)Ù4(4)Õ—Ö—•åÅŸΩ•êÅIï≈’•…î°âΩΩ∞ÅçΩπë•—•Ω∏∞ÅÕ—…•πúÅÕçïπÖ…•º§)Ï4(ÄÄÄÅ•òÄ†ÖçΩπë•—•Ω∏§4(ÄÄÄÅÏ4(ÄÄÄÄÄÄÄÅ—°…Ω‹Åπï‹Å%πŸÖ±•ë=¡ï…Ö—•Ωπ·çï¡—•Ω∏†êâÖ±°ÑÅπºÅçïªÖ…•ºËÅÌÕçïπÖ…•ΩÙà§Ï4(ÄÄÄÅÙ4)Ù()Õ—Ö—•åÅŸΩ•êÅIï≈’•…ïQ°…Ω›ÃÒQ·çï¡—•Ω∏¯°ç—•Ω∏ÅÖç—•Ω∏∞ÅÕ—…•πúÅÕçïπÖ…•º§(ÄÄÄÅ›°ï…îÅQ·çï¡—•Ω∏ÄËÅ·çï¡—•Ω∏)Ï(ÄÄÄÅ—…‰(ÄÄÄÅÏ(ÄÄÄÄÄÄÄÅÖç—•Ω∏†§Ï(ÄÄÄÅÙ(ÄÄÄÅçÖ—ç†Ä°Q·çï¡—•Ω∏§(ÄÄÄÅÏ(ÄÄÄÄÄÄÄÅ…ï—’…∏Ï(ÄÄÄÅÙ((ÄÄÄÅ—°…Ω‹Åπï‹Å%πŸÖ±•ë=¡ï…Ö—•Ωπ·çï¡—•Ω∏†êâÖ±°ÑÅπºÅÕµΩ≠îÅ—ïÕ–ËÅÌÕçïπÖ…•ΩÙà§Ï)Ù()Õ—Ö—•åÅÖÕÂπåÅQÖÕ¨Å]Ö•—Uπ—•±ÕÂπå°’πåÒâΩΩ∞¯ÅçΩπë•—•Ω∏∞ÅÕ—…•πúÅÕçïπÖ…•º§)Ï(ÄÄÄÅŸÖ»Å—•µïΩ’–ÄÙÅM—Ω¡›Ö—ç†πM—Ö…—9ï‹†§Ï(ÄÄÄÅ›°•±îÄ†ÖçΩπë•—•Ω∏†§§(ÄÄÄÅÏ(ÄÄÄÄÄÄÄÅ•òÄ°—•µïΩ’–π±Ö¡ÕïêÄ¯ÅQ•µïM¡Ö∏π…ΩµMïçΩπëÃ†»§§(ÄÄÄÄÄÄÄÅÏ(ÄÄÄÄÄÄÄÄÄÄÄÅ—°…Ω‹Åπï‹Å%πŸÖ±•ë=¡ï…Ö—•Ωπ·çï¡—•Ω∏†êâQ•µïΩ’–ÅπºÅçïªÖ…•ºËÅÌÕçïπÖ…•ΩÙà§Ï(ÄÄÄÄÄÄÄÅÙ(ÄÄÄÄÄÄÄÅÖ›Ö•–ÅQÖÕ¨πï±Ö‰†ƒ¿§Ï(ÄÄÄÅÙ)Ù()Õ—Ö—•åÅÖÕÂπåÅQÖÕ¨ÅIï≈’•…ïQ°…Ω›ÕÕÂπåÒQ·çï¡—•Ω∏¯°’πåÒQÖÕ¨¯ÅÖç—•Ω∏∞ÅÕ—…•πúÅÕçïπÖ…•º§(ÄÄÄÅ›°ï…îÅQ·çï¡—•Ω∏ÄËÅ·çï¡—•Ω∏)Ï(ÄÄÄÅ—…‰(ÄÄÄÅÏ(ÄÄÄÄÄÄÄÅÖ›Ö•–ÅÖç—•Ω∏†§Ï(ÄÄÄÅÙ(ÄÄÄÅçÖ—ç†Ä°Q·çï¡—•Ω∏§(ÄÄÄÅÏ(ÄÄÄÄÄÄÄÅ…ï—’…∏Ï(ÄÄÄÅÙ(ÄÄÄÅ—°…Ω‹Åπï‹Å%πŸÖ±•ë=¡ï…Ö—•Ωπ·çï¡—•Ω∏†êâÖ±°ÑÅπºÅÕµΩ≠îÅ—ïÕ–ËÅÌÕçïπÖ…•ΩÙà§Ï)Ù()Õ—Ö—•åÅQÖÕ¨Å]…•—ïYÖ±•ë5¿—ÕÂπå°Õ—…•πúÅ¡Ö—†§ÄÙ¯Å•±îπ]…•—ï±±	Â—ïÕÕÂπå†(ÄÄÄÅ¡Ö—†∞(ÄÄÄÅl(ÄÄÄÄÄÄÄÄ¿∞Ä¿∞Ä¿∞Äƒ»∞Ä°âÂ—î§ùòú∞Ä°âÂ—î§ù–ú∞Ä°âÂ—î§ù‰ú∞Ä°âÂ—î§ù¿ú∞Ä¿∞Ä¿∞Ä¿∞Ä¿∞(ÄÄÄÄÄÄÄÄ¿∞Ä¿∞Ä¿∞Äƒ»∞Ä°âÂ—î§ù¥ú∞Ä°âÂ—î§ùêú∞Ä°âÂ—î§ùÑú∞Ä°âÂ—î§ù–ú∞Äƒ∞Ä»∞ÄÃ∞Ä–∞(ÄÄÄÄÄÄÄÄ¿∞Ä¿∞Ä¿∞Ä‡∞Ä°âÂ—î§ù¥ú∞Ä°âÂ—î§ùºú∞Ä°âÂ—î§ùºú∞Ä°âÂ—î§ùÿú(ÄÄÄÅt§Ï()ÕïÖ±ïêÅç±ÖÕÃÅÖ≠ïIïçΩ…ëï…	Öç≠ïπëÖç—Ω…‰ÄËÅ%Mç…ïïπIïçΩ…ëï…	Öç≠ïπëÖç—Ω…‰)Ï(ÄÄÄÅ¡’â±•åÅÖ≠ïIïçΩ…ëï…	Öç≠ïπêÅ	Öç≠ïπêÅÏÅùï–ÏÅÙÄÙÅπï‹†§Ï(ÄÄÄÅ¡’â±•åÅâΩΩ∞ÅMïπë’¡±•çÖ—ïÖ±±âÖç≠Ã(ÄÄÄÅÏ(ÄÄÄÄÄÄÄÅùï–ÄÙ¯Å	Öç≠ïπêπMïπë’¡±•çÖ—ïÖ±±âÖç≠ÃÏ(ÄÄÄÄÄÄÄÅ•π•–ÄÙ¯Å	Öç≠ïπêπMïπë’¡±•çÖ—ïÖ±±âÖç≠ÃÄÙÅŸÖ±’îÏ(ÄÄÄÅÙ(ÄÄÄÅ¡’â±•åÅâΩΩ∞ÅΩµ¡±ï—ï=πM—Ω¿(ÄÄÄÅÏ(ÄÄÄÄÄÄÄÅùï–ÄÙ¯Å	Öç≠ïπêπΩµ¡±ï—ï=πM—Ω¿Ï(ÄÄÄÄÄÄÄÅ•π•–ÄÙ¯Å	Öç≠ïπêπΩµ¡±ï—ï=πM—Ω¿ÄÙÅŸÖ±’îÏ(ÄÄÄÅÙ(ÄÄÄÅ¡’â±•åÅâΩΩ∞ÅÖ•±=πM—Ω¿(ÄÄÄÅÏ(ÄÄÄÄÄÄÄÅùï–ÄÙ¯Å	Öç≠ïπêπÖ•±=πM—Ω¿Ï(ÄÄÄÄÄÄÄÅ•π•–ÄÙ¯Å	Öç≠ïπêπÖ•±=πM—Ω¿ÄÙÅŸÖ±’îÏ(ÄÄÄÅÙ(ÄÄÄÅ¡’â±•åÅ•π–ÅÖ±±âÖç≠ï±ÖÂ5Ã(ÄÄÄÅÏ(ÄÄÄÄÄÄÄÅùï–ÄÙ¯Å	Öç≠ïπêπÖ±±âÖç≠ï±ÖÂ5ÃÏ(ÄÄÄÄÄÄÄÅ•π•–ÄÙ¯Å	Öç≠ïπêπÖ±±âÖç≠ï±ÖÂ5ÃÄÙÅŸÖ±’îÏ(ÄÄÄÅÙ(ÄÄÄÅ¡’â±•åÅâΩΩ∞Å	±Ωç≠M—Ω¿(ÄÄÄÅÏ(ÄÄÄÄÄÄÄÅùï–ÄÙ¯Å	Öç≠ïπêπ	±Ωç≠M—Ω¿Ï(ÄÄÄÄÄÄÄÅ•π•–ÄÙ¯Å	Öç≠ïπêπ	±Ωç≠M—Ω¿ÄÙÅŸÖ±’îÏ(ÄÄÄÅÙ((ÄÄÄÅ¡’â±•åÅ%Mç…ïïπIïçΩ…ëï…	Öç≠ïπêÅ…ïÖ—î°IïçΩ…ëï…=¡—•ΩπÃÅΩ¡—•ΩπÃ§ÄÙ¯Å	Öç≠ïπêÏ)Ù()ÕïÖ±ïêÅç±ÖÕÃÅÖ≠ïIïçΩ…ëï…	Öç≠ïπêÄËÅ%Mç…ïïπIïçΩ…ëï…	Öç≠ïπê)Ï(ÄÄÄÅ¡…•ŸÖ—îÅ•π–Å}Öç—•ŸïÖ±±ÃÏ(ÄÄÄÅ¡…•ŸÖ—îÅ•π–Å}µÖ·•µ’µΩπç’……ïπ—Ö±±ÃÏ(ÄÄÄÅ¡…•ŸÖ—îÅ•π–Å}ë•Õ¡ΩÕïÖ±±ÃÏ(ÄÄÄÅ¡…•ŸÖ—îÅ•π–Å}Õ—Ω¡Ö±±ÃÏ(ÄÄÄÅ¡…•ŸÖ—îÅÕ—…•πúÅ}¡Ö—†ÄÙÅÕ—…•πúπµ¡—‰Ï(ÄÄÄÅ¡…•ŸÖ—îÅ…ïÖëΩπ±‰Å5Öπ’Ö±IïÕï—Ÿïπ—M±•¥Å}Õ—Ω¡Iï±ïÖÕîÄÙÅπï‹°ôÖ±Õî§Ï((ÄÄÄÅ¡’â±•åÅïŸïπ–ÅŸïπ—!Öπë±ï»ÒIïçΩ…ë•πùΩµ¡±ï—ïŸïπ—…ùÃ¯¸ÅΩµ¡±ï—ïêÏ(ÄÄÄÅ¡’â±•åÅïŸïπ–ÅŸïπ—!Öπë±ï»ÒIïçΩ…ë•πùÖ•±ïëŸïπ—…ùÃ¯¸ÅÖ•±ïêÏ(ÄÄÄÅ¡’â±•åÅïŸïπ–ÅŸïπ—!Öπë±ï»ÒIïçΩ…ë•πùM—Ö—’ÕŸïπ—…ùÃ¯¸ÅM—Ö—’Õ°ÖπùïêÏ(ÄÄÄÅ¡’â±•åÅ5Öπ’Ö±IïÕï—Ÿïπ—M±•¥ÅIïçΩ…ëÖ±±ïêÅÏÅùï–ÏÅÙÄÙÅπï‹°ôÖ±Õî§Ï(ÄÄÄÅ¡’â±•åÅ5Öπ’Ö±IïÕï—Ÿïπ—M±•¥ÅM—Ω¡π—ï…ïêÅÏÅùï–ÏÅÙÄÙÅπï‹°ôÖ±Õî§Ï(ÄÄÄÅ¡’â±•åÅâΩΩ∞ÅMïπë’¡±•çÖ—ïÖ±±âÖç≠ÃÅÏÅùï–ÏÅÕï–ÏÅÙ(ÄÄÄÅ¡’â±•åÅâΩΩ∞ÅΩµ¡±ï—ï=πM—Ω¿ÅÏÅùï–ÏÅÕï–ÏÅÙÄÙÅ—…’îÏ(ÄÄÄÅ¡’â±•åÅâΩΩ∞ÅÖ•±=πM—Ω¿ÅÏÅùï–ÏÅÕï–ÏÅÙ(ÄÄÄÅ¡’â±•åÅ•π–ÅÖ±±âÖç≠ï±ÖÂ5ÃÅÏÅùï–ÏÅÕï–ÏÅÙ(ÄÄÄÅ¡’â±•åÅâΩΩ∞Å	±Ωç≠M—Ω¿ÅÏÅùï–ÏÅÕï–ÏÅÙ(ÄÄÄÅ¡’â±•åÅ•π–Å•Õ¡ΩÕïÖ±±ÃÄÙ¯ÅYΩ±Ö—•±îπIïÖê°…ïòÅ}ë•Õ¡ΩÕïÖ±±Ã§Ï(ÄÄÄÅ¡’â±•åÅ•π–ÅM—Ω¡Ö±±ÃÄÙ¯ÅYΩ±Ö—•±îπIïÖê°…ïòÅ}Õ—Ω¡Ö±±Ã§Ï(ÄÄÄÅ¡’â±•åÅ•π–Å5Ö·•µ’µΩπç’……ïπ—Ö±±ÃÄÙ¯ÅYΩ±Ö—•±îπIïÖê°…ïòÅ}µÖ·•µ’µΩπç’……ïπ—Ö±±Ã§Ï((ÄÄÄÅ¡’â±•åÅŸΩ•êÅIïçΩ…ê°Õ—…•πúÅ¡Ö—†§(ÄÄÄÅÏ(ÄÄÄÄÄÄÄÅ9Ö—•ŸïÖ±∞††§ÄÙ¯(ÄÄÄÄÄÄÄÅÏ(ÄÄÄÄÄÄÄÄÄÄÄÅ}¡Ö—†ÄÙÅ¡Ö—†Ï(ÄÄÄÄÄÄÄÄÄÄÄÅIïçΩ…ëÖ±±ïêπMï–†§Ï(ÄÄÄÄÄÄÄÄÄÄÄÅM—Ö—’Õ°Öπùïê¸π%πŸΩ≠î°—°•Ã∞Åπï‹ÅIïçΩ…ë•πùM—Ö—’ÕŸïπ—…ùÃ°IïçΩ…ëï…M—Ö—’ÃπIïçΩ…ë•πú§§Ï(ÄÄÄÄÄÄÄÅÙ§Ï(ÄÄÄÅÙ((ÄÄÄÅ¡’â±•åÅŸΩ•êÅAÖ’Õî†§ÄÙ¯Å9Ö—•ŸïÖ±∞††§ÄÙ¯(ÄÄÄÄÄÄÄÅM—Ö—’Õ°Öπùïê¸π%πŸΩ≠î°—°•Ã∞Åπï‹ÅIïçΩ…ë•πùM—Ö—’ÕŸïπ—…ùÃ°IïçΩ…ëï…M—Ö—’ÃπAÖ’Õïê§§§Ï((ÄÄÄÅ¡’â±•åÅŸΩ•êÅIïÕ’µî†§ÄÙ¯Å9Ö—•ŸïÖ±∞††§ÄÙ¯(ÄÄÄÄÄÄÄÅM—Ö—’Õ°Öπùïê¸π%πŸΩ≠î°—°•Ã∞Åπï‹ÅIïçΩ…ë•πùM—Ö—’ÕŸïπ—…ùÃ°IïçΩ…ëï…M—Ö—’ÃπIïçΩ…ë•πú§§§Ï((ÄÄÄÅ¡’â±•åÅŸΩ•êÅM—Ω¿†§(ÄÄÄÅÏ(ÄÄÄÄÄÄÄÅ9Ö—•ŸïÖ±∞††§ÄÙ¯(ÄÄÄÄÄÄÄÅÏ(ÄÄÄÄÄÄÄÄÄÄÄÅ%π—ï…±Ωç≠ïêπ%πç…ïµïπ–°…ïòÅ}Õ—Ω¡Ö±±Ã§Ï(ÄÄÄÄÄÄÄÄÄÄÄÅM—Ω¡π—ï…ïêπMï–†§Ï(ÄÄÄÄÄÄÄÄÄÄÄÅ•òÄ°	±Ωç≠M—Ω¿§(ÄÄÄÄÄÄÄÄÄÄÄÅÏ(ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÅ}Õ—Ω¡Iï±ïÖÕîπ]Ö•–°Q•µïM¡Ö∏π…ΩµMïçΩπëÃ†Ã§§Ï(ÄÄÄÄÄÄÄÄÄÄÄÅÙ(ÄÄÄÄÄÄÄÄÄÄÄÅ•òÄ°Ö•±=πM—Ω¿§(ÄÄÄÄÄÄÄÄÄÄÄÅÏ(ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÅÖ•±ïê¸π%πŸΩ≠î°—°•Ã∞Åπï‹ÅIïçΩ…ë•πùÖ•±ïëŸïπ—…ùÃ†âôÖ±°ÑÅÕ•µ’±ÖëÑà∞Å}¡Ö—†§§Ï(ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÅ…ï—’…∏Ï(ÄÄÄÄÄÄÄÄÄÄÄÅÙ(ÄÄÄÄÄÄÄÄÄÄÄÅ•òÄ°Ωµ¡±ï—ï=πM—Ω¿§(ÄÄÄÄÄÄÄÄÄÄÄÅÏ(ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÅ•òÄ°Ö±±âÖç≠ï±ÖÂ5ÃÄ¯Ä¿§(ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÅÏ(ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÅ|ÄÙÅQÖÕ¨πI’∏°ÖÕÂπåÄ†§ÄÙ¯(ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÅÏ(ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÅÖ›Ö•–ÅQÖÕ¨πï±Ö‰°Ö±±âÖç≠ï±ÖÂ5Ã§Ï(ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÅΩµ¡±ï—ï1Ö—ï»†§Ï(ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÅÙ§Ï(ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÅÙ(ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÅï±Õî(ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÅÏ(ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÅΩµ¡±ï—ï1Ö—ï»†§Ï(ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÅÙ(ÄÄÄÄÄÄÄÄÄÄÄÅÙ(ÄÄÄÄÄÄÄÅÙ§Ï(ÄÄÄÅÙ((ÄÄÄÅ¡’â±•åÅŸΩ•êÅIï±ïÖÕïM—Ω¿†§ÄÙ¯Å}Õ—Ω¡Iï±ïÖÕîπMï–†§Ï((ÄÄÄÅ¡’â±•åÅŸΩ•êÅΩµ¡±ï—ï1Ö—ï»†§(ÄÄÄÅÏ(ÄÄÄÄÄÄÄÅ]…•—ïYÖ±•ë5¿–°}¡Ö—†§Ï(ÄÄÄÄÄÄÄÅΩµ¡±ï—ïê¸π%πŸΩ≠î†(ÄÄÄÄÄÄÄÄÄÄÄÅ—°•Ã∞(ÄÄÄÄÄÄÄÄÄÄÄÅπï‹ÅIïçΩ…ë•πùΩµ¡±ï—ïŸïπ—…ùÃ°}¡Ö—†∞Åπï‹Å1•Õ–Ò…ÖµïÖ—Ñ¯†§§§Ï(ÄÄÄÄÄÄÄÅ•òÄ°Mïπë’¡±•çÖ—ïÖ±±âÖç≠Ã§(ÄÄÄÄÄÄÄÅÏ(ÄÄÄÄÄÄÄÄÄÄÄÅÖ•±ïê¸π%πŸΩ≠î†(ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÅ—°•Ã∞(ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÅπï‹ÅIïçΩ…ë•πùÖ•±ïëŸïπ—…ùÃ†âçÖ±±âÖç¨Å—Ö…ë•ºà∞Å}¡Ö—†§§Ï(ÄÄÄÄÄÄÄÅÙ(ÄÄÄÅÙ((ÄÄÄÅ¡’â±•åÅŸΩ•êÅ•Õ¡ΩÕî†§(ÄÄÄÅÏ(ÄÄÄÄÄÄÄÅ9Ö—•ŸïÖ±∞††§ÄÙ¯Å%π—ï…±Ωç≠ïêπ%πç…ïµïπ–°…ïòÅ}ë•Õ¡ΩÕïÖ±±Ã§§Ï(ÄÄÄÅÙ((ÄÄÄÅ¡…•ŸÖ—îÅŸΩ•êÅ9Ö—•ŸïÖ±∞°ç—•Ω∏ÅÖç—•Ω∏§(ÄÄÄÅÏ(ÄÄÄÄÄÄÄÅŸÖ»ÅçΩπç’……ïπ–ÄÙÅ%π—ï…±Ωç≠ïêπ%πç…ïµïπ–°…ïòÅ}Öç—•ŸïÖ±±Ã§Ï(ÄÄÄÄÄÄÄÅU¡ëÖ—ï5Ö·•µ’¥°çΩπç’……ïπ–§Ï(ÄÄÄÄÄÄÄÅ—…‰(ÄÄÄÄÄÄÄÅÏ(ÄÄÄÄÄÄÄÄÄÄÄÅQ°…ïÖêπM±ïï¿†ƒ‘§Ï(ÄÄÄÄÄÄÄÄÄÄÄÅÖç—•Ω∏†§Ï(ÄÄÄÄÄÄÄÅÙ(ÄÄÄÄÄÄÄÅô•πÖ±±‰(ÄÄÄÄÄÄÄÅÏ(ÄÄÄÄÄÄÄÄÄÄÄÅ%π—ï…±Ωç≠ïêπïç…ïµïπ–°…ïòÅ}Öç—•ŸïÖ±±Ã§Ï(ÄÄÄÄÄÄÄÅÙ(ÄÄÄÅÙ((ÄÄÄÅ¡…•ŸÖ—îÅŸΩ•êÅU¡ëÖ—ï5Ö·•µ’¥°•π–ÅŸÖ±’î§(ÄÄÄÅÏ(ÄÄÄÄÄÄÄÅ›°•±îÄ°—…’î§(ÄÄÄÄÄÄÄÅÏ(ÄÄÄÄÄÄÄÄÄÄÄÅŸÖ»Åç’……ïπ–ÄÙÅYΩ±Ö—•±îπIïÖê°…ïòÅ}µÖ·•µ’µΩπç’……ïπ—Ö±±Ã§Ï(ÄÄÄÄÄÄÄÄÄÄÄÅ•òÄ°ç’……ïπ–Ä¯ÙÅŸÖ±’îÅÒ(ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÅ%π—ï…±Ωç≠ïêπΩµ¡Ö…ï·ç°Öπùî°…ïòÅ}µÖ·•µ’µΩπç’……ïπ—Ö±±Ã∞ÅŸÖ±’î∞Åç’……ïπ–§ÄÙÙÅç’……ïπ–§(ÄÄÄÄÄÄÄÄÄÄÄÅÏ(ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÅ…ï—’…∏Ï(ÄÄÄÄÄÄÄÄÄÄÄÅÙ(ÄÄÄÄÄÄÄÅÙ(ÄÄÄÅÙ((ÄÄÄÅ¡…•ŸÖ—îÅÕ—Ö—•åÅŸΩ•êÅ]…•—ïYÖ±•ë5¿–°Õ—…•πúÅ¡Ö—†§ÄÙ¯Å•±îπ]…•—ï±±	Â—ïÃ†(ÄÄÄÄÄÄÄÅ¡Ö—†∞(ÄÄÄÄÄÄÄÅl(ÄÄÄÄÄÄÄÄÄÄÄÄ¿∞Ä¿∞Ä¿∞Äƒ»∞Ä°âÂ—î§ùòú∞Ä°âÂ—î§ù–ú∞Ä°âÂ—î§ù‰ú∞Ä°âÂ—î§ù¿ú∞Ä¿∞Ä¿∞Ä¿∞Ä¿∞(ÄÄÄÄÄÄÄÄÄÄÄÄ¿∞Ä¿∞Ä¿∞Äƒ»∞Ä°âÂ—î§ù¥ú∞Ä°âÂ—î§ùêú∞Ä°âÂ—î§ùÑú∞Ä°âÂ—î§ù–ú∞Äƒ∞Ä»∞ÄÃ∞Ä–∞(ÄÄÄÄÄÄÄÄÄÄÄÄ¿∞Ä¿∞Ä¿∞Ä‡∞Ä°âÂ—î§ù¥ú∞Ä°âÂ—î§ùºú∞Ä°âÂ—î§ùºú∞Ä°âÂ—î§ùÿú(ÄÄÄÄÄÄÄÅt§Ï)Ù(
+            $"preset MP4 {preset.Name} aplica os valores descritos");
+    }
+
+    using (var paletteBitmap = new System.Drawing.Bitmap(8, 8))
+    {
+        var paletteSource = GifRecordingService.ToBitmapSource(paletteBitmap);
+        foreach (var preset in RecordingPresetCatalog.GifQuality)
+        {
+            var quantized = GifRecordingService.Quantize(paletteSource, preset.Value);
+            Require(
+                quantized.Palette?.Colors.Count == preset.Value &&
+                preset.Description.Contains(preset.Value.ToString(), StringComparison.Ordinal),
+                $"preset GIF {preset.Name} aplica a paleta descrita");
+        }
+    }
+
+    var fakeFactory = new FakeRecorderBackendFactory();
+    using (var lifecycle = new ScreenRecordingService(fakeFactory, TimeSpan.FromSeconds(1)))
+    {
+        var lifecycleTask = lifecycle.StartAsync(
+            new RecordingTarget(
+                RecordingTargetKind.Window,
+                new System.Drawing.Rectangle(0, 0, 640, 480),
+                new IntPtr(1)),
+            new CaptureSettings
+            {
+                OutputDirectoryTemplate = root,
+                FileNameTemplate = "lifecycle"
+            },
+            new RecordingSettings { VideoFps = 30 });
+        Require(fakeFactory.Backend.RecordCalled.Wait(TimeSpan.FromSeconds(2)), "MP4 inicia backend");
+        await WaitUntilAsync(
+            () => lifecycle.State == ScreenRecordingState.Recording,
+            "estado Recording");
+        await Task.Delay(100);
+        Require(lifecycle.Elapsed >= TimeSpan.FromMilliseconds(60), "contador MP4 avan√ßa");
+        lifecycle.Pause();
+        await WaitUntilAsync(
+            () => lifecycle.State == ScreenRecordingState.Paused,
+            "estado Paused");
+        var pausedElapsed = lifecycle.Elapsed;
+        await Task.Delay(80);
+        Require(
+            lifecycle.Elapsed - pausedElapsed < TimeSpan.FromMilliseconds(30),
+            "contador MP4 n√£o inclui tempo pausado");
+        lifecycle.Resume();
+        await WaitUntilAsync(
+            () => lifecycle.State == ScreenRecordingState.Recording,
+            "retorno ao estado Recording");
+        await Task.Delay(80);
+        Require(lifecycle.Elapsed > pausedElapsed, "contador MP4 retoma do acumulado");
+        lifecycle.Stop();
+        var stoppedElapsed = lifecycle.Elapsed;
+        var lifecyclePath = await lifecycleTask.WaitAsync(TimeSpan.FromSeconds(3));
+        Require(File.Exists(lifecyclePath), "MP4 finaliza e publica arquivo");
+        Require(lifecycle.State == ScreenRecordingState.Completed, "estado Completed");
+        Require(fakeFactory.Backend.DisposeCalls == 1, "Recorder descartado uma √∫nica vez");
+        Require(fakeFactory.Backend.MaximumConcurrentCalls == 1, "chamadas nativas serializadas");
+        Require(
+            lifecycle.Elapsed - stoppedElapsed < TimeSpan.FromMilliseconds(30),
+            "contador MP4 para no pedido de finaliza√ß√£o");
+    }
+
+    var duplicateFactory = new FakeRecorderBackendFactory { SendDuplicateCallbacks = true };
+    using (var lifecycle = new ScreenRecordingService(duplicateFactory, TimeSpan.FromSeconds(1)))
+    {
+        var task = lifecycle.StartAsync(
+            new RecordingTarget(
+                RecordingTargetKind.Window,
+                new System.Drawing.Rectangle(0, 0, 320, 240),
+                new IntPtr(1)),
+            new CaptureSettings
+            {
+                OutputDirectoryTemplate = root,
+                FileNameTemplate = "duplicate-callback"
+            },
+            new RecordingSettings());
+        Require(duplicateFactory.Backend.RecordCalled.Wait(TimeSpan.FromSeconds(2)), "backend para callback duplicado");
+        lifecycle.Stop();
+        lifecycle.Stop();
+        await task.WaitAsync(TimeSpan.FromSeconds(3));
+        Require(duplicateFactory.Backend.DisposeCalls == 1, "callback duplicado n√£o duplica descarte");
+        Require(duplicateFactory.Backend.StopCalls == 1, "dois cliques em finalizar chamam Stop uma vez");
+    }
+
+    var failureFactory = new FakeRecorderBackendFactory { FailOnStop = true };
+    using (var lifecycle = new ScreenRecordingService(failureFactory, TimeSpan.FromSeconds(1)))
+    {
+        var task = lifecycle.StartAsync(
+            new RecordingTarget(RecordingTargetKind.Window,
+                new System.Drawing.Rectangle(0, 0, 320, 240), new IntPtr(1)),
+            new CaptureSettings { OutputDirectoryTemplate = root, FileNameTemplate = "failed-callback" },
+            new RecordingSettings());
+        Require(failureFactory.Backend.RecordCalled.Wait(TimeSpan.FromSeconds(2)), "backend para callback de falha");
+        lifecycle.Stop();
+        await RequireThrowsAsync<InvalidOperationException>(() => task, "callback de falha conclui task");
+        Require(lifecycle.State == ScreenRecordingState.Failed, "callback de falha restaura estado terminal");
+        Require(failureFactory.Backend.DisposeCalls == 1, "falha descarta Recorder uma vez");
+    }
+
+    var delayedFactory = new FakeRecorderBackendFactory { CallbackDelayMs = 120 };
+    using (var lifecycle = new ScreenRecordingService(delayedFactory, TimeSpan.FromSeconds(1)))
+    {
+        var task = lifecycle.StartAsync(
+            new RecordingTarget(RecordingTargetKind.Window,
+                new System.Drawing.Rectangle(0, 0, 320, 240), new IntPtr(1)),
+            new CaptureSettings { OutputDirectoryTemplate = root, FileNameTemplate = "delayed-callback" },
+            new RecordingSettings());
+        Require(delayedFactory.Backend.RecordCalled.Wait(TimeSpan.FromSeconds(2)), "backend para callback atrasado");
+        lifecycle.Stop();
+        await task.WaitAsync(TimeSpan.FromSeconds(3));
+        Require(delayedFactory.Backend.DisposeCalls == 1, "callback atrasado finaliza uma vez");
+    }
+
+    var blockingFactory = new FakeRecorderBackendFactory { BlockStop = true };
+    using (var lifecycle = new ScreenRecordingService(blockingFactory, TimeSpan.FromSeconds(2)))
+    {
+        var task = lifecycle.StartAsync(
+            new RecordingTarget(RecordingTargetKind.Window,
+                new System.Drawing.Rectangle(0, 0, 320, 240), new IntPtr(1)),
+            new CaptureSettings { OutputDirectoryTemplate = root, FileNameTemplate = "closing-finalization" },
+            new RecordingSettings());
+        Require(blockingFactory.Backend.RecordCalled.Wait(TimeSpan.FromSeconds(2)), "backend para Stop bloqueante");
+        var uiClock = Stopwatch.StartNew();
+        lifecycle.Stop();
+        lifecycle.Dispose();
+        Require(uiClock.Elapsed < TimeSpan.FromMilliseconds(100), "Stop e Dispose n√£o bloqueiam a UI");
+        Require(blockingFactory.Backend.StopEntered.Wait(TimeSpan.FromSeconds(2)), "Stop nativo entrou");
+        blockingFactory.Backend.ReleaseStop();
+        await task.WaitAsync(TimeSpan.FromSeconds(3));
+        Require(blockingFactory.Backend.DisposeCalls == 1, "fechamento durante finaliza√ß√£o descarta uma vez");
+    }
+
+    var timeoutFactory = new FakeRecorderBackendFactory { CompleteOnStop = false };
+    using (var lifecycle = new ScreenRecordingService(timeoutFactory, TimeSpan.FromMilliseconds(80)))
+    {
+        var task = lifecycle.StartAsync(
+            new RecordingTarget(
+                RecordingTargetKind.Window,
+                new System.Drawing.Rectangle(0, 0, 320, 240),
+                new IntPtr(1)),
+            new CaptureSettings
+            {
+                OutputDirectoryTemplate = root,
+                FileNameTemplate = "late-callback"
+            },
+            new RecordingSettings());
+        Require(timeoutFactory.Backend.RecordCalled.Wait(TimeSpan.FromSeconds(2)), "backend para timeout");
+        lifecycle.Stop();
+        await RequireThrowsAsync<TimeoutException>(() => task, "timeout nativo controlado");
+        Require(timeoutFactory.Backend.DisposeCalls == 0, "timeout n√£o descarta Recorder durante callback nativo");
+        timeoutFactory.Backend.CompleteLater();
+        await WaitUntilAsync(
+            () => lifecycle.State == ScreenRecordingState.Failed,
+            "callback tardio conclui limpeza");
+        Require(timeoutFactory.Backend.DisposeCalls == 1, "callback tardio executa descarte √∫nico");
+    }
+
+    var callerThread = 0;
+    var gifCaptureThreads = new System.Collections.Concurrent.ConcurrentBag<int>();
+    var pipeline = new GifRecordingService((_, _) =>
+    {
+        gifCaptureThreads.Add(Environment.CurrentManagedThreadId);
+        var bitmap = new System.Drawing.Bitmap(16, 12);
+        using var graphics = System.Drawing.Graphics.FromImage(bitmap);
+        graphics.Clear(System.Drawing.Color.CornflowerBlue);
+        return bitmap;
+    });
+    GifRecordingResult? pipelineResult = null;
+    Exception? pipelineFailure = null;
+    var caller = new Thread(() =>
+    {
+        callerThread = Environment.CurrentManagedThreadId;
+        try
+        {
+            pipelineResult = pipeline.CaptureAsync(
+                new System.Drawing.Rectangle(0, 0, 16, 12),
+                new RecordingSettings
+                {
+                    GifFps = 10,
+                    GifDurationSeconds = 1,
+                    GifWidth = 240,
+                    GifQuality = 128
+                }).GetAwaiter().GetResult();
+        }
+        catch (Exception exception)
+        {
+            pipelineFailure = exception;
+        }
+    });
+    caller.Start();
+    caller.Join();
+    if (pipelineFailure is not null)
+    {
+        throw new InvalidOperationException("Pipeline GIF falhou.", pipelineFailure);
+    }
+
+    using (pipelineResult ?? throw new InvalidOperationException("Pipeline GIF sem resultado."))
+    {
+        Require(
+            pipelineResult.Metrics is
+            {
+                RequestedFps: 10,
+                CapturedFrames: >= 8,
+                StoredFrames: 1
+            } metrics &&
+            metrics.ProcessedFrames == metrics.CapturedFrames &&
+            metrics.EffectiveCapturedFps > 0 &&
+            metrics.DuplicateFrames == metrics.CapturedFrames - 1,
+            "pipeline GIF descarta quadro id√™ntico preservando dura√ß√£o");
+        Require(
+            pipelineResult.Duration >= TimeSpan.FromMilliseconds(900) &&
+            pipelineResult.Duration <= TimeSpan.FromMilliseconds(1100),
+            "deduplica√ß√£o GIF preserva o tempo monot√¥nico da sess√£o");
+        Require(
+            gifCaptureThreads.All(thread => thread != callerThread),
+            "captura e redimensionamento GIF fora da UI thread");
+    }
+
+    foreach (var fpsPreset in RecordingPresetCatalog.GifFps)
+    {
+        using var session = pipeline.StartRecording(
+            new System.Drawing.Rectangle(0, 0, 16, 12),
+            new RecordingSettings { GifFps = fpsPreset.Value, GifQuality = 128 });
+        IRecordingController counter = session;
+        Require(counter.Elapsed < TimeSpan.FromMilliseconds(80),
+            $"contador GIF inicia em zero a {fpsPreset.Value} FPS");
+        await Task.Delay(120);
+        Require(counter.Elapsed >= TimeSpan.FromMilliseconds(70),
+            $"contador GIF avan√ßa a {fpsPreset.Value} FPS");
+        counter.Pause();
+        var gifPausedAt = counter.Elapsed;
+        await Task.Delay(80);
+        Require(counter.Elapsed - gifPausedAt < TimeSpan.FromMilliseconds(30),
+            $"contador GIF pausa a {fpsPreset.Value} FPS");
+        counter.Resume();
+        await Task.Delay(80);
+        Require(counter.Elapsed > gifPausedAt,
+            $"contador GIF retoma a {fpsPreset.Value} FPS");
+        counter.Stop();
+        var gifStoppedAt = counter.Elapsed;
+        using var presetResult = await session.Completion.WaitAsync(TimeSpan.FromSeconds(3));
+        Require(presetResult.Fps == fpsPreset.Value,
+            $"pipeline mant√É¬©m preset de {fpsPreset.Value} FPS");
+        Require(counter.Elapsed - gifStoppedAt < TimeSpan.FromMilliseconds(30),
+            $"contador GIF para ao finalizar a {fpsPreset.Value} FPS");
+        Require(GifRecordingService.QueueCapacity == 2,
+            $"fila GIF limitada no preset de {fpsPreset.Value} FPS");
+    }
+
+    Require(
+        AppPaths.DataDirectory.Equals(
+            Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "SlashDesk"),
+            StringComparison.OrdinalIgnoreCase) &&
+        !AppPaths.DataDirectory.StartsWith(AppPaths.BaseDirectory + Path.DirectorySeparatorChar,
+            StringComparison.OrdinalIgnoreCase),
+        "dados permanentes ficam fora da pasta do execut√°vel em %LocalAppData%\\SlashDesk");
+
+    using (var frame1 = new System.Drawing.Bitmap(4, 4))
+    using (var frame2 = new System.Drawing.Bitmap(4, 4))
+    {
+        frame1.SetPixel(0, 0, System.Drawing.Color.Red);
+        frame2.SetPixel(0, 0, System.Drawing.Color.Blue);
+        using var gifRecording = new GifRecordingResult(
+            [frame1.Clone() as System.Drawing.Bitmap ?? throw new InvalidOperationException(),
+             frame2.Clone() as System.Drawing.Bitmap ?? throw new InvalidOperationException()],
+            10,
+            new System.Drawing.Rectangle(0, 0, 4, 4));
+        var gifPath = new GifRecordingService().Save(
+            gifRecording,
+            new CaptureSettings
+            {
+                OutputDirectoryTemplate = root,
+                FileNameTemplate = "animated"
+            },
+            "gif");
+        var gifBytes = await File.ReadAllBytesAsync(gifPath);
+        Require(
+            System.Text.Encoding.ASCII.GetString(gifBytes).Contains(
+                "NETSCAPE2.0",
+                StringComparison.Ordinal),
+            "GIF inclui extens√£o de repeti√ß√£o NETSCAPE");
+        using var gifStream = File.OpenRead(gifPath);
+        var decoder = new System.Windows.Media.Imaging.GifBitmapDecoder(
+            gifStream,
+            System.Windows.Media.Imaging.BitmapCreateOptions.PreservePixelFormat,
+            System.Windows.Media.Imaging.BitmapCacheOption.OnLoad);
+        Require(decoder.Frames.Count == 2, "GIF preserva todos os quadros");
+    }
+    Require(
+        GlobalCaptureShortcutService.IsValid("Ctrl+Shift+PrintScreen"),
+        "atalho de captura pelo teclado");
+    Require(
+        GlobalCaptureShortcutService.IsValid("Ctrl+Shift+WheelUp"),
+        "atalho de captura pela roda do mouse");
+    Require(
+        !GlobalCaptureShortcutService.IsValid("WheelUp"),
+        "roda do mouse exige modificador");
+    Require(
+        GlobalCaptureShortcutService.FormatKeyboardShortcut(
+            System.Windows.Input.Key.F10,
+            System.Windows.Input.ModifierKeys.None) == "F10",
+        "grava tecla de fun√ß√£o sem digita√ß√£o manual");
+    Require(
+        GlobalCaptureShortcutService.FormatKeyboardShortcut(
+            System.Windows.Input.Key.Snapshot,
+            System.Windows.Input.ModifierKeys.None) == "PrintScreen" &&
+        GlobalCaptureShortcutService.IsValid("Print") &&
+        GlobalCaptureShortcutService.IsValid("PrtSc") &&
+        GlobalCaptureShortcutService.IsValid("Snapshot"),
+        "grava Print Screen no pressionamento ou na libera√ß√£o");
+    Require(
+        GlobalCaptureShortcutService.FormatWheelShortcut(
+            120,
+            System.Windows.Input.ModifierKeys.Control |
+            System.Windows.Input.ModifierKeys.Shift) ==
+            "Ctrl+Shift+WheelUp",
+        "grava combina√ß√£o com roda do mouse");
+    Require(
+        GlobalCaptureShortcutService.FormatMouseShortcut(
+            System.Windows.Input.MouseButton.XButton1,
+            System.Windows.Input.ModifierKeys.Alt) ==
+            "Alt+MouseX1",
+        "grava bot√£o lateral do mouse");
+    Require(
+        GlobalCaptureShortcutService.IsValid("MouseX2") &&
+        GlobalCaptureShortcutService.IsValid("Ctrl+MouseMiddle"),
+        "bot√µes do mouse s√£o atalhos v√°lidos");
+    Require(
+        !GlobalCaptureShortcutService.IsValid("MouseLeft") &&
+        !GlobalCaptureShortcutService.IsValid("MouseRight"),
+        "cliques essenciais do mouse permanecem livres");
+
+    using (var source = new System.Drawing.Bitmap(120, 90))
+    {
+        using (var graphics = System.Drawing.Graphics.FromImage(source))
+        {
+            graphics.Clear(System.Drawing.Color.White);
+        }
+
+        var annotationScenarios = new[]
+        {
+            new CaptureAnnotation
+            {
+                Kind = CaptureAnnotationKind.Arrow,
+                Start = new System.Windows.Point(10, 10),
+                End = new System.Windows.Point(90, 60)
+            },
+            new CaptureAnnotation
+            {
+                Kind = CaptureAnnotationKind.Highlighter,
+                Start = new System.Windows.Point(8, 45),
+                End = new System.Windows.Point(100, 45),
+                Argb = System.Drawing.Color.Gold.ToArgb()
+            },
+            new CaptureAnnotation
+            {
+                Kind = CaptureAnnotationKind.Rectangle,
+                Start = new System.Windows.Point(15, 15),
+                End = new System.Windows.Point(80, 65)
+            },
+            new CaptureAnnotation
+            {
+                Kind = CaptureAnnotationKind.Ellipse,
+                Start = new System.Windows.Point(20, 15),
+                End = new System.Windows.Point(85, 70)
+            },
+            new CaptureAnnotation
+            {
+                Kind = CaptureAnnotationKind.Pencil,
+                Points =
+                [
+                    new System.Windows.Point(5, 5),
+                    new System.Windows.Point(40, 30),
+                    new System.Windows.Point(75, 12)
+                ]
+            },
+            new CaptureAnnotation
+            {
+                Kind = CaptureAnnotationKind.Text,
+                Start = new System.Windows.Point(10, 20),
+                Text = "Teste"
+            },
+            new CaptureAnnotation
+            {
+                Kind = CaptureAnnotationKind.Number,
+                Start = new System.Windows.Point(55, 42),
+                Text = "1"
+            }
+        };
+
+        foreach (var annotation in annotationScenarios)
+        {
+            using var renderedCapture = CaptureAnnotationRenderer.Render(
+                source,
+                [annotation],
+                120,
+                90);
+            Require(
+                HasChangedPixel(renderedCapture),
+                $"renderiza ferramenta {annotation.Kind}");
+        }
+    }
+
+    var noCallbackFactory = new FakeRecorderBackendFactory { CompleteOnStop = false };
+    using (var lifecycle = new ScreenRecordingService(
+               noCallbackFactory,
+               TimeSpan.FromMilliseconds(60)))
+    {
+        var task = lifecycle.StartAsync(
+            new RecordingTarget(RecordingTargetKind.Window,
+                new System.Drawing.Rectangle(0, 0, 320, 240), new IntPtr(1)),
+            new CaptureSettings { OutputDirectoryTemplate = root, FileNameTemplate = "no-callback" },
+            new RecordingSettings());
+        Require(noCallbackFactory.Backend.RecordCalled.Wait(TimeSpan.FromSeconds(2)),
+            "backend para timeout sem callback");
+        lifecycle.Stop();
+        await RequireThrowsAsync<TimeoutException>(() => task, "timeout real sem callback");
+        var disposeClock = Stopwatch.StartNew();
+        lifecycle.Dispose();
+        Require(disposeClock.Elapsed < TimeSpan.FromMilliseconds(100),
+            "Dispose ap√≥s timeout n√£o bloqueia UI");
+        Require(noCallbackFactory.Backend.DisposeCalls == 0,
+            "timeout sem callback n√£o concorre Dispose com c√≥digo nativo");
+        Require(lifecycle.State == ScreenRecordingState.Failed,
+            "timeout sem callback encerra estado Finalizando");
+    }
+}
+finally
+{
+    if (Directory.Exists(root))
+    {
+        Directory.Delete(root, true);
+    }
+}
+
+Console.WriteLine("SlashText smoke tests: OK");
+return;
+
+static bool HasChangedPixel(System.Drawing.Bitmap bitmap)
+{
+    for (var y = 0; y < bitmap.Height; y += 2)
+    {
+        for (var x = 0; x < bitmap.Width; x += 2)
+        {
+            if (bitmap.GetPixel(x, y).ToArgb() !=
+                System.Drawing.Color.White.ToArgb())
+            {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+static void Require(bool condition, string scenario)
+{
+    if (!condition)
+    {
+        throw new InvalidOperationException($"Falha no cen√°rio: {scenario}");
+    }
+}
+
+static void RequireThrows<TException>(Action action, string scenario)
+    where TException : Exception
+{
+    try
+    {
+        action();
+    }
+    catch (TException)
+    {
+        return;
+    }
+
+    throw new InvalidOperationException($"Falha no smoke test: {scenario}");
+}
+
+static async Task WaitUntilAsync(Func<bool> condition, string scenario)
+{
+    var timeout = Stopwatch.StartNew();
+    while (!condition())
+    {
+        if (timeout.Elapsed > TimeSpan.FromSeconds(2))
+        {
+            throw new InvalidOperationException($"Timeout no cen√°rio: {scenario}");
+        }
+        await Task.Delay(10);
+    }
+}
+
+static async Task RequireThrowsAsync<TException>(Func<Task> action, string scenario)
+    where TException : Exception
+{
+    try
+    {
+        await action();
+    }
+    catch (TException)
+    {
+        return;
+    }
+    throw new InvalidOperationException($"Falha no smoke test: {scenario}");
+}
+
+static Task WriteValidMp4Async(string path) => File.WriteAllBytesAsync(
+    path,
+    [
+        0, 0, 0, 12, (byte)'f', (byte)'t', (byte)'y', (byte)'p', 0, 0, 0, 0,
+        0, 0, 0, 12, (byte)'m', (byte)'d', (byte)'a', (byte)'t', 1, 2, 3, 4,
+        0, 0, 0, 8, (byte)'m', (byte)'o', (byte)'o', (byte)'v'
+    ]);
+
+sealed class FakeRecorderBackendFactory : IScreenRecorderBackendFactory
+{
+    public FakeRecorderBackend Backend { get; } = new();
+    public bool SendDuplicateCallbacks
+    {
+        get => Backend.SendDuplicateCallbacks;
+        init => Backend.SendDuplicateCallbacks = value;
+    }
+    public bool CompleteOnStop
+    {
+        get => Backend.CompleteOnStop;
+        init => Backend.CompleteOnStop = value;
+    }
+    public bool FailOnStop
+    {
+        get => Backend.FailOnStop;
+        init => Backend.FailOnStop = value;
+    }
+    public int CallbackDelayMs
+    {
+        get => Backend.CallbackDelayMs;
+        init => Backend.CallbackDelayMs = value;
+    }
+    public bool BlockStop
+    {
+        get => Backend.BlockStop;
+        init => Backend.BlockStop = value;
+    }
+
+    public IScreenRecorderBackend Create(RecorderOptions options) => Backend;
+}
+
+sealed class FakeRecorderBackend : IScreenRecorderBackend
+{
+    private int _activeCalls;
+    private int _maximumConcurrentCalls;
+    private int _disposeCalls;
+    private int _stopCalls;
+    private string _path = string.Empty;
+    private readonly ManualResetEventSlim _stopRelease = new(false);
+
+    public event EventHandler<RecordingCompleteEventArgs>? Completed;
+    public event EventHandler<RecordingFailedEventArgs>? Failed;
+    public event EventHandler<RecordingStatusEventArgs>? StatusChanged;
+    public ManualResetEventSlim RecordCalled { get; } = new(false);
+    public ManualResetEventSlim StopEntered { get; } = new(false);
+    public bool SendDuplicateCallbacks { get; set; }
+    public bool CompleteOnStop { get; set; } = true;
+    public bool FailOnStop { get; set; }
+    public int CallbackDelayMs { get; set; }
+    public bool BlockStop { get; set; }
+    public int DisposeCalls => Volatile.Read(ref _disposeCalls);
+    public int StopCalls => Volatile.Read(ref _stopCalls);
+    public int MaximumConcurrentCalls => Volatile.Read(ref _maximumConcurrentCalls);
+
+    public void Record(string path)
+    {
+        NativeCall(() =>
+        {
+            _path = path;
+            RecordCalled.Set();
+            StatusChanged?.Invoke(this, new RecordingStatusEventArgs(RecorderStatus.Recording));
+        });
+    }
+
+    public void Pause() => NativeCall(() =>
+        StatusChanged?.Invoke(this, new RecordingStatusEventArgs(RecorderStatus.Paused)));
+
+    public void Resume() => NativeCall(() =>
+        StatusChanged?.Invoke(this, new RecordingStatusEventArgs(RecorderStatus.Recording)));
+
+    public void Stop()
+    {
+        NativeCall(() =>
+        {
+            Interlocked.Increment(ref _stopCalls);
+            StopEntered.Set();
+            if (BlockStop)
+            {
+                _stopRelease.Wait(TimeSpan.FromSeconds(3));
+            }
+            if (FailOnStop)
+            {
+                Failed?.Invoke(this, new RecordingFailedEventArgs("falha simulada", _path));
+                return;
+            }
+            if (CompleteOnStop)
+            {
+                if (CallbackDelayMs > 0)
+                {
+                    _ = Task.Run(async () =>
+                    {
+                        await Task.Delay(CallbackDelayMs);
+                        CompleteLater();
+                    });
+                }
+                else
+                {
+                    CompleteLater();
+                }
+            }
+        });
+    }
+
+    public void ReleaseStop() => _stopRelease.Set();
+
+    public void CompleteLater()
+    {
+        WriteValidMp4(_path);
+        Completed?.Invoke(
+            this,
+            new RecordingCompleteEventArgs(_path, new List<FrameData>()));
+        if (SendDuplicateCallbacks)
+        {
+            Failed?.Invoke(
+                this,
+                new RecordingFailedEventArgs("callback tardio", _path));
+        }
+    }
+
+    public void Dispose()
+    {
+        NativeCall(() => Interlocked.Increment(ref _disposeCalls));
+    }
+
+    private void NativeCall(Action action)
+    {
+        var concurrent = Interlocked.Increment(ref _activeCalls);
+        UpdateMaximum(concurrent);
+        try
+        {
+            Thread.Sleep(15);
+            action();
+        }
+        finally
+        {
+            Interlocked.Decrement(ref _activeCalls);
+        }
+    }
+
+    private void UpdateMaximum(int value)
+    {
+        while (true)
+        {
+            var current = Volatile.Read(ref _maximumConcurrentCalls);
+            if (current >= value ||
+                Interlocked.CompareExchange(ref _maximumConcurrentCalls, value, current) == current)
+            {
+                return;
+            }
+        }
+    }
+
+    private static void WriteValidMp4(string path) => File.WriteAllBytes(
+        path,
+        [
+            0, 0, 0, 12, (byte)'f', (byte)'t', (byte)'y', (byte)'p', 0, 0, 0, 0,
+            0, 0, 0, 12, (byte)'m', (byte)'d', (byte)'a', (byte)'t', 1, 2, 3, 4,
+            0, 0, 0, 8, (byte)'m', (byte)'o', (byte)'o', (byte)'v'
+        ]);
+}
