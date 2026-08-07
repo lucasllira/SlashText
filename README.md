@@ -64,15 +64,16 @@ capturas, estatísticas ou identificadores pessoais.
 
 ## Arquivos portáteis
 
-O pacote contém apenas:
+O ZIP portátil contém apenas:
 
 ```text
 SlashDesk.exe
-SlashDeskData/
-└── snippets.md
 ```
 
-Durante o uso, a pasta `SlashDeskData` também pode conter:
+O runtime self-contained e os componentes nativos são incorporados ao executável.
+Quando necessário, o .NET os extrai no cache interno de bundle em `%TEMP%\.net`;
+nada é criado ao lado do executável. Os dados permanentes ficam em
+`%LocalAppData%\SlashDesk`:
 
 - `settings.json`: preferências;
 - `usage.json`: contadores locais;
@@ -81,8 +82,15 @@ Durante o uso, a pasta `SlashDeskData` também pode conter:
 - `backups/`: um ZIP por dia ou sob demanda, com restauração e retenção das sete
   cópias mais recentes.
 
-A atualização migra automaticamente `SlashTextData` para `SlashDeskData`, com
-prioridade para os dados reais do usuário.
+A atualização migra automaticamente `SlashDeskData`, `SlashTextData` e arquivos
+legados ao lado do executável para `%LocalAppData%\SlashDesk`, com prioridade
+para os dados reais do usuário.
+
+A publicação instalada usa o perfil `Installed` e gera a pasta self-contained
+que será consumida pelo instalador. A publicação portátil usa o perfil `Portable`
+e gera um único executável self-contained `win-x64`. A edição portátil apenas
+avisa quando há uma versão nova e direciona para o download; ela nunca tenta
+sobrescrever o executável enquanto está em uso.
 
 ## Variáveis de texto
 

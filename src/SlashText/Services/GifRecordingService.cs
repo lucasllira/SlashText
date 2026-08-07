@@ -89,6 +89,7 @@ public sealed class GifRecordingService
         long queueWaitTicks = 0;
         long temporaryBytes = 0;
         var capturedFrames = 0;
+        var processedFrames = 0;
         var duplicateFrames = 0;
         var droppedFrames = 0;
 
@@ -96,7 +97,7 @@ public sealed class GifRecordingService
             recordingId,
             ("width", bounds.Width),
             ("height", bounds.Height),
-            ("fps", settings.GifFps),
+            ("requestedFps", settings.GifFps),
             ("qualityColors", settings.GifQuality),
             ("queueCapacity", QueueCapacity),
             ("maximumStoredFrames", MaximumStoredFrames),
@@ -178,6 +179,7 @@ public sealed class GifRecordingService
                 await foreach (var captured in channel.Reader.ReadAllAsync(pipelineFailure.Token)
                                    .ConfigureAwait(false))
                 {
+                    processedFrames++;
                     using (captured.Bitmap)
                     {
                         if (IsDuplicate(captured.Bitmap, ref previousPixels, ref previousLength))
@@ -232,6 +234,7 @@ public sealed class GifRecordingService
                     "A gravação foi finalizada antes de produzir um quadro GIF.");
             }
             delays[^1] = DelayBetween(lastStoredAt.Value, session.Elapsed);
+            var activeSeconds = Math.Max(session.Elapsed.TotalSeconds, 0.001);
             var metrics = new GifCaptureMetrics(
                 capturedFrames,
                 framePaths.Count,
@@ -240,10 +243,16 @@ public sealed class GifRecordingService
                 TicksToMilliseconds(captureTicks),
                 TicksToMilliseconds(spoolTicks),
                 TicksToMilliseconds(queueWaitTicks),
-                temporaryBytes);
+                temporaryBytes,
+                settings.GifFps,
+                capturedFrames / activeSeconds,
+                processedFrames);
             Log("gif.capture-complete",
                 recordingId,
+                ("requestedFps", metrics.RequestedFps),
+                ("effectiveCapturedFps", metrics.EffectiveCapturedFps),
                 ("capturedFrames", metrics.CapturedFrames),
+                ("processedFrames", metrics.ProcessedFrames),
                 ("storedFrames", metrics.StoredFrames),
                 ("duplicateFrames", metrics.DuplicateFrames),
                 ("droppedFrames", metrics.DroppedFrames),

@@ -105,10 +105,9 @@ internal static class RecordingPresetCatalog
 {
     public static IReadOnlyList<RecordingPreset<int>> GifFps { get; } =
     [
-        new("Econômico", 5, "5 FPS. Movimento básico; menor uso de CPU, memória e espaço temporário; indicado para demonstrações estáticas. FPS controla fluidez, não qualidade."),
-        new("Equilibrado — recomendado", 10, "10 FPS. Fluidez equilibrada; uso moderado de CPU, memória e espaço temporário; recomendado para uso geral. FPS controla fluidez, não qualidade."),
-        new("Fluido", 15, "15 FPS. Movimento mais fluido; uso e arquivo maiores; indicado para interfaces com animação. FPS controla fluidez, não qualidade."),
-        new("Muito fluido — mais pesado", 20, "20 FPS. Maior fluidez disponível; maior uso de CPU, memória, disco temporário e arquivo; use em alvos menores ou máquinas rápidas. FPS controla fluidez, não qualidade.")
+        new("Recomendado", 10, "10 FPS. Menor consumo de CPU e memória e arquivo menor; adequado para demonstrações simples. FPS controla a quantidade de quadros e a fluidez, não a qualidade."),
+        new("Equilibrado", 20, "20 FPS. Equilíbrio entre fluidez, consumo de CPU e memória e tamanho do arquivo; adequado para uso geral. FPS controla a quantidade de quadros e a fluidez, não a qualidade."),
+        new("Fluido", 30, "30 FPS. Maior fluidez, com uso de CPU e memória e tamanho de arquivo superiores; recomendado para movimento e máquinas capazes de sustentar a captura. FPS controla a quantidade de quadros e a fluidez, não a qualidade.")
     ];
 
     public static IReadOnlyList<RecordingPreset<int>> GifQuality { get; } =
@@ -127,7 +126,13 @@ internal static class RecordingPresetCatalog
         new("Muito alta", "Muito alta", "H.264 Main, controle por qualidade 95 e bitrate-alvo de 16 Mbps. Maior fidelidade e arquivo; maior carga esperada de CPU/GPU e memória do encoder. Mantém o FPS selecionado.")
     ];
 
-    public static int NormalizeGifFps(int value) => Nearest(GifFps, value).Value;
+    public static int NormalizeGifFps(int value) => value switch
+    {
+        5 => 10,
+        15 => 20,
+        60 => 30,
+        _ => Nearest(GifFps, value).Value
+    };
 
     public static int NormalizeGifQuality(int value) => Nearest(GifQuality, value).Value;
 
