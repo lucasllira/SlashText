@@ -84,16 +84,20 @@ jobs:
             throw "O executável portátil falhou no smoke test com código $($smoke.ExitCode)."
           }
           $visible = Get-ChildItem $probe -Force
-          if ($visible.Count -ne 1 -or $visible[0].Name -ne 'SlashDesk.exe') {
-            throw "A execução criou arquivos auxiliares ao lado do executável."
+          $visibleNames = $visible.Name | Sort-Object
+          if ($visible.Count -ne 2 -or
+              -not ($visibleNames -contains 'SlashDesk.exe') -or
+              -not ($visibleNames -contains 'SlashDeskData')) {
+            throw "Após iniciar, o portátil deve conter somente SlashDesk.exe e SlashDeskData."
           }
-          $dataDirectory = Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) 'SlashDesk'
+          $dataDirectory = Join-Path $probe 'SlashDeskData'
           if (-not (Test-Path (Join-Path $dataDirectory 'snippets.md'))) {
-            throw "O smoke test não criou os dados em %LocalAppData%\SlashDesk."
+            throw "O smoke test não criou os dados ao lado do executável portátil."
           }
           $hash = (Get-FileHash package/SlashDesk.exe -Algorithm SHA256).Hash.ToLowerInvariant()
           $bytes = (Get-Item package/SlashDesk.exe).Length
-          "Portable visible files: $($visible.Count)"
+          "Portable initial visible files: $($published.Count)"
+          "Portable visible entries after first run: $($visible.Count)"
           "Portable EXE bytes: $bytes"
           "Portable SHA-256: $hash"
 
