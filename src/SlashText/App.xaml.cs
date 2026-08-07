@@ -9,9 +9,28 @@ namespace SlashText;
 public partial class App : System.Windows.Application
 {
     private Mutex? _singleInstance;
+    private bool _helperMode;
 
     protected override void OnStartup(StartupEventArgs e)
     {
+        if (PortableUpdateService.TryRunHelper(e.Args, out var helperExitCode))
+        {
+            _helperMode = true;
+            Shutdown(helperExitCode);
+            return;
+        }
+        try
+        {
+            PortableUpdateService.ConfirmAndScheduleCleanup(e.Args);
+        }
+        catch
+        {
+            // Sem confirmação, o auxiliar restaura o executável anterior.
+            _helperMode = true;
+            Shutdown(13);
+            return;
+        }
+
         var dataEnvironment = AppDataEnvironment.Detect();
         AppPaths.Initialize(dataEnvironment);
         if (!EnsurePortableLocationIsWritable(dataEnvironment))
@@ -168,7 +187,10 @@ public partial class App : System.Windows.Application
 
     protected override void OnExit(ExitEventArgs e)
     {
-        AppDiagnosticLog.Write("application.exit", ("exitCode", e.ApplicationExitCode));
+        if (!_helperMode)
+        {
+            AppDiagnosticLog.Write("application.exit", ("exitCode", e.ApplicationExitCode));
+        }
         _singleInstance?.ReleaseMutex();
         _singleInstance?.Dispose();
         base.OnExit(e);
