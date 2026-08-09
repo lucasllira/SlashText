@@ -335,4 +335,1119 @@ try
 
     using (var paletteBitmap = new System.Drawing.Bitmap(8, 8))
     {
-        var paletteSource = GifRecordingSer×O8îÚ$z{-®éÜj×’b`¢v—Bf–ÆRå&VDÆÅFW‡D7–æ2‡WFFW$FF6VçF–æVÂ’ÓÒ&†—7L;7&–6ò–çF7Fò"À¢'6÷FRl:Æ–Fò:’&W&FòFVçG&òFR6Æ6„FW6´FF6VÒÇFW&"†—7L;7&–6ò"“° ¢f"&D6†V6·7VÒÒ6†V6·7VÔ'—FW2åFô'&’‚“°¢&D6†V6·7VÕ³ÒÒ&D6†V6·7VÕ³ÒÓÒ†'—FR’srò†'—FR’sr¢†'—FR’ss°¢f"–çfÆ–D6†V6·7VÕ6W'f–6RÒæWr÷'F&ÆUWFFU6W'f–6R€¢æWr‡GG6Æ–VçB†æWrf¶U6¶vT‡GG†æFÆW"‡6¶vT'—FW2Â&D6†V6·7VÒ’’À¢÷'F&ÆTW†V7WF&ÆRÀ¢7W'&VçE&ö6W74–C¢“°¢v—B&WV—&UF‡&÷w47–æ3Ä–çfÆ–DFFW†6WF–öãâ€¢‚’Óâ–çfÆ–D6†V6·7VÕ6W'f–6Rå&W&T7–æ2‡6¶vU&VÆV6R’À¢&6†V6·7VÒ–çl:Æ–Fò–×VFRGVÆ—¦:|:6ò"“° ¢f"–æ6ö×ÆWFU&VÆV6RÒ7&VFU6¶vU&VÆV6R€¢WFFW%fW'6–öâÂ6¶vTæÖRÂ6¶vT'—FW2äÆVæwF‚²Â6†V6·7VÔ'—FW2äÆVæwF‚“°¢f"–æ6ö×ÆWFU6W'f–6RÒæWr÷'F&ÆUWFFU6W'f–6R€¢æWr‡GG6Æ–VçB†æWrf¶U6¶vT‡GG†æFÆW"‡6¶vT'—FW2Â6†V6·7VÔ'—FW2’’À¢÷'F&ÆTW†V7WF&ÆRÀ¢7W'&VçE&ö6W74–C¢“°¢v—B&WV—&UF‡&÷w47–æ3ÄVæDöe7G&VÔW†6WF–öãâ€¢‚’Óâ–æ6ö×ÆWFU6W'f–6Rå&W&T7–æ2†–æ6ö×ÆWFU&VÆV6R’À¢&F÷væÆöB–æ6ö×ÆWFò–×VFRGVÆ—¦:|:6ò"“° ¢f"6öæ7W'&VçD†æFÆW"ÒæWrf¶U6¶vT‡GG†æFÆW"‡6¶vT'—FW2Â6†V6·7VÔ'—FW2¢°¢FVÆ’ÒF–ÖU7âäg&öÔÖ–ÆÆ—6V6öæG2ƒ#S¢Ó°¢f"6öæ7W'&VçE6¶vU6W'f–6RÒæWr÷'F&ÆUWFFU6W'f–6R€¢æWr‡GG6Æ–VçB†6öæ7W'&VçD†æFÆW"’Â÷'F&ÆTW†V7WF&ÆRÂ7W'&VçE&ö6W74–C¢“°¢W6–ærf"6öæ7W'&VçD6æ6VÆÆF–öâÒæWr6æ6VÆÆF–öåFö¶Vå6÷W&6R‚“°¢f"f—'7E&W&RÒ6öæ7W'&VçE6¶vU6W'f–6Rå&W&T7–æ2€¢6¶vU&VÆV6RÂ6æ6VÆÆF–öåFö¶Vã¢6öæ7W'&VçD6æ6VÆÆF–öâåFö¶Vâ“°¢v—B6öæ7W'&VçD†æFÆW"å7F'FVBåF6²åv—D7–æ2…F–ÖU7âäg&öÕ6V6öæG2ƒ"’“°¢v—B&WV—&UF‡&÷w47–æ3Ä–çfÆ–D÷W&F–öäW†6WF–öãâ€¢‚’Óâ6öæ7W'&VçE6¶vU6W'f–6Rå&W&T7–æ2‡6¶vU&VÆV6R’À¢&Fö—2VF–F÷26–×VÇL:&æV÷2FRGVÆ—¦:|:6ò<:6ò&Æ÷VVF÷2"“°¢6öæ7W'&VçD6æ6VÆÆF–öâä6æ6VÂ‚“°¢v—B&WV—&UF‡&÷w47–æ3Ä÷W&F–öä6æ6VÆVDW†6WF–öãâ€¢‚’Óâf—'7E&W&RÀ¢&fV6†ÖVçFòGW&çFRF÷væÆöB6æ6VÆ&W&:|:6ò"“°¢&WV—&R†v—Bf–ÆRå&VDÆÅFW‡D7–æ2‡WFFW$FF6VçF–æVÂ’ÓÒ&†—7L;7&–6ò–çF7Fò"À¢&6æ6VÆÖVçFòFòF÷væÆöB&W6W'f6Æ6„FW6´FF"“° ¢f"æô6ÆÆ&6´f7F÷'’ÒæWrf¶U&V6÷&FW$&6¶VæDf7F÷'’²6ö×ÆWFTöå7F÷ÒfÇ6RÓ°¢W6–ær‡f"Æ–fV7–6ÆRÒæWr67&VVå&V6÷&F–æu6W'f–6R€¢æô6ÆÆ&6´f7F÷'’À¢F–ÖU7âäg&öÔÖ–ÆÆ—6V6öæG2ƒc’’¢°¢f"F6²ÒÆ–fV7–6ÆRå7F'D7–æ2€¢æWr&V6÷&F–æuF&vWB…&V6÷&F–æuF&vWD¶–æBåv–æF÷rÀ¢æWr7—7FVÒäG&v–ærå&V7FævÆRƒÂÂ3#Â#C’ÂæWr–çEG"ƒ’’À¢æWr6GW&U6WGF–æw2²÷WGWDF—&V7F÷'•FV×ÆFRÒ&ö÷BÂf–ÆTæÖUFV×ÆFRÒ&æòÖ6ÆÆ&6²"ÒÀ¢æWr&V6÷&F–æu6WGF–æw2‚’“°¢&WV—&R†æô6ÆÆ&6´f7F÷'’ä&6¶VæBå&V6÷&D6ÆÆVBåv—B…F–ÖU7âäg&öÕ6V6öæG2ƒ"’’À¢&&6¶VæB&F–ÖV÷WB6VÒ6ÆÆ&6²"“°¢Æ–fV7–6ÆRå7F÷‚“°¢v—B&WV—&UF‡&÷w47–æ3ÅF–ÖV÷WDW†6WF–öãâ‚‚’ÓâF6²Â'F–ÖV÷WB&VÂ6VÒ6ÆÆ&6²"“°¢f"F—7÷6T6Æö6²Ò7F÷vF6‚å7F'DæWr‚“°¢Æ–fV7–6ÆRäF—7÷6R‚“°¢&WV—&R†F—7÷6T6Æö6²äVÆ6VBÂF–ÖU7âäg&öÔÖ–ÆÆ—6V6öæG2ƒ’À¢$F—7÷6R;72F–ÖV÷WBì:6ò&Æ÷VV–T’"“°¢&WV—&R†æô6ÆÆ&6´f7F÷'’ä&6¶VæBäF—7÷6T6ÆÇ2ÓÒÀ¢'F–ÖV÷WB6VÒ6ÆÆ&6²ì:6ò6öæ6÷'&RF—7÷6R6öÒ<;6F–vòæF—fò"“°¢&WV—&R†Æ–fV7–6ÆRå7FFRÓÒ67&VVå&V6÷&F–æu7FFRäf–ÆVBÀ¢'F–ÖV÷WB6VÒ6ÆÆ&6²Væ6W'&W7FFòf–æÆ—¦æFò"“°¢Ğ§Ğ¦f–æÆÇ§°¢–b„F—&V7F÷'’äW†—7G2‡&ö÷B’¢°¢F—&V7F÷'’äFVÆWFR‡&ö÷BÂG'VR“°¢Ğ§Ğ ¤6öç6öÆRåw&—FTÆ–æR‚%6Æ6…FW‡B6Öö¶RFW7G3¢ô²"“°§&WGW&ã° §7FF–2&ööÂ†46†ævVE—†VÂ…7—7FVÒäG&v–ærä&—FÖ&—FÖ§°¢f÷"‡f"’Ò²’Â&—FÖä†V–v‡C²’³Ò"¢°¢f÷"‡f"‚Ò²‚Â&—FÖåv–GFƒ²‚³Ò"¢°¢–b†&—FÖävWE—†VÂ‡‚Â’’åFô&v"‚’Ğ¢7—7FVÒäG&v–ærä6öÆ÷"åv†—FRåFô&v"‚’¢°¢&WGW&âG'VS°¢Ğ¢Ğ¢Ğ¢&WGW&âfÇ6S°§Ğ §7FF–2fö–B&WV—&R†&ööÂ6öæF—F–öâÂ7G&–ær66Væ&–ò§°¢–b‚6öæF—F–öâ¢°¢F‡&÷ræWr–çfÆ–D÷W&F–öäW†6WF–öâ‚B$fÆ†æò6Vì:&–ó¢·66Væ&–÷Ò"“°¢Ğ§Ğ §7FF–2fö–B&WV—&UF‡&÷w3ÅDW†6WF–öãâ„7F–öâ7F–öâÂ7G&–ær66Væ&–ò¢v†W&RDW†6WF–öâ¢W†6WF–öà§°¢G'¢°¢7F–öâ‚“°¢Ğ¢6F6‚…DW†6WF–öâ¢°¢&WGW&ã°¢Ğ ¢F‡&÷ræWr–çfÆ–D÷W&F–öäW†6WF–öâ‚B$fÆ†æò6Öö¶RFW7C¢·66Væ&–÷Ò"“°§Ğ §7FF–27–æ2F6²v—EVçF–Ä7–æ2„gVæ3Æ&ööÃâ6öæF—F–öâÂ7G&–ær66Væ&–ò§°¢f"F–ÖV÷WBÒ7F÷vF6‚å7F'DæWr‚“°¢v†–ÆR‚6öæF—F–öâ‚’¢°¢–b‡F–ÖV÷WBäVÆ6VBâF–ÖU7âäg&öÕ6V6öæG2ƒ"’¢°¢F‡&÷ræWr–çfÆ–D÷W&F–öäW†6WF–öâ‚B%F–ÖV÷WBæò6Vì:&–ó¢·66Væ&–÷Ò"“°¢Ğ¢v—BF6²äFVÆ’ƒ“°¢Ğ§Ğ §7FF–27–æ2F6²&WV—&UF‡&÷w47–æ3ÅDW†6WF–öãâ„gVæ3ÅF6³â7F–öâÂ7G&–ær66Væ&–ò¢v†W&RDW†6WF–öâ¢W†6WF–öà§°¢G'¢°¢v—B7F–öâ‚“°¢Ğ¢6F6‚…DW†6WF–öâ¢°¢&WGW&ã°¢Ğ¢F‡&÷ræWr–çfÆ–D÷W&F–öäW†6WF–öâ‚B$fÆ†æò6Öö¶RFW7C¢·66Væ&–÷Ò"“°§Ğ §7FF–2F6²w&—FUfÆ–D×D7–æ2‡7G&–ærF‚’Óâf–ÆRåw&—FTÆÄ'—FW47–æ2€¢F‚À¢°¢ÂÂÂ"Â†'—FR’vbrÂ†'—FR’wBrÂ†'—FR’w’rÂ†'—FR’wrÂÂÂÂÀ¢ÂÂÂ"Â†'—FR’vÒrÂ†'—FR’vBrÂ†'—FR’vrÂ†'—FR’wBrÂÂ"Â2ÂBÀ¢ÂÂÂ‚Â†'—FR’vÒrÂ†'—FR’vòrÂ†'—FR’vòrÂ†'—FR’wbp¢Ò“° §7FF–27G&–ær&VÆV6T§6öâ€¢7G&–ærfW'6–öâÀ¢&ööÂ–æ6ÇVFU7F&ÆRÒG'VRÀ¢&ööÂ–æ6ÇVFTG&gBÒfÇ6RÀ¢&ööÂ–æ6ÇVFU&W&VÆV6RÒfÇ6R§°¢f"&VÆV6W2ÒæWrÆ—7CÇ7G&–æsâ‚“°¢–b†–æ6ÇVFTG&gB¢°¢&VÆV6W2äFB…&VÆV6TVçG'’‡fW'6–öâÂG&gC¢G'VRÂ&W&VÆV6S¢fÇ6R’“°¢Ğ¢–b†–æ6ÇVFU&W&VÆV6R¢°¢&VÆV6W2äFB…&VÆV6TVçG'’‡fW'6–öâ²"×&2ã"ÂG&gC¢fÇ6RÂ&W&VÆV6S¢G'VR’“°¢Ğ¢–b†–æ6ÇVFU7F&ÆR¢°¢&VÆV6W2äFB…&VÆV6TVçG'’‡fW'6–öâÂG&gC¢fÇ6RÂ&W&VÆV6S¢fÇ6R’“°¢Ğ¢&WGW&âB%··7G&–ærä¦ö–â‚rÂrÂ&VÆV6W2—ÕÒ#°§Ğ §7FF–27G&–ær&VÆV6TVçG'’‡7G&–ærfW'6–öâÂ&ööÂG&gBÂ&ööÂ&W&VÆV6R’ÓâBB"" ¢°¢'FuöæÖR#¢'g··fW'6–öç×Ò"À¢&æÖR#¢%6Æ6„FW6²··fW'6–öç×Ò"À¢&&öG’#¢$æ÷F2··fW'6–öç×Ò"À¢&‡FÖÅ÷W&Â#¢&‡GG3¢òöv—F‡V"æ6öÒöÇV66ÆÆ—&õ6Æ6…FW‡B÷&VÆV6W2÷Fr÷g··fW'6–öç×Ò"À¢'V&Æ—6†VEöB#¢###bÓ‚ÓeC#££¢"À¢&G&gB#¢·¶G&gBåFõ7G&–ær‚’åFôÆ÷vW$–çf&–çB‚—×ÒÀ¢'&W&VÆV6R#¢··&W&VÆV6RåFõ7G&–ær‚’åFôÆ÷vW$–çf&–çB‚—×ÒÀ¢&76WG2#¢°¢°¢&æÖR#¢%6Æ6„FW6²×··fW'6–öç×Ò×÷'F&ÆR×v–â×ƒcBç¦—"À¢&'&÷w6W%öF÷væÆöE÷W&Â#¢&‡GG3¢òöW†×ÆRæ–çfÆ–Bõ6Æ6„FW6²×··fW'6–öç×Ò×÷'F&ÆR×v–â×ƒcBç¦—"À¢'6—¦R#¢#3CP¢ÒÀ¢°¢&æÖR#¢%6Æ6„FW6²×··fW'6–öç×Ò×÷'F&ÆR×v–â×ƒcBç¦—ç6†#Sb"À¢&'&÷w6W%öF÷væÆöE÷W&Â#¢&‡GG3¢òöW†×ÆRæ–çfÆ–Bõ6Æ6„FW6²×··fW'6–öç×Ò×÷'F&ÆR×v–â×ƒcBç¦—ç6†#Sb"À¢'6—¦R#¢#€¢Ğ¢Ğ¢Ğ¢""#° §7FF–2'—FUµÒ7&VFU÷'F&ÆU¦—‡7G&–ærW†V7WF&ÆR§°¢W6–ærf"÷WGWBÒæWrÖVÖ÷'•7G&VÒ‚“°¢W6–ær‡f"&6†—fRÒæWr¦—&6†—fR†÷WGWBÂ¦—&6†—fTÖöFRä7&VFRÂÆVfT÷Vã¢G'VR’¢°¢f"VçG'’Ò&6†—fRä7&VFTVçG'’‚%6Æ6„FW6²æW†R"Â6ö×&W76–öäÆWfVÂäæô6ö×&W76–öâ“°¢W6–ærf"FW7F–æF–öâÒVçG'’ä÷Vâ‚“°¢W6–ærf"6÷W&6RÒf–ÆRä÷Vå&VB†W†V7WF&ÆR“°¢6÷W&6Rä6÷•Fò†FW7F–æF–öâ“°¢Ğ¢&WGW&â÷WGWBåFô'&’‚“°§Ğ §7FF–2&VÆV6T–æfò7&VFU6¶vU&VÆV6R€¢7G&–ærfW'6–öâÀ¢7G&–ær6¶vTæÖRÀ¢Æöær6¶vU6—¦RÀ¢Æöær6†V6·7VÕ6—¦R’ÓâæWr€¢fW'6–öâÀ¢B%6Æ6„FW6²·fW'6–öçÒ"À¢$æ÷F2"À¢B&‡GG3¢òöv—F‡V"æ6öÒöÇV66ÆÆ—&õ6Æ6…FW‡B÷&VÆV6W2÷Fr÷g·fW'6–öçÒ"À¢FFUF–ÖTöfg6WBåWF4æ÷rÀ¢æWr&VÆV6T76WD–æfò€¢6¶vTæÖRÀ¢B&‡GG3¢òöv—F‡V"æ6öÒöÇV66ÆÆ—&õ6Æ6…FW‡B÷&VÆV6W2öF÷væÆöB÷g·fW'6–öçÒ÷·6¶vTæÖWÒ"À¢6¶vU6—¦R’À¢æWr&VÆV6T76WD–æfò€¢6¶vTæÖR²"ç6†#Sb"À¢B&‡GG3¢òöv—F‡V"æ6öÒöÇV66ÆÆ—&õ6Æ6…FW‡B÷&VÆV6W2öF÷væÆöB÷g·fW'6–öçÒ÷·6¶vTæÖWÒç6†#Sb"À¢6†V6·7VÕ6—¦R’“° §6VÆVB6Æ72f¶U6¶vT‡GG†æFÆW"†'—FUµÒ6¶vRÂ'—FUµÒ6†V6·7VÒ’¢‡GGÖW76vT†æFÆW §°¢V&Æ–2F–ÖU7âFVÆ’²vWC²–æ—C²Ğ¢V&Æ–2F6´6ö×ÆWF–öå6÷W&6R7F'FVB²vWC²ÒĞ¢æWr…F6´7&VF–öä÷F–öç2å'Vä6öçF–çVF–öç47–æ6‡&öæ÷W6Ç’“° ¢&÷FV7FVB÷fW'&–FR7–æ2F6³Ä‡GG&W7öç6TÖW76vSâ6VæD7–æ2€¢‡GG&WVW7DÖW76vR&WVW7BÀ¢6æ6VÆÆF–öåFö¶Vâ6æ6VÆÆF–öåFö¶Vâ¢°¢7F'FVBåG'•6WE&W7VÇB‚“°¢–b„FVÆ’âF–ÖU7âå¦W&ò¢°¢v—BF6²äFVÆ’„FVÆ’Â6æ6VÆÆF–öåFö¶Vâ“°¢Ğ¢f"&öG’Ò&WVW7Bå&WVW7EW&“òä'6öÇWFUF‚äVæG5v—F‚‚"ç6†#Sb"Â7G&–æt6ö×&—6öâä÷&F–æÄ–væ÷&T66R’ÓÒG'VP¢ò6†V6·7VĞ¢¢6¶vS°¢&WGW&âæWr‡GG&W7öç6TÖW76vR…7—7FVÒäæWBä‡GG7FGW46öFRäô²¢°¢6öçFVçBÒæWr'—FT'&”6öçFVçB†&öG’¢Ó°¢Ğ§Ğ §6VÆVB6Æ72f¶UWFFT‡GG†æFÆW"¢‡GGÖW76vT†æFÆW §°¢&—fFR&VFöæÇ’W†6WF–öãòöW†6WF–öã°¢&—fFR&VFöæÇ’F–ÖU7âöFVÆ“°¢&—fFR–çBö6ÆÇ3° ¢V&Æ–2f¶UWFFT‡GG†æFÆW"‡7G&–ær&W7öç6T§6öâ’Óâ&W7öç6T§6öâÒ&W7öç6T§6öã°¢V&Æ–2f¶UWFFT‡GG†æFÆW"„W†6WF–öâW†6WF–öâ’ÓâöW†6WF–öâÒW†6WF–öã°¢V&Æ–2f¶UWFFT‡GG†æFÆW"…F–ÖU7âFVÆ’¢°¢öFVÆ’ÒFVÆ“°¢&W7öç6T§6öâÒ%µÒ#°¢Ğ ¢V&Æ–27G&–ær&W7öç6T§6öâ²vWC²6WC²ÒÒ%µÒ#°¢V&Æ–2–çB6ÆÇ2ÓâföÆF–ÆRå&VB‡&Vbö6ÆÇ2“° ¢&÷FV7FVB÷fW'&–FR7–æ2F6³Ä‡GG&W7öç6TÖW76vSâ6VæD7–æ2€¢‡GG&WVW7DÖW76vR&WVW7BÀ¢6æ6VÆÆF–öåFö¶Vâ6æ6VÆÆF–öåFö¶Vâ¢°¢–çFW&Æö6¶VBä–æ7&VÖVçB‡&Vbö6ÆÇ2“°¢–b…öW†6WF–öâ—2æ÷BçVÆÂ¢°¢F‡&÷röW†6WF–öã°¢Ğ¢–b…öFVÆ’âF–ÖU7âå¦W&ò¢°¢v—BF6²äFVÆ’…öFVÆ’Â6æ6VÆÆF–öåFö¶Vâ“°¢Ğ¢&WGW&âæWr‡GG&W7öç6TÖW76vR…7—7FVÒäæWBä‡GG7FGW46öFRäô²¢°¢6öçFVçBÒæWr7G&–æt6öçFVçB…&W7öç6T§6öâ¢Ó°¢Ğ§Ğ §6VÆVB6Æ72f¶U&V6÷&FW$&6¶VæDf7F÷'’¢•67&VVå&V6÷&FW$&6¶VæDf7F÷'§°¢V&Æ–2f¶U&V6÷&FW$&6¶VæB&6¶VæB²vWC²ÒÒæWr‚“°¢V&Æ–2&ööÂ6VæDGWÆ–6FT6ÆÆ&6·0¢°¢vWBÓâ&6¶VæBå6VæDGWÆ–6FT6ÆÆ&6·3°¢–æ—BÓâ&6¶VæBå6VæDGWÆ–6FT6ÆÆ&6·2ÒfÇVS°¢Ğ¢V&Æ–2&ööÂ6ö×ÆWFTöå7F÷ ¢°¢vWBÓâ&6¶VæBä6ö×ÆWFTöå7F÷°¢–æ—BÓâ&6¶VæBä6ö×ÆWFTöå7F÷ÒfÇVS°¢Ğ¢V&Æ–2&ööÂf–Äöå7F÷ ¢°¢vWBÓâ&6¶VæBäf–Äöå7F÷°¢–æ—BÓâ&6¶VæBäf–Äöå7F÷ÒfÇVS°¢Ğ¢V&Æ–2–çB6ÆÆ&6´FVÆ”×0¢°¢vWBÓâ&6¶VæBä6ÆÆ&6´FVÆ”×3°¢–æ—BÓâ&6¶VæBä6ÆÆ&6´FVÆ”×2ÒfÇVS°¢Ğ¢V&Æ–2&ööÂ&Æö6µ7F÷ ¢°¢vWBÓâ&6¶VæBä&Æö6µ7F÷°¢–æ—BÓâ&6¶VæBä&Æö6µ7F÷ÒfÇVS°¢Ğ ¢V&Æ–2•67&VVå&V6÷&FW$&6¶VæB7&VFR…&V6÷&FW$÷F–öç2÷F–öç2’Óâ&6¶VæC°§Ğ §6VÆVB6Æ72f¶U&V6÷&FW$&6¶VæB¢•67&VVå&V6÷&FW$&6¶Væ@§°¢&—fFR–çBö7F—fT6ÆÇ3°¢&—fFR–çBöÖ†–×VÔ6öæ7W'&VçD6ÆÇ3°¢&—fFR–çBöF—7÷6T6ÆÇ3°¢&—fFR–çB÷7F÷6ÆÇ3°¢&—fFR7G&–ær÷F‚Ò7G&–æräV×G“°¢&—fFR&VFöæÇ’ÖçVÅ&W6WDWfVçE6Æ–Ò÷7F÷&VÆV6RÒæWr†fÇ6R“° ¢V&Æ–2WfVçBWfVçD†æFÆW#Å&V6÷&F–æt6ö×ÆWFTWfVçD&w3ãò6ö×ÆWFVC°¢V&Æ–2WfVçBWfVçD†æFÆW#Å&V6÷&F–ætf–ÆVDWfVçD&w3ãòf–ÆVC°¢V&Æ–2WfVçBWfVçD†æFÆW#Å&V6÷&F–æu7FGW4WfVçD&w3ãò7FGW46†ævVC°¢V&Æ–2ÖçVÅ&W6WDWfVçE6Æ–Ò&V6÷&D6ÆÆVB²vWC²ÒÒæWr†fÇ6R“°¢V&Æ–2ÖçVÅ&W6WDWfVçE6Æ–Ò7F÷VçFW&VB²vWC²ÒÒæWr†fÇ6R“°¢V&Æ–2&ööÂ6VæDGWÆ–6FT6ÆÆ&6·2²vWC²6WC²Ğ¢V&Æ–2&ööÂ6ö×ÆWFTöå7F÷²vWC²6WC²ÒÒG'VS°¢V&Æ–2&ööÂf–Äöå7F÷²vWC²6WC²Ğ¢V&Æ–2–çB6ÆÆ&6´FVÆ”×2²vWC²6WC²Ğ¢V&Æ–2&ööÂ&Æö6µ7F÷²vWC²6WC²Ğ¢V&Æ–2–çBF—7÷6T6ÆÇ2ÓâföÆF–ÆRå&VB‡&VböF—7÷6T6ÆÇ2“°¢V&Æ–2–çB7F÷6ÆÇ2ÓâföÆF–ÆRå&VB‡&Vb÷7F÷6ÆÇ2“°¢V&Æ–2–çBÖ†–×VÔ6öæ7W'&VçD6ÆÇ2ÓâföÆF–ÆRå&VB‡&VböÖ†–×VÔ6öæ7W'&VçD6ÆÇ2“° ¢V&Æ–2fö–B&V6÷&B‡7G&–ærF‚¢°¢æF—fT6ÆÂ‚‚’Óà¢°¢÷F‚ÒFƒ°¢&V6÷&D6ÆÆVBå6WB‚“°¢7FGW46†ævVCòä–çfö¶R‡F†—2ÂæWr&V6÷&F–æu7FGW4WfVçD&w2…&V6÷&FW%7FGW2å&V6÷&F–ær’“°¢Ò“°¢Ğ ¢V&Æ–2fö–BW6R‚’ÓâæF—fT6ÆÂ‚‚’Óà¢7FGW46†ævVCòä–çfö¶R‡F†—2ÂæWr&V6÷&F–æu7FGW4WfVçD&w2…&V6÷&FW%7FGW2åW6VB’’“° ¢V&Æ–2fö–B&W7VÖR‚’ÓâæF—fT6ÆÂ‚‚’Óà¢7FGW46†ævVCòä–çfö¶R‡F†—2ÂæWr&V6÷&F–æu7FGW4WfVçD&w2…&V6÷&FW%7FGW2å&V6÷&F–ær’’“° ¢V&Æ–2fö–B7F÷‚¢°¢æF—fT6ÆÂ‚‚’Óà¢°¢–çFW&Æö6¶VBä–æ7&VÖVçB‡&Vb÷7F÷6ÆÇ2“°¢7F÷VçFW&VBå6WB‚“°¢–b„&Æö6µ7F÷¢°¢÷7F÷&VÆV6Råv—B…F–ÖU7âäg&öÕ6V6öæG2ƒ2’“°¢Ğ¢–b„f–Äöå7F÷¢°¢f–ÆVCòä–çfö¶R‡F†—2ÂæWr&V6÷&F–ætf–ÆVDWfVçD&w2‚&fÆ†6–×VÆF"Â÷F‚’“°¢&WGW&ã°¢Ğ¢–b„6ö×ÆWFTöå7F÷¢°¢–b„6ÆÆ&6´FVÆ”×2â¢°¢òÒF6²å'Vâ†7–æ2‚’Óà¢°¢v—BF6²äFVÆ’„6ÆÆ&6´FVÆ”×2“°¢6ö×ÆWFTÆFW"‚“°¢Ò“°¢Ğ¢VÇ6P¢°¢6ö×ÆWFTÆFW"‚“°¢Ğ¢Ğ¢Ò“°¢Ğ ¢V&Æ–2fö–B&VÆV6U7F÷‚’Óâ÷7F÷&VÆV6Rå6WB‚“° ¢V&Æ–2fö–B6ö×ÆWFTÆFW"‚¢°¢w&—FUfÆ–D×B…÷F‚“°¢6ö×ÆWFVCòä–çfö¶R€¢F†—2À¢æWr&V6÷&F–æt6ö×ÆWFTWfVçD&w2…÷F‚ÂæWrÆ—7CÄg&ÖTFFâ‚’’“°¢–b…6VæDGWÆ–6FT6ÆÆ&6·2¢°¢f–ÆVCòä–çfö¶R€¢F†—2À¢æWr&V6÷&F–ætf–ÆVDWfVçD&w2‚&6ÆÆ&6²F&F–ò"Â÷F‚’“°¢Ğ¢Ğ ¢V&Æ–2fö–BF—7÷6R‚¢°¢æF—fT6ÆÂ‚‚’Óâ–çFW&Æö6¶VBä–æ7&VÖVçB‡&VböF—7÷6T6ÆÇ2’“°¢Ğ ¢&—fFRfö–BæF—fT6ÆÂ„7F–öâ7F–öâ¢°¢f"6öæ7W'&VçBÒ–çFW&Æö6¶VBä–æ7&VÖVçB‡&Vbö7F—fT6ÆÇ2“°¢WFFTÖ†–×VÒ†6öæ7W'&VçB“°¢G'¢°¢F‡&VBå6ÆVWƒR“°¢7F–öâ‚“°¢Ğ¢f–æÆÇ¢°¢–çFW&Æö6¶VBäFV7&VÖVçB‡&Vbö7F—fT6ÆÇ2“°¢Ğ¢Ğ ¢&—fFRfö–BWFFTÖ†–×VÒ†–çBfÇVR¢°¢v†–ÆR‡G'VR¢°¢f"7W'&VçBÒföÆF–ÆRå&VB‡&VböÖ†–×VÔ6öæ7W'&VçD6ÆÇ2“°¢–b†7W'&VçBãÒfÇVRÇÀ¢–çFW&Æö6¶VBä6ö×&TW†6†ævR‡&VböÖ†–×VÔ6öæ7W'&VçD6ÆÇ2ÂfÇVRÂ7W'&VçB’ÓÒ7W'&VçB¢°¢&WGW&ã°¢Ğ¢Ğ¢Ğ ¢&—fFR7FF–2fö–Bw&—FUfÆ–D×B‡7G&–ærF‚’Óâf–ÆRåw&—FTÆÄ'—FW2€¢F‚À¢°¢ÂÂÂ"Â†'—FR’vbrÂ†'—FR’wBrÂ†'—FR’w’rÂ†'—FR’wrÂÂÂÂÀ¢ÂÂÂ"Â†'—FR’vÒrÂ†'—FR’vBrÂ†'—FR’vrÂ†'—FR’wBrÂÂ"Â2ÂBÀ¢ÂÂÂ‚Â†'—FR’vÒrÂ†'—FR’vòrÂ†'—FR’vòrÂ†'—FR’wbp¢Ò“°§Ğ 
+        var paletteSource = GifRecordingService.ToBitmapSource(paletteBitmap);
+        foreach (var preset in RecordingPresetCatalog.GifQuality)
+        {
+            var quantized = GifRecordingService.Quantize(paletteSource, preset.Value);
+            Require(
+                quantized.Palette?.Colors.Count == preset.Value &&
+                preset.Description.Contains(preset.Value.ToString(), StringComparison.Ordinal),
+                $"preset GIF {preset.Name} aplica a paleta descrita");
+        }
+    }
+
+    var fakeFactory = new FakeRecorderBackendFactory();
+    using (var lifecycle = new ScreenRecordingService(fakeFactory, TimeSpan.FromSeconds(1)))
+    {
+        var lifecycleTask = lifecycle.StartAsync(
+            new RecordingTarget(
+                RecordingTargetKind.Window,
+                new System.Drawing.Rectangle(0, 0, 640, 480),
+                new IntPtr(1)),
+            new CaptureSettings
+            {
+                OutputDirectoryTemplate = root,
+                FileNameTemplate = "lifecycle"
+            },
+            new RecordingSettings { VideoFps = 30 });
+        Require(fakeFactory.Backend.RecordCalled.Wait(TimeSpan.FromSeconds(2)), "MP4 inicia backend");
+        await WaitUntilAsync(
+            () => lifecycle.State == ScreenRecordingState.Recording,
+            "estado Recording");
+        await Task.Delay(100);
+        Require(lifecycle.Elapsed >= TimeSpan.FromMilliseconds(60), "contador MP4 avanÃ§a");
+        lifecycle.Pause();
+        await WaitUntilAsync(
+            () => lifecycle.State == ScreenRecordingState.Paused,
+            "estado Paused");
+        var pausedElapsed = lifecycle.Elapsed;
+        await Task.Delay(80);
+        Require(
+            lifecycle.Elapsed - pausedElapsed < TimeSpan.FromMilliseconds(30),
+            "contador MP4 nÃ£o inclui tempo pausado");
+        lifecycle.Resume();
+        await WaitUntilAsync(
+            () => lifecycle.State == ScreenRecordingState.Recording,
+            "retorno ao estado Recording");
+        await Task.Delay(80);
+        Require(lifecycle.Elapsed > pausedElapsed, "contador MP4 retoma do acumulado");
+        lifecycle.Stop();
+        var stoppedElapsed = lifecycle.Elapsed;
+        var lifecyclePath = await lifecycleTask.WaitAsync(TimeSpan.FromSeconds(3));
+        Require(File.Exists(lifecyclePath), "MP4 finaliza e publica arquivo");
+        Require(lifecycle.State == ScreenRecordingState.Completed, "estado Completed");
+        Require(fakeFactory.Backend.DisposeCalls == 1, "Recorder descartado uma Ãºnica vez");
+        Require(fakeFactory.Backend.MaximumConcurrentCalls == 1, "chamadas nativas serializadas");
+        Require(
+            lifecycle.Elapsed - stoppedElapsed < TimeSpan.FromMilliseconds(30),
+            "contador MP4 para no pedido de finalizaÃ§Ã£o");
+    }
+
+    var duplicateFactory = new FakeRecorderBackendFactory { SendDuplicateCallbacks = true };
+    using (var lifecycle = new ScreenRecordingService(duplicateFactory, TimeSpan.FromSeconds(1)))
+    {
+        var task = lifecycle.StartAsync(
+            new RecordingTarget(
+                RecordingTargetKind.Window,
+                new System.Drawing.Rectangle(0, 0, 320, 240),
+                new IntPtr(1)),
+            new CaptureSettings
+            {
+                OutputDirectoryTemplate = root,
+                FileNameTemplate = "duplicate-callback"
+            },
+            new RecordingSettings());
+        Require(duplicateFactory.Backend.RecordCalled.Wait(TimeSpan.FromSeconds(2)), "backend para callback duplicado");
+        lifecycle.Stop();
+        lifecycle.Stop();
+        await task.WaitAsync(TimeSpan.FromSeconds(3));
+        Require(duplicateFactory.Backend.DisposeCalls == 1, "callback duplicado nÃ£o duplica descarte");
+        Require(duplicateFactory.Backend.StopCalls == 1, "dois cliques em finalizar chamam Stop uma vez");
+    }
+
+    var failureFactory = new FakeRecorderBackendFactory { FailOnStop = true };
+    using (var lifecycle = new ScreenRecordingService(failureFactory, TimeSpan.FromSeconds(1)))
+    {
+        var task = lifecycle.StartAsync(
+            new RecordingTarget(RecordingTargetKind.Window,
+                new System.Drawing.Rectangle(0, 0, 320, 240), new IntPtr(1)),
+            new CaptureSettings { OutputDirectoryTemplate = root, FileNameTemplate = "failed-callback" },
+            new RecordingSettings());
+        Require(failureFactory.Backend.RecordCalled.Wait(TimeSpan.FromSeconds(2)), "backend para callback de falha");
+        lifecycle.Stop();
+        await RequireThrowsAsync<InvalidOperationException>(() => task, "callback de falha conclui task");
+        Require(lifecycle.State == ScreenRecordingState.Failed, "callback de falha restaura estado terminal");
+        Require(failureFactory.Backend.DisposeCalls == 1, "falha descarta Recorder uma vez");
+    }
+
+    var delayedFactory = new FakeRecorderBackendFactory { CallbackDelayMs = 120 };
+    using (var lifecycle = new ScreenRecordingService(delayedFactory, TimeSpan.FromSeconds(1)))
+    {
+        var task = lifecycle.StartAsync(
+            new RecordingTarget(RecordingTargetKind.Window,
+                new System.Drawing.Rectangle(0, 0, 320, 240), new IntPtr(1)),
+            new CaptureSettings { OutputDirectoryTemplate = root, FileNameTemplate = "delayed-callback" },
+            new RecordingSettings());
+        Require(delayedFactory.Backend.RecordCalled.Wait(TimeSpan.FromSeconds(2)), "backend para callback atrasado");
+        lifecycle.Stop();
+        await task.WaitAsync(TimeSpan.FromSeconds(3));
+        Require(delayedFactory.Backend.DisposeCalls == 1, "callback atrasado finaliza uma vez");
+    }
+
+    var blockingFactory = new FakeRecorderBackendFactory { BlockStop = true };
+    using (var lifecycle = new ScreenRecordingService(blockingFactory, TimeSpan.FromSeconds(2)))
+    {
+        var task = lifecycle.StartAsync(
+            new RecordingTarget(RecordingTargetKind.Window,
+                new System.Drawing.Rectangle(0, 0, 320, 240), new IntPtr(1)),
+            new CaptureSettings { OutputDirectoryTemplate = root, FileNameTemplate = "closing-finalization" },
+            new RecordingSettings());
+        Require(blockingFactory.Backend.RecordCalled.Wait(TimeSpan.FromSeconds(2)), "backend para Stop bloqueante");
+        var uiClock = Stopwatch.StartNew();
+        lifecycle.Stop();
+        lifecycle.Dispose();
+        Require(uiClock.Elapsed < TimeSpan.FromMilliseconds(100), "Stop e Dispose nÃ£o bloqueiam a UI");
+        Require(blockingFactory.Backend.StopEntered.Wait(TimeSpan.FromSeconds(2)), "Stop nativo entrou");
+        blockingFactory.Backend.ReleaseStop();
+        await task.WaitAsync(TimeSpan.FromSeconds(3));
+        Require(blockingFactory.Backend.DisposeCalls == 1, "fechamento durante finalizaÃ§Ã£o descarta uma vez");
+    }
+
+    var timeoutFactory = new FakeRecorderBackendFactory { CompleteOnStop = false };
+    using (var lifecycle = new ScreenRecordingService(timeoutFactory, TimeSpan.FromMilliseconds(80)))
+    {
+        var task = lifecycle.StartAsync(
+            new RecordingTarget(
+                RecordingTargetKind.Window,
+                new System.Drawing.Rectangle(0, 0, 320, 240),
+                new IntPtr(1)),
+            new CaptureSettings
+            {
+                OutputDirectoryTemplate = root,
+                FileNameTemplate = "late-callback"
+            },
+            new RecordingSettings());
+        Require(timeoutFactory.Backend.RecordCalled.Wait(TimeSpan.FromSeconds(2)), "backend para timeout");
+        lifecycle.Stop();
+        await RequireThrowsAsync<TimeoutException>(() => task, "timeout nativo controlado");
+        Require(timeoutFactory.Backend.DisposeCalls == 0, "timeout nÃ£o descarta Recorder durante callback nativo");
+        timeoutFactory.Backend.CompleteLater();
+        await WaitUntilAsync(
+            () => lifecycle.State == ScreenRecordingState.Failed,
+            "callback tardio conclui limpeza");
+        Require(timeoutFactory.Backend.DisposeCalls == 1, "callback tardio executa descarte Ãºnico");
+    }
+
+    var callerThread = 0;
+    var gifCaptureThreads = new System.Collections.Concurrent.ConcurrentBag<int>();
+    var pipeline = new GifRecordingService((_, _) =>
+    {
+        gifCaptureThreads.Add(Environment.CurrentManagedThreadId);
+        var bitmap = new System.Drawing.Bitmap(16, 12);
+        using var graphics = System.Drawing.Graphics.FromImage(bitmap);
+        graphics.Clear(System.Drawing.Color.CornflowerBlue);
+        return bitmap;
+    });
+    GifRecordingResult? pipelineResult = null;
+    Exception? pipelineFailure = null;
+    var caller = new Thread(() =>
+    {
+        callerThread = Environment.CurrentManagedThreadId;
+        try
+        {
+            pipelineResult = pipeline.CaptureAsync(
+                new System.Drawing.Rectangle(0, 0, 16, 12),
+                new RecordingSettings
+                {
+                    GifFps = 10,
+                    GifDurationSeconds = 1,
+                    GifWidth = 240,
+                    GifQuality = 128
+                }).GetAwaiter().GetResult();
+        }
+        catch (Exception exception)
+        {
+            pipelineFailure = exception;
+        }
+    });
+    caller.Start();
+    caller.Join();
+    if (pipelineFailure is not null)
+    {
+        throw new InvalidOperationException("Pipeline GIF falhou.", pipelineFailure);
+    }
+
+    using (pipelineResult ?? throw new InvalidOperationException("Pipeline GIF sem resultado."))
+    {
+        Require(
+            pipelineResult.Metrics is
+            {
+                RequestedFps: 10,
+                CapturedFrames: >= 8,
+                StoredFrames: 1
+            } metrics &&
+            metrics.ProcessedFrames == metrics.CapturedFrames &&
+            metrics.EffectiveCapturedFps > 0 &&
+            metrics.DuplicateFrames == metrics.CapturedFrames - 1,
+            "pipeline GIF descarta quadro idÃªntico preservando duraÃ§Ã£o");
+        Require(
+            pipelineResult.Duration >= TimeSpan.FromMilliseconds(900) &&
+            pipelineResult.Duration <= TimeSpan.FromMilliseconds(1100),
+            "deduplicaÃ§Ã£o GIF preserva o tempo monotÃ´nico da sessÃ£o");
+        Require(
+            gifCaptureThreads.All(thread => thread != callerThread),
+            "captura e redimensionamento GIF fora da UI thread");
+    }
+
+    foreach (var fpsPreset in RecordingPresetCatalog.GifFps)
+    {
+        using var session = pipeline.StartRecording(
+            new System.Drawing.Rectangle(0, 0, 16, 12),
+            new RecordingSettings { GifFps = fpsPreset.Value, GifQuality = 128 });
+        IRecordingController counter = session;
+        Require(counter.Elapsed < TimeSpan.FromMilliseconds(80),
+            $"contador GIF inicia em zero a {fpsPreset.Value} FPS");
+        await Task.Delay(120);
+        Require(counter.Elapsed >= TimeSpan.FromMilliseconds(70),
+            $"contador GIF avanÃ§a a {fpsPreset.Value} FPS");
+        counter.Pause();
+        var gifPausedAt = counter.Elapsed;
+        await Task.Delay(80);
+        Require(counter.Elapsed - gifPausedAt < TimeSpan.FromMilliseconds(30),
+            $"contador GIF pausa a {fpsPreset.Value} FPS");
+        counter.Resume();
+        await Task.Delay(80);
+        Require(counter.Elapsed > gifPausedAt,
+            $"contador GIF retoma a {fpsPreset.Value} FPS");
+        counter.Stop();
+        var gifStoppedAt = counter.Elapsed;
+        using var presetResult = await session.Completion.WaitAsync(TimeSpan.FromSeconds(3));
+        Require(presetResult.Fps == fpsPreset.Value,
+            $"pipeline mantÃƒÂ©m preset de {fpsPreset.Value} FPS");
+        Require(counter.Elapsed - gifStoppedAt < TimeSpan.FromMilliseconds(30),
+            $"contador GIF para ao finalizar a {fpsPreset.Value} FPS");
+        Require(GifRecordingService.QueueCapacity == 2,
+            $"fila GIF limitada no preset de {fpsPreset.Value} FPS");
+    }
+
+    var storageRoot = Path.Combine(root, "armazenamento portÃ¡til Ã§Ã£ com espaÃ§os");
+    var portableHome = Path.Combine(storageRoot, "origem portÃ¡til");
+    var localDataRoot = Path.Combine(storageRoot, "local-app-data");
+    var installedLegacy = Path.Combine(localDataRoot, "SlashDesk");
+    Directory.CreateDirectory(portableHome);
+    Directory.CreateDirectory(installedLegacy);
+    var preservedSnippetId = Guid.NewGuid();
+    await File.WriteAllTextAsync(
+        Path.Combine(installedLegacy, "snippets.md"),
+        $"## /preservado\n<!-- slashtext:{{\"id\":\"{preservedSnippetId}\",\"name\":\"Preservado\",\"category\":\"MigraÃ§Ã£o\",\"format\":\"plain\",\"enabled\":true,\"confirmKeys\":[\"Enter\"]}} -->\n```text\nConteÃºdo\n```\n");
+    await File.WriteAllTextAsync(Path.Combine(installedLegacy, "settings.json"),
+        """{"theme":"Dark","checkUpdatesOnStartup":false}""");
+    await File.WriteAllTextAsync(Path.Combine(installedLegacy, "usage.json"),
+        $$"""{"snippets":[{"snippetId":"{{preservedSnippetId}}","count":9,"charactersSaved":42}],"quickAccent":{"count":2,"characters":{}}}""");
+    await File.WriteAllTextAsync(Path.Combine(installedLegacy, "capture-history.json"),
+        """[{"id":"history-preserved","createdAt":"2026-08-06T12:00:00-03:00","type":"monitor","mediaKind":"image","filePath":"C:\\Capturas\\preservada.png","width":800,"height":600}]""");
+
+    var portableEnvironment = new AppDataEnvironment(
+        DistributionMode.Portable,
+        portableHome,
+        localDataRoot);
+    AppPaths.Initialize(portableEnvironment);
+    Require(
+        AppPaths.DataDirectory == Path.Combine(portableHome, "SlashDeskData") &&
+        AppPaths.LogsDirectory == Path.Combine(portableHome, "SlashDeskData", "Logs") &&
+        AppPaths.BackupsDirectory == Path.Combine(portableHome, "SlashDeskData", "Backups"),
+        "modo portÃ¡til centraliza dados ao lado do executÃ¡vel");
+    var migrationResult = AppPaths.EnsureDataLayout();
+    Require(
+        migrationResult.Migrated &&
+        Directory.Exists(installedLegacy) &&
+        File.Exists(AppPaths.SnippetsFile) &&
+        File.ReadAllText(AppPaths.SnippetsFile).Contains(preservedSnippetId.ToString(), StringComparison.Ordinal) &&
+        File.ReadAllText(AppPaths.CaptureHistoryFile).Contains("history-preserved", StringComparison.Ordinal) &&
+        migrationResult.BackupPath is not null && File.Exists(migrationResult.BackupPath),
+        "migraÃ§Ã£o copia, valida, ativa e preserva origem, atalhos e histÃ³rico");
+    using (var migrationArchive = ZipFile.OpenRead(migrationResult.BackupPath!))
+    {
+        Require(
+            migrationArchive.GetEntry("migration-manifest.json") is not null &&
+            migrationArchive.Entries.Any(item => item.FullName.EndsWith("snippets.md", StringComparison.Ordinal)),
+            "backup de migraÃ§Ã£o contÃ©m manifesto e atalhos");
+    }
+
+    var simultaneousHome = Path.Combine(storageRoot, "duas origens");
+    var simultaneousData = Path.Combine(simultaneousHome, "SlashDeskData");
+    Directory.CreateDirectory(simultaneousData);
+    await File.WriteAllTextAsync(Path.Combine(simultaneousData, "settings.json"),
+        """{"theme":"Light"}""");
+    AppPaths.Initialize(new AppDataEnvironment(
+        DistributionMode.Portable,
+        simultaneousHome,
+        localDataRoot));
+    var simultaneous = AppPaths.EnsureDataLayout();
+    Require(
+        !simultaneous.Migrated &&
+        simultaneous.CompetingSourcePreserved &&
+        File.ReadAllText(AppPaths.SettingsFile).Contains("Light", StringComparison.Ordinal) &&
+        simultaneous.BackupPath is not null && File.Exists(simultaneous.BackupPath),
+        "duas origens priorizam portÃ¡til sem mescla destrutiva e preservam a outra origem");
+
+    var movedHome = Path.Combine(storageRoot, "portÃ¡til movido");
+    Directory.Move(portableHome, movedHome);
+    AppPaths.Initialize(new AppDataEnvironment(DistributionMode.Portable, movedHome, localDataRoot));
+    Require(
+        File.ReadAllText(AppPaths.SnippetsFile).Contains(preservedSnippetId.ToString(), StringComparison.Ordinal) &&
+        File.ReadAllText(AppPaths.CaptureHistoryFile).Contains("history-preserved", StringComparison.Ordinal),
+        "atalhos e histÃ³rico acompanham a pasta portÃ¡til movida");
+
+    var movedCaptureDirectory = Path.Combine(movedHome, "Capturas");
+    Directory.CreateDirectory(movedCaptureDirectory);
+    var movedCapture = Path.Combine(movedCaptureDirectory, "imagem preservada.png");
+    await File.WriteAllBytesAsync(movedCapture, [1, 2, 3]);
+    var relativeRecord = new CaptureRecord
+    {
+        FilePath = Path.Combine(portableHome, "Capturas", "imagem preservada.png"),
+        PortableRelativePath = Path.Combine("Capturas", "imagem preservada.png")
+    };
+    Require(
+        CapturePathResolver.Resolve(relativeRecord, AppPaths.Current) == movedCapture,
+        "caminho relativo localiza mÃ­dia apÃ³s mover a pasta portÃ¡til");
+
+    await File.WriteAllTextAsync(AppPaths.CaptureHistoryFile,
+        """[
+          {"id":"valid-item","createdAt":"2026-08-06T12:00:00-03:00","type":"regiao","mediaKind":"image","filePath":"C:\\ok.png","width":100,"height":80},
+          {"id":"corrupt-item","createdAt":[],"width":"invÃ¡lido"}
+        ]""");
+    var tolerantHistory = new CaptureService();
+    await tolerantHistory.LoadAsync();
+    Require(
+        tolerantHistory.History.Count == 1 && tolerantHistory.History[0].Id == "valid-item",
+        "item de histÃ³rico corrompido nÃ£o impede carregar registros vÃ¡lidos");
+
+    var invalidPortableRoot = Path.Combine(storageRoot, "sem-permissÃ£o");
+    await File.WriteAllTextAsync(invalidPortableRoot, "nÃ£o Ã© um diretÃ³rio");
+    var invalidPortable = new AppDataEnvironment(
+        DistributionMode.Portable,
+        invalidPortableRoot,
+        localDataRoot);
+    Require(
+        !invalidPortable.TryProbePortableWrite(out var portableWriteError) &&
+        !string.IsNullOrWhiteSpace(portableWriteError),
+        "portÃ¡til detecta diretÃ³rio sem capacidade de gravaÃ§Ã£o sem alternar origem");
+
+    AppPaths.Initialize(new AppDataEnvironment(
+        DistributionMode.Installed,
+        Path.Combine(storageRoot, "installed-bin"),
+        localDataRoot));
+    Require(
+        AppPaths.DataDirectory == installedLegacy &&
+        !AppPaths.IsPortable,
+        "modo instalado usa %LocalAppData%\\SlashDesk");
+
+    using (var frame1 = new System.Drawing.Bitmap(4, 4))
+    using (var frame2 = new System.Drawing.Bitmap(4, 4))
+    {
+        frame1.SetPixel(0, 0, System.Drawing.Color.Red);
+        frame2.SetPixel(0, 0, System.Drawing.Color.Blue);
+        using var gifRecording = new GifRecordingResult(
+            [frame1.Clone() as System.Drawing.Bitmap ?? throw new InvalidOperationException(),
+             frame2.Clone() as System.Drawing.Bitmap ?? throw new InvalidOperationException()],
+            10,
+            new System.Drawing.Rectangle(0, 0, 4, 4));
+        var gifPath = new GifRecordingService().Save(
+            gifRecording,
+            new CaptureSettings
+            {
+                OutputDirectoryTemplate = root,
+                FileNameTemplate = "animated"
+            },
+            "gif");
+        var gifBytes = await File.ReadAllBytesAsync(gifPath);
+        Require(
+            System.Text.Encoding.ASCII.GetString(gifBytes).Contains(
+                "NETSCAPE2.0",
+                StringComparison.Ordinal),
+            "GIF inclui extensÃ£o de repetiÃ§Ã£o NETSCAPE");
+        using var gifStream = File.OpenRead(gifPath);
+        var decoder = new System.Windows.Media.Imaging.GifBitmapDecoder(
+            gifStream,
+            System.Windows.Media.Imaging.BitmapCreateOptions.PreservePixelFormat,
+            System.Windows.Media.Imaging.BitmapCacheOption.OnLoad);
+        Require(decoder.Frames.Count == 2, "GIF preserva todos os quadros");
+    }
+    Require(
+        GlobalCaptureShortcutService.IsValid("Ctrl+Shift+PrintScreen"),
+        "atalho de captura pelo teclado");
+    Require(
+        GlobalCaptureShortcutService.IsValid("Ctrl+Shift+WheelUp"),
+        "atalho de captura pela roda do mouse");
+    Require(
+        !GlobalCaptureShortcutService.IsValid("WheelUp"),
+        "roda do mouse exige modificador");
+    Require(
+        GlobalCaptureShortcutService.FormatKeyboardShortcut(
+            System.Windows.Input.Key.F10,
+            System.Windows.Input.ModifierKeys.None) == "F10",
+        "grava tecla de funÃ§Ã£o sem digitaÃ§Ã£o manual");
+    Require(
+        GlobalCaptureShortcutService.FormatKeyboardShortcut(
+            System.Windows.Input.Key.Snapshot,
+            System.Windows.Input.ModifierKeys.None) == "PrintScreen" &&
+        GlobalCaptureShortcutService.IsValid("Print") &&
+        GlobalCaptureShortcutService.IsValid("PrtSc") &&
+        GlobalCaptureShortcutService.IsValid("Snapshot"),
+        "grava Print Screen no pressionamento ou na liberaÃ§Ã£o");
+    Require(
+        GlobalCaptureShortcutService.FormatWheelShortcut(
+            120,
+            System.Windows.Input.ModifierKeys.Control |
+            System.Windows.Input.ModifierKeys.Shift) ==
+            "Ctrl+Shift+WheelUp",
+        "grava combinaÃ§Ã£o com roda do mouse");
+    Require(
+        GlobalCaptureShortcutService.FormatMouseShortcut(
+            System.Windows.Input.MouseButton.XButton1,
+            System.Windows.Input.ModifierKeys.Alt) ==
+            "Alt+MouseX1",
+        "grava botÃ£o lateral do mouse");
+    Require(
+        GlobalCaptureShortcutService.IsValid("MouseX2") &&
+        GlobalCaptureShortcutService.IsValid("Ctrl+MouseMiddle"),
+        "botÃµes do mouse sÃ£o atalhos vÃ¡lidos");
+    Require(
+        !GlobalCaptureShortcutService.IsValid("MouseLeft") &&
+        !GlobalCaptureShortcutService.IsValid("MouseRight"),
+        "cliques essenciais do mouse permanecem livres");
+
+    using (var source = new System.Drawing.Bitmap(120, 90))
+    {
+        using (var graphics = System.Drawing.Graphics.FromImage(source))
+        {
+            graphics.Clear(System.Drawing.Color.White);
+        }
+
+        var annotationScenarios = new[]
+        {
+            new CaptureAnnotation
+            {
+                Kind = CaptureAnnotationKind.Arrow,
+                Start = new System.Windows.Point(10, 10),
+                End = new System.Windows.Point(90, 60)
+            },
+            new CaptureAnnotation
+            {
+                Kind = CaptureAnnotationKind.Highlighter,
+                Start = new System.Windows.Point(8, 45),
+                End = new System.Windows.Point(100, 45),
+                Argb = System.Drawing.Color.Gold.ToArgb()
+            },
+            new CaptureAnnotation
+            {
+                Kind = CaptureAnnotationKind.Rectangle,
+                Start = new System.Windows.Point(15, 15),
+                End = new System.Windows.Point(80, 65)
+            },
+            new CaptureAnnotation
+            {
+                Kind = CaptureAnnotationKind.Ellipse,
+                Start = new System.Windows.Point(20, 15),
+                End = new System.Windows.Point(85, 70)
+            },
+            new CaptureAnnotation
+            {
+                Kind = CaptureAnnotationKind.Pencil,
+                Points =
+                [
+                    new System.Windows.Point(5, 5),
+                    new System.Windows.Point(40, 30),
+                    new System.Windows.Point(75, 12)
+                ]
+            },
+            new CaptureAnnotation
+            {
+                Kind = CaptureAnnotationKind.Text,
+                Start = new System.Windows.Point(10, 20),
+                Text = "Teste"
+            },
+            new CaptureAnnotation
+            {
+                Kind = CaptureAnnotationKind.Number,
+                Start = new System.Windows.Point(55, 42),
+                Text = "1"
+            }
+        };
+
+        foreach (var annotation in annotationScenarios)
+        {
+            using var renderedCapture = CaptureAnnotationRenderer.Render(
+                source,
+                [annotation],
+                120,
+                90);
+            Require(
+                HasChangedPixel(renderedCapture),
+                $"renderiza ferramenta {annotation.Kind}");
+        }
+    }
+
+    var updateTests = Path.Combine(root, "updates");
+    Directory.CreateDirectory(updateTests);
+    var now = new DateTimeOffset(2026, 8, 6, 12, 0, 0, TimeSpan.Zero);
+    var updateHandler = new FakeUpdateHttpHandler(ReleaseJson("3.0.0"));
+    var updateService = new UpdateService(
+        new HttpClient(updateHandler),
+        Path.Combine(updateTests, "state.json"),
+        "2.9.1",
+        () => now,
+        TimeSpan.FromSeconds(1));
+    var updateFound = await updateService.CheckAsync(force: true);
+    Require(
+        updateFound.UpdateAvailable &&
+        updateFound.LatestVersion == "3.0.0" &&
+        updateFound.Release?.PortableAsset.Name == "SlashDesk-3.0.0-portable-win-x64.zip" &&
+        updateFound.DownloadSize == 12_345,
+        "release estÃ¡vel aplica versÃ£o e artefatos exatos");
+    Require(updateHandler.Calls == 1, "consulta Ãºnica ao GitHub");
+
+    await updateService.IgnoreVersionAsync("3.0.0");
+    var ignored = await updateService.CheckAsync(force: true);
+    Require(ignored.Status == UpdateCheckStatus.Ignored && !ignored.UpdateAvailable,
+        "versÃ£o ignorada nÃ£o Ã© oferecida novamente");
+    updateHandler.ResponseJson = ReleaseJson("3.1.0");
+    var afterIgnored = await updateService.CheckAsync(force: true);
+    Require(afterIgnored.UpdateAvailable && afterIgnored.LatestVersion == "3.1.0",
+        "versÃ£o superior volta a ser oferecida");
+
+    await updateService.RemindLaterAsync("3.1.0");
+    var deferred = await updateService.CheckAsync(force: true);
+    Require(deferred.Status == UpdateCheckStatus.Deferred && !deferred.UpdateAvailable,
+        "lembrar depois adia somente a versÃ£o atual");
+    now += UpdateService.RemindLaterInterval + TimeSpan.FromMinutes(1);
+    var afterDeferral = await updateService.CheckAsync(force: true);
+    Require(afterDeferral.UpdateAvailable, "lembrar depois volta a oferecer");
+
+    var cacheHandler = new FakeUpdateHttpHandler(ReleaseJson("3.0.0"));
+    var cacheService = new UpdateService(
+        new HttpClient(cacheHandler),
+        Path.Combine(updateTests, "cache-state.json"),
+        "2.9.1",
+        () => now,
+        TimeSpan.FromSeconds(1));
+    await Task.WhenAll(cacheService.CheckAsync(), cacheService.CheckAsync());
+    Require(cacheHandler.Calls == 1, "pedidos simultÃ¢neos usam exclusÃ£o e cache");
+
+    var stableFilterHandler = new FakeUpdateHttpHandler(ReleaseJson(
+        "3.0.0", includeStable: false, includeDraft: true, includePrerelease: true));
+    var stableFilterService = new UpdateService(
+        new HttpClient(stableFilterHandler),
+        Path.Combine(updateTests, "stable-filter.json"),
+        "2.9.1",
+        () => now,
+        TimeSpan.FromSeconds(1));
+    var stableFilter = await stableFilterService.CheckAsync(force: true);
+    Require(stableFilter.Status == UpdateCheckStatus.NoRelease,
+        "draft e prerelease sÃ£o ignoradas no canal estÃ¡vel");
+
+    var currentService = new UpdateService(
+        new HttpClient(new FakeUpdateHttpHandler(ReleaseJson("2.9.1"))),
+        Path.Combine(updateTests, "current.json"),
+        "2.9.1",
+        () => now,
+        TimeSpan.FromSeconds(1));
+    Require((await currentService.CheckAsync(force: true)).Status == UpdateCheckStatus.UpToDate,
+        "nenhuma atualizaÃ§Ã£o quando versÃµes coincidem");
+
+    var offlineService = new UpdateService(
+        new HttpClient(new FakeUpdateHttpHandler(new HttpRequestException("offline"))),
+        Path.Combine(updateTests, "offline.json"),
+        "2.9.1",
+        () => now,
+        TimeSpan.FromSeconds(1));
+    Require((await offlineService.CheckAsync(force: true)).Status == UpdateCheckStatus.Offline,
+        "ausÃªncia de internet nÃ£o lanÃ§a erro invasivo");
+
+    var timeoutService = new UpdateService(
+        new HttpClient(new FakeUpdateHttpHandler(TimeSpan.FromMilliseconds(200))),
+        Path.Combine(updateTests, "timeout.json"),
+        "2.9.1",
+        () => now,
+        TimeSpan.FromMilliseconds(20));
+    Require((await timeoutService.CheckAsync(force: true)).Status == UpdateCheckStatus.Offline,
+        "timeout de atualizaÃ§Ã£o Ã© tratado");
+
+    var transactionRoot = Path.Combine(root, "update-transaction");
+    Directory.CreateDirectory(transactionRoot);
+    var transactionData = Path.Combine(transactionRoot, "SlashDeskData");
+    Directory.CreateDirectory(transactionData);
+    var preservedUpdateData = new Dictionary<string, string>
+    {
+        ["snippets.md"] = "atalhos, categorias, hyperlinks e variÃ¡veis preservados",
+        ["settings.json"] = "{\"theme\":\"Dark\",\"checkUpdatesOnStartup\":true}",
+        ["usage.json"] = "{\"totalExpansions\":17}",
+        ["capture-history.json"] = "[{\"id\":\"preservado-na-atualizacao\"}]"
+    };
+    foreach (var item in preservedUpdateData)
+    {
+        await File.WriteAllTextAsync(Path.Combine(transactionData, item.Key), item.Value);
+    }
+    var targetExecutable = Path.Combine(transactionRoot, "SlashDesk.exe");
+    var stagedExecutable = Path.Combine(transactionRoot, "SlashDesk.new.exe");
+    var backupExecutable = Path.Combine(transactionRoot, "SlashDesk.previous.exe");
+    var failedExecutable = Path.Combine(transactionRoot, "SlashDesk.failed.exe");
+    await File.WriteAllTextAsync(targetExecutable, "versÃ£o anterior");
+    await File.WriteAllTextAsync(stagedExecutable, "versÃ£o nova");
+    PortableUpdateFileTransaction.Apply(targetExecutable, stagedExecutable, backupExecutable);
+    Require(
+        await File.ReadAllTextAsync(targetExecutable) == "versÃ£o nova" &&
+        await File.ReadAllTextAsync(backupExecutable) == "versÃ£o anterior" &&
+        preservedUpdateData.All(item =>
+            File.ReadAllText(Path.Combine(transactionData, item.Key)) == item.Value),
+        "substituiÃ§Ã£o troca somente o executÃ¡vel e preserva atalhos, histÃ³rico, configuraÃ§Ãµes e estatÃ­sticas");
+    PortableUpdateFileTransaction.Rollback(targetExecutable, backupExecutable, failedExecutable);
+    Require(
+        await File.ReadAllTextAsync(targetExecutable) == "versÃ£o anterior" &&
+        preservedUpdateData.All(item =>
+            File.ReadAllText(Path.Combine(transactionData, item.Key)) == item.Value),
+        "rollback restaura executÃ¡vel sem alterar atalhos, histÃ³rico, configuraÃ§Ãµes e estatÃ­sticas");
+
+    var replacementInvoked = false;
+    RequireThrows<IOException>(() => PortableUpdateFileTransaction.Apply(
+        targetExecutable,
+        failedExecutable,
+        backupExecutable,
+        (_, _, _) =>
+        {
+            replacementInvoked = true;
+            throw new IOException("falha simulada");
+        }), "falha na substituiÃ§Ã£o Ã© propagada");
+    Require(replacementInvoked && preservedUpdateData.All(item =>
+            File.ReadAllText(Path.Combine(transactionData, item.Key)) == item.Value),
+        "falha na substituiÃ§Ã£o preserva dados");
+
+    var portableUpdateHome = Path.Combine(root, "PortÃ¡til AtualizaÃ§Ã£o");
+    Directory.CreateDirectory(portableUpdateHome);
+    var portableExecutable = Path.Combine(portableUpdateHome, "SlashDesk.exe");
+    File.Copy(Environment.ProcessPath!, portableExecutable);
+    AppPaths.Initialize(new AppDataEnvironment(DistributionMode.Portable, portableUpdateHome,
+        Path.Combine(root, "legacy-update")));
+    AppPaths.EnsureDataLayout();
+    var updaterDataSentinel = Path.Combine(AppPaths.DataDirectory, "history-sentinel.txt");
+    await File.WriteAllTextAsync(updaterDataSentinel, "histÃ³rico intacto");
+    var updaterVersion = Version.Parse(
+        FileVersionInfo.GetVersionInfo(portableExecutable).FileVersion ?? "1.0.0.0").ToString(3);
+    var packageBytes = CreatePortableZip(portableExecutable);
+    var packageHash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(packageBytes))
+        .ToLowerInvariant();
+    var packageName = $"SlashDesk-{updaterVersion}-portable-win-x64.zip";
+    var checksumBytes = System.Text.Encoding.ASCII.GetBytes($"{packageHash}  {packageName}");
+    var packageRelease = CreatePackageRelease(updaterVersion, packageName, packageBytes.Length,
+        checksumBytes.Length);
+    var packageHandler = new FakePackageHttpHandler(packageBytes, checksumBytes);
+    var packageService = new PortableUpdateService(
+        new HttpClient(packageHandler), portableExecutable, currentProcessId: 0);
+    var preparedPackage = await packageService.PrepareAsync(packageRelease);
+    Require(
+        File.Exists(preparedPackage.Manifest.StagedExecutable) &&
+        File.Exists(preparedPackage.Manifest.HelperExecutable) &&
+        await File.ReadAllTextAsync(updaterDataSentinel) == "histÃ³rico intacto",
+        "pacote vÃ¡lido Ã© preparado dentro de SlashDeskData sem alterar histÃ³rico");
+
+    var badChecksum = checksumBytes.ToArray();
+    badChecksum[0] = badChecksum[0] == (byte)'0' ? (byte)'1' : (byte)'0';
+    var invalidChecksumService = new PortableUpdateService(
+        new HttpClient(new FakePackageHttpHandler(packageBytes, badChecksum)),
+        portableExecutable,
+        currentProcessId: 0);
+    await RequireThrowsAsync<InvalidDataException>(
+        () => invalidChecksumService.PrepareAsync(packageRelease),
+        "checksum invÃ¡lido impede atualizaÃ§Ã£o");
+
+    var incompleteRelease = CreatePackageRelease(
+        updaterVersion, packageName, packageBytes.Length + 10, checksumBytes.Length);
+    var incompleteService = new PortableUpdateService(
+        new HttpClient(new FakePackageHttpHandler(packageBytes, checksumBytes)),
+        portableExecutable,
+        currentProcessId: 0);
+    await RequireThrowsAsync<EndOfStreamException>(
+        () => incompleteService.PrepareAsync(incompleteRelease),
+        "download incompleto impede atualizaÃ§Ã£o");
+
+    var concurrentHandler = new FakePackageHttpHandler(packageBytes, checksumBytes)
+    {
+        Delay = TimeSpan.FromMilliseconds(250)
+    };
+    var concurrentPackageService = new PortableUpdateService(
+        new HttpClient(concurrentHandler), portableExecutable, currentProcessId: 0);
+    using var concurrentCancellation = new CancellationTokenSource();
+    var firstPrepare = concurrentPackageService.PrepareAsync(
+        packageRelease, cancellationToken: concurrentCancellation.Token);
+    await concurrentHandler.Started.Task.WaitAsync(TimeSpan.FromSeconds(2));
+    await RequireThrowsAsync<InvalidOperationException>(
+        () => concurrentPackageService.PrepareAsync(packageRelease),
+        "dois pedidos simultÃ¢neos de atualizaÃ§Ã£o sÃ£o bloqueados");
+    concurrentCancellation.Cancel();
+    await RequireThrowsAsync<OperationCanceledException>(
+        () => firstPrepare,
+        "fechamento durante download cancela preparaÃ§Ã£o");
+    Require(await File.ReadAllTextAsync(updaterDataSentinel) == "histÃ³rico intacto",
+        "cancelamento do download preserva SlashDeskData");
+
+    var noCallbackFactory = new FakeRecorderBackendFactory { CompleteOnStop = false };
+    using (var lifecycle = new ScreenRecordingService(
+               noCallbackFactory,
+               TimeSpan.FromMilliseconds(60)))
+    {
+        var task = lifecycle.StartAsync(
+            new RecordingTarget(RecordingTargetKind.Window,
+                new System.Drawing.Rectangle(0, 0, 320, 240), new IntPtr(1)),
+            new CaptureSettings { OutputDirectoryTemplate = root, FileNameTemplate = "no-callback" },
+            new RecordingSettings());
+        Require(noCallbackFactory.Backend.RecordCalled.Wait(TimeSpan.FromSeconds(2)),
+            "backend para timeout sem callback");
+        lifecycle.Stop();
+        await RequireThrowsAsync<TimeoutException>(() => task, "timeout real sem callback");
+        var disposeClock = Stopwatch.StartNew();
+        lifecycle.Dispose();
+        Require(disposeClock.Elapsed < TimeSpan.FromMilliseconds(100),
+            "Dispose apÃ³s timeout nÃ£o bloqueia UI");
+        Require(noCallbackFactory.Backend.DisposeCalls == 0,
+            "timeout sem callback nÃ£o concorre Dispose com cÃ³digo nativo");
+        Require(lifecycle.State == ScreenRecordingState.Failed,
+            "timeout sem callback encerra estado Finalizando");
+    }
+}
+finally
+{
+    if (Directory.Exists(root))
+    {
+        Directory.Delete(root, true);
+    }
+}
+
+Console.WriteLine("SlashText smoke tests: OK");
+return;
+
+static bool HasChangedPixel(System.Drawing.Bitmap bitmap)
+{
+    for (var y = 0; y < bitmap.Height; y += 2)
+    {
+        for (var x = 0; x < bitmap.Width; x += 2)
+        {
+            if (bitmap.GetPixel(x, y).ToArgb() !=
+                System.Drawing.Color.White.ToArgb())
+            {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+static void Require(bool condition, string scenario)
+{
+    if (!condition)
+    {
+        throw new InvalidOperationException($"Falha no cenÃ¡rio: {scenario}");
+    }
+}
+
+static void RequireThrows<TException>(Action action, string scenario)
+    where TException : Exception
+{
+    try
+    {
+        action();
+    }
+    catch (TException)
+    {
+        return;
+    }
+
+    throw new InvalidOperationException($"Falha no smoke test: {scenario}");
+}
+
+static async Task WaitUntilAsync(Func<bool> condition, string scenario)
+{
+    var timeout = Stopwatch.StartNew();
+    while (!condition())
+    {
+        if (timeout.Elapsed > TimeSpan.FromSeconds(2))
+        {
+            throw new InvalidOperationException($"Timeout no cenÃ¡rio: {scenario}");
+        }
+        await Task.Delay(10);
+    }
+}
+
+static async Task RequireThrowsAsync<TException>(Func<Task> action, string scenario)
+    where TException : Exception
+{
+    try
+    {
+        await action();
+    }
+    catch (TException)
+    {
+        return;
+    }
+    throw new InvalidOperationException($"Falha no smoke test: {scenario}");
+}
+
+static Task WriteValidMp4Async(string path) => File.WriteAllBytesAsync(
+    path,
+    [
+        0, 0, 0, 12, (byte)'f', (byte)'t', (byte)'y', (byte)'p', 0, 0, 0, 0,
+        0, 0, 0, 12, (byte)'m', (byte)'d', (byte)'a', (byte)'t', 1, 2, 3, 4,
+        0, 0, 0, 8, (byte)'m', (byte)'o', (byte)'o', (byte)'v'
+    ]);
+
+static string ReleaseJson(
+    string version,
+    bool includeStable = true,
+    bool includeDraft = false,
+    bool includePrerelease = false)
+{
+    var releases = new List<string>();
+    if (includeDraft)
+    {
+        releases.Add(ReleaseEntry(version, draft: true, prerelease: false));
+    }
+    if (includePrerelease)
+    {
+        releases.Add(ReleaseEntry(version + "-rc.1", draft: false, prerelease: true));
+    }
+    if (includeStable)
+    {
+        releases.Add(ReleaseEntry(version, draft: false, prerelease: false));
+    }
+    return $"[{string.Join(',', releases)}]";
+}
+
+static string ReleaseEntry(string version, bool draft, bool prerelease) => $$"""
+    {
+      "tag_name": "v{{version}}",
+      "name": "SlashDesk {{version}}",
+      "body": "Notas {{version}}",
+      "html_url": "https://github.com/lucasllira/SlashText/releases/tag/v{{version}}",
+      "published_at": "2026-08-06T12:00:00Z",
+      "draft": {{draft.ToString().ToLowerInvariant()}},
+      "prerelease": {{prerelease.ToString().ToLowerInvariant()}},
+      "assets": [
+        {
+          "name": "SlashDesk-{{version}}-portable-win-x64.zip",
+          "browser_download_url": "https://example.invalid/SlashDesk-{{version}}-portable-win-x64.zip",
+          "size": 12345
+        },
+        {
+          "name": "SlashDesk-{{version}}-portable-win-x64.zip.sha256",
+          "browser_download_url": "https://example.invalid/SlashDesk-{{version}}-portable-win-x64.zip.sha256",
+          "size": 128
+        }
+      ]
+    }
+    """;
+
+static byte[] CreatePortableZip(string executable)
+{
+    using var output = new MemoryStream();
+    using (var archive = new ZipArchive(output, ZipArchiveMode.Create, leaveOpen: true))
+    {
+        var entry = archive.CreateEntry("SlashDesk.exe", CompressionLevel.NoCompression);
+        using var destination = entry.Open();
+        using var source = File.OpenRead(executable);
+        source.CopyTo(destination);
+    }
+    return output.ToArray();
+}
+
+static ReleaseInfo CreatePackageRelease(
+    string version,
+    string packageName,
+    long packageSize,
+    long checksumSize) => new(
+        version,
+        $"SlashDesk {version}",
+        "Notas",
+        $"https://github.com/lucasllira/SlashText/releases/tag/v{version}",
+        DateTimeOffset.UtcNow,
+        new ReleaseAssetInfo(
+            packageName,
+            $"https://github.com/lucasllira/SlashText/releases/download/v{version}/{packageName}",
+            packageSize),
+        new ReleaseAssetInfo(
+            packageName + ".sha256",
+            $"https://github.com/lucasllira/SlashText/releases/download/v{version}/{packageName}.sha256",
+            checksumSize));
+
+sealed class FakePackageHttpHandler(byte[] package, byte[] checksum) : HttpMessageHandler
+{
+    public TimeSpan Delay { get; init; }
+    public TaskCompletionSource Started { get; } =
+        new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+    protected override async Task<HttpResponseMessage> SendAsync(
+        HttpRequestMessage request,
+        CancellationToken cancellationToken)
+    {
+        Started.TrySetResult();
+        if (Delay > TimeSpan.Zero)
+        {
+            await Task.Delay(Delay, cancellationToken);
+        }
+        var body = request.RequestUri?.AbsolutePath.EndsWith(".sha256", StringComparison.OrdinalIgnoreCase) == true
+            ? checksum
+            : package;
+        return new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+        {
+            Content = new ByteArrayContent(body)
+        };
+    }
+}
+
+sealed class FakeUpdateHttpHandler : HttpMessageHandler
+{
+    private readonly Exception? _exception;
+    private readonly TimeSpan _delay;
+    private int _calls;
+
+    public FakeUpdateHttpHandler(string responseJson) => ResponseJson = responseJson;
+    public FakeUpdateHttpHandler(Exception exception) => _exception = exception;
+    public FakeUpdateHttpHandler(TimeSpan delay)
+    {
+        _delay = delay;
+        ResponseJson = "[]";
+    }
+
+    public string ResponseJson { get; set; } = "[]";
+    public int Calls => Volatile.Read(ref _calls);
+
+    protected override async Task<HttpResponseMessage> SendAsync(
+        HttpRequestMessage request,
+        CancellationToken cancellationToken)
+    {
+        Interlocked.Increment(ref _calls);
+        if (_exception is not null)
+        {
+            throw _exception;
+        }
+        if (_delay > TimeSpan.Zero)
+        {
+            await Task.Delay(_delay, cancellationToken);
+        }
+        return new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+        {
+            Content = new StringContent(ResponseJson)
+        };
+    }
+}
+
+sealed class FakeRecorderBackendFactory : IScreenRecorderBackendFactory
+{
+    public FakeRecorderBackend Backend { get; } = new();
+    public bool SendDuplicateCallbacks
+    {
+        get => Backend.SendDuplicateCallbacks;
+        init => Backend.SendDuplicateCallbacks = value;
+    }
+    public bool CompleteOnStop
+    {
+        get => Backend.CompleteOnStop;
+        init => Backend.CompleteOnStop = value;
+    }
+    public bool FailOnStop
+    {
+        get => Backend.FailOnStop;
+        init => Backend.FailOnStop = value;
+    }
+    public int CallbackDelayMs
+    {
+        get => Backend.CallbackDelayMs;
+        init => Backend.CallbackDelayMs = value;
+    }
+    public bool BlockStop
+    {
+        get => Backend.BlockStop;
+        init => Backend.BlockStop = value;
+    }
+
+    public IScreenRecorderBackend Create(RecorderOptions options) => Backend;
+}
+
+sealed class FakeRecorderBackend : IScreenRecorderBackend
+{
+    private int _activeCalls;
+    private int _maximumConcurrentCalls;
+    private int _disposeCalls;
+    private int _stopCalls;
+    private string _path = string.Empty;
+    private readonly ManualResetEventSlim _stopRelease = new(false);
+
+    public event EventHandler<RecordingCompleteEventArgs>? Completed;
+    public event EventHandler<RecordingFailedEventArgs>? Failed;
+    public event EventHandler<RecordingStatusEventArgs>? StatusChanged;
+    public ManualResetEventSlim RecordCalled { get; } = new(false);
+    public ManualResetEventSlim StopEntered { get; } = new(false);
+    public bool SendDuplicateCallbacks { get; set; }
+    public bool CompleteOnStop { get; set; } = true;
+    public bool FailOnStop { get; set; }
+    public int CallbackDelayMs { get; set; }
+    public bool BlockStop { get; set; }
+    public int DisposeCalls => Volatile.Read(ref _disposeCalls);
+    public int StopCalls => Volatile.Read(ref _stopCalls);
+    public int MaximumConcurrentCalls => Volatile.Read(ref _maximumConcurrentCalls);
+
+    public void Record(string path)
+    {
+        NativeCall(() =>
+        {
+            _path = path;
+            RecordCalled.Set();
+            StatusChanged?.Invoke(this, new RecordingStatusEventArgs(RecorderStatus.Recording));
+        });
+    }
+
+    public void Pause() => NativeCall(() =>
+        StatusChanged?.Invoke(this, new RecordingStatusEventArgs(RecorderStatus.Paused)));
+
+    public void Resume() => NativeCall(() =>
+        StatusChanged?.Invoke(this, new RecordingStatusEventArgs(RecorderStatus.Recording)));
+
+    public void Stop()
+    {
+        NativeCall(() =>
+        {
+            Interlocked.Increment(ref _stopCalls);
+            StopEntered.Set();
+            if (BlockStop)
+            {
+                _stopRelease.Wait(TimeSpan.FromSeconds(3));
+            }
+            if (FailOnStop)
+            {
+                Failed?.Invoke(this, new RecordingFailedEventArgs("falha simulada", _path));
+                return;
+            }
+            if (CompleteOnStop)
+            {
+                if (CallbackDelayMs > 0)
+                {
+                    _ = Task.Run(async () =>
+                    {
+                        await Task.Delay(CallbackDelayMs);
+                        CompleteLater();
+                    });
+                }
+                else
+                {
+                    CompleteLater();
+                }
+            }
+        });
+    }
+
+    public void ReleaseStop() => _stopRelease.Set();
+
+    public void CompleteLater()
+    {
+        WriteValidMp4(_path);
+        Completed?.Invoke(
+            this,
+            new RecordingCompleteEventArgs(_path, new List<FrameData>()));
+        if (SendDuplicateCallbacks)
+        {
+            Failed?.Invoke(
+                this,
+                new RecordingFailedEventArgs("callback tardio", _path));
+        }
+    }
+
+    public void Dispose()
+    {
+        NativeCall(() => Interlocked.Increment(ref _disposeCalls));
+    }
+
+    private void NativeCall(Action action)
+    {
+        var concurrent = Interlocked.Increment(ref _activeCalls);
+        UpdateMaximum(concurrent);
+        try
+        {
+            Thread.Sleep(15);
+            action();
+        }
+        finally
+        {
+            Interlocked.Decrement(ref _activeCalls);
+        }
+    }
+
+    private void UpdateMaximum(int value)
+    {
+        while (true)
+        {
+            var current = Volatile.Read(ref _maximumConcurrentCalls);
+            if (current >= value ||
+                Interlocked.CompareExchange(ref _maximumConcurrentCalls, value, current) == current)
+            {
+                return;
+            }
+        }
+    }
+
+    private static void WriteValidMp4(string path) => File.WriteAllBytes(
+        path,
+        [
+            0, 0, 0, 12, (byte)'f', (byte)'t', (byte)'y', (byte)'p', 0, 0, 0, 0,
+            0, 0, 0, 12, (byte)'m', (byte)'d', (byte)'a', (byte)'t', 1, 2, 3, 4,
+            0, 0, 0, 8, (byte)'m', (byte)'o', (byte)'o', (byte)'v'
+        ]);
+}

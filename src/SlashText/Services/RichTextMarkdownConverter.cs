@@ -375,7 +375,48 @@ public static partial class RichTextMarkdownConverter
                 index += 2;
                 while (index < lines.Length && IsTableRow(lines[index]))
                 {
-                    ço-¢G§²ÚîÆ­yÕps["align"].Value)
+                    html.Append("<tr>");
+                    foreach (var cell in SplitTableRow(lines[index]))
+                    {
+                        html.Append("<td style=\"border:1px solid #9aa4b2;padding:6px 8px\">")
+                            .Append(InlineToHtml(cell))
+                            .Append("</td>");
+                    }
+                    html.Append("</tr>");
+                    index++;
+                }
+                index--;
+                html.Append("</table>");
+                continue;
+            }
+
+            if (TryReadListItem(lines[index], out var ordered, out _))
+            {
+                html.Append(ordered ? "<ol>" : "<ul>");
+                while (index < lines.Length &&
+                       TryReadListItem(lines[index], out var currentOrdered, out var item) &&
+                       currentOrdered == ordered)
+                {
+                    html.Append("<li>").Append(InlineToHtml(item)).Append("</li>");
+                    index++;
+                }
+                index--;
+                html.Append(ordered ? "</ol>" : "</ul>");
+                continue;
+            }
+
+            var imageMatch = ImagePattern().Match(lines[index].Trim());
+            if (imageMatch.Success)
+            {
+                html.Append(BuildImageHtml(imageMatch));
+                continue;
+            }
+
+            var paragraphMatch = ParagraphPattern().Match(lines[index]);
+            if (paragraphMatch.Success)
+            {
+                html.Append("<div style=\"text-align:")
+                    .Append(paragraphMatch.Groups["align"].Value)
                     .Append("\">")
                     .Append(InlineToHtml(paragraphMatch.Groups["text"].Value))
                     .Append("</div>");
