@@ -1,0 +1,58 @@
+name: Tag Stable Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Stable SemVer tag to create
+        required: true
+        default: v3.0.0
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: stable-release-tag
+  cancel-in-progress: false
+
+jobs:
+  create-tag:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Validate version and create annotated tag
+        shell: pwsh
+        run: |
+          $tag = '${{ inputs.tag }}'
+          if ($tag -notmatch '^v(?<version>(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*))$') {
+            throw "A tag '$tag' não segue o formato estável vX.Y.Z."
+          }
+
+          [xml]$project = Get-Content src/SlashText/SlashText.csproj
+          $projectVersion = $project.Project.PropertyGroup.Version | Select-Object -First 1
+          if ($projectVersion -ne $Matches.version) {
+            throw "A tag $tag não corresponde à versão $projectVersion do projeto."
+          }
+
+          git fetch origin main --tags
+          if (git rev-parse --verify --quiet "refs/tags/$tag") {
+            throw "A tag $tag já existe."
+          }
+
+          $mainSha = git rev-parse origin/main
+          $headSha = git rev-parse HEAD
+          if ($headSha -ne $mainSha) {
+            throw "O checkout ($headSha) não corresponde à main ($mainSha)."
+          }
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a $tag -m "SlashDesk $($Matches.version)"
+          git push origin "refs/tags/$tag"
