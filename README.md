@@ -115,4 +115,50 @@ atualizaÃ§Ã£o manual e mantÃ©m `%LocalAppData%\SlashDesk` fora do staging.
 | VariÃ¡vel | Resultado |
 |---|---|
 | `{{nome}}` | Solicita um valor antes de inserir |
-| `{]ú×Ÿm¢G§²ÚîÆ­yÒFF–ærÒæWrF†–6¶æW72ƒ‚’ÀĞ¢VffV7BÒæWr7—7FVÒåv–æF÷w2äÖVF–äVffV7G2äG&÷6†F÷tVffV7@Ğ¢°Ğ¢&ÇW%&F—W2ÒbÀĞ¢6†F÷tFWF‚Ò2ÀĞ¢÷6—G’Ò6W'f–6W2åF†VÖU6W'f–6Rä—4F&²òã#‚¢ã ¢ÒÀĞ¢6†–ÆBÒö—FV×0Ğ¢Ó°Ğ¢6öçFVçBÒ÷7W&f6S°Ğ Ğ¢6÷W&6T–æ—F–Æ—¦VB³Ò…òÂò’ÓàĞ¢°Ğ¢f"†æFÆRÒæWrv–æF÷t–çFW&÷†VÇW"‡F†—2’ä†æFÆS°Ğ¢6WEv–æF÷tÆöær††æFÆRÂwvÄW…7G–ÆRÂvWEv–æF÷tÆöær††æFÆRÂwvÄW…7G–ÆR’Âw4W„æô7F—fFR“°Ğ¢Ó°Ğ¢ĞĞ Ğ¢V&Æ–2fö–BWFFU7VvvW7F–öç2„•&VDöæÇ”Æ—7CÅ6æ—WCâ6æ—WG2Âö–çB÷6—F–öâĞ¢°Ğ¢–b‡6æ—WG2ä6÷VçBÓÒĞ¢°Ğ¢†–FR‚“°Ğ¢&WGW&ã°Ğ¢ĞĞ Ğ¢÷7W&f6Rä&6¶w&÷VæBÒf–æD''W6‚‚%7W&f6T''W6‚"Â''W6†W2åv†—FR“°Ğ¢÷7W&f6Rä&÷&FW$''W6‚Òf–æD''W6‚‚$F—f–FW$''W6‚"Â''W6†W2äÆ–v‡Dw&’“°Ğ¢ö—FV×2ä6†–ÆG&Vâä6ÆV"‚“°Ğ¢f÷&V6‚‡f"6æ—WB–â6æ—WG2Ğ¢°Ğ¢f"&÷rÒæWrw&–B²Ö&v–âÒæWrF†–6¶æW72ƒ‚ÂbÂ‚Âb’Ó°Ğ¢&÷rä6öÇVÖäFVf–æ—F–öç2äFB†æWr6öÇVÖäFVf–æ—F–öâ²v–GF‚ÒæWrw&–DÆVæwF‚ƒR’Ò“°Ğ¢&÷rä6öÇVÖäFVf–æ—F–öç2äFB†æWr6öÇVÖäFVf–æ—F–öâ²v–GF‚ÒæWrw&–DÆVæwF‚ƒÂw&–EVæ—EG—Rå7F"’Ò“°Ğ¢&÷rä6†–ÆG&VâäFB†æWrFW‡D&Æö6°Ğ¢°Ğ¢FW‡BÒ6æ—WBåG&–vvW"ÀĞ¢föçDfÖ–Ç’ÒæWrföçDfÖ–Ç’‚$666F–ÖöæòÂ6öç6öÆ2"’ÀĞ¢föçEvV–v‡BÒföçEvV–v‡G2å6VÖ”&öÆBÀĞ¢f÷&Vw&÷VæBÒf–æD''W6‚‚$66VçD''W6‚"ÂæWr6öÆ–D6öÆ÷$''W6‚„6öÆ÷"äg&öÕ&v"ƒ‚Â#bÂ3’’’Ğ¢Ò“°Ğ¢f"æÖRÒæWrFW‡D&Æö6°Ğ¢°Ğ¢FW‡BÒ6æ—WBäæÖRÀĞ¢FW‡EG&–ÖÖ–ærÒFW‡EG&–ÖÖ–ærä6†&7FW$VÆÆ—6—2ÀĞ¢f÷&Vw&÷VæBÒf–æD''W6‚‚$×WFVD''W6‚"ÂæWr6öÆ–D6öÆ÷$''W6‚„6öÆ÷"äg&öÕ&v"ƒƒ’Â“’Â2’’Ğ¢Ó°Ğ¢w&–Bå6WD6öÇVÖâ†æÖRÂ“°Ğ¢&÷rä6†–ÆG&VâäFB†æÖR“°Ğ¢ö—FV×2ä6†–ÆG&VâäFB‡&÷r“°Ğ¢ĞĞ Ğ¢ÆVgBÒ÷6—F–öâåƒ°Ğ¢F÷Ò÷6—F–öâå“°Ğ¢–b‚—5f—6–&ÆRĞ¢°Ğ¢6†÷r‚“°Ğ¢ĞĞ¢ĞĞ Ğ¢&—fFR7FF–2''W6‚f–æD''W6‚‡7G&–ær¶W’Â''W6‚fÆÆ&6²’ÓàĞ¢7—7FVÒåv–æF÷w2äÆ–6F–öâä7W'&VçBåG'”f–æE&W6÷W&6R†¶W’’2''W6‚óòfÆÆ&6³°Ğ Ğ¢´FÆÄ–×÷'B‚'W6W#3"æFÆÂ"ÂVçG'•ö–çBÒ$vWEv–æF÷tÆöær"•ĞĞ¢&—fFR7FF–2W‡FW&â–çBvWEv–æF÷tÆöær„–çEG"v–æF÷rÂ–çB–æFW‚“°Ğ Ğ¢´FÆÄ–×÷'B‚'W6W#3"æFÆÂ"ÂVçG'•ö–çBÒ%6WEv–æF÷tÆöær"•ĞĞ¢&—fFR7FF–2W‡FW&â–çB6WEv–æF÷tÆöær„–çEG"v–æF÷rÂ–çB–æFW‚Â–çBfÇVR“°Ğ§ĞĞ
+| `{{campo\|padrÃ£o}}` | Campo preenchÃ­vel com valor sugerido |
+| `{{data}}`, `{{hora}}`, `{{agora}}` | Data e hora |
+| `{{data:+7d}}` | Data calculada; aceita `d`, `m` e `y` |
+| `{{usuario}}` | UsuÃ¡rio atual do Windows |
+| `{{tab}}` | Pressiona Tab e continua no prÃ³ximo campo |
+
+## Executar e publicar
+
+Em um Windows com o SDK do .NET 10:
+
+```powershell
+dotnet restore
+dotnet run --project .\src\SlashText\SlashText.csproj
+```
+
+PublicaÃ§Ã£o portÃ¡til:
+
+```powershell
+dotnet publish .\src\SlashText\SlashText.csproj `
+  -c Release `
+  -r win-x64 `
+  --self-contained true `
+  -p:PublishSingleFile=true `
+  -o .\publish
+```
+
+## Privacidade e limitaÃ§Ãµes do Windows
+
+O conteÃºdo digitado e as imagens capturadas nÃ£o saem do computador. O histÃ³rico
+de captura nÃ£o armazena a imagem, apenas metadados locais necessÃ¡rios para a
+lista de recentes.
+
+O Windows pode bloquear capturas da Ã¡rea de trabalho segura, conteÃºdo com DRM ou
+aplicativos elevados quando o SlashDesk nÃ£o estÃ¡ no mesmo nÃ­vel de permissÃ£o.
+Atalhos jÃ¡ reservados pelo Windows ou por outro programa tambÃ©m podem ser
+recusados; o aplicativo informa o conflito.
+
+## VersÃ£o 3.0.0
+
+O SlashDesk 3.0.0 preserva a gravaÃ§Ã£o local de MP4 e GIF estabilizada na 2.9.1 e
+aplica um design system unificado, navegaÃ§Ã£o horizontal e paridade entre os temas
+Claro, Escuro e Seguir o Windows. Atalhos, histÃ³rico, `SlashDeskData`, atualizaÃ§Ã£o
+portÃ¡til e rollback mantÃªm os formatos e comportamentos compatÃ­veis.
+
+## LicenÃ§a
+
+DistribuÃ­do sob a licenÃ§a MIT.
