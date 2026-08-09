@@ -4,6 +4,13 @@ on:
   push:
     tags:
       - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Existing SemVer tag to build and publish
+        required: true
+        default: v3.0.0
+        type: string
 
 permissions:
   contents: write
@@ -16,13 +23,18 @@ jobs:
       - name: Checkout tag
         uses: actions/checkout@v4
         with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref }}
           fetch-depth: 0
 
       - name: Validate SemVer tag and project version
         id: version
         shell: pwsh
         run: |
-          $tag = '${{ github.ref_name }}'
+          $tag = if ('${{ github.event_name }}' -eq 'workflow_dispatch') {
+            '${{ inputs.release_tag }}'
+          } else {
+            '${{ github.ref_name }}'
+          }
           if ($tag -notmatch '^v(?<base>(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*))(?<suffix>-[0-9A-Za-z.-]+)?$') {
             throw "A tag '$tag' não segue vX.Y.Z ou SemVer prerelease."
           }
@@ -32,6 +44,7 @@ jobs:
           if ($projectVersion -ne $tagVersion) {
             throw "A tag $tag não corresponde à versão $projectVersion do projeto."
           }
+          "tag=$tag" >> $env:GITHUB_OUTPUT
           "version=$($tag.TrimStart('v'))" >> $env:GITHUB_OUTPUT
           "stableVersion=$projectVersion" >> $env:GITHUB_OUTPUT
           "prerelease=$($tag.Contains('-').ToString().ToLowerInvariant())" >> $env:GITHUB_OUTPUT
@@ -115,7 +128,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           $arguments = @(
-            'release', 'create', '${{ github.ref_name }}',
+            'release', 'create', '${{ steps.version.outputs.tag }}',
             '${{ steps.package.outputs.portableZip }}',
             '${{ steps.package.outputs.portableChecksum }}',
             '--repo', '${{ github.repository }}',
