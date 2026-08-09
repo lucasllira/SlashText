@@ -272,7 +272,7 @@ public sealed class RegionCaptureWindow : Window
             {
                 BlurRadius = 20,
                 ShadowDepth = 5,
-                Opacity = .38,
+                Opacity = _isDark ? .32 : .16,
                 Color = Colors.Black
             },
             Child = root

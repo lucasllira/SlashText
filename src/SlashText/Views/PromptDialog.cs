@@ -43,7 +43,12 @@ public sealed class PromptDialog : Window
             IsCancel = true,
             Margin = new Thickness(0, 0, 10, 0)
         });
-        var confirm = new Button { Content = "Aplicar", IsDefault = true };
+        var confirm = new Button
+        {
+            Content = "Aplicar",
+            IsDefault = true,
+            Style = (Style)Application.Current.FindResource("PrimaryButton")
+        };
         confirm.Click += (_, _) =>
         {
             DialogResult = true;

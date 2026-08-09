@@ -17,6 +17,7 @@ using Forms = System.Windows.Forms;
 using Button = System.Windows.Controls.Button;
 using DrawingIcon = System.Drawing.Icon;
 using DrawingSystemIcons = System.Drawing.SystemIcons;
+using DrawingColor = System.Drawing.Color;
 
 namespace SlashText;
 
@@ -99,6 +100,7 @@ public partial class MainWindow : Window
             ShowSuggestionsCheckBox.IsChecked = _settings.ShowSuggestions;
             CheckUpdatesCheckBox.IsChecked = _settings.CheckUpdatesOnStartup;
             AboutVersionText.Text = $"Versão {ProductVersion()} · Licença MIT · código aberto";
+            SettingsVersionText.Text = $"Versão atual: {ProductVersion()}";
             UpdateChannelText.Text = $"Canal: estável · modo {AppPaths.Mode.ToString().ToLowerInvariant()}";
             BackupLocationText.Text =
                 $"Backups em {AppPaths.BackupsDirectory}. Nenhum arquivo é enviado para a nuvem.";
@@ -184,6 +186,10 @@ public partial class MainWindow : Window
         }
 
         var menu = new Forms.ContextMenuStrip();
+        menu.Font = new System.Drawing.Font("Segoe UI", 9.5f);
+        menu.ShowImageMargin = false;
+        menu.Padding = new Forms.Padding(4);
+        ApplyTrayTheme(menu);
         menu.Items.Add("Abrir SlashDesk", null, (_, _) => Dispatcher.Invoke(ShowFromTray));
         menu.Items.Add("Novo atalho", null, (_, _) => Dispatcher.Invoke(() =>
         {
@@ -203,6 +209,18 @@ public partial class MainWindow : Window
         _trayIcon.DoubleClick += (_, _) => Dispatcher.Invoke(ShowFromTray);
     }
 
+    private static void ApplyTrayTheme(Forms.ContextMenuStrip menu)
+    {
+        menu.BackColor = ThemeService.IsDark
+            ? DrawingColor.FromArgb(15, 26, 35)
+            : DrawingColor.FromArgb(252, 253, 252);
+        menu.ForeColor = ThemeService.IsDark
+            ? DrawingColor.FromArgb(243, 246, 248)
+            : DrawingColor.FromArgb(21, 33, 43);
+        menu.Renderer = new Forms.ToolStripProfessionalRenderer(
+            new TrayColorTable(ThemeService.IsDark));
+    }
+
     private void StartMonitoring()
     {
         _keyboardHook.UpdateSnippets(_snippets);
@@ -211,7 +229,7 @@ public partial class MainWindow : Window
             _keyboardHook.Start();
         }
 
-        MonitorStatusText.Text = "● Monitoramento ativo";
+        MonitorStatusText.Text = "Monitoramento ativo";
     }
 
     private void QuickAccentService_OnChanged(object? sender, QuickAccentChangedEventArgs e)
@@ -347,20 +365,42 @@ public partial class MainWindow : Window
 
     private Button CreateSnippetButton(Snippet snippet)
     {
+        var selected = ReferenceEquals(snippet, _selected);
         var button = new Button
         {
             HorizontalContentAlignment = HorizontalAlignment.Left,
-            Background = ReferenceEquals(snippet, _selected)
+            Background = selected
                 ? (Brush)FindResource("SelectedBrush")
                 : Brushes.Transparent,
-            Padding = new Thickness(9, 7, 9, 7),
+            BorderBrush = selected
+                ? (Brush)FindResource("AccentBrush")
+                : Brushes.Transparent,
+            BorderThickness = new Thickness(1),
+            Padding = new Thickness(10, 8, 10, 8),
             Margin = new Thickness(0, 3, 0, 0),
             Tag = snippet,
-            Content = new TextBlock
+            Content = new StackPanel
             {
-                Text = $"{snippet.Trigger}  ·  {snippet.Name}",
-                TextTrimming = TextTrimming.CharacterEllipsis,
-                FontWeight = FontWeights.Normal
+                Children =
+                {
+                    new TextBlock
+                    {
+                        Text = snippet.Trigger,
+                        TextTrimming = TextTrimming.CharacterEllipsis,
+                        FontWeight = FontWeights.SemiBold,
+                        Foreground = selected
+                            ? (Brush)FindResource("AccentBrush")
+                            : (Brush)FindResource("InkBrush")
+                    },
+                    new TextBlock
+                    {
+                        Text = snippet.Name,
+                        TextTrimming = TextTrimming.CharacterEllipsis,
+                        FontSize = 11,
+                        Margin = new Thickness(0, 2, 0, 0),
+                        Foreground = (Brush)FindResource("MutedBrush")
+                    }
+                }
             }
         };
         button.Click += (_, _) => SelectSnippet((Snippet)button.Tag);
@@ -893,6 +933,10 @@ public partial class MainWindow : Window
             item.Type.Equals("monitor", StringComparison.OrdinalIgnoreCase)).ToString("N0");
         CaptureWindowTotalText.Text = captures.Count(item =>
             item.Type.Equals("janela", StringComparison.OrdinalIgnoreCase)).ToString("N0");
+        CaptureGifTotalText.Text = captures.Count(item =>
+            item.MediaKind.Equals("gif", StringComparison.OrdinalIgnoreCase)).ToString("N0");
+        CaptureMp4TotalText.Text = captures.Count(item =>
+            item.MediaKind.Equals("video", StringComparison.OrdinalIgnoreCase)).ToString("N0");
 
         StatisticsRankingPanel.Children.Clear();
         var ranking = _snippets
@@ -1193,6 +1237,10 @@ public partial class MainWindow : Window
 
         _settings.Theme = theme;
         ThemeService.Apply(theme);
+        if (_trayIcon?.ContextMenuStrip is { } trayMenu)
+        {
+            ApplyTrayTheme(trayMenu);
+        }
         await _settingsStore.SaveAsync(_settings);
         ShowView(SettingsView, SettingsTabButton);
     }
@@ -1431,6 +1479,28 @@ public partial class MainWindow : Window
             item => $"{item.Value} FPS — {item.Name}", item => item.Value.ToString());
         AddPresetItems(GifQualityBox, RecordingPresetCatalog.GifQuality,
             item => item.Name, item => item.Value.ToString());
+    }
+
+    private sealed class TrayColorTable(bool dark) : Forms.ProfessionalColorTable
+    {
+        private readonly DrawingColor _surface = dark
+            ? DrawingColor.FromArgb(15, 26, 35)
+            : DrawingColor.FromArgb(252, 253, 252);
+        private readonly DrawingColor _selected = dark
+            ? DrawingColor.FromArgb(17, 57, 68)
+            : DrawingColor.FromArgb(221, 245, 248);
+        private readonly DrawingColor _divider = dark
+            ? DrawingColor.FromArgb(36, 54, 66)
+            : DrawingColor.FromArgb(213, 222, 227);
+
+        public override DrawingColor ToolStripDropDownBackground => _surface;
+        public override DrawingColor ImageMarginGradientBegin => _surface;
+        public override DrawingColor ImageMarginGradientMiddle => _surface;
+        public override DrawingColor ImageMarginGradientEnd => _surface;
+        public override DrawingColor MenuItemSelected => _selected;
+        public override DrawingColor MenuItemBorder => _divider;
+        public override DrawingColor SeparatorDark => _divider;
+        public override DrawingColor SeparatorLight => _divider;
     }
 
     private static void AddPresetItems<T>(
@@ -2221,6 +2291,7 @@ public partial class MainWindow : Window
     private async void CheckUpdates_OnClick(object sender, RoutedEventArgs e)
     {
         CheckUpdatesButton.IsEnabled = false;
+        SettingsCheckUpdatesButton.IsEnabled = false;
         try
         {
             var result = await _updateService.CheckAsync(force: true);
@@ -2251,6 +2322,7 @@ public partial class MainWindow : Window
         finally
         {
             CheckUpdatesButton.IsEnabled = true;
+            SettingsCheckUpdatesButton.IsEnabled = true;
         }
     }
 
@@ -2373,6 +2445,8 @@ public partial class MainWindow : Window
             ? "Última verificação: ainda não verificado"
             : $"Última verificação: {state.LastCheckedUtc.Value.ToLocalTime():g}";
         LastUpdateResultText.Text = $"Resultado: {state.LastResult}";
+        SettingsLastUpdateCheckText.Text = LastUpdateCheckText.Text;
+        SettingsLastUpdateResultText.Text = LastUpdateResultText.Text;
         _lastReleaseUrl = state.LastReleaseUrl;
         ReleaseNotesButton.Visibility = string.IsNullOrWhiteSpace(_lastReleaseUrl)
             ? Visibility.Collapsed

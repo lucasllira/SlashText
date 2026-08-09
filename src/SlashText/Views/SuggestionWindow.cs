@@ -37,7 +37,7 @@ public sealed class SuggestionWindow : Window
             {
                 BlurRadius = 16,
                 ShadowDepth = 3,
-                Opacity = 0.18
+                Opacity = Services.ThemeService.IsDark ? 0.28 : 0.12
             },
             Child = _items
         };

@@ -32,6 +32,7 @@ jobs:
       - name: UI integrity smoke
         shell: pwsh
         run: |
+          ./scripts/compare-ui-inventory.ps1
           ./scripts/ui-integrity-smoke.ps1
           ./scripts/release-workflow-smoke.ps1
 
@@ -106,13 +107,13 @@ jobs:
       - name: Upload installed staging
         uses: actions/upload-artifact@v4
         with:
-          name: SlashDesk-2.9.1-installed-staging-win-x64
+          name: SlashDesk-3.0.0-installed-staging-win-x64
           path: publish-installed/
           if-no-files-found: error
 
       - name: Upload portable test candidate
         uses: actions/upload-artifact@v4
         with:
-          name: SlashDesk-2.9.1-portable-test-candidate-win-x64
+          name: SlashDesk-3.0.0-portable-test-candidate-win-x64
           path: package/
           if-no-files-found: error

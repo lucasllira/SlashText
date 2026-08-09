@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using SlashText.Models;
+using SlashText.Services;
 
 namespace SlashText.Views;
 
@@ -17,7 +18,15 @@ internal sealed class UpdateProgressWindow : Window, IProgress<UpdateProgress>
         Height = 190;
         ResizeMode = ResizeMode.NoResize;
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
-        var panel = new StackPanel { Margin = new Thickness(24) };
+        Background = (System.Windows.Media.Brush)Application.Current.FindResource("CanvasBrush");
+        Foreground = (System.Windows.Media.Brush)Application.Current.FindResource("InkBrush");
+        SourceInitialized += (_, _) => ThemeService.ApplyToWindow(this);
+        var surface = new Border
+        {
+            Style = (Style)Application.Current.FindResource("SettingsCard"),
+            Margin = new Thickness(18)
+        };
+        var panel = new StackPanel();
         panel.Children.Add(new TextBlock
         {
             Text = "Preparando atualização segura",
@@ -30,7 +39,12 @@ internal sealed class UpdateProgressWindow : Window, IProgress<UpdateProgress>
             Margin = new Thickness(0, 12, 0, 8)
         };
         panel.Children.Add(_status);
-        _progress = new ProgressBar { Height = 8, IsIndeterminate = true };
+        _progress = new ProgressBar
+        {
+            Height = 6,
+            IsIndeterminate = true,
+            Style = (Style)Application.Current.FindResource("LoadingProgress")
+        };
         panel.Children.Add(_progress);
         _cancel = new Button
         {
@@ -40,7 +54,8 @@ internal sealed class UpdateProgressWindow : Window, IProgress<UpdateProgress>
         };
         _cancel.Click += (_, _) => Cancellation.Cancel();
         panel.Children.Add(_cancel);
-        Content = panel;
+        surface.Child = panel;
+        Content = surface;
         Closing += (_, args) =>
         {
             if (!CanClose)

@@ -5,6 +5,8 @@
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary Source="Styles/Foundation.xaml"/>
+                <ResourceDictionary Source="Styles/Icons.xaml"/>
+                <ResourceDictionary Source="Styles/Components.xaml"/>
             </ResourceDictionary.MergedDictionaries>
 
             <Color x:Key="CanvasColor">#F3F5F7</Color>
@@ -71,6 +73,14 @@
                                 <Setter TargetName="ButtonSurface"
                                         Property="Opacity"
                                         Value="0.72"/>
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="ButtonSurface"
+                                        Property="BorderBrush"
+                                        Value="{DynamicResource AccentBrush}"/>
+                                <Setter TargetName="ButtonSurface"
+                                        Property="BorderThickness"
+                                        Value="2"/>
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter TargetName="ButtonSurface"
@@ -336,7 +346,7 @@
                                    IsOpen="{TemplateBinding IsDropDownOpen}"
                                    AllowsTransparency="True"
                                    Focusable="False"
-                                   PopupAnimation="Fade">
+                                   PopupAnimation="None">
                                 <Border MinWidth="{Binding ActualWidth, ElementName=ToggleButton}"
                                         Margin="0,5,0,0"
                                         Padding="5"
@@ -563,11 +573,11 @@
         </Style>
 
         <Style x:Key="SettingsCard" TargetType="Border">
-            <Setter Property="Background" Value="{DynamicResource PanelBrush}"/>
+            <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
             <Setter Property="BorderBrush" Value="{DynamicResource DividerBrush}"/>
             <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="CornerRadius" Value="10"/>
-            <Setter Property="Padding" Value="16"/>
+            <Setter Property="CornerRadius" Value="{StaticResource Radius.Card}"/>
+            <Setter Property="Padding" Value="{StaticResource Padding.Card}"/>
         </Style>
 
         <Style x:Key="MetricCard" TargetType="Border"

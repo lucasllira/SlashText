@@ -152,11 +152,12 @@ aplicativos elevados quando o SlashDesk não está no mesmo nível de permissão
 Atalhos já reservados pelo Windows ou por outro programa também podem ser
 recusados; o aplicativo informa o conflito.
 
-## Próximas etapas
+## Versão 3.0.0
 
-O SlashDesk 2.9.1 estabiliza a gravação local de MP4 e GIF. A próxima versão
-fica reservada para captura com rolagem, ações de captura/gravação no menu da
-bandeja e revisão visual, além da assinatura digital para distribuição corporativa.
+O SlashDesk 3.0.0 preserva a gravação local de MP4 e GIF estabilizada na 2.9.1 e
+aplica um design system unificado, navegação horizontal e paridade entre os temas
+Claro, Escuro e Seguir o Windows. Atalhos, histórico, `SlashDeskData`, atualização
+portátil e rollback mantêm os formatos e comportamentos compatíveis.
 
 ## Licença
 

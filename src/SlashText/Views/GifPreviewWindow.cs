@@ -26,6 +26,7 @@ public sealed class GifPreviewWindow : Window
         WindowStartupLocation = WindowStartupLocation.CenterScreen;
         Background = (Brush)Application.Current.FindResource("CanvasBrush");
         Foreground = (Brush)Application.Current.FindResource("InkBrush");
+        SourceInitialized += (_, _) => ThemeService.ApplyToWindow(this);
 
         var root = new Grid { Margin = new Thickness(20) };
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
@@ -58,7 +59,7 @@ public sealed class GifPreviewWindow : Window
             Background = (Brush)Application.Current.FindResource("ChromeBrush"),
             BorderBrush = (Brush)Application.Current.FindResource("DividerBrush"),
             BorderThickness = new Thickness(1),
-            CornerRadius = new CornerRadius(10),
+            CornerRadius = new CornerRadius(8),
             Padding = new Thickness(8),
             Child = _preview
         };
