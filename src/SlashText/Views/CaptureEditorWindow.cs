@@ -57,6 +57,7 @@ public sealed class CaptureEditorWindow : Window
         WindowStartupLocation = WindowStartupLocation.CenterScreen;
         Background = (Brush)Application.Current.FindResource("CanvasBrush");
         Foreground = (Brush)Application.Current.FindResource("InkBrush");
+        SourceInitialized += (_, _) => ThemeService.ApplyToWindow(this);
 
         var scale = Math.Min(1d, Math.Min(1080d / source.Width, 620d / source.Height));
         _previewWidth = Math.Max(1, source.Width * scale);
@@ -103,7 +104,7 @@ public sealed class CaptureEditorWindow : Window
             VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
             HorizontalContentAlignment = HorizontalAlignment.Center,
             VerticalContentAlignment = VerticalAlignment.Center,
-            Background = (Brush)Application.Current.FindResource("InputBrush"),
+            Background = (Brush)Application.Current.FindResource("ChromeBrush"),
             BorderBrush = (Brush)Application.Current.FindResource("DividerBrush"),
             BorderThickness = new Thickness(1)
         };
@@ -139,16 +140,16 @@ public sealed class CaptureEditorWindow : Window
     private FrameworkElement BuildToolbar()
     {
         var panel = new WrapPanel();
-        panel.Children.Add(ToolButton("↗  Seta", CaptureAnnotationKind.Arrow));
-        panel.Children.Add(ToolButton("▰  Marca-texto", CaptureAnnotationKind.Highlighter));
-        panel.Children.Add(ToolButton("□  Retângulo", CaptureAnnotationKind.Rectangle));
-        panel.Children.Add(ToolButton("○  Círculo", CaptureAnnotationKind.Ellipse));
-        panel.Children.Add(ToolButton("✎  Lápis", CaptureAnnotationKind.Pencil));
-        panel.Children.Add(ToolButton("T  Texto", CaptureAnnotationKind.Text));
-        panel.Children.Add(ToolButton("①  Número", CaptureAnnotationKind.Number));
-        panel.Children.Add(ToolButton("▦  Desfoque", CaptureAnnotationKind.Blur));
-        panel.Children.Add(ToolButton("▩  Pixelizar", CaptureAnnotationKind.Pixelate));
-        panel.Children.Add(ActionButton("✂  Recortar", (_, _) =>
+        panel.Children.Add(ToolButton("Seta", CaptureAnnotationKind.Arrow));
+        panel.Children.Add(ToolButton("Marca-texto", CaptureAnnotationKind.Highlighter));
+        panel.Children.Add(ToolButton("Retângulo", CaptureAnnotationKind.Rectangle));
+        panel.Children.Add(ToolButton("Elipse", CaptureAnnotationKind.Ellipse));
+        panel.Children.Add(ToolButton("Lápis", CaptureAnnotationKind.Pencil));
+        panel.Children.Add(ToolButton("Texto", CaptureAnnotationKind.Text));
+        panel.Children.Add(ToolButton("Número", CaptureAnnotationKind.Number));
+        panel.Children.Add(ToolButton("Desfocar", CaptureAnnotationKind.Blur));
+        panel.Children.Add(ToolButton("Pixelizar", CaptureAnnotationKind.Pixelate));
+        panel.Children.Add(ActionButton("Recortar", (_, _) =>
         {
             _cropRect = null;
             _cropSelecting = true;
@@ -157,9 +158,9 @@ public sealed class CaptureEditorWindow : Window
             UpdateToolSelection();
             _overlay.ToolTip = "Arraste o recorte e clique novamente em Recortar para aplicar";
         }));
-        panel.Children.Add(ActionButton("↔  Redimensionar", (_, _) => ConfigureResize()));
-        panel.Children.Add(ActionButton("↶  Desfazer", (_, _) => Undo()));
-        panel.Children.Add(ActionButton("↷  Refazer", (_, _) => Redo()));
+        panel.Children.Add(ActionButton("Redimensionar", (_, _) => ConfigureResize()));
+        panel.Children.Add(ActionButton("Desfazer", (_, _) => Undo()));
+        panel.Children.Add(ActionButton("Refazer", (_, _) => Redo()));
 
         panel.Children.Add(new TextBlock
         {

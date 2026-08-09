@@ -22,8 +22,8 @@ public sealed class RecordingControlWindow : Window
         _service = service;
         _mediaName = mediaName;
         Title = "Controle de gravação";
-        Width = 380;
-        Height = 86;
+        Width = 420;
+        Height = 88;
         WindowStyle = WindowStyle.None;
         ResizeMode = ResizeMode.NoResize;
         AllowsTransparency = true;
@@ -42,20 +42,21 @@ public sealed class RecordingControlWindow : Window
             Padding = new Thickness(14, 10, 12, 10),
             Effect = new System.Windows.Media.Effects.DropShadowEffect
             {
-                BlurRadius = 18,
-                ShadowDepth = 4,
-                Opacity = .28
+                BlurRadius = 16,
+                ShadowDepth = 3,
+                Opacity = ThemeService.IsDark ? .32 : .14
             }
         };
         var grid = new Grid();
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         grid.ColumnDefinitions.Add(new ColumnDefinition());
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        grid.Children.Add(new TextBlock
+        grid.Children.Add(new Border
         {
-            Text = "●",
-            Foreground = (Brush)Application.Current.FindResource("DangerBrush"),
-            FontSize = 18,
+            Width = 10,
+            Height = 10,
+            CornerRadius = new CornerRadius(5),
+            Background = (Brush)Application.Current.FindResource("DangerBrush"),
             VerticalAlignment = VerticalAlignment.Center,
             Margin = new Thickness(0, 0, 10, 0)
         });

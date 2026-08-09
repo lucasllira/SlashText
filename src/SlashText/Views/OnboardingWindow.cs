@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Media;
+using SlashText.Services;
 
 namespace SlashText.Views;
 
@@ -18,8 +19,9 @@ public sealed class OnboardingWindow : Window
         ResizeMode = ResizeMode.CanResize;
         Background = (Brush)Application.Current.FindResource("CanvasBrush");
         Foreground = (Brush)Application.Current.FindResource("InkBrush");
+        SourceInitialized += (_, _) => ThemeService.ApplyToWindow(this);
 
-        var root = new Grid { Margin = new Thickness(30) };
+        var root = new Grid { Margin = new Thickness(24) };
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(18) });
         root.RowDefinitions.Add(new RowDefinition());

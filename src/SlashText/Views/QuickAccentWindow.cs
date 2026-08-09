@@ -21,11 +21,17 @@ public sealed class QuickAccentWindow : Window
         IsHitTestVisible = false;
         _surface = new Border
         {
-            Background = new SolidColorBrush(Color.FromArgb(244, 25, 29, 39)),
-            BorderBrush = new SolidColorBrush(Color.FromArgb(120, 66, 202, 211)),
+            Background = FindBrush("SurfaceBrush", Brushes.White),
+            BorderBrush = FindBrush("DividerBrush", Brushes.Gray),
             BorderThickness = new Thickness(1),
-            CornerRadius = new CornerRadius(12),
+            CornerRadius = new CornerRadius(10),
             Padding = new Thickness(8),
+            Effect = new System.Windows.Media.Effects.DropShadowEffect
+            {
+                BlurRadius = 16,
+                ShadowDepth = 3,
+                Opacity = ThemeService.IsDark ? .28 : .12
+            },
             Child = _panel
         };
         Content = _surface;
@@ -34,15 +40,14 @@ public sealed class QuickAccentWindow : Window
     public void UpdateChoices(string choices, int selectedIndex, string position, bool showUnicode)
     {
         _panel.Children.Clear();
-        _surface.Background = ThemeService.IsDark
-            ? new SolidColorBrush(Color.FromArgb(248, 18, 24, 32))
-            : new SolidColorBrush(Color.FromArgb(248, 255, 255, 255));
+        _surface.Background = FindBrush("SurfaceBrush", Brushes.White);
         _surface.BorderBrush = FindBrush(
             "DividerBrush",
             new SolidColorBrush(Color.FromRgb(40, 48, 61)));
         var accent = FindBrush(
             "AccentBrush",
             new SolidColorBrush(Color.FromRgb(8, 126, 139)));
+        var selected = FindBrush("AccentSubtleBrush", accent);
         var ink = FindBrush(
             "InkBrush",
             ThemeService.IsDark ? Brushes.White : Brushes.Black);
@@ -52,15 +57,17 @@ public sealed class QuickAccentWindow : Window
             _panel.Children.Add(new Border
             {
                 Background = index == selectedIndex
-                    ? accent
+                    ? selected
                     : Brushes.Transparent,
+                BorderBrush = index == selectedIndex ? accent : Brushes.Transparent,
+                BorderThickness = new Thickness(1),
                 CornerRadius = new CornerRadius(7),
                 Padding = new Thickness(11, 7, 11, 7),
                 Margin = new Thickness(2),
                 Child = new TextBlock
                 {
                     Text = showUnicode ? $"{character}\nU+{(int)character:X4}" : character.ToString(),
-                    Foreground = index == selectedIndex ? Brushes.White : ink,
+                    Foreground = index == selectedIndex ? accent : ink,
                     FontSize = showUnicode ? 12 : 20,
                     TextAlignment = TextAlignment.Center
                 }

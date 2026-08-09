@@ -272,7 +272,7 @@ public sealed class RegionCaptureWindow : Window
             {
                 BlurRadius = 20,
                 ShadowDepth = 5,
-                Opacity = .38,
+                Opacity = _isDark ? .32 : .16,
                 Color = Colors.Black
             },
             Child = root
@@ -417,630 +417,4 @@ public sealed class RegionCaptureWindow : Window
     private void OnMouseUp(object sender, MouseButtonEventArgs e)
     {
         if (_drawing)
-        {
-            FinishAnnotation(e.GetPosition(_canvas));
-            e.Handled = true;
-            return;
-        }
-        if (!_dragging)
-        {
-            return;
-        }
-
-        _dragging = false;
-        ReleaseMouseCapture();
-        UpdateSelection(e.GetPosition(_canvas));
-        if (_localSelection.Width < 4 || _localSelection.Height < 4)
-        {
-            ResetSelection();
-            return;
-        }
-
-        _selectionReady = true;
-        PositionAnnotationLayer();
-        SetHandlesVisibility(Visibility.Visible);
-        PositionHandles();
-        PositionToolbar();
-        UpdateToolSelection();
-        _toolbar.Visibility = Visibility.Visible;
-        Cursor = Cursors.Cross;
-        e.Handled = true;
-    }
-
-    private void BeginAnnotation(Point canvasPoint)
-    {
-        var local = ToAnnotationPoint(canvasPoint);
-        if (_tool == CaptureAnnotationKind.Text)
-        {
-            AddInlineTextEditor(local);
-            return;
-        }
-        if (_tool == CaptureAnnotationKind.Number)
-        {
-            Add(new CaptureAnnotation
-            {
-                Kind = CaptureAnnotationKind.Number,
-                Start = local,
-                End = local,
-                Text = (_nextNumber++).ToString(),
-                Argb = _color,
-                Thickness = _thickness
-            });
-            return;
-        }
-
-        _annotationStart = local;
-        _drawing = true;
-        _pencilPoints.Clear();
-        _pencilPoints.Add(local);
-        CaptureMouse();
-    }
-
-    private void UpdatePendingAnnotation(Point canvasPoint)
-    {
-        var end = ToAnnotationPoint(canvasPoint);
-        if (_tool == CaptureAnnotationKind.Pencil)
-        {
-            _pencilPoints.Add(end);
-        }
-        Rebuild(new CaptureAnnotation
-        {
-            Kind = _tool,
-            Start = _annotationStart,
-            End = end,
-            Points = [.. _pencilPoints],
-            Argb = _color,
-            Thickness = _thickness
-        });
-    }
-
-    private void FinishAnnotation(Point canvasPoint)
-    {
-        _drawing = false;
-        ReleaseMouseCapture();
-        var end = ToAnnotationPoint(canvasPoint);
-        if (_tool == CaptureAnnotationKind.Pencil)
-        {
-            _pencilPoints.Add(end);
-        }
-        Add(new CaptureAnnotation
-        {
-            Kind = _tool,
-            Start = _annotationStart,
-            End = end,
-            Points = [.. _pencilPoints],
-            Argb = _color,
-            Thickness = _thickness
-        });
-    }
-
-    private void AddInlineTextEditor(Point point)
-    {
-        var input = new TextBox
-        {
-            MinWidth = 180,
-            MaxWidth = Math.Max(180, _localSelection.Width - point.X),
-            Padding = new Thickness(7, 5, 7, 5),
-            FontSize = 16,
-            Foreground = Brush(_isDark ? "#FFFFFF" : "#17212B"),
-            CaretBrush = Brush(_isDark ? "#FFFFFF" : "#17212B"),
-            Background = Brush(_isDark ? "#F0121922" : "#F8FFFFFF"),
-            BorderBrush = Brush("#2BC9DA"),
-            BorderThickness = new Thickness(1)
-        };
-        Canvas.SetLeft(input, point.X);
-        Canvas.SetTop(input, point.Y);
-        _annotationLayer.Children.Add(input);
-        input.Focus();
-        input.KeyDown += (_, args) =>
-        {
-            if (args.Key == Key.Enter)
-            {
-                CommitInlineText(input, point);
-                args.Handled = true;
-            }
-            else if (args.Key == Key.Escape)
-            {
-                _annotationLayer.Children.Remove(input);
-                args.Handled = true;
-            }
-        };
-        input.LostKeyboardFocus += (_, _) =>
-        {
-            if (_annotationLayer.Children.Contains(input))
-            {
-                CommitInlineText(input, point);
-            }
-        };
-    }
-
-    private void CommitInlineText(TextBox input, Point point)
-    {
-        _annotationLayer.Children.Remove(input);
-        if (!string.IsNullOrWhiteSpace(input.Text))
-        {
-            Add(new CaptureAnnotation
-            {
-                Kind = CaptureAnnotationKind.Text,
-                Start = point,
-                End = point,
-                Text = input.Text.Trim(),
-                Argb = _color,
-                Thickness = _thickness
-            });
-        }
-    }
-
-    private void Add(CaptureAnnotation annotation)
-    {
-        _annotations.Add(annotation);
-        _redo.Clear();
-        Rebuild();
-    }
-
-    private void Undo()
-    {
-        if (_annotations.Count == 0)
-        {
-            return;
-        }
-        var last = _annotations[^1];
-        _annotations.RemoveAt(_annotations.Count - 1);
-        _redo.Push(last);
-        Rebuild();
-    }
-
-    private void Redo()
-    {
-        if (_redo.Count == 0)
-        {
-            return;
-        }
-        _annotations.Add(_redo.Pop());
-        Rebuild();
-    }
-
-    private void Rebuild(CaptureAnnotation? pending = null)
-    {
-        _annotationLayer.Children.Clear();
-        foreach (var annotation in _annotations)
-        {
-            AddVisual(annotation);
-        }
-        if (pending is not null)
-        {
-            AddVisual(pending);
-        }
-    }
-
-    private void AddVisual(CaptureAnnotation annotation)
-    {
-        var color = DrawingColor.FromArgb(annotation.Argb);
-        var brush = new SolidColorBrush(
-            Color.FromArgb(color.A, color.R, color.G, color.B));
-        var thickness = annotation.Kind == CaptureAnnotationKind.Highlighter
-            ? annotation.Thickness * 4
-            : annotation.Thickness;
-        if (annotation.Kind == CaptureAnnotationKind.Highlighter)
-        {
-            brush.Opacity = .38;
-        }
-
-        switch (annotation.Kind)
-        {
-            case CaptureAnnotationKind.Arrow:
-            case CaptureAnnotationKind.Highlighter:
-                _annotationLayer.Children.Add(new Line
-                {
-                    X1 = annotation.Start.X,
-                    Y1 = annotation.Start.Y,
-                    X2 = annotation.End.X,
-                    Y2 = annotation.End.Y,
-                    Stroke = brush,
-                    StrokeThickness = thickness,
-                    StrokeStartLineCap = PenLineCap.Round,
-                    StrokeEndLineCap = PenLineCap.Round,
-                    IsHitTestVisible = false
-                });
-                if (annotation.Kind == CaptureAnnotationKind.Arrow)
-                {
-                    _annotationLayer.Children.Add(ArrowHead(annotation, brush));
-                }
-                break;
-            case CaptureAnnotationKind.Rectangle:
-            case CaptureAnnotationKind.Ellipse:
-                var shape = annotation.Kind == CaptureAnnotationKind.Rectangle
-                    ? (Shape)new Rectangle()
-                    : new Ellipse();
-                shape.Stroke = brush;
-                shape.StrokeThickness = thickness;
-                shape.Width = Math.Abs(annotation.End.X - annotation.Start.X);
-                shape.Height = Math.Abs(annotation.End.Y - annotation.Start.Y);
-                shape.IsHitTestVisible = false;
-                Canvas.SetLeft(shape, Math.Min(annotation.Start.X, annotation.End.X));
-                Canvas.SetTop(shape, Math.Min(annotation.Start.Y, annotation.End.Y));
-                _annotationLayer.Children.Add(shape);
-                break;
-            case CaptureAnnotationKind.Pencil:
-                _annotationLayer.Children.Add(new Polyline
-                {
-                    Points = new PointCollection(annotation.Points),
-                    Stroke = brush,
-                    StrokeThickness = thickness,
-                    StrokeLineJoin = PenLineJoin.Round,
-                    StrokeStartLineCap = PenLineCap.Round,
-                    StrokeEndLineCap = PenLineCap.Round,
-                    IsHitTestVisible = false
-                });
-                break;
-            case CaptureAnnotationKind.Text:
-                var text = new TextBlock
-                {
-                    Text = annotation.Text,
-                    Foreground = brush,
-                    FontSize = 17,
-                    FontWeight = FontWeights.Bold,
-                    IsHitTestVisible = false
-                };
-                Canvas.SetLeft(text, annotation.Start.X);
-                Canvas.SetTop(text, annotation.Start.Y);
-                _annotationLayer.Children.Add(text);
-                break;
-            case CaptureAnnotationKind.Number:
-                var badge = new Border
-                {
-                    Width = 30,
-                    Height = 30,
-                    CornerRadius = new CornerRadius(15),
-                    Background = brush,
-                    IsHitTestVisible = false,
-                    Child = new TextBlock
-                    {
-                        Text = annotation.Text,
-                        Foreground = Brushes.White,
-                        FontWeight = FontWeights.Bold,
-                        HorizontalAlignment = HorizontalAlignment.Center,
-                        VerticalAlignment = VerticalAlignment.Center
-                    }
-                };
-                Canvas.SetLeft(badge, annotation.Start.X - 15);
-                Canvas.SetTop(badge, annotation.Start.Y - 15);
-                _annotationLayer.Children.Add(badge);
-                break;
-        }
-    }
-
-    private static Polygon ArrowHead(CaptureAnnotation annotation, Brush brush)
-    {
-        var angle = Math.Atan2(
-            annotation.End.Y - annotation.Start.Y,
-            annotation.End.X - annotation.Start.X);
-        const double length = 15;
-        var left = new Point(
-            annotation.End.X - length * Math.Cos(angle - Math.PI / 6),
-            annotation.End.Y - length * Math.Sin(angle - Math.PI / 6));
-        var right = new Point(
-            annotation.End.X - length * Math.Cos(angle + Math.PI / 6),
-            annotation.End.Y - length * Math.Sin(angle + Math.PI / 6));
-        return new Polygon
-        {
-            Points = new PointCollection([annotation.End, left, right]),
-            Fill = brush,
-            IsHitTestVisible = false
-        };
-    }
-
-    private void UpdateToolSelection()
-    {
-        foreach (var (tool, button) in _toolButtons)
-        {
-            var selected = tool == _tool;
-            button.Background = Brush(selected
-                ? _isDark ? "#0D5C68" : "#DDF6F8"
-                : _isDark ? "#18222D" : "#FFFFFF");
-            button.BorderBrush = Brush(selected
-                ? "#2BC9DA"
-                : _isDark ? "#42505E" : "#CBD5DF");
-            button.Foreground = Brush(
-                _isDark ? "#F5F8FA" : selected ? "#075A66" : "#25313D");
-        }
-    }
-
-    private void OnPreviewKeyDown(object sender, KeyEventArgs e)
-    {
-        if (e.Key == Key.Escape)
-        {
-            DialogResult = false;
-            e.Handled = true;
-        }
-        else if (e.Key == Key.Enter &&
-                 _selectionReady &&
-                 e.OriginalSource is not TextBox)
-        {
-            Complete();
-            e.Handled = true;
-        }
-        else if (e.Key == Key.R &&
-                 _selectionReady &&
-                 Keyboard.Modifiers == ModifierKeys.None)
-        {
-            ResetSelection();
-            e.Handled = true;
-        }
-        else if (e.Key == Key.Z &&
-                 Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
-        {
-            Undo();
-            e.Handled = true;
-        }
-        else if (e.Key == Key.Y &&
-                 Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
-        {
-            Redo();
-            e.Handled = true;
-        }
-    }
-
-    private void Complete()
-    {
-        if (!_selectionReady)
-        {
-            return;
-        }
-
-        using var crop = CropFrozenSelection();
-        EditedBitmap?.Dispose();
-        EditedBitmap = CaptureAnnotationRenderer.Render(
-            crop,
-            _annotations,
-            _localSelection.Width,
-            _localSelection.Height);
-        DialogResult = true;
-    }
-
-    private DrawingBitmap CropFrozenSelection()
-    {
-        var scaleX = _desktopBitmap.Width / Math.Max(1d, Width);
-        var scaleY = _desktopBitmap.Height / Math.Max(1d, Height);
-        var left = Math.Clamp(
-            (int)Math.Round(_localSelection.Left * scaleX),
-            0,
-            _desktopBitmap.Width - 1);
-        var top = Math.Clamp(
-            (int)Math.Round(_localSelection.Top * scaleY),
-            0,
-            _desktopBitmap.Height - 1);
-        var width = Math.Clamp(
-            (int)Math.Round(_localSelection.Width * scaleX),
-            1,
-            _desktopBitmap.Width - left);
-        var height = Math.Clamp(
-            (int)Math.Round(_localSelection.Height * scaleY),
-            1,
-            _desktopBitmap.Height - top);
-        return _desktopBitmap.Clone(
-            new System.Drawing.Rectangle(left, top, width, height),
-            DrawingPixelFormat.Format32bppArgb);
-    }
-
-    private void ResetSelection()
-    {
-        _dragging = false;
-        _drawing = false;
-        _selectionReady = false;
-        ReleaseMouseCapture();
-        _selection.Visibility = Visibility.Collapsed;
-        _annotationLayer.Visibility = Visibility.Collapsed;
-        _annotationLayer.Children.Clear();
-        _sizeBadge.Visibility = Visibility.Collapsed;
-        _toolbar.Visibility = Visibility.Collapsed;
-        SetHandlesVisibility(Visibility.Collapsed);
-        _annotations.Clear();
-        _redo.Clear();
-        _nextNumber = 1;
-        Cursor = Cursors.Cross;
-        UpdateShade(default);
-    }
-
-    private void UpdateSelection(Point end)
-    {
-        _localSelection = Normalize(_start, end);
-        Canvas.SetLeft(_selection, _localSelection.Left);
-        Canvas.SetTop(_selection, _localSelection.Top);
-        _selection.Width = _localSelection.Width;
-        _selection.Height = _localSelection.Height;
-        UpdateShade(_localSelection);
-
-        if (_sizeBadge.Child is TextBlock size)
-        {
-            var scaleX = _desktopBitmap.Width / Math.Max(1d, Width);
-            var scaleY = _desktopBitmap.Height / Math.Max(1d, Height);
-            size.Text =
-                $"{Math.Round(_localSelection.Width * scaleX):N0} Ã— " +
-                $"{Math.Round(_localSelection.Height * scaleY):N0}";
-        }
-        Canvas.SetLeft(_sizeBadge, _localSelection.Left);
-        Canvas.SetTop(
-            _sizeBadge,
-            _localSelection.Top > 40
-                ? _localSelection.Top - 34
-                : _localSelection.Bottom + 8);
-    }
-
-    private void PositionAnnotationLayer()
-    {
-        Canvas.SetLeft(_annotationLayer, _localSelection.Left);
-        Canvas.SetTop(_annotationLayer, _localSelection.Top);
-        _annotationLayer.Width = _localSelection.Width;
-        _annotationLayer.Height = _localSelection.Height;
-        _annotationLayer.Visibility = Visibility.Visible;
-    }
-
-    private Point ToAnnotationPoint(Point canvasPoint) => new(
-        Math.Clamp(canvasPoint.X - _localSelection.Left, 0, _localSelection.Width),
-        Math.Clamp(canvasPoint.Y - _localSelection.Top, 0, _localSelection.Height));
-
-    private void UpdateShade(Rect clear)
-    {
-        var width = Math.Max(0, ActualWidth > 0 ? ActualWidth : Width);
-        var height = Math.Max(0, ActualHeight > 0 ? ActualHeight : Height);
-        if (clear.IsEmpty || clear.Width <= 0 || clear.Height <= 0)
-        {
-            Place(_shades[0], 0, 0, width, height);
-            for (var index = 1; index < _shades.Length; index++)
-            {
-                Place(_shades[index], 0, 0, 0, 0);
-            }
-            return;
-        }
-
-        Place(_shades[0], 0, 0, width, clear.Top);
-        Place(_shades[1], 0, clear.Bottom, width, height - clear.Bottom);
-        Place(_shades[2], 0, clear.Top, clear.Left, clear.Height);
-        Place(
-            _shades[3],
-            clear.Right,
-            clear.Top,
-            width - clear.Right,
-            clear.Height);
-    }
-
-    private void PositionHandles()
-    {
-        var x = new[]
-        {
-            _localSelection.Left,
-            _localSelection.Left + (_localSelection.Width / 2),
-            _localSelection.Right
-        };
-        var y = new[]
-        {
-            _localSelection.Top,
-            _localSelection.Top + (_localSelection.Height / 2),
-            _localSelection.Bottom
-        };
-        var positions = new[]
-        {
-            new Point(x[0], y[0]), new Point(x[1], y[0]),
-            new Point(x[2], y[0]), new Point(x[0], y[1]),
-            new Point(x[2], y[1]), new Point(x[0], y[2]),
-            new Point(x[1], y[2]), new Point(x[2], y[2])
-        };
-        for (var index = 0; index < _handles.Length; index++)
-        {
-            Canvas.SetLeft(_handles[index], positions[index].X - 5);
-            Canvas.SetTop(_handles[index], positions[index].Y - 5);
-        }
-    }
-
-    private void PositionToolbar()
-    {
-        _toolbar.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
-        var desired = _toolbar.DesiredSize;
-        var width = ActualWidth > 0 ? ActualWidth : Width;
-        var height = ActualHeight > 0 ? ActualHeight : Height;
-        var left = Math.Clamp(
-            _localSelection.Left + ((_localSelection.Width - desired.Width) / 2),
-            12,
-            Math.Max(12, width - desired.Width - 12));
-        var below = _localSelection.Bottom + 14;
-        var top = below + desired.Height <= height - 12
-            ? below
-            : Math.Max(12, _localSelection.Top - desired.Height - 14);
-        Canvas.SetLeft(_toolbar, left);
-        Canvas.SetTop(_toolbar, top);
-    }
-
-    private void SetHandlesVisibility(Visibility visibility)
-    {
-        foreach (var handle in _handles)
-        {
-            handle.Visibility = visibility;
-        }
-    }
-
-    private bool IsToolbarSource(DependencyObject? source)
-    {
-        while (source is not null)
-        {
-            if (ReferenceEquals(source, _toolbar))
-            {
-                return true;
-            }
-            source = VisualTreeHelper.GetParent(source);
-        }
-        return false;
-    }
-
-    private static Rectangle Shade() => new()
-    {
-        Fill = new SolidColorBrush(Color.FromArgb(150, 3, 12, 22)),
-        IsHitTestVisible = false
-    };
-
-    private static Border Handle() => new()
-    {
-        Width = 10,
-        Height = 10,
-        CornerRadius = new CornerRadius(5),
-        Background = Brushes.White,
-        BorderBrush = new SolidColorBrush(Color.FromRgb(10, 169, 187)),
-        BorderThickness = new Thickness(2),
-        Visibility = Visibility.Collapsed,
-        IsHitTestVisible = false
-    };
-
-    private static void Place(
-        FrameworkElement element,
-        double left,
-        double top,
-        double width,
-        double height)
-    {
-        Canvas.SetLeft(element, left);
-        Canvas.SetTop(element, top);
-        element.Width = Math.Max(0, width);
-        element.Height = Math.Max(0, height);
-    }
-
-    private static Rect Normalize(Point start, Point end) => new(
-        Math.Min(start.X, end.X),
-        Math.Min(start.Y, end.Y),
-        Math.Abs(end.X - start.X),
-        Math.Abs(end.Y - start.Y));
-
-    private static SolidColorBrush Brush(string color) =>
-        new((Color)ColorConverter.ConvertFromString(color));
-
-    private static DrawingBitmap CaptureVirtualDesktopBitmap() =>
-        CaptureVirtualDesktopBitmap(false);
-
-    private static DrawingBitmap CaptureVirtualDesktopBitmap(bool includeCursor)
-    {
-        var virtualScreen = System.Windows.Forms.SystemInformation.VirtualScreen;
-        return CaptureService.CaptureBitmap(virtualScreen, includeCursor);
-    }
-
-    private static BitmapSource ToBitmapSource(DrawingBitmap bitmap)
-    {
-        var handle = bitmap.GetHbitmap();
-        try
-        {
-            var source = Imaging.CreateBitmapSourceFromHBitmap(
-                handle,
-                IntPtr.Zero,
-                Int32Rect.Empty,
-                BitmapSizeOptions.FromEmptyOptions());
-            source.Freeze();
-            return source;
-        }
-        finally
-        {
-            _ = DeleteObject(handle);
-        }
-    }
-
-    [DllImport("gdi32.dll")]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool DeleteObject(IntPtr handle);
-}
+      ×ßw¶‰žËkºwµçUÉ•¹¹½Ñ…Ñ¥½¹-¥¹¹ÉÉ½Üè4(€€€€€€€€€€€…Í”…ÁÑÕÉ•¹¹½Ñ…Ñ¥½¹-¥¹¹!¥¡±¥¡Ñ•Èè4(€€€€€€€€€€€€€€€}…¹¹½Ñ…Ñ¥½¹1…å•È¹¡¥±‘É•¸¹‘¡¹•Ü1¥¹”4(€€€€€€€€€€€€€€€ì4(€€€€€€€€€€€€€€€€€€€`Ä€ô…¹¹½Ñ…Ñ¥½¸¹MÑ…ÉÐ¹`°4(€€€€€€€€€€€€€€€€€€€dÄ€ô…¹¹½Ñ…Ñ¥½¸¹MÑ…ÉÐ¹d°4(€€€€€€€€€€€€€€€€€€€`È€ô…¹¹½Ñ…Ñ¥½¸¹¹¹`°4(€€€€€€€€€€€€€€€€€€€dÈ€ô…¹¹½Ñ…Ñ¥½¸¹¹¹d°4(€€€€€€€€€€€€€€€€€€€MÑÉ½­”€ô‰ÉÕÍ °4(€€€€€€€€€€€€€€€€€€€MÑÉ½­•Q¡¥­¹•ÍÌ€ôÑ¡¥­¹•ÍÌ°4(€€€€€€€€€€€€€€€€€€€MÑÉ½­•MÑ…ÉÑ1¥¹•…À€ôA•¹1¥¹•…À¹I½Õ¹°4(€€€€€€€€€€€€€€€€€€€MÑÉ½­•¹‘1¥¹•…À€ôA•¹1¥¹•…À¹I½Õ¹°4(€€€€€€€€€€€€€€€€€€€%Í!¥ÑQ•ÍÑY¥Í¥‰±”€ô™…±Í”4(€€€€€€€€€€€€€€€ô¤ì4(€€€€€€€€€€€€€€€¥˜€¡…¹¹½Ñ…Ñ¥½¸¹-¥¹€ôô…ÁÑÕÉ•¹¹½Ñ…Ñ¥½¹-¥¹¹ÉÉ½Ü¤4(€€€€€€€€€€€€€€€ì4(€€€€€€€€€€€€€€€€€€€}…¹¹½Ñ…Ñ¥½¹1…å•È¹¡¥±‘É•¸¹‘¡ÉÉ½Ý!•…¡…¹¹½Ñ…Ñ¥½¸°‰ÉÕÍ ¤¤ì4(€€€€€€€€€€€€€€€ô4(€€€€€€€€€€€€€€€‰É•…¬ì4(€€€€€€€€€€€…Í”…ÁÑÕÉ•¹¹½Ñ…Ñ¥½¹-¥¹¹I•Ñ…¹±”è4(€€€€€€€€€€€…Í”…ÁÑÕÉ•¹¹½Ñ…Ñ¥½¹-¥¹¹±±¥ÁÍ”è4(€€€€€€€€€€€€€€€Ù…ÈÍ¡…Á”€ô…¹¹½Ñ…Ñ¥½¸¹-¥¹€ôô…ÁÑÕÉ•¹¹½Ñ…Ñ¥½¹-¥¹¹I•Ñ…¹±”4(€€€€€€€€€€€€€€€€€€€€ü€¡M¡…Á”¥¹•ÜI•Ñ…¹±” ¤4(€€€€€€€€€€€€€€€€€€€€è¹•Ü±±¥ÁÍ” ¤ì4(€€€€€€€€€€€€€€€Í¡…Á”¹MÑÉ½­”€ô‰ÉÕÍ ì4(€€€€€€€€€€€€€€€Í¡…Á”¹MÑÉ½­•Q¡¥­¹•ÍÌ€ôÑ¡¥­¹•ÍÌì4(€€€€€€€€€€€€€€€Í¡…Á”¹]¥‘Ñ €ô5…Ñ ¹‰Ì¡…¹¹½Ñ…Ñ¥½¸¹¹¹`€´…¹¹½Ñ…Ñ¥½¸¹MÑ…ÉÐ¹`¤ì4(€€€€€€€€€€€€€€€Í¡…Á”¹!•¥¡Ð€ô5…Ñ ¹‰Ì¡…¹¹½Ñ…Ñ¥½¸¹¹¹d€´…¹¹½Ñ…Ñ¥½¸¹MÑ…ÉÐ¹d¤ì4(€€€€€€€€€€€€€€€Í¡…Á”¹%Í!¥ÑQ•ÍÑY¥Í¥‰±”€ô™…±Í”ì4(€€€€€€€€€€€€€€€…¹Ù…Ì¹M•Ñ1•™Ð¡Í¡…Á”°5…Ñ ¹5¥¸¡…¹¹½Ñ…Ñ¥½¸¹MÑ…ÉÐ¹`°…¹¹½Ñ…Ñ¥½¸¹¹¹`¤¤ì4(€€€€€€€€€€€€€€€…¹Ù…Ì¹M•ÑQ½À¡Í¡…Á”°5…Ñ ¹5¥¸¡…¹¹½Ñ…Ñ¥½¸¹MÑ…ÉÐ¹d°…¹¹½Ñ…Ñ¥½¸¹¹¹d¤¤ì4(€€€€€€€€€€€€€€€}…¹¹½Ñ…Ñ¥½¹1…å•È¹¡¥±‘É•¸¹‘¡Í¡…Á”¤ì4(€€€€€€€€€€€€€€€‰É•…¬ì4(€€€€€€€€€€€…Í”…ÁÑÕÉ•¹¹½Ñ…Ñ¥½¹-¥¹¹A•¹¥°è4(€€€€€€€€€€€€€€€}…¹¹½Ñ…Ñ¥½¹1…å•È¹¡¥±‘É•¸¹‘¡¹•ÜA½±å±¥¹”4(€€€€€€€€€€€€€€€ì4(€€€€€€€€€€€€€€€€€€€A½¥¹ÑÌ€ô¹•ÜA½¥¹Ñ½±±•Ñ¥½¸¡…¹¹½Ñ…Ñ¥½¸¹A½¥¹ÑÌ¤°4(€€€€€€€€€€€€€€€€€€€MÑÉ½­”€ô‰ÉÕÍ °4(€€€€€€€€€€€€€€€€€€€MÑÉ½­•Q¡¥­¹•ÍÌ€ôÑ¡¥­¹•ÍÌ°4(€€€€€€€€€€€€€€€€€€€MÑÉ½­•1¥¹•)½¥¸€ôA•¹1¥¹•)½¥¸¹I½Õ¹°4(€€€€€€€€€€€€€€€€€€€MÑÉ½­•MÑ…ÉÑ1¥¹•…À€ôA•¹1¥¹•…À¹I½Õ¹°4(€€€€€€€€€€€€€€€€€€€MÑÉ½­•¹‘1¥¹•…À€ôA•¹1¥¹•…À¹I½Õ¹°4(€€€€€€€€€€€€€€€€€€€%Í!¥ÑQ•ÍÑY¥Í¥‰±”€ô™…±Í”4(€€€€€€€€€€€€€€€ô¤ì4(€€€€€€€€€€€€€€€‰É•…¬ì4(€€€€€€€€€€€…Í”…ÁÑÕÉ•¹¹½Ñ…Ñ¥½¹-¥¹¹Q•áÐè4(€€€€€€€€€€€€€€€Ù…ÈÑ•áÐ€ô¹•ÜQ•áÑ	±½¬4(€€€€€€€€€€€€€€€ì4(€€€€€€€€€€€€€€€€€€€Q•áÐ€ô…¹¹½Ñ…Ñ¥½¸¹Q•áÐ°4(€€€€€€€€€€€€€€€€€€€½É•É½Õ¹€ô‰ÉÕÍ °4(€€€€€€€€€€€€€€€€€€€½¹ÑM¥é”€ô€ÄÜ°4(€€€€€€€€€€€€€€€€€€€½¹Ñ]•¥¡Ð€ô½¹Ñ]•¥¡ÑÌ¹	½±°4(€€€€€€€€€€€€€€€€€€€%Í!¥ÑQ•ÍÑY¥Í¥‰±”€ô™…±Í”4(€€€€€€€€€€€€€€€ôì4(€€€€€€€€€€€€€€€…¹Ù…Ì¹M•Ñ1•™Ð¡Ñ•áÐ°…¹¹½Ñ…Ñ¥½¸¹MÑ…ÉÐ¹`¤ì4(€€€€€€€€€€€€€€€…¹Ù…Ì¹M•ÑQ½À¡Ñ•áÐ°…¹¹½Ñ…Ñ¥½¸¹MÑ…ÉÐ¹d¤ì4(€€€€€€€€€€€€€€€}…¹¹½Ñ…Ñ¥½¹1…å•È¹¡¥±‘É•¸¹‘¡Ñ•áÐ¤ì4(€€€€€€€€€€€€€€€‰É•…¬ì4(€€€€€€€€€€€…Í”…ÁÑÕÉ•¹¹½Ñ…Ñ¥½¹-¥¹¹9Õµ‰•Èè4(€€€€€€€€€€€€€€€Ù…È‰…‘”€ô¹•Ü	½É‘•È4(€€€€€€€€€€€€€€€ì4(€€€€€€€€€€€€€€€€€€€]¥‘Ñ €ô€ÌÀ°4(€€€€€€€€€€€€€€€€€€€!•¥¡Ð€ô€ÌÀ°4(€€€€€€€€€€€€€€€€€€€½É¹•ÉI…‘¥ÕÌ€ô¹•Ü½É¹•ÉI…‘¥ÕÌ ÄÔ¤°4(€€€€€€€€€€€€€€€€€€€	…­É½Õ¹€ô‰ÉÕÍ °4(€€€€€€€€€€€€€€€€€€€%Í!¥ÑQ•ÍÑY¥Í¥‰±”€ô™…±Í”°4(€€€€€€€€€€€€€€€€€€€¡¥±€ô¹•ÜQ•áÑ	±½¬4(€€€€€€€€€€€€€€€€€€€ì4(€€€€€€€€€€€€€€€€€€€€€€€Q•áÐ€ô…¹¹½Ñ…Ñ¥½¸¹Q•áÐ°4(€€€€€€€€€€€€€€€€€€€€€€€½É•É½Õ¹€ô	ÉÕÍ¡•Ì¹]¡¥Ñ”°4(€€€€€€€€€€€€€€€€€€€€€€€½¹Ñ]•¥¡Ð€ô½¹Ñ]•¥¡ÑÌ¹	½±°4(€€€€€€€€€€€€€€€€€€€€€€€!½É¥é½¹Ñ…±±¥¹µ•¹Ð€ô!½É¥é½¹Ñ…±±¥¹µ•¹Ð¹•¹Ñ•È°4(€€€€€€€€€€€€€€€€€€€€€€€Y•ÉÑ¥…±±¥¹µ•¹Ð€ôY•ÉÑ¥…±±¥¹µ•¹Ð¹•¹Ñ•È4(€€€€€€€€€€€€€€€€€€€ô4(€€€€€€€€€€€€€€€ôì4(€€€€€€€€€€€€€€€…¹Ù…Ì¹M•Ñ1•™Ð¡‰…‘”°…¹¹½Ñ…Ñ¥½¸¹MÑ…ÉÐ¹`€´€ÄÔ¤ì4(€€€€€€€€€€€€€€€…¹Ù…Ì¹M•ÑQ½À¡‰…‘”°…¹¹½Ñ…Ñ¥½¸¹MÑ…ÉÐ¹d€´€ÄÔ¤ì4(€€€€€€€€€€€€€€€}…¹¹½Ñ…Ñ¥½¹1…å•È¹¡¥±‘É•¸¹‘¡‰…‘”¤ì4(€€€€€€€€€€€€€€€‰É•…¬ì4(€€€€€€€ô4(€€€ô4(4(€€€ÁÉ¥Ù…Ñ”ÍÑ…Ñ¥ŒA½±å½¸ÉÉ½Ý!•…¡…ÁÑÕÉ•¹¹½Ñ…Ñ¥½¸…¹¹½Ñ…Ñ¥½¸°	ÉÕÍ ‰ÉÕÍ ¤4(€€€ì4(€€€€€€€Ù…È…¹±”€ô5…Ñ ¹Ñ…¸È 4(€€€€€€€€€€€…¹¹½Ñ…Ñ¥½¸¹¹¹d€´…¹¹½Ñ…Ñ¥½¸¹MÑ…ÉÐ¹d°4(€€€€€€€€€€€…¹¹½Ñ…Ñ¥½¸¹¹¹`€´…¹¹½Ñ…Ñ¥½¸¹MÑ…ÉÐ¹`¤ì4(€€€€€€€½¹ÍÐ‘½Õ‰±”±•¹Ñ €ô€ÄÔì4(€€€€€€€Ù…È±•™Ð€ô¹•ÜA½¥¹Ð 4(€€€€€€€€€€€…¹¹½Ñ…Ñ¥½¸¹¹¹`€´±•¹Ñ €¨5…Ñ ¹½Ì¡…¹±”€´5…Ñ ¹A$€¼€Ø¤°4(€€€€€€€€€€€…¹¹½Ñ…Ñ¥½¸¹¹¹d€´±•¹Ñ €¨5…Ñ ¹M¥¸¡…¹±”€´5…Ñ ¹A$€¼€Ø¤¤ì4(€€€€€€€Ù…ÈÉ¥¡Ð€ô¹•ÜA½¥¹Ð 4(€€€€€€€€€€€…¹¹½Ñ…Ñ¥½¸¹¹¹`€´±•¹Ñ €¨5…Ñ ¹½Ì¡…¹±”€¬5…Ñ ¹A$€¼€Ø¤°4(€€€€€€€€€€€…¹¹½Ñ…Ñ¥½¸¹¹¹d€´±•¹Ñ €¨5…Ñ ¹M¥¸¡…¹±”€¬5…Ñ ¹A$€¼€Ø¤¤ì4(€€€€€€€É•ÑÕÉ¸¹•ÜA½±å½¸4(€€€€€€€ì4(€€€€€€€€€€€A½¥¹ÑÌ€ô¹•ÜA½¥¹Ñ½±±•Ñ¥½¸¡m…¹¹½Ñ…Ñ¥½¸¹¹°±•™Ð°É¥¡Ñt¤°4(€€€€€€€€€€€¥±°€ô‰ÉÕÍ °4(€€€€€€€€€€€%Í!¥ÑQ•ÍÑY¥Í¥‰±”€ô™…±Í”4(€€€€€€€ôì4(€€€ô4(4(€€€ÁÉ¥Ù…Ñ”Ù½¥UÁ‘…Ñ•Q½½±M•±•Ñ¥½¸ ¤4(€€€ì4(€€€€€€€™½É•… €¡Ù…È€¡Ñ½½°°‰ÕÑÑ½¸¤¥¸}Ñ½½±	ÕÑÑ½¹Ì¤4(€€€€€€€ì4(€€€€€€€€€€€Ù…ÈÍ•±•Ñ•€ôÑ½½°€ôô}Ñ½½°ì4(€€€€€€€€€€€‰ÕÑÑ½¸¹	…­É½Õ¹€ô	ÉÕÍ ¡Í•±•Ñ•4(€€€€€€€€€€€€€€€€ü}¥Í…É¬€ü€ˆŒÁÕØàˆ€è€ˆÙàˆ4(€€€€€€€€€€€€€€€€è}¥Í…É¬€ü€ˆŒÄàÈÈÉˆ€è€ˆˆ¤ì4(€€€€€€€€€€€‰ÕÑÑ½¸¹	½É‘•É	ÉÕÍ €ô	ÉÕÍ ¡Í•±•Ñ•4(€€€€€€€€€€€€€€€€ü€ˆŒÉ	åˆ4(€€€€€€€€€€€€€€€€è}¥Í…É¬€ü€ˆŒÐÈÔÀÕˆ€è€ˆ	Õˆ¤ì4(€€€€€€€€€€€‰ÕÑÑ½¸¹½É•É½Õ¹€ô	ÉÕÍ  4(€€€€€€€€€€€€€€€}¥Í…É¬€ü€ˆÕáˆ€èÍ•±•Ñ•€ü€ˆŒÀÜÕØØˆ€è€ˆŒÈÔÌÄÍˆ¤ì4(€€€€€€€ô4(€€€ô4(4(€€€ÁÉ¥Ù…Ñ”Ù½¥=¹AÉ•Ù¥•Ý-•å½Ý¸¡½‰©•ÐÍ•¹‘•È°-•åÙ•¹ÑÉÌ”¤4(€€€ì4(€€€€€€€¥˜€¡”¹-•ä€ôô-•ä¹Í…Á”¤4(€€€€€€€ì4(€€€€€€€€€€€¥…±½I•ÍÕ±Ð€ô™…±Í”ì4(€€€€€€€€€€€”¹!…¹‘±•€ôÑÉÕ”ì4(€€€€€€€ô4(€€€€€€€•±Í”¥˜€¡”¹-•ä€ôô-•ä¹¹Ñ•È€˜˜4(€€€€€€€€€€€€€€€€}Í•±•Ñ¥½¹I•…‘ä€˜˜4(€€€€€€€€€€€€€€€€”¹=É¥¥¹…±M½ÕÉ”¥Ì¹½ÐQ•áÑ	½à¤4(€€€€€€€ì4(€€€€€€€€€€€½µÁ±•Ñ” ¤ì4(€€€€€€€€€€€”¹!…¹‘±•€ôÑÉÕ”ì4(€€€€€€€ô4(€€€€€€€•±Í”¥˜€¡”¹-•ä€ôô-•ä¹H€˜˜4(€€€€€€€€€€€€€€€€}Í•±•Ñ¥½¹I•…‘ä€˜˜4(€€€€€€€€€€€€€€€€-•å‰½…É¹5½‘¥™¥•ÉÌ€ôô5½‘¥™¥•É-•åÌ¹9½¹”¤4(€€€€€€€ì4(€€€€€€€€€€€I•Í•ÑM•±•Ñ¥½¸ ¤ì4(€€€€€€€€€€€”¹!…¹‘±•€ôÑÉÕ”ì4(€€€€€€€ô4(€€€€€€€•±Í”¥˜€¡”¹-•ä€ôô-•ä¹h€˜˜4(€€€€€€€€€€€€€€€€-•å‰½…É¹5½‘¥™¥•ÉÌ¹!…Í±…œ¡5½‘¥™¥•É-•åÌ¹½¹ÑÉ½°¤¤4(€€€€€€€ì4(€€€€€€€€€€€U¹‘¼ ¤ì4(€€€€€€€€€€€”¹!…¹‘±•€ôÑÉÕ”ì4(€€€€€€€ô4(€€€€€€€•±Í”¥˜€¡”¹-•ä€ôô-•ä¹d€˜˜4(€€€€€€€€€€€€€€€€-•å‰½…É¹5½‘¥™¥•ÉÌ¹!…Í±…œ¡5½‘¥™¥•É-•åÌ¹½¹ÑÉ½°¤¤4(€€€€€€€ì4(€€€€€€€€€€€I•‘¼ ¤ì4(€€€€€€€€€€€”¹!…¹‘±•€ôÑÉÕ”ì4(€€€€€€€ô4(€€€ô4(4(€€€ÁÉ¥Ù…Ñ”Ù½¥½µÁ±•Ñ” ¤4(€€€ì4(€€€€€€€¥˜€ …}Í•±•Ñ¥½¹I•…‘ä¤4(€€€€€€€ì4(€€€€€€€€€€€É•ÑÕÉ¸ì4(€€€€€€€ô4(4(€€€€€€€ÕÍ¥¹œÙ…ÈÉ½À€ôÉ½ÁÉ½é•¹M•±•Ñ¥½¸ ¤ì4(€€€€€€€‘¥Ñ•‘	¥Ñµ…Àü¹¥ÍÁ½Í” ¤ì4(€€€€€€€‘¥Ñ•‘	¥Ñµ…À€ô…ÁÑÕÉ•¹¹½Ñ…Ñ¥½¹I•¹‘•É•È¹I•¹‘•È 4(€€€€€€€€€€€É½À°4(€€€€€€€€€€€}…¹¹½Ñ…Ñ¥½¹Ì°4(€€€€€€€€€€€}±½…±M•±•Ñ¥½¸¹]¥‘Ñ °4(€€€€€€€€€€€}±½…±M•±•Ñ¥½¸¹!•¥¡Ð¤ì4(€€€€€€€¥…±½I•ÍÕ±Ð€ôÑÉÕ”ì4(€€€ô4(4(€€€ÁÉ¥Ù…Ñ”É…Ý¥¹	¥Ñµ…ÀÉ½ÁÉ½é•¹M•±•Ñ¥½¸ ¤4(€€€ì4(€€€€€€€Ù…ÈÍ…±•`€ô}‘•Í­Ñ½Á	¥Ñµ…À¹]¥‘Ñ €¼5…Ñ ¹5…à Å°]¥‘Ñ ¤ì4(€€€€€€€Ù…ÈÍ…±•d€ô}‘•Í­Ñ½Á	¥Ñµ…À¹!•¥¡Ð€¼5…Ñ ¹5…à Å°!•¥¡Ð¤ì4(€€€€€€€Ù…È±•™Ð€ô5…Ñ ¹±…µÀ 4(€€€€€€€€€€€€¡¥¹Ð¥5…Ñ ¹I½Õ¹¡}±½…±M•±•Ñ¥½¸¹1•™Ð€¨Í…±•`¤°4(€€€€€€€€€€€€À°4(€€€€€€€€€€€}‘•Í­Ñ½Á	¥Ñµ…À¹]¥‘Ñ €´€Ä¤ì4(€€€€€€€Ù…ÈÑ½À€ô5…Ñ ¹±…µÀ 4(€€€€€€€€€€€€¡¥¹Ð¥5…Ñ ¹I½Õ¹¡}±½…±M•±•Ñ¥½¸¹Q½À€¨Í…±•d¤°4(€€€€€€€€€€€€À°4(€€€€€€€€€€€}‘•Í­Ñ½Á	¥Ñµ…À¹!•¥¡Ð€´€Ä¤ì4(€€€€€€€Ù…ÈÝ¥‘Ñ €ô5…Ñ ¹±…µÀ 4(€€€€€€€€€€€€¡¥¹Ð¥5…Ñ ¹I½Õ¹¡}±½…±M•±•Ñ¥½¸¹]¥‘Ñ €¨Í…±•`¤°4(€€€€€€€€€€€€Ä°4(€€€€€€€€€€€}‘•Í­Ñ½Á	¥Ñµ…À¹]¥‘Ñ €´±•™Ð¤ì4(€€€€€€€Ù…È¡•¥¡Ð€ô5…Ñ ¹±…µÀ 4(€€€€€€€€€€€€¡¥¹Ð¥5…Ñ ¹I½Õ¹¡}±½…±M•±•Ñ¥½¸¹!•¥¡Ð€¨Í…±•d¤°4(€€€€€€€€€€€€Ä°4(€€€€€€€€€€€}‘•Í­Ñ½Á	¥Ñµ…À¹!•¥¡Ð€´Ñ½À¤ì4(€€€€€€€É•ÑÕÉ¸}‘•Í­Ñ½Á	¥Ñµ…À¹±½¹” 4(€€€€€€€€€€€¹•ÜMåÍÑ•´¹É…Ý¥¹œ¹I•Ñ…¹±”¡±•™Ð°Ñ½À°Ý¥‘Ñ °¡•¥¡Ð¤°4(€€€€€€€€€€€É…Ý¥¹A¥á•±½Éµ…Ð¹½Éµ…ÐÌÉ‰ÁÁÉˆ¤ì4(€€€ô4(4(€€€ÁÉ¥Ù…Ñ”Ù½¥I•Í•ÑM•±•Ñ¥½¸ ¤4(€€€ì4(€€€€€€€}‘É…¥¹œ€ô™…±Í”ì4(€€€€€€€}‘É…Ý¥¹œ€ô™…±Í”ì4(€€€€€€€}Í•±•Ñ¥½¹I•…‘ä€ô™…±Í”ì4(€€€€€€€I•±•…Í•5½ÕÍ•…ÁÑÕÉ” ¤ì4(€€€€€€€}Í•±•Ñ¥½¸¹Y¥Í¥‰¥±¥Ñä€ôY¥Í¥‰¥±¥Ñä¹½±±…ÁÍ•ì4(€€€€€€€}…¹¹½Ñ…Ñ¥½¹1…å•È¹Y¥Í¥‰¥±¥Ñä€ôY¥Í¥‰¥±¥Ñä¹½±±…ÁÍ•ì4(€€€€€€€}…¹¹½Ñ…Ñ¥½¹1…å•È¹¡¥±‘É•¸¹±•…È ¤ì4(€€€€€€€}Í¥é•	…‘”¹Y¥Í¥‰¥±¥Ñä€ôY¥Í¥‰¥±¥Ñä¹½±±…ÁÍ•ì4(€€€€€€€}Ñ½½±‰…È¹Y¥Í¥‰¥±¥Ñä€ôY¥Í¥‰¥±¥Ñä¹½±±…ÁÍ•ì4(€€€€€€€M•Ñ!…¹‘±•ÍY¥Í¥‰¥±¥Ñä¡Y¥Í¥‰¥±¥Ñä¹½±±…ÁÍ•¤ì4(€€€€€€€}…¹¹½Ñ…Ñ¥½¹Ì¹±•…È ¤ì4(€€€€€€€}É•‘¼¹±•…È ¤ì4(€€€€€€€}¹•áÑ9Õµ‰•È€ô€Äì4(€€€€€€€ÕÉÍ½È€ôÕÉÍ½ÉÌ¹É½ÍÌì4(€€€€€€€UÁ‘…Ñ•M¡…‘”¡‘•™…Õ±Ð¤ì4(€€€ô4(4(€€€ÁÉ¥Ù…Ñ”Ù½¥UÁ‘…Ñ•M•±•Ñ¥½¸¡A½¥¹Ð•¹¤4(€€€ì4(€€€€€€€}±½…±M•±•Ñ¥½¸€ô9½Éµ…±¥é”¡}ÍÑ…ÉÐ°•¹¤ì4(€€€€€€€…¹Ù…Ì¹M•Ñ1•™Ð¡}Í•±•Ñ¥½¸°}±½…±M•±•Ñ¥½¸¹1•™Ð¤ì4(€€€€€€€…¹Ù…Ì¹M•ÑQ½À¡}Í•±•Ñ¥½¸°}±½…±M•±•Ñ¥½¸¹Q½À¤ì4(€€€€€€€}Í•±•Ñ¥½¸¹]¥‘Ñ €ô}±½…±M•±•Ñ¥½¸¹]¥‘Ñ ì4(€€€€€€€}Í•±•Ñ¥½¸¹!•¥¡Ð€ô}±½…±M•±•Ñ¥½¸¹!•¥¡Ðì4(€€€€€€€UÁ‘…Ñ•M¡…‘”¡}±½…±M•±•Ñ¥½¸¤ì4(4(€€€€€€€¥˜€¡}Í¥é•	…‘”¹¡¥±¥ÌQ•áÑ	±½¬Í¥é”¤4(€€€€€€€ì4(€€€€€€€€€€€Ù…ÈÍ…±•`€ô}‘•Í­Ñ½Á	¥Ñµ…À¹]¥‘Ñ €¼5…Ñ ¹5…à Å°]¥‘Ñ ¤ì4(€€€€€€€€€€€Ù…ÈÍ…±•d€ô}‘•Í­Ñ½Á	¥Ñµ…À¹!•¥¡Ð€¼5…Ñ ¹5…à Å°!•¥¡Ð¤ì4(€€€€€€€€€€€Í¥é”¹Q•áÐ€ô4(€€€€€€€€€€€€€€€€‰í5…Ñ ¹I½Õ¹¡}±½…±M•±•Ñ¥½¸¹]¥‘Ñ €¨Í…±•`¤é8Áôƒ\€ˆ€¬4(€€€€€€€€€€€€€€€€‰í5…Ñ ¹I½Õ¹¡}±½…±M•±•Ñ¥½¸¹!•¥¡Ð€¨Í…±•d¤é8Áôˆì4(€€€€€€€ô4(€€€€€€€…¹Ù…Ì¹M•Ñ1•™Ð¡}Í¥é•	…‘”°}±½…±M•±•Ñ¥½¸¹1•™Ð¤ì4(€€€€€€€…¹Ù…Ì¹M•ÑQ½À 4(€€€€€€€€€€€}Í¥é•	…‘”°4(€€€€€€€€€€€}±½…±M•±•Ñ¥½¸¹Q½À€ø€ÐÀ4(€€€€€€€€€€€€€€€€ü}±½…±M•±•Ñ¥½¸¹Q½À€´€ÌÐ4(€€€€€€€€€€€€€€€€è}±½…±M•±•Ñ¥½¸¹	½ÑÑ½´€¬€à¤ì4(€€€ô4(4(€€€ÁÉ¥Ù…Ñ”Ù½¥A½Í¥Ñ¥½¹¹¹½Ñ…Ñ¥½¹1…å•È ¤4(€€€ì4(€€€€€€€…¹Ù…Ì¹M•Ñ1•™Ð¡}…¹¹½Ñ…Ñ¥½¹1…å•È°}±½…±M•±•Ñ¥½¸¹1•™Ð¤ì4(€€€€€€€…¹Ù…Ì¹M•ÑQ½À¡}…¹¹½Ñ…Ñ¥½¹1…å•È°}±½…±M•±•Ñ¥½¸¹Q½À¤ì4(€€€€€€€}…¹¹½Ñ…Ñ¥½¹1…å•È¹]¥‘Ñ €ô}±½…±M•±•Ñ¥½¸¹]¥‘Ñ ì4(€€€€€€€}…¹¹½Ñ…Ñ¥½¹1…å•È¹!•¥¡Ð€ô}±½…±M•±•Ñ¥½¸¹!•¥¡Ðì4(€€€€€€€}…¹¹½Ñ…Ñ¥½¹1…å•È¹Y¥Í¥‰¥±¥Ñä€ôY¥Í¥‰¥±¥Ñä¹Y¥Í¥‰±”ì4(€€€ô4(4(€€€ÁÉ¥Ù…Ñ”A½¥¹ÐQ½¹¹½Ñ…Ñ¥½¹A½¥¹Ð¡A½¥¹Ð…¹Ù…ÍA½¥¹Ð¤€ôø¹•Ü 4(€€€€€€€5…Ñ ¹±…µÀ¡…¹Ù…ÍA½¥¹Ð¹`€´}±½…±M•±•Ñ¥½¸¹1•™Ð°€À°}±½…±M•±•Ñ¥½¸¹]¥‘Ñ ¤°4(€€€€€€€5…Ñ ¹±…µÀ¡…¹Ù…ÍA½¥¹Ð¹d€´}±½…±M•±•Ñ¥½¸¹Q½À°€À°}±½…±M•±•Ñ¥½¸¹!•¥¡Ð¤¤ì4(4(€€€ÁÉ¥Ù…Ñ”Ù½¥UÁ‘…Ñ•M¡…‘”¡I•Ð±•…È¤4(€€€ì4(€€€€€€€Ù…ÈÝ¥‘Ñ €ô5…Ñ ¹5…à À°ÑÕ…±]¥‘Ñ €ø€À€üÑÕ…±]¥‘Ñ €è]¥‘Ñ ¤ì4(€€€€€€€Ù…È¡•¥¡Ð€ô5…Ñ ¹5…à À°ÑÕ…±!•¥¡Ð€ø€À€üÑÕ…±!•¥¡Ð€è!•¥¡Ð¤ì4(€€€€€€€¥˜€¡±•…È¹%ÍµÁÑäñð±•…È¹]¥‘Ñ €ðô€Àñð±•…È¹!•¥¡Ð€ðô€À¤4(€€€€€€€ì4(€€€€€€€€€€€A±…”¡}Í¡…‘•ÍlÁt°€À°€À°Ý¥‘Ñ °¡•¥¡Ð¤ì4(€€€€€€€€€€€™½È€¡Ù…È¥¹‘•à€ô€Äì¥¹‘•à€ð}Í¡…‘•Ì¹1•¹Ñ ì¥¹‘•à¬¬¤4(€€€€€€€€€€€ì4(€€€€€€€€€€€€€€€A±…”¡}Í¡…‘•Ím¥¹‘•át°€À°€À°€À°€À¤ì4(€€€€€€€€€€€ô4(€€€€€€€€€€€É•ÑÕÉ¸ì4(€€€€€€€ô4(4(€€€€€€€A±…”¡}Í¡…‘•ÍlÁt°€À°€À°Ý¥‘Ñ °±•…È¹Q½À¤ì4(€€€€€€€A±…”¡}Í¡…‘•ÍlÅt°€À°±•…È¹	½ÑÑ½´°Ý¥‘Ñ °¡•¥¡Ð€´±•…È¹	½ÑÑ½´¤ì4(€€€€€€€A±…”¡}Í¡…‘•ÍlÉt°€À°±•…È¹Q½À°±•…È¹1•™Ð°±•…È¹!•¥¡Ð¤ì4(€€€€€€€A±…” 4(€€€€€€€€€€€}Í¡…‘•ÍlÍt°4(€€€€€€€€€€€±•…È¹I¥¡Ð°4(€€€€€€€€€€€±•…È¹Q½À°4(€€€€€€€€€€€Ý¥‘Ñ €´±•…È¹I¥¡Ð°4(€€€€€€€€€€€±•…È¹!•¥¡Ð¤ì4(€€€ô4(4(€€€ÁÉ¥Ù…Ñ”Ù½¥A½Í¥Ñ¥½¹!…¹‘±•Ì ¤4(€€€ì4(€€€€€€€Ù…Èà€ô¹•Ýmt4(€€€€€€€ì4(€€€€€€€€€€€}±½…±M•±•Ñ¥½¸¹1•™Ð°4(€€€€€€€€€€€}±½…±M•±•Ñ¥½¸¹1•™Ð€¬€¡}±½…±M•±•Ñ¥½¸¹]¥‘Ñ €¼€È¤°4(€€€€€€€€€€€}±½…±M•±•Ñ¥½¸¹I¥¡Ð4(€€€€€€€ôì4(€€€€€€€Ù…Èä€ô¹•Ýmt4(€€€€€€€ì4(€€€€€€€€€€€}±½…±M•±•Ñ¥½¸¹Q½À°4(€€€€€€€€€€€}±½…±M•±•Ñ¥½¸¹Q½À€¬€¡}±½…±M•±•Ñ¥½¸¹!•¥¡Ð€¼€È¤°4(€€€€€€€€€€€}±½…±M•±•Ñ¥½¸¹	½ÑÑ½´4(€€€€€€€ôì4(€€€€€€€Ù…ÈÁ½Í¥Ñ¥½¹Ì€ô¹•Ýmt4(€€€€€€€ì4(€€€€€€€€€€€¹•ÜA½¥¹Ð¡álÁt°ålÁt¤°¹•ÜA½¥¹Ð¡álÅt°ålÁt¤°4(€€€€€€€€€€€¹•ÜA½¥¹Ð¡álÉt°ålÁt¤°¹•ÜA½¥¹Ð¡álÁt°ålÅt¤°4(€€€€€€€€€€€¹•ÜA½¥¹Ð¡álÉt°ålÅt¤°¹•ÜA½¥¹Ð¡álÁt°ålÉt¤°4(€€€€€€€€€€€¹•ÜA½¥¹Ð¡álÅt°ålÉt¤°¹•ÜA½¥¹Ð¡álÉt°ålÉt¤4(€€€€€€€ôì4(€€€€€€€™½È€¡Ù…È¥¹‘•à€ô€Àì¥¹‘•à€ð}¡…¹‘±•Ì¹1•¹Ñ ì¥¹‘•à¬¬¤4(€€€€€€€ì4(€€€€€€€€€€€…¹Ù…Ì¹M•Ñ1•™Ð¡}¡…¹‘±•Ím¥¹‘•át°Á½Í¥Ñ¥½¹Ím¥¹‘•át¹`€´€Ô¤ì4(€€€€€€€€€€€…¹Ù…Ì¹M•ÑQ½À¡}¡…¹‘±•Ím¥¹‘•át°Á½Í¥Ñ¥½¹Ím¥¹‘•át¹d€´€Ô¤ì4(€€€€€€€ô4(€€€ô4(4(€€€ÁÉ¥Ù…Ñ”Ù½¥A½Í¥Ñ¥½¹Q½½±‰…È ¤4(€€€ì4(€€€€€€€}Ñ½½±‰…È¹5•…ÍÕÉ”¡¹•ÜM¥é”¡‘½Õ‰±”¹A½Í¥Ñ¥Ù•%¹™¥¹¥Ñä°‘½Õ‰±”¹A½Í¥Ñ¥Ù•%¹™¥¹¥Ñä¤¤ì4(€€€€€€€Ù…È‘•Í¥É•€ô}Ñ½½±‰…È¹•Í¥É•‘M¥é”ì4(€€€€€€€Ù…ÈÝ¥‘Ñ €ôÑÕ…±]¥‘Ñ €ø€À€üÑÕ…±]¥‘Ñ €è]¥‘Ñ ì4(€€€€€€€Ù…È¡•¥¡Ð€ôÑÕ…±!•¥¡Ð€ø€À€üÑÕ…±!•¥¡Ð€è!•¥¡Ðì4(€€€€€€€Ù…È±•™Ð€ô5…Ñ ¹±…µÀ 4(€€€€€€€€€€€}±½…±M•±•Ñ¥½¸¹1•™Ð€¬€ ¡}±½…±M•±•Ñ¥½¸¹]¥‘Ñ €´‘•Í¥É•¹]¥‘Ñ ¤€¼€È¤°4(€€€€€€€€€€€€ÄÈ°4(€€€€€€€€€€€5…Ñ ¹5…à ÄÈ°Ý¥‘Ñ €´‘•Í¥É•¹]¥‘Ñ €´€ÄÈ¤¤ì4(€€€€€€€Ù…È‰•±½Ü€ô}±½…±M•±•Ñ¥½¸¹	½ÑÑ½´€¬€ÄÐì4(€€€€€€€Ù…ÈÑ½À€ô‰•±½Ü€¬‘•Í¥É•¹!•¥¡Ð€ðô¡•¥¡Ð€´€ÄÈ4(€€€€€€€€€€€€ü‰•±½Ü4(€€€€€€€€€€€€è5…Ñ ¹5…à ÄÈ°}±½…±M•±•Ñ¥½¸¹Q½À€´‘•Í¥É•¹!•¥¡Ð€´€ÄÐ¤ì4(€€€€€€€…¹Ù…Ì¹M•Ñ1•™Ð¡}Ñ½½±‰…È°±•™Ð¤ì4(€€€€€€€…¹Ù…Ì¹M•ÑQ½À¡}Ñ½½±‰…È°Ñ½À¤ì4(€€€ô4(4(€€€ÁÉ¥Ù…Ñ”Ù½¥M•Ñ!…¹‘±•ÍY¥Í¥‰¥±¥Ñä¡Y¥Í¥‰¥±¥ÑäÙ¥Í¥‰¥±¥Ñä¤4(€€€ì4(€€€€€€€™½É•… €¡Ù…È¡…¹‘±”¥¸}¡…¹‘±•Ì¤4(€€€€€€€ì4(€€€€€€€€€€€¡…¹‘±”¹Y¥Í¥‰¥±¥Ñä€ôÙ¥Í¥‰¥±¥Ñäì4(€€€€€€€ô4(€€€ô4(4(€€€ÁÉ¥Ù…Ñ”‰½½°%ÍQ½½±‰…ÉM½ÕÉ”¡•Á•¹‘•¹å=‰©•ÐüÍ½ÕÉ”¤4(€€€ì4(€€€€€€€Ý¡¥±”€¡Í½ÕÉ”¥Ì¹½Ð¹Õ±°¤4(€€€€€€€ì4(€€€€€€€€€€€¥˜€¡I•™•É•¹•ÅÕ…±Ì¡Í½ÕÉ”°}Ñ½½±‰…È¤¤4(€€€€€€€€€€€ì4(€€€€€€€€€€€€€€€É•ÑÕÉ¸ÑÉÕ”ì4(€€€€€€€€€€€ô4(€€€€€€€€€€€Í½ÕÉ”€ôY¥ÍÕ…±QÉ••!•±Á•È¹•ÑA…É•¹Ð¡Í½ÕÉ”¤ì4(€€€€€€€ô4(€€€€€€€É•ÑÕÉ¸™…±Í”ì4(€€€ô4(4(€€€ÁÉ¥Ù…Ñ”ÍÑ…Ñ¥ŒI•Ñ…¹±”M¡…‘” ¤€ôø¹•Ü ¤4(€€€ì4(€€€€€€€¥±°€ô¹•ÜM½±¥‘½±½É	ÉÕÍ ¡½±½È¹É½µÉˆ ÄÔÀ°€Ì°€ÄÈ°€ÈÈ¤¤°4(€€€€€€€%Í!¥ÑQ•ÍÑY¥Í¥‰±”€ô™…±Í”4(€€€ôì4(4(€€€ÁÉ¥Ù…Ñ”ÍÑ…Ñ¥Œ	½É‘•È!…¹‘±” ¤€ôø¹•Ü ¤4(€€€ì4(€€€€€€€]¥‘Ñ €ô€ÄÀ°4(€€€€€€€!•¥¡Ð€ô€ÄÀ°4(€€€€€€€½É¹•ÉI…‘¥ÕÌ€ô¹•Ü½É¹•ÉI…‘¥ÕÌ Ô¤°4(€€€€€€€	…­É½Õ¹€ô	ÉÕÍ¡•Ì¹]¡¥Ñ”°4(€€€€€€€	½É‘•É	ÉÕÍ €ô¹•ÜM½±¥‘½±½É	ÉÕÍ ¡½±½È¹É½µIˆ ÄÀ°€ÄØä°€ÄàÜ¤¤°4(€€€€€€€	½É‘•ÉQ¡¥­¹•ÍÌ€ô¹•ÜQ¡¥­¹•ÍÌ È¤°4(€€€€€€€Y¥Í¥‰¥±¥Ñä€ôY¥Í¥‰¥±¥Ñä¹½±±…ÁÍ•°4(€€€€€€€%Í!¥ÑQ•ÍÑY¥Í¥‰±”€ô™…±Í”4(€€€ôì4(4(€€€ÁÉ¥Ù…Ñ”ÍÑ…Ñ¥ŒÙ½¥A±…” 4(€€€€€€€É…µ•Ý½É­±•µ•¹Ð•±•µ•¹Ð°4(€€€€€€€‘½Õ‰±”±•™Ð°4(€€€€€€€‘½Õ‰±”Ñ½À°4(€€€€€€€‘½Õ‰±”Ý¥‘Ñ °4(€€€€€€€‘½Õ‰±”¡•¥¡Ð¤4(€€€ì4(€€€€€€€…¹Ù…Ì¹M•Ñ1•™Ð¡•±•µ•¹Ð°±•™Ð¤ì4(€€€€€€€…¹Ù…Ì¹M•ÑQ½À¡•±•µ•¹Ð°Ñ½À¤ì4(€€€€€€€•±•µ•¹Ð¹]¥‘Ñ €ô5…Ñ ¹5…à À°Ý¥‘Ñ ¤ì4(€€€€€€€•±•µ•¹Ð¹!•¥¡Ð€ô5…Ñ ¹5…à À°¡•¥¡Ð¤ì4(€€€ô4(4(€€€ÁÉ¥Ù…Ñ”ÍÑ…Ñ¥ŒI•Ð9½Éµ…±¥é”¡A½¥¹ÐÍÑ…ÉÐ°A½¥¹Ð•¹¤€ôø¹•Ü 4(€€€€€€€5…Ñ ¹5¥¸¡ÍÑ…ÉÐ¹`°•¹¹`¤°4(€€€€€€€5…Ñ ¹5¥¸¡ÍÑ…ÉÐ¹d°•¹¹d¤°4(€€€€€€€5…Ñ ¹‰Ì¡•¹¹`€´ÍÑ…ÉÐ¹`¤°4(€€€€€€€5…Ñ ¹‰Ì¡•¹¹d€´ÍÑ…ÉÐ¹d¤¤ì4(4(€€€ÁÉ¥Ù…Ñ”ÍÑ…Ñ¥ŒM½±¥‘½±½É	ÉÕÍ 	ÉÕÍ ¡ÍÑÉ¥¹œ½±½È¤€ôø4(€€€€€€€¹•Ü ¡½±½È¥½±½É½¹Ù•ÉÑ•È¹½¹Ù•ÉÑÉ½µMÑÉ¥¹œ¡½±½È¤¤ì4(4(€€€ÁÉ¥Ù…Ñ”ÍÑ…Ñ¥ŒÉ…Ý¥¹	¥Ñµ…À…ÁÑÕÉ•Y¥ÉÑÕ…±•Í­Ñ½Á	¥Ñµ…À ¤€ôø4(€€€€€€€…ÁÑÕÉ•Y¥ÉÑÕ…±•Í­Ñ½Á	¥Ñµ…À¡™…±Í”¤ì4(4(€€€ÁÉ¥Ù…Ñ”ÍÑ…Ñ¥ŒÉ…Ý¥¹	¥Ñµ…À…ÁÑÕÉ•Y¥ÉÑÕ…±•Í­Ñ½Á	¥Ñµ…À¡‰½½°¥¹±Õ‘•ÕÉÍ½È¤4(€€€ì4(€€€€€€€Ù…ÈÙ¥ÉÑÕ…±MÉ••¸€ôMåÍÑ•´¹]¥¹‘½ÝÌ¹½ÉµÌ¹MåÍÑ•µ%¹™½Éµ…Ñ¥½¸¹Y¥ÉÑÕ…±MÉ••¸ì4(€€€€€€€É•ÑÕÉ¸…ÁÑÕÉ•M•ÉÙ¥”¹…ÁÑÕÉ•	¥Ñµ…À¡Ù¥ÉÑÕ…±MÉ••¸°¥¹±Õ‘•ÕÉÍ½È¤ì4(€€€ô4(4(€€€ÁÉ¥Ù…Ñ”ÍÑ…Ñ¥Œ	¥Ñµ…ÁM½ÕÉ”Q½	¥Ñµ…ÁM½ÕÉ”¡É…Ý¥¹	¥Ñµ…À‰¥Ñµ…À¤4(€€€ì4(€€€€€€€Ù…È¡…¹‘±”€ô‰¥Ñµ…À¹•Ñ!‰¥Ñµ…À ¤ì4(€€€€€€€ÑÉä4(€€€€€€€ì4(€€€€€€€€€€€Ù…ÈÍ½ÕÉ”€ô%µ…¥¹œ¹É•…Ñ•	¥Ñµ…ÁM½ÕÉ•É½µ!	¥Ñµ…À 4(€€€€€€€€€€€€€€€¡…¹‘±”°4(€€€€€€€€€€€€€€€%¹ÑAÑÈ¹i•É¼°4(€€€€€€€€€€€€€€€%¹ÐÌÉI•Ð¹µÁÑä°4(€€€€€€€€€€€€€€€	¥Ñµ…ÁM¥é•=ÁÑ¥½¹Ì¹É½µµÁÑå=ÁÑ¥½¹Ì ¤¤ì4(€€€€€€€€€€€Í½ÕÉ”¹É••é” ¤ì4(€€€€€€€€€€€É•ÑÕÉ¸Í½ÕÉ”ì4(€€€€€€€ô4(€€€€€€€™¥¹…±±ä4(€€€€€€€ì4(€€€€€€€€€€€|€ô•±•Ñ•=‰©•Ð¡¡…¹‘±”¤ì4(€€€€€€€ô4(€€€ô4(4(€€€m±±%µÁ½ÉÐ ‰‘¤ÌÈ¹‘±°ˆ¥t4(€€€mÉ•ÑÕÉ¸è5…ÉÍ¡…±Ì¡U¹µ…¹…•‘QåÁ”¹	½½°¥t4(€€€ÁÉ¥Ù…Ñ”ÍÑ…Ñ¥Œ•áÑ•É¸‰½½°•±•Ñ•=‰©•Ð¡%¹ÑAÑÈ¡…¹‘±”¤ì4)ô4

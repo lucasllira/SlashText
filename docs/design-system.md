@@ -1,8 +1,8 @@
 # SlashDesk Design System
 
-Versão do guia: 1.0  
-Aplicação inicial: SlashDesk 2.8.1  
-Extensão funcional validada: SlashDesk 2.9.0
+Versão do guia: 2.0
+Aplicação inicial: SlashDesk 2.8.1
+Redesign funcional validado: SlashDesk 3.0.0
 
 Este documento é a referência visual e de implementação do SlashDesk. Novas telas
 devem ser compostas com os tokens e estilos existentes. Um estilo local só deve ser
@@ -35,7 +35,8 @@ criado quando representar um estado ou componente realmente novo e reutilizável
   janela principal;
 - nenhuma alteração visual pode remover handlers, controles ou funções existentes;
 - Atalhos é a primeira tela de referência para novos componentes;
-- gravação de tela será construída sobre este sistema, não com estilos paralelos.
+- gravação de tela usa este sistema, não estilos paralelos;
+- animações não essenciais permanecem desativadas para respeitar redução de movimento.
 
 ## 3. Cores semânticas
 

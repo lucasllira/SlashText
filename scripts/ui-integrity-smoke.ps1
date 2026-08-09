@@ -8,6 +8,8 @@ $variablePath = 'src/SlashText/Views/VariableInputWindow.cs'
 $keyboardPath = 'src/SlashText/Services/KeyboardHookService.cs'
 $resourcesPath = 'src/SlashText/App.xaml'
 $foundationPath = 'src/SlashText/Styles/Foundation.xaml'
+$iconsPath = 'src/SlashText/Styles/Icons.xaml'
+$componentsPath = 'src/SlashText/Styles/Components.xaml'
 $designGuidePath = 'docs/design-system.md'
 $projectPath = 'src/SlashText/SlashText.csproj'
 $themePath = 'src/SlashText/Services/ThemeService.cs'
@@ -27,6 +29,8 @@ $variable = Get-Content $variablePath -Raw
 $keyboard = Get-Content $keyboardPath -Raw
 $resources = Get-Content $resourcesPath -Raw
 $foundation = Get-Content $foundationPath -Raw
+$icons = Get-Content $iconsPath -Raw
+$components = Get-Content $componentsPath -Raw
 $designGuide = Get-Content $designGuidePath -Raw
 $project = Get-Content $projectPath -Raw
 $theme = Get-Content $themePath -Raw
@@ -42,6 +46,8 @@ $gifPreview = Get-Content $gifPreviewPath -Raw
 [xml]$null = $xaml
 [xml]$null = $resources
 [xml]$null = $foundation
+[xml]$null = $icons
+[xml]$null = $components
 
 $handlers = [regex]::Matches(
     $xaml,
@@ -105,8 +111,14 @@ foreach ($shellElement in @(
     }
 }
 
-if (-not $resources.Contains('Source="Styles/Foundation.xaml"')) {
-    throw 'O App.xaml não carrega o design system.'
+foreach ($dictionary in @(
+    'Styles/Foundation.xaml',
+    'Styles/Icons.xaml',
+    'Styles/Components.xaml'
+)) {
+    if (-not $resources.Contains("Source=`"$dictionary`"")) {
+        throw "O App.xaml não carrega o recurso do design system: $dictionary"
+    }
 }
 
 foreach ($token in @(
@@ -162,8 +174,76 @@ foreach ($guideSection in @(
     }
 }
 
-if (-not $project.Contains('<Version>2.9.1</Version>')) {
-    throw 'Versão funcional deve ser 2.9.1.'
+foreach ($versionElement in @(
+    '<Version>3.0.0</Version>',
+    '<AssemblyVersion>3.0.0.0</AssemblyVersion>',
+    '<FileVersion>3.0.0.0</FileVersion>'
+)) {
+    if (-not $project.Contains($versionElement)) {
+        throw "Versão 3.0.0 inconsistente: $versionElement"
+    }
+}
+
+foreach ($style in @(
+    'NavigationIcon',
+    'ActionIcon',
+    'IconButton',
+    'ToggleSwitch',
+    'LoadingProgress'
+)) {
+    if (-not $components.Contains("x:Key=`"$style`"")) {
+        throw "Componente reutilizável ausente: $style"
+    }
+}
+
+foreach ($geometry in @(
+    'Icon.Shortcuts',
+    'Icon.QuickAccent',
+    'Icon.Capture',
+    'Icon.Statistics',
+    'Icon.Settings',
+    'Icon.About'
+)) {
+    if (-not $icons.Contains("x:Key=`"$geometry`"")) {
+        throw "Ícone vetorial de navegação ausente: $geometry"
+    }
+}
+
+foreach ($updateControl in @(
+    'SettingsVersionText',
+    'SettingsLastUpdateCheckText',
+    'SettingsLastUpdateResultText',
+    'SettingsCheckUpdatesButton'
+)) {
+    if (-not $xaml.Contains("x:Name=`"$updateControl`"")) {
+        throw "Controle de atualização ausente: $updateControl"
+    }
+}
+
+if (-not $xaml.Contains('IsEditable="False"') -or
+    -not $code.Contains('RecordingPresetCatalog.GifFps')) {
+    throw 'FPS do GIF deve permanecer em lista fechada de presets.'
+}
+
+$recordingInfrastructure = Get-Content 'src/SlashText/Services/RecordingInfrastructure.cs' -Raw
+foreach ($preset in @(
+    'new("Recomendado", 10,',
+    'new("Equilibrado", 20,',
+    'new("Fluido", 30,'
+)) {
+    if (-not $recordingInfrastructure.Contains($preset)) {
+        throw "Preset obrigatório de GIF ausente: $preset"
+    }
+}
+foreach ($forbiddenPreset in @(', 5,', ', 15,', ', 60,')) {
+    if ($recordingInfrastructure.Contains($forbiddenPreset)) {
+        throw "Preset proibido de GIF presente: $forbiddenPreset"
+    }
+}
+
+if ($resources.Contains('PopupAnimation="Fade"') -or
+    $resources.Contains('PopupAnimation="Slide"')) {
+    throw 'Animação de popup não essencial deve permanecer desativada.'
 }
 
 if (-not $project.Contains('ScreenRecorderLib') -or
