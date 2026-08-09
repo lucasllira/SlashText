@@ -593,7 +593,9 @@ try
     await File.WriteAllTextAsync(Path.Combine(installedLegacy, "settings.json"),
         """{"theme":"Dark","checkUpdatesOnStartup":false}""");
     await File.WriteAllTextAsync(Path.Combine(installedLegacy, "usage.json"),
-        $$"""{"snippets":[{"snippetId":"{{preservedSnippetId}}","count":9,"charactersSaved":42}],"quickAccent":{"count":2,"characters":{}}}""");
+        "{\"snippets\":[{\"snippetId\":\"" + preservedSnippetId +
+        "\",\"count\":9,\"charactersSaved\":42}]," +
+        "\"quickAccent\":{\"count\":2,\"characters\":{}}}");
     await File.WriteAllTextAsync(Path.Combine(installedLegacy, "capture-history.json"),
         """[{"id":"history-preserved","createdAt":"2026-08-06T12:00:00-03:00","type":"monitor","mediaKind":"image","filePath":"C:\\Capturas\\preservada.png","width":800,"height":600}]""");
 
@@ -666,7 +668,8 @@ try
         """[
           {"id":"valid-item","createdAt":"2026-08-06T12:00:00-03:00","type":"regiao","mediaKind":"image","filePath":"C:\\ok.png","width":100,"height":80},
           {"id":"corrupt-item","createdAt":[],"width":"inválido"}
-        ]""");
+        ]
+        """);
     var tolerantHistory = new CaptureService();
     await tolerantHistory.LoadAsync();
     Require(
