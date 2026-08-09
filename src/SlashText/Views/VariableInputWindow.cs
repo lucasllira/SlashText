@@ -83,10 +83,8 @@ public sealed class VariableInputWindow : Window
         {
             Content = "Inserir",
             IsDefault = true,
-            Foreground = Brushes.White
+            Style = (Style)Application.Current.FindResource("PrimaryButton")
         };
-        insert.SetResourceReference(Button.BackgroundProperty, "AccentBrush");
-        insert.SetResourceReference(Button.BorderBrushProperty, "AccentBrush");
         insert.Click += (_, _) =>
         {
             DialogResult = true;

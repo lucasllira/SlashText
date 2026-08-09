@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using SlashText.Models;
+using SlashText.Services;
 
 namespace SlashText.Views;
 
@@ -26,9 +27,11 @@ internal sealed class UpdateAvailableWindow : Window
         MinHeight = 390;
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
         ResizeMode = ResizeMode.CanResizeWithGrip;
-        Background = Resource<Brush>("WindowBrush", Brushes.White);
+        Background = Resource<Brush>("CanvasBrush", Brushes.White);
+        Foreground = Resource<Brush>("InkBrush", Brushes.Black);
+        SourceInitialized += (_, _) => ThemeService.ApplyToWindow(this);
 
-        var root = new Grid { Margin = new Thickness(24) };
+        var root = new Grid { Margin = new Thickness(22) };
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         root.RowDefinitions.Add(new RowDefinition());
@@ -46,7 +49,7 @@ internal sealed class UpdateAvailableWindow : Window
         var summary = new TextBlock
         {
             Text = $"Versão atual: {result.CurrentVersion}   •   Download: {FormatSize(result.DownloadSize)}",
-            Margin = new Thickness(0, 8, 0, 16),
+            Margin = new Thickness(0, 8, 0, 14),
             Foreground = Resource<Brush>("MutedBrush", Brushes.DimGray)
         };
         Grid.SetRow(summary, 1);
@@ -62,7 +65,7 @@ internal sealed class UpdateAvailableWindow : Window
             VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
             Padding = new Thickness(12),
             BorderBrush = Resource<Brush>("DividerBrush", Brushes.LightGray),
-            Background = Resource<Brush>("PanelBrush", Brushes.White),
+            Background = Resource<Brush>("SurfaceBrush", Brushes.White),
             Foreground = Resource<Brush>("InkBrush", Brushes.Black)
         };
         Grid.SetRow(notes, 2);
@@ -71,7 +74,7 @@ internal sealed class UpdateAvailableWindow : Window
         var buttons = new WrapPanel
         {
             HorizontalAlignment = HorizontalAlignment.Right,
-            Margin = new Thickness(0, 18, 0, 0)
+            Margin = new Thickness(0, 16, 0, 0)
         };
         buttons.Children.Add(CreateButton("Ignorar esta versão", UpdateDecision.IgnoreVersion));
         buttons.Children.Add(CreateButton("Lembrar depois", UpdateDecision.RemindLater));
