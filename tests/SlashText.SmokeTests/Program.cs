@@ -665,11 +665,10 @@ try
         "caminho relativo localiza mídia após mover a pasta portátil");
 
     await File.WriteAllTextAsync(AppPaths.CaptureHistoryFile,
-        """[
-          {"id":"valid-item","createdAt":"2026-08-06T12:00:00-03:00","type":"regiao","mediaKind":"image","filePath":"C:\\ok.png","width":100,"height":80},
-          {"id":"corrupt-item","createdAt":[],"width":"inválido"}
-        ]
-        """);
+        "[{\"id\":\"valid-item\",\"createdAt\":\"2026-08-06T12:00:00-03:00\"," +
+        "\"type\":\"regiao\",\"mediaKind\":\"image\",\"filePath\":\"C:\\\\ok.png\"," +
+        "\"width\":100,\"height\":80}," +
+        "{\"id\":\"corrupt-item\",\"createdAt\":[],\"width\":\"inválido\"}]");
     var tolerantHistory = new CaptureService();
     await tolerantHistory.LoadAsync();
     Require(
