@@ -58,31 +58,57 @@ onde instalar vários aplicativos ou enviar conteúdo para a nuvem não é uma o
 ## Primeira inicialização e atualizações
 
 Na primeira abertura, o SlashDesk apresenta as funções principais e explica onde
-os dados permanecem. A verificação de atualização consulta somente o último
-GitHub Release e pode ser desativada em **Configurações**. Ela não envia atalhos,
-capturas, estatísticas ou identificadores pessoais.
+os dados permanecem. A verificação em background consulta as Releases oficiais
+de `lucasllira/SlashText`, ignora drafts e prereleases no canal estável e pode ser
+desativada em **Configurações**. Ela não envia atalhos, capturas, estatísticas ou
+identificadores pessoais.
 
 ## Arquivos portáteis
 
-O pacote contém apenas:
+O ZIP portátil contém apenas:
+
+```text
+SlashDesk.exe
+```
+
+O runtime self-contained e os componentes nativos são incorporados ao executável.
+Quando necessário, o .NET os extrai no cache interno de bundle em `%TEMP%\.net`.
+Na edição portátil, os dados permanentes ficam ao lado do executável:
 
 ```text
 SlashDesk.exe
 SlashDeskData/
-└── snippets.md
 ```
 
-Durante o uso, a pasta `SlashDeskData` também pode conter:
+Na edição instalada, permanecem em `%LocalAppData%\SlashDesk`. Em ambos os modos,
+a origem contém os mesmos nomes e formatos:
 
 - `settings.json`: preferências;
 - `usage.json`: contadores locais;
 - `capture-history.json`: tipo, horário, tamanho e caminho das capturas recentes;
 - `assets/`: imagens usadas nos atalhos;
-- `backups/`: um ZIP por dia ou sob demanda, com restauração e retenção das sete
+- `Backups/`: um ZIP por dia ou sob demanda, com restauração e retenção das sete
   cópias mais recentes.
+- `Logs/`: diagnósticos locais sem conteúdo de snippets ou capturas;
+- `Updates/`: temporários controlados da atualização portátil.
 
-A atualização migra automaticamente `SlashTextData` para `SlashDeskData`, com
-prioridade para os dados reais do usuário.
+A primeira execução portátil prioriza um `SlashDeskData` válido já existente. Se
+ele ainda não existir, os dados legados de `%LocalAppData%\SlashDesk` são copiados
+para staging, validados, respaldados e só então ativados. A origem antiga não é
+apagada. Se as duas origens existirem, a origem portátil prevalece e a outra é
+preservada em backup, sem mesclagem destrutiva.
+
+A publicação instalada usa o perfil `Installed` e gera a pasta self-contained
+que será consumida por um instalador futuro. A publicação portátil usa o perfil
+`Portable` e gera um único executável self-contained `win-x64`. Para atualizar o
+portátil, o SlashDesk valida o ZIP e o SHA-256, encerra o processo principal e usa
+uma cópia temporária do próprio executável para substituir atomicamente somente
+`SlashDesk.exe`. Se a nova versão não confirmar a inicialização, o executável
+anterior é restaurado. `SlashDeskData` nunca é incluído nem substituído.
+
+A compilação instalada ainda não oferece atualização automática: enquanto não
+existir um instalador transacional validado, ela abre a Release oficial para
+atualização manual e mantém `%LocalAppData%\SlashDesk` fora do staging.
 
 ## Variáveis de texto
 
@@ -128,13 +154,9 @@ recusados; o aplicativo informa o conflito.
 
 ## Próximas etapas
 
-- recorte, desfoque e pixelização no editor de captura;
-- gravação local de MP4 e GIF, com região/janela/monitor, FPS e cursor;
-- captura com atraso e captura com rolagem;
-- assinatura digital para facilitar distribuição corporativa.
-
-Gravação e GIF permanecem no roadmap até que o pipeline de mídia seja validado
-de ponta a ponta; a interface não mostra ações que ainda não funcionem.
+O SlashDesk 2.9.1 estabiliza a gravação local de MP4 e GIF. A próxima versão
+fica reservada para captura com rolagem, ações de captura/gravação no menu da
+bandeja e revisão visual, além da assinatura digital para distribuição corporativa.
 
 ## Licença
 

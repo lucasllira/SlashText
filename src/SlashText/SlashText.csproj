@@ -13,13 +13,16 @@
     <ApplicationIcon>Assets\SlashDesk.ico</ApplicationIcon>
     <AssemblyName>SlashDesk</AssemblyName>
     <RootNamespace>SlashText</RootNamespace>
-    <Version>2.9.0</Version>
-    <AssemblyVersion>2.9.0.0</AssemblyVersion>
-    <FileVersion>2.9.0.0</FileVersion>
+    <Version>2.9.1</Version>
+    <AssemblyVersion>2.9.1.0</AssemblyVersion>
+    <FileVersion>2.9.1.0</FileVersion>
     <DebugType>embedded</DebugType>
-    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
-    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <SlashDeskDistribution Condition="'$(SlashDeskDistribution)' == ''">Installed</SlashDeskDistribution>
   </PropertyGroup>
+
+  <ItemGroup>
+    <AssemblyMetadata Include="SlashDeskDistribution" Value="$(SlashDeskDistribution)" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="ScreenRecorderLib" Version="6.6.0" />
@@ -28,9 +31,8 @@
   <ItemGroup>
     <Resource Include="Assets\SlashDesk.ico" />
     <Resource Include="Assets\SlashDesk.png" />
-    <None Include="..\..\snippets.md"
-          Link="SlashDeskData\snippets.md"
-          CopyToOutputDirectory="PreserveNewest"
-          CopyToPublishDirectory="PreserveNewest" />
+    <EmbeddedResource Include="..\..\snippets.md"
+                      Link="Defaults\snippets.md"
+                      LogicalName="SlashText.Defaults.snippets.md" />
   </ItemGroup>
 </Project>

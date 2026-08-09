@@ -31,7 +31,9 @@ jobs:
 
       - name: UI integrity smoke
         shell: pwsh
-        run: ./scripts/ui-integrity-smoke.ps1
+        run: |
+          ./scripts/ui-integrity-smoke.ps1
+          ./scripts/release-workflow-smoke.ps1
 
       - name: Smoke tests
         run: dotnet run --project tests/SlashText.SmokeTests/SlashText.SmokeTests.csproj --configuration Release --no-build -p:Platform=x64
@@ -39,32 +41,78 @@ jobs:
       - name: Restore portable runtime
         run: dotnet restore src/SlashText/SlashText.csproj --runtime win-x64 -p:Platform=x64
 
-      - name: Publish portable app
+      - name: Publish installed staging
         run: >
           dotnet publish src/SlashText/SlashText.csproj
           --configuration Release
-          --runtime win-x64
           -p:Platform=x64
-          --self-contained true
+          -p:PublishProfile=Installed
           --no-restore
-          -p:PublishSingleFile=true
-          --output publish
+          --output publish-installed
 
-      - name: Assemble clean package
+      - name: Publish portable single file
+        run: >
+          dotnet publish src/SlashText/SlashText.csproj
+          --configuration Release
+          -p:Platform=x64
+          -p:PublishProfile=Portable
+          --no-restore
+          --output publish-portable
+
+      - name: Validate portable package and clean-folder startup
         shell: pwsh
         run: |
-          New-Item -ItemType Directory -Force package/SlashDeskData | Out-Null
-          Copy-Item publish/SlashDesk.exe package/SlashDesk.exe
-          Copy-Item snippets.md package/SlashDeskData/snippets.md
-          $unexpected = Get-ChildItem package -File |
-            Where-Object { $_.Name -ne 'SlashDesk.exe' }
-          if ($unexpected) {
-            throw "O pacote contém arquivos inesperados na raiz: $($unexpected.Name -join ', ')"
+          $installedRecorder = Get-ChildItem publish-installed -Recurse -File |
+            Where-Object { $_.Name -like 'ScreenRecorderLib*' }
+          if ($installedRecorder.Count -lt 1) {
+            throw "O staging instalado não contém o ScreenRecorderLib necessário."
           }
+          $published = Get-ChildItem publish-portable -Force
+          if ($published.Count -ne 1 -or $published[0].Name -ne 'SlashDesk.exe') {
+            throw "O portátil deve publicar somente SlashDesk.exe. Encontrado: $($published.Name -join ', ')"
+          }
+          New-Item package -ItemType Directory | Out-Null
+          Copy-Item publish-portable/SlashDesk.exe package/SlashDesk.exe
+          $probe = Join-Path $env:RUNNER_TEMP 'SlashDesk portátil çã com espaços'
+          New-Item $probe -ItemType Directory -Force | Out-Null
+          Copy-Item package/SlashDesk.exe (Join-Path $probe 'SlashDesk.exe')
+          $env:DOTNET_BUNDLE_EXTRACT_BASE_DIR = Join-Path $env:RUNNER_TEMP 'slashdesk-bundle-cache'
+          $smoke = Start-Process `
+            -FilePath (Join-Path $probe 'SlashDesk.exe') `
+            -ArgumentList '--portable-smoke' `
+            -Wait `
+            -PassThru
+          if ($smoke.ExitCode -ne 0) {
+            throw "O executável portátil falhou no smoke test com código $($smoke.ExitCode)."
+          }
+          $visible = Get-ChildItem $probe -Force
+          $visibleNames = $visible.Name | Sort-Object
+          if ($visible.Count -ne 2 -or
+              -not ($visibleNames -contains 'SlashDesk.exe') -or
+              -not ($visibleNames -contains 'SlashDeskData')) {
+            throw "Após iniciar, o portátil deve conter somente SlashDesk.exe e SlashDeskData."
+          }
+          $dataDirectory = Join-Path $probe 'SlashDeskData'
+          if (-not (Test-Path (Join-Path $dataDirectory 'snippets.md'))) {
+            throw "O smoke test não criou os dados ao lado do executável portátil."
+          }
+          $hash = (Get-FileHash package/SlashDesk.exe -Algorithm SHA256).Hash.ToLowerInvariant()
+          $bytes = (Get-Item package/SlashDesk.exe).Length
+          "Portable initial visible files: $($published.Count)"
+          "Portable visible entries after first run: $($visible.Count)"
+          "Portable EXE bytes: $bytes"
+          "Portable SHA-256: $hash"
 
-      - name: Upload portable build
+      - name: Upload installed staging
         uses: actions/upload-artifact@v4
         with:
-          name: SlashDesk-win-x64
+          name: SlashDesk-2.9.1-installed-staging-win-x64
+          path: publish-installed/
+          if-no-files-found: error
+
+      - name: Upload portable test candidate
+        uses: actions/upload-artifact@v4
+        with:
+          name: SlashDesk-2.9.1-portable-test-candidate-win-x64
           path: package/
           if-no-files-found: error

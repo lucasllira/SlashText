@@ -15,11 +15,13 @@ public sealed class CaptureService
 {
     private const int DwmwaExtendedFrameBounds = 9;
     private const uint MonitorDefaultToNearest = 2;
-    private readonly JsonFileStore<List<CaptureRecord>> _historyStore =
+    private readonly CaptureHistoryStore _historyStore =
         new(AppPaths.CaptureHistoryFile);
     private List<CaptureRecord> _history = [];
 
     public IReadOnlyList<CaptureRecord> History => _history;
+    public string ResolveFilePath(CaptureRecord record) =>
+        CapturePathResolver.Resolve(record, AppPaths.Current);
     public async Task LoadAsync()
     {
         _history = await _historyStore.LoadAsync();
@@ -31,10 +33,10 @@ public sealed class CaptureService
             }
             if (string.IsNullOrWhiteSpace(record.MediaKind))
             {
-                record.MediaKind = Path.GetExtension(record.FilePath)
+                record.MediaKind = Path.GetExtension(ResolveFilePath(record))
                     .Equals(".mp4", StringComparison.OrdinalIgnoreCase)
                     ? "video"
-                    : Path.GetExtension(record.FilePath)
+                    : Path.GetExtension(ResolveFilePath(record))
                         .Equals(".gif", StringComparison.OrdinalIgnoreCase)
                         ? "gif"
                         : "image";
@@ -161,6 +163,8 @@ public sealed class CaptureService
 
     public async Task AddMediaRecordAsync(CaptureRecord record)
     {
+        record.PortableRelativePath ??=
+            CapturePathResolver.CreatePortableRelativePath(record.FilePath, AppPaths.Current);
         _history.Insert(0, record);
         if (_history.Count > 1000)
         {
@@ -177,10 +181,10 @@ public sealed class CaptureService
             return false;
         }
         if (deleteFile &&
-            !string.IsNullOrWhiteSpace(record.FilePath) &&
-            File.Exists(record.FilePath))
+            !string.IsNullOrWhiteSpace(ResolveFilePath(record)) &&
+            File.Exists(ResolveFilePath(record)))
         {
-            File.Delete(record.FilePath);
+            File.Delete(ResolveFilePath(record));
         }
         _history.Remove(record);
         await _historyStore.SaveAsync(_history);
@@ -198,12 +202,12 @@ public sealed class CaptureService
         foreach (var record in expired)
         {
             if (deleteFiles &&
-                !string.IsNullOrWhiteSpace(record.FilePath) &&
-                File.Exists(record.FilePath))
+                !string.IsNullOrWhiteSpace(ResolveFilePath(record)) &&
+                File.Exists(ResolveFilePath(record)))
             {
                 try
                 {
-                    File.Delete(record.FilePath);
+                    File.Delete(ResolveFilePath(record));
                 }
                 catch (IOException)
                 {
@@ -227,13 +231,14 @@ public sealed class CaptureService
         var record = _history.FirstOrDefault(item => item.Id == id);
         if (record is null ||
             !record.MediaKind.Equals("image", StringComparison.OrdinalIgnoreCase) ||
-            string.IsNullOrWhiteSpace(record.FilePath) ||
-            !File.Exists(record.FilePath))
+            string.IsNullOrWhiteSpace(ResolveFilePath(record)) ||
+            !File.Exists(ResolveFilePath(record)))
         {
             return false;
         }
 
-        using var sourceFile = new Bitmap(record.FilePath);
+        var resolvedPath = ResolveFilePath(record);
+        using var sourceFile = new Bitmap(resolvedPath);
         using var source = new Bitmap(sourceFile);
         var editor = new CaptureEditorWindow(source)
         {
@@ -246,8 +251,8 @@ public sealed class CaptureService
         }
 
         using var edited = editor.EditedBitmap;
-        var extension = Path.GetExtension(record.FilePath);
-        var temporary = record.FilePath + ".editing";
+        var extension = Path.GetExtension(resolvedPath);
+        var temporary = resolvedPath + ".editing";
         if (extension.Equals(".jpg", StringComparison.OrdinalIgnoreCase) ||
             extension.Equals(".jpeg", StringComparison.OrdinalIgnoreCase))
         {
@@ -263,7 +268,7 @@ public sealed class CaptureService
         {
             edited.Save(temporary, ImageFormat.Png);
         }
-        File.Move(temporary, record.FilePath, true);
+        File.Move(temporary, resolvedPath, true);
         record.Width = edited.Width;
         record.Height = edited.Height;
         await _historyStore.SaveAsync(_history);
@@ -416,6 +421,9 @@ public sealed class CaptureService
                 CreatedAt = DateTimeOffset.Now,
                 Type = type,
                 FilePath = filePath,
+                PortableRelativePath = CapturePathResolver.CreatePortableRelativePath(
+                    filePath,
+                    AppPaths.Current),
                 Width = output.Width,
                 Height = output.Height
             };

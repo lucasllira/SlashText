@@ -837,14 +837,16 @@
                                                     </StackPanel>
                                                     <StackPanel Grid.Column="4">
                                                         <TextBlock Text="Qualidade" Foreground="{DynamicResource MutedBrush}"/>
-                                                        <ComboBox x:Name="RecordingQualityBox" Margin="0,5,0,0">
-                                                            <ComboBoxItem Content="Baixa" Tag="Baixa"/>
-                                                            <ComboBoxItem Content="Média" Tag="Média"/>
-                                                            <ComboBoxItem Content="Alta" Tag="Alta"/>
-                                                            <ComboBoxItem Content="Máxima" Tag="Máxima"/>
-                                                        </ComboBox>
+                                                        <ComboBox x:Name="RecordingQualityBox"
+                                                                  Margin="0,5,0,0"
+                                                                  SelectionChanged="RecordingPreset_OnChanged"/>
                                                     </StackPanel>
                                                 </Grid>
+                                                <TextBlock x:Name="RecordingQualityDescriptionText"
+                                                           Margin="0,8,0,0"
+                                                           TextWrapping="Wrap"
+                                                           FontSize="11"
+                                                           Foreground="{DynamicResource MutedBrush}"/>
                                                 <CheckBox x:Name="RecordingCursorCheckBox"
                                                           Content="Mostrar cursor na gravação"
                                                           Margin="0,12,0,0"/>
@@ -862,31 +864,35 @@
                                                 <Grid Margin="0,10,0,0">
                                                     <Grid.ColumnDefinitions>
                                                         <ColumnDefinition Width="*"/>
-                                                        <ColumnDefinition Width="8"/>
-                                                        <ColumnDefinition Width="*"/>
-                                                        <ColumnDefinition Width="8"/>
-                                                        <ColumnDefinition Width="*"/>
-                                                        <ColumnDefinition Width="8"/>
+                                                        <ColumnDefinition Width="12"/>
                                                         <ColumnDefinition Width="*"/>
                                                     </Grid.ColumnDefinitions>
                                                     <StackPanel>
                                                         <TextBlock Text="FPS" Foreground="{DynamicResource MutedBrush}"/>
-                                                        <TextBox x:Name="GifFpsBox" Margin="0,5,0,0"/>
+                                                        <ComboBox x:Name="GifFpsBox"
+                                                                  Margin="0,5,0,0"
+                                                                  IsEditable="False"
+                                                                  SelectionChanged="RecordingPreset_OnChanged"/>
+                                                        <TextBlock x:Name="GifFpsDescriptionText"
+                                                                   Margin="0,6,0,0"
+                                                                   TextWrapping="Wrap"
+                                                                   FontSize="11"
+                                                                   Foreground="{DynamicResource MutedBrush}"/>
                                                     </StackPanel>
                                                     <StackPanel Grid.Column="2">
-                                                        <TextBlock Text="Duração (s)" Foreground="{DynamicResource MutedBrush}"/>
-                                                        <TextBox x:Name="GifDurationBox" Margin="0,5,0,0"/>
-                                                    </StackPanel>
-                                                    <StackPanel Grid.Column="4">
-                                                        <TextBlock Text="Largura" Foreground="{DynamicResource MutedBrush}"/>
-                                                        <TextBox x:Name="GifWidthBox" Margin="0,5,0,0"/>
-                                                    </StackPanel>
-                                                    <StackPanel Grid.Column="6">
                                                         <TextBlock Text="Qualidade" Foreground="{DynamicResource MutedBrush}"/>
-                                                        <TextBox x:Name="GifQualityBox" Margin="0,5,0,0"/>
+                                                        <ComboBox x:Name="GifQualityBox"
+                                                                  Margin="0,5,0,0"
+                                                                  IsEditable="False"
+                                                                  SelectionChanged="RecordingPreset_OnChanged"/>
+                                                        <TextBlock x:Name="GifQualityDescriptionText"
+                                                                   Margin="0,6,0,0"
+                                                                   TextWrapping="Wrap"
+                                                                   FontSize="11"
+                                                                   Foreground="{DynamicResource MutedBrush}"/>
                                                     </StackPanel>
                                                 </Grid>
-                                                <TextBlock Text="A região é selecionada antes da captura. Você revisa a animação antes de salvar."
+                                                <TextBlock Text="A região define as dimensões do GIF. A gravação continua até pausar ou finalizar; a prévia aparece antes de salvar."
                                                            Margin="0,12,0,0"
                                                            TextWrapping="Wrap"
                                                            Foreground="{DynamicResource MutedBrush}"/>
@@ -1284,7 +1290,7 @@
                                                   Content="Mostrar sugestões ao digitar / ou :"
                                                   Click="Settings_OnClick"/>
                                         <CheckBox x:Name="CheckUpdatesCheckBox"
-                                                  Content="Verificar atualizações ao iniciar"
+                                                  Content="Verificar atualizações automaticamente"
                                                   Click="Settings_OnClick"/>
                                     </StackPanel>
                                 </Border>
@@ -1355,9 +1361,10 @@
                                                     Margin="0,0,0,8"
                                                     Click="OpenBackupFolder_OnClick"/>
                                         </WrapPanel>
-                                        <TextBlock Margin="0,6,0,0"
+                                        <TextBlock x:Name="BackupLocationText"
+                                                   Margin="0,6,0,0"
                                                    TextWrapping="Wrap"
-                                                   Text="Tudo permanece em SlashDeskData. Nenhum arquivo é enviado para a nuvem."
+                                                   Text="Os backups permanecem na origem de dados selecionada. Nenhum arquivo é enviado para a nuvem."
                                                    Foreground="{DynamicResource MutedBrush}"/>
                                     </StackPanel>
                                 </Border>
@@ -1399,7 +1406,8 @@
                                                    Margin="0,4,0,0"
                                                    FontSize="16"
                                                    Foreground="{DynamicResource MutedBrush}"/>
-                                        <TextBlock Text="Versão 2.8.0 · Licença MIT · código aberto"
+                                        <TextBlock x:Name="AboutVersionText"
+                                                   Text="Versão atual · Licença MIT · código aberto"
                                                    Margin="0,12,0,0"
                                                    Foreground="{DynamicResource AccentBrush}"
                                                    FontWeight="SemiBold"/>
@@ -1438,15 +1446,35 @@
                                                    TextWrapping="Wrap"
                                                    Foreground="{DynamicResource MutedBrush}"
                                                    Text="Código disponível no GitHub para estudo, auditoria e colaboração sob a licença MIT."/>
+                                        <TextBlock x:Name="UpdateChannelText"
+                                                   Margin="0,12,0,0"
+                                                   Text="Canal: estável"
+                                                   Foreground="{DynamicResource MutedBrush}"/>
+                                        <TextBlock x:Name="LastUpdateCheckText"
+                                                   Margin="0,4,0,0"
+                                                   Text="Última verificação: ainda não verificado"
+                                                   Foreground="{DynamicResource MutedBrush}"/>
+                                        <TextBlock x:Name="LastUpdateResultText"
+                                                   Margin="0,4,0,0"
+                                                   Text="Resultado: ainda não verificado"
+                                                   TextWrapping="Wrap"
+                                                   Foreground="{DynamicResource MutedBrush}"/>
                                         <Button Content="Abrir projeto no GitHub"
                                                 HorizontalAlignment="Left"
                                                 Margin="0,14,0,0"
                                                 Style="{StaticResource PrimaryButton}"
                                                 Click="OpenGitHub_OnClick"/>
-                                        <Button Content="Verificar atualizações"
+                                        <Button x:Name="CheckUpdatesButton"
+                                                Content="Verificar agora"
                                                 HorizontalAlignment="Left"
                                                 Margin="0,8,0,0"
                                                 Click="CheckUpdates_OnClick"/>
+                                        <Button x:Name="ReleaseNotesButton"
+                                                Content="Visualizar notas da versão"
+                                                HorizontalAlignment="Left"
+                                                Margin="0,8,0,0"
+                                                Visibility="Collapsed"
+                                                Click="ReleaseNotes_OnClick"/>
                                     </StackPanel>
                                 </Border>
                             </UniformGrid>

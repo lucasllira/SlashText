@@ -9,15 +9,18 @@ namespace SlashText.Views;
 
 public sealed class RecordingControlWindow : Window
 {
-    private readonly ScreenRecordingService _service;
+    private readonly IRecordingController _service;
+    private readonly string _mediaName;
     private readonly TextBlock _time;
     private readonly TextBlock _status;
     private readonly Button _pause;
     private readonly DispatcherTimer _timer;
+    private int _stopRequested;
 
-    public RecordingControlWindow(ScreenRecordingService service)
+    internal RecordingControlWindow(IRecordingController service, string mediaName)
     {
         _service = service;
+        _mediaName = mediaName;
         Title = "Controle de gravação";
         Width = 380;
         Height = 86;
@@ -59,7 +62,7 @@ public sealed class RecordingControlWindow : Window
         var info = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
         _time = new TextBlock
         {
-            Text = "00:00:00",
+            Text = "00:00",
             FontFamily = new FontFamily("Cascadia Mono, Consolas"),
             FontSize = 16,
             FontWeight = FontWeights.SemiBold,
@@ -67,7 +70,7 @@ public sealed class RecordingControlWindow : Window
         };
         _status = new TextBlock
         {
-            Text = "Gravando",
+            Text = $"Gravando {_mediaName}",
             FontSize = 11,
             Foreground = (Brush)Application.Current.FindResource("MutedBrush")
         };
@@ -83,12 +86,7 @@ public sealed class RecordingControlWindow : Window
         };
         _pause = ActionButton("Pausar", (_, _) => TogglePause());
         actions.Children.Add(_pause);
-        var stop = ActionButton("Finalizar", (_, _) =>
-        {
-            _service.Stop();
-            IsEnabled = false;
-            _status.Text = "Finalizando MP4…";
-        });
+        var stop = ActionButton("Finalizar", (_, _) => StopOnce());
         stop.Style = (Style)Application.Current.FindResource("PrimaryButton");
         actions.Children.Add(stop);
         Grid.SetColumn(actions, 2);
@@ -112,18 +110,24 @@ public sealed class RecordingControlWindow : Window
             }
             else if (args.Key == Key.Escape)
             {
-                _service.Stop();
+                StopOnce();
                 args.Handled = true;
             }
         };
         _service.ProgressChanged += OnProgress;
-        _timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(250) };
-        _timer.Tick += (_, _) => _service.PublishTick();
+        _timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(200) };
+        _timer.Tick += Timer_OnTick;
         _timer.Start();
         Closed += (_, _) =>
         {
             _timer.Stop();
+            _timer.Tick -= Timer_OnTick;
             _service.ProgressChanged -= OnProgress;
+            AppDiagnosticLog.Write(
+                "recording.overlay-closed",
+                ("recordingId", _service.RecordingId.ToString("N")),
+                ("media", _mediaName),
+                ("elapsedMs", _service.Elapsed.TotalMilliseconds));
         };
     }
 
@@ -142,6 +146,10 @@ public sealed class RecordingControlWindow : Window
 
     private void TogglePause()
     {
+        if (Volatile.Read(ref _stopRequested) != 0)
+        {
+            return;
+        }
         if (_service.IsPaused)
         {
             _service.Resume();
@@ -154,11 +162,41 @@ public sealed class RecordingControlWindow : Window
 
     private void OnProgress(object? sender, Models.RecordingProgress progress)
     {
-        Dispatcher.Invoke(() =>
+        void Update()
         {
-            _time.Text = progress.Elapsed.ToString(@"hh\:mm\:ss");
+            UpdateElapsed(progress.Elapsed);
             _status.Text = progress.Status;
             _pause.Content = progress.IsPaused ? "Continuar" : "Pausar";
-        });
+        }
+        if (Dispatcher.CheckAccess())
+        {
+            Update();
+        }
+        else
+        {
+            _ = Dispatcher.BeginInvoke(Update);
+        }
+    }
+
+    private void Timer_OnTick(object? sender, EventArgs e) => UpdateElapsed(_service.Elapsed);
+
+    private void UpdateElapsed(TimeSpan elapsed) => _time.Text = elapsed.TotalHours >= 1
+        ? elapsed.ToString(@"hh\:mm\:ss")
+        : elapsed.ToString(@"mm\:ss");
+
+    private void StopOnce()
+    {
+        if (Interlocked.CompareExchange(ref _stopRequested, 1, 0) != 0)
+        {
+            return;
+        }
+        AppDiagnosticLog.Write(
+            "recording.overlay-finish-clicked",
+            ("recordingId", _service.RecordingId.ToString("N")),
+            ("media", _mediaName),
+            ("elapsedMs", _service.Elapsed.TotalMilliseconds));
+        _service.Stop();
+        _pause.IsEnabled = false;
+        _status.Text = $"Finalizando {_mediaName}…";
     }
 }

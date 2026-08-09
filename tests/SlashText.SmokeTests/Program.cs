@@ -3,6 +3,8 @@ using SlashText.Services;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.IO.Compression;
+using System.Diagnostics;
+using ScreenRecorderLib;
 
 var engine = new TemplateEngine();
 var reference = new DateTimeOffset(2026, 7, 27, 14, 35, 0, TimeSpan.FromHours(-3));
@@ -167,9 +169,10 @@ try
     {
         Require(
             archive.Entries.Select(item => item.Name).Order()
-                .SequenceEqual(["settings.json", "snippets.md", "usage.json"]),
-            "backup contém atalhos, preferências e estatísticas");
+                .SequenceEqual(["backup-manifest.json", "settings.json", "snippets.md", "usage.json"]),
+            "backup contém manifesto, atalhos, preferências e estatísticas");
     }
+    BackupService.ValidateSnapshot(backupFiles[0]);
     var manualBackup = backupService.CreateManualSnapshot();
     Require(
         File.Exists(manualBackup) && backupService.ListSnapshots().Count == 2,
@@ -210,8 +213,67 @@ try
     Require(
         captureDefaults.Recording.VideoFps == 30 &&
         captureDefaults.Recording.GifFps == 10 &&
+        captureDefaults.Recording.GifQuality == 128 &&
         captureDefaults.HistoryRetentionDays == 90,
         "padrões seguros de gravação e histórico");
+    Require(
+        RecordingPresetCatalog.GifFps.Select(item => item.Value).SequenceEqual([10, 20, 30]) &&
+        RecordingPresetCatalog.GifQuality.Select(item => item.Value).SequenceEqual([32, 64, 128, 256]) &&
+        RecordingPresetCatalog.Mp4Quality.Select(item => item.Value)
+            .SequenceEqual(["Baixa", "Média", "Alta", "Muito alta"]),
+        "catálogo expõe somente presets seguros e consistentes");
+    var migratedRecording = new RecordingSettings
+    {
+        GifFps = 17,
+        GifQuality = 80,
+        GifDurationSeconds = 27,
+        GifWidth = 1440,
+        VideoQuality = "Máxima"
+    };
+    RecordingPresetCatalog.Normalize(migratedRecording);
+    Require(
+        migratedRecording.GifFps == 20 &&
+        migratedRecording.GifQuality == 64 &&
+        migratedRecording.GifDurationSeconds == 27 &&
+        migratedRecording.GifWidth == 1440 &&
+        migratedRecording.VideoQuality == "Muito alta",
+        "configuração antiga migra para preset próximo sem perder campos legados");
+    Require(
+        RecordingPresetCatalog.NormalizeGifFps(5) == 10 &&
+        RecordingPresetCatalog.NormalizeGifFps(15) == 20 &&
+        RecordingPresetCatalog.NormalizeGifFps(60) == 30 &&
+        RecordingPresetCatalog.NormalizeGifFps(4) == 10 &&
+        RecordingPresetCatalog.NormalizeGifFps(17) == 20 &&
+        RecordingPresetCatalog.NormalizeGifFps(29) == 30,
+        "FPS legado migra para 10, 20 ou 30 conforme a regra definida");
+    foreach (var preset in RecordingPresetCatalog.GifFps)
+    {
+        Require(
+            preset.Description.StartsWith($"{preset.Value} FPS.", StringComparison.Ordinal) &&
+            !preset.Description.Contains("5 FPS", StringComparison.Ordinal) &&
+            !preset.Description.Contains("15 FPS", StringComparison.Ordinal) &&
+            !preset.Description.Contains("60 FPS", StringComparison.Ordinal),
+            $"descrição do preset GIF {preset.Value} corresponde ao FPS aplicado");
+    }
+    RequireThrows<ArgumentOutOfRangeException>(
+        () => GifRecordingService.ValidateSettings(
+            new RecordingSettings { GifFps = 12, GifQuality = 128 }),
+        "GIF bloqueia FPS arbitrário");
+
+    var settingsPath = Path.Combine(root, "legacy-settings.json");
+    var settingsStore = new JsonFileStore<AppSettings>(settingsPath);
+    await File.WriteAllTextAsync(settingsPath,
+        """{"capture":{"recording":{"gifFps":17,"gifQuality":80,"gifDurationSeconds":27,"gifWidth":1440,"videoQuality":"Máxima"}}}""");
+    var loadedLegacy = await settingsStore.LoadAsync();
+    RecordingPresetCatalog.Normalize(loadedLegacy.Capture.Recording);
+    await settingsStore.SaveAsync(loadedLegacy);
+    var persistedLegacy = await settingsStore.LoadAsync();
+    Require(
+        persistedLegacy.Capture.Recording.GifFps == 20 &&
+        persistedLegacy.Capture.Recording.GifQuality == 64 &&
+        persistedLegacy.Capture.Recording.GifDurationSeconds == 27 &&
+        persistedLegacy.Capture.Recording.GifWidth == 1440,
+        "migração de GIF antigo persiste sem quebrar inicialização");
     Require(
         ScreenRecordingService.CreateMediaPath(
                 new CaptureSettings
@@ -223,6 +285,447 @@ try
                 ".mp4")
             .EndsWith(".mp4", StringComparison.OrdinalIgnoreCase),
         "nome local para gravação MP4");
+    var validMp4 = Path.Combine(root, "valid.mp4");
+    await WriteValidMp4Async(validMp4);
+    ScreenRecordingService.ValidateMp4File(validMp4);
+    var invalidMp4 = Path.Combine(root, "invalid.mp4");
+    await File.WriteAllBytesAsync(invalidMp4, [0, 1, 2, 3]);
+    RequireThrows<InvalidDataException>(
+        () => ScreenRecordingService.ValidateMp4File(invalidMp4),
+        "MP4 vazio ou sem contêiner não entra no histórico");
+    var recorderOptions = ScreenRecordingService.BuildOptions(
+        new RecordingTarget(
+            RecordingTargetKind.Window,
+            new System.Drawing.Rectangle(0, 0, 1280, 720),
+            new IntPtr(1)),
+        new RecordingSettings { VideoFps = 30, VideoQuality = "Alta" },
+        Path.Combine(root, "screenrecorderlib.log"));
+    Require(
+        recorderOptions.VideoEncoderOptions.IsHardwareEncodingEnabled &&
+        !recorderOptions.VideoEncoderOptions.IsFixedFramerate &&
+        !recorderOptions.VideoEncoderOptions.IsThrottlingDisabled &&
+        recorderOptions.VideoEncoderOptions.Encoder is H264VideoEncoder h264 &&
+        h264.BitrateMode == H264BitrateControlMode.Quality &&
+        recorderOptions.LogOptions.IsLogEnabled &&
+        recorderOptions.LogOptions.LogSeverityLevel == LogLevel.Trace,
+        "MP4 prefere hardware com fallback Media Foundation, sem quadros fixos e com log nativo");
+    var mp4TechnicalValues = new Dictionary<string, (int Bitrate, int Quality)>
+    {
+        ["Baixa"] = (2_500_000, 55),
+        ["Média"] = (5_000_000, 70),
+        ["Alta"] = (9_000_000, 85),
+        ["Muito alta"] = (16_000_000, 95)
+    };
+    foreach (var preset in RecordingPresetCatalog.Mp4Quality)
+    {
+        var options = ScreenRecordingService.BuildOptions(
+            new RecordingTarget(
+                RecordingTargetKind.Window,
+                new System.Drawing.Rectangle(0, 0, 640, 480),
+                new IntPtr(1)),
+            new RecordingSettings { VideoFps = 30, VideoQuality = preset.Value },
+            Path.Combine(root, $"mp4-{preset.Value}.log"));
+        var expected = mp4TechnicalValues[preset.Value];
+        Require(
+            options.VideoEncoderOptions.Bitrate == expected.Bitrate &&
+            options.VideoEncoderOptions.Quality == expected.Quality &&
+            preset.Description.Contains(expected.Quality.ToString(), StringComparison.Ordinal),
+            $"preset MP4 {preset.Name} aplica os valores descritos");
+    }
+
+    using (var paletteBitmap = new System.Drawing.Bitmap(8, 8))
+    {
+        var paletteSource = GifRecordingService.ToBitmapSource(paletteBitmap);
+        foreach (var preset in RecordingPresetCatalog.GifQuality)
+        {
+            var quantized = GifRecordingService.Quantize(paletteSource, preset.Value);
+            Require(
+                quantized.Palette?.Colors.Count == preset.Value &&
+                preset.Description.Contains(preset.Value.ToString(), StringComparison.Ordinal),
+                $"preset GIF {preset.Name} aplica a paleta descrita");
+        }
+    }
+
+    var fakeFactory = new FakeRecorderBackendFactory();
+    using (var lifecycle = new ScreenRecordingService(fakeFactory, TimeSpan.FromSeconds(1)))
+    {
+        var lifecycleTask = lifecycle.StartAsync(
+            new RecordingTarget(
+                RecordingTargetKind.Window,
+                new System.Drawing.Rectangle(0, 0, 640, 480),
+                new IntPtr(1)),
+            new CaptureSettings
+            {
+                OutputDirectoryTemplate = root,
+                FileNameTemplate = "lifecycle"
+            },
+            new RecordingSettings { VideoFps = 30 });
+        Require(fakeFactory.Backend.RecordCalled.Wait(TimeSpan.FromSeconds(2)), "MP4 inicia backend");
+        await WaitUntilAsync(
+            () => lifecycle.State == ScreenRecordingState.Recording,
+            "estado Recording");
+        await Task.Delay(100);
+        Require(lifecycle.Elapsed >= TimeSpan.FromMilliseconds(60), "contador MP4 avança");
+        lifecycle.Pause();
+        await WaitUntilAsync(
+            () => lifecycle.State == ScreenRecordingState.Paused,
+            "estado Paused");
+        var pausedElapsed = lifecycle.Elapsed;
+        await Task.Delay(80);
+        Require(
+            lifecycle.Elapsed - pausedElapsed < TimeSpan.FromMilliseconds(30),
+            "contador MP4 não inclui tempo pausado");
+        lifecycle.Resume();
+        await WaitUntilAsync(
+            () => lifecycle.State == ScreenRecordingState.Recording,
+            "retorno ao estado Recording");
+        await Task.Delay(80);
+        Require(lifecycle.Elapsed > pausedElapsed, "contador MP4 retoma do acumulado");
+        lifecycle.Stop();
+        var stoppedElapsed = lifecycle.Elapsed;
+        var lifecyclePath = await lifecycleTask.WaitAsync(TimeSpan.FromSeconds(3));
+        Require(File.Exists(lifecyclePath), "MP4 finaliza e publica arquivo");
+        Require(lifecycle.State == ScreenRecordingState.Completed, "estado Completed");
+        Require(fakeFactory.Backend.DisposeCalls == 1, "Recorder descartado uma única vez");
+        Require(fakeFactory.Backend.MaximumConcurrentCalls == 1, "chamadas nativas serializadas");
+        Require(
+            lifecycle.Elapsed - stoppedElapsed < TimeSpan.FromMilliseconds(30),
+            "contador MP4 para no pedido de finalização");
+    }
+
+    var duplicateFactory = new FakeRecorderBackendFactory { SendDuplicateCallbacks = true };
+    using (var lifecycle = new ScreenRecordingService(duplicateFactory, TimeSpan.FromSeconds(1)))
+    {
+        var task = lifecycle.StartAsync(
+            new RecordingTarget(
+                RecordingTargetKind.Window,
+                new System.Drawing.Rectangle(0, 0, 320, 240),
+                new IntPtr(1)),
+            new CaptureSettings
+            {
+                OutputDirectoryTemplate = root,
+                FileNameTemplate = "duplicate-callback"
+            },
+            new RecordingSettings());
+        Require(duplicateFactory.Backend.RecordCalled.Wait(TimeSpan.FromSeconds(2)), "backend para callback duplicado");
+        lifecycle.Stop();
+        lifecycle.Stop();
+        await task.WaitAsync(TimeSpan.FromSeconds(3));
+        Require(duplicateFactory.Backend.DisposeCalls == 1, "callback duplicado não duplica descarte");
+        Require(duplicateFactory.Backend.StopCalls == 1, "dois cliques em finalizar chamam Stop uma vez");
+    }
+
+    var failureFactory = new FakeRecorderBackendFactory { FailOnStop = true };
+    using (var lifecycle = new ScreenRecordingService(failureFactory, TimeSpan.FromSeconds(1)))
+    {
+        var task = lifecycle.StartAsync(
+            new RecordingTarget(RecordingTargetKind.Window,
+                new System.Drawing.Rectangle(0, 0, 320, 240), new IntPtr(1)),
+            new CaptureSettings { OutputDirectoryTemplate = root, FileNameTemplate = "failed-callback" },
+            new RecordingSettings());
+        Require(failureFactory.Backend.RecordCalled.Wait(TimeSpan.FromSeconds(2)), "backend para callback de falha");
+        lifecycle.Stop();
+        await RequireThrowsAsync<InvalidOperationException>(() => task, "callback de falha conclui task");
+        Require(lifecycle.State == ScreenRecordingState.Failed, "callback de falha restaura estado terminal");
+        Require(failureFactory.Backend.DisposeCalls == 1, "falha descarta Recorder uma vez");
+    }
+
+    var delayedFactory = new FakeRecorderBackendFactory { CallbackDelayMs = 120 };
+    using (var lifecycle = new ScreenRecordingService(delayedFactory, TimeSpan.FromSeconds(1)))
+    {
+        var task = lifecycle.StartAsync(
+            new RecordingTarget(RecordingTargetKind.Window,
+                new System.Drawing.Rectangle(0, 0, 320, 240), new IntPtr(1)),
+            new CaptureSettings { OutputDirectoryTemplate = root, FileNameTemplate = "delayed-callback" },
+            new RecordingSettings());
+        Require(delayedFactory.Backend.RecordCalled.Wait(TimeSpan.FromSeconds(2)), "backend para callback atrasado");
+        lifecycle.Stop();
+        await task.WaitAsync(TimeSpan.FromSeconds(3));
+        Require(delayedFactory.Backend.DisposeCalls == 1, "callback atrasado finaliza uma vez");
+    }
+
+    var blockingFactory = new FakeRecorderBackendFactory { BlockStop = true };
+    using (var lifecycle = new ScreenRecordingService(blockingFactory, TimeSpan.FromSeconds(2)))
+    {
+        var task = lifecycle.StartAsync(
+            new RecordingTarget(RecordingTargetKind.Window,
+                new System.Drawing.Rectangle(0, 0, 320, 240), new IntPtr(1)),
+            new CaptureSettings { OutputDirectoryTemplate = root, FileNameTemplate = "closing-finalization" },
+            new RecordingSettings());
+        Require(blockingFactory.Backend.RecordCalled.Wait(TimeSpan.FromSeconds(2)), "backend para Stop bloqueante");
+        var uiClock = Stopwatch.StartNew();
+        lifecycle.Stop();
+        lifecycle.Dispose();
+        Require(uiClock.Elapsed < TimeSpan.FromMilliseconds(100), "Stop e Dispose não bloqueiam a UI");
+        Require(blockingFactory.Backend.StopEntered.Wait(TimeSpan.FromSeconds(2)), "Stop nativo entrou");
+        blockingFactory.Backend.ReleaseStop();
+        await task.WaitAsync(TimeSpan.FromSeconds(3));
+        Require(blockingFactory.Backend.DisposeCalls == 1, "fechamento durante finalização descarta uma vez");
+    }
+
+    var timeoutFactory = new FakeRecorderBackendFactory { CompleteOnStop = false };
+    using (var lifecycle = new ScreenRecordingService(timeoutFactory, TimeSpan.FromMilliseconds(80)))
+    {
+        var task = lifecycle.StartAsync(
+            new RecordingTarget(
+                RecordingTargetKind.Window,
+                new System.Drawing.Rectangle(0, 0, 320, 240),
+                new IntPtr(1)),
+            new CaptureSettings
+            {
+                OutputDirectoryTemplate = root,
+                FileNameTemplate = "late-callback"
+            },
+            new RecordingSettings());
+        Require(timeoutFactory.Backend.RecordCalled.Wait(TimeSpan.FromSeconds(2)), "backend para timeout");
+        lifecycle.Stop();
+        await RequireThrowsAsync<TimeoutException>(() => task, "timeout nativo controlado");
+        Require(timeoutFactory.Backend.DisposeCalls == 0, "timeout não descarta Recorder durante callback nativo");
+        timeoutFactory.Backend.CompleteLater();
+        await WaitUntilAsync(
+            () => lifecycle.State == ScreenRecordingState.Failed,
+            "callback tardio conclui limpeza");
+        Require(timeoutFactory.Backend.DisposeCalls == 1, "callback tardio executa descarte único");
+    }
+
+    var callerThread = 0;
+    var gifCaptureThreads = new System.Collections.Concurrent.ConcurrentBag<int>();
+    var pipeline = new GifRecordingService((_, _) =>
+    {
+        gifCaptureThreads.Add(Environment.CurrentManagedThreadId);
+        var bitmap = new System.Drawing.Bitmap(16, 12);
+        using var graphics = System.Drawing.Graphics.FromImage(bitmap);
+        graphics.Clear(System.Drawing.Color.CornflowerBlue);
+        return bitmap;
+    });
+    GifRecordingResult? pipelineResult = null;
+    Exception? pipelineFailure = null;
+    var caller = new Thread(() =>
+    {
+        callerThread = Environment.CurrentManagedThreadId;
+        try
+        {
+            pipelineResult = pipeline.CaptureAsync(
+                new System.Drawing.Rectangle(0, 0, 16, 12),
+                new RecordingSettings
+                {
+                    GifFps = 10,
+                    GifDurationSeconds = 1,
+                    GifWidth = 240,
+                    GifQuality = 128
+                }).GetAwaiter().GetResult();
+        }
+        catch (Exception exception)
+        {
+            pipelineFailure = exception;
+        }
+    });
+    caller.Start();
+    caller.Join();
+    if (pipelineFailure is not null)
+    {
+        throw new InvalidOperationException("Pipeline GIF falhou.", pipelineFailure);
+    }
+
+    using (pipelineResult ?? throw new InvalidOperationException("Pipeline GIF sem resultado."))
+    {
+        Require(
+            pipelineResult.Metrics is
+            {
+                RequestedFps: 10,
+                CapturedFrames: >= 8,
+                StoredFrames: 1
+            } metrics &&
+            metrics.ProcessedFrames == metrics.CapturedFrames &&
+            metrics.EffectiveCapturedFps > 0 &&
+            metrics.DuplicateFrames == metrics.CapturedFrames - 1,
+            "pipeline GIF descarta quadro idêntico preservando duração");
+        Require(
+            pipelineResult.Duration >= TimeSpan.FromMilliseconds(900) &&
+            pipelineResult.Duration <= TimeSpan.FromMilliseconds(1100),
+            "deduplicação GIF preserva o tempo monotônico da sessão");
+        Require(
+            gifCaptureThreads.All(thread => thread != callerThread),
+            "captura e redimensionamento GIF fora da UI thread");
+    }
+
+    foreach (var fpsPreset in RecordingPresetCatalog.GifFps)
+    {
+        using var session = pipeline.StartRecording(
+            new System.Drawing.Rectangle(0, 0, 16, 12),
+            new RecordingSettings { GifFps = fpsPreset.Value, GifQuality = 128 });
+        IRecordingController counter = session;
+        Require(counter.Elapsed < TimeSpan.FromMilliseconds(80),
+            $"contador GIF inicia em zero a {fpsPreset.Value} FPS");
+        await Task.Delay(120);
+        Require(counter.Elapsed >= TimeSpan.FromMilliseconds(70),
+            $"contador GIF avança a {fpsPreset.Value} FPS");
+        counter.Pause();
+        var gifPausedAt = counter.Elapsed;
+        await Task.Delay(80);
+        Require(counter.Elapsed - gifPausedAt < TimeSpan.FromMilliseconds(30),
+            $"contador GIF pausa a {fpsPreset.Value} FPS");
+        counter.Resume();
+        await Task.Delay(80);
+        Require(counter.Elapsed > gifPausedAt,
+            $"contador GIF retoma a {fpsPreset.Value} FPS");
+        counter.Stop();
+        var gifStoppedAt = counter.Elapsed;
+        using var presetResult = await session.Completion.WaitAsync(TimeSpan.FromSeconds(3));
+        Require(presetResult.Fps == fpsPreset.Value,
+            $"pipeline mantÃ©m preset de {fpsPreset.Value} FPS");
+        Require(counter.Elapsed - gifStoppedAt < TimeSpan.FromMilliseconds(30),
+            $"contador GIF para ao finalizar a {fpsPreset.Value} FPS");
+        Require(GifRecordingService.QueueCapacity == 2,
+            $"fila GIF limitada no preset de {fpsPreset.Value} FPS");
+    }
+
+    var storageRoot = Path.Combine(root, "armazenamento portátil çã com espaços");
+    var portableHome = Path.Combine(storageRoot, "origem portátil");
+    var localDataRoot = Path.Combine(storageRoot, "local-app-data");
+    var installedLegacy = Path.Combine(localDataRoot, "SlashDesk");
+    Directory.CreateDirectory(portableHome);
+    Directory.CreateDirectory(installedLegacy);
+    var preservedSnippetId = Guid.NewGuid();
+    await File.WriteAllTextAsync(
+        Path.Combine(installedLegacy, "snippets.md"),
+        $"## /preservado\n<!-- slashtext:{{\"id\":\"{preservedSnippetId}\",\"name\":\"Preservado\",\"category\":\"Migração\",\"format\":\"plain\",\"enabled\":true,\"confirmKeys\":[\"Enter\"]}} -->\n```text\nConteúdo\n```\n");
+    await File.WriteAllTextAsync(Path.Combine(installedLegacy, "settings.json"),
+        """{"theme":"Dark","checkUpdatesOnStartup":false}""");
+    await File.WriteAllTextAsync(Path.Combine(installedLegacy, "usage.json"),
+        "{\"snippets\":[{\"snippetId\":\"" + preservedSnippetId +
+        "\",\"count\":9,\"charactersSaved\":42}]," +
+        "\"quickAccent\":{\"count\":2,\"characters\":{}}}");
+    await File.WriteAllTextAsync(Path.Combine(installedLegacy, "capture-history.json"),
+        """[{"id":"history-preserved","createdAt":"2026-08-06T12:00:00-03:00","type":"monitor","mediaKind":"image","filePath":"C:\\Capturas\\preservada.png","width":800,"height":600}]""");
+
+    var portableEnvironment = new AppDataEnvironment(
+        DistributionMode.Portable,
+        portableHome,
+        localDataRoot);
+    AppPaths.Initialize(portableEnvironment);
+    Require(
+        AppPaths.DataDirectory == Path.Combine(portableHome, "SlashDeskData") &&
+        AppPaths.LogsDirectory == Path.Combine(portableHome, "SlashDeskData", "Logs") &&
+        AppPaths.BackupsDirectory == Path.Combine(portableHome, "SlashDeskData", "Backups"),
+        "modo portátil centraliza dados ao lado do executável");
+    var migrationResult = AppPaths.EnsureDataLayout();
+    Require(
+        migrationResult.Migrated &&
+        Directory.Exists(installedLegacy) &&
+        File.Exists(AppPaths.SnippetsFile) &&
+        File.ReadAllText(AppPaths.SnippetsFile).Contains(preservedSnippetId.ToString(), StringComparison.Ordinal) &&
+        File.ReadAllText(AppPaths.CaptureHistoryFile).Contains("history-preserved", StringComparison.Ordinal) &&
+        migrationResult.BackupPath is not null && File.Exists(migrationResult.BackupPath),
+        "migração copia, valida, ativa e preserva origem, atalhos e histórico");
+    using (var migrationArchive = ZipFile.OpenRead(migrationResult.BackupPath!))
+    {
+        Require(
+            migrationArchive.GetEntry("migration-manifest.json") is not null &&
+            migrationArchive.Entries.Any(item => item.FullName.EndsWith("snippets.md", StringComparison.Ordinal)),
+            "backup de migração contém manifesto e atalhos");
+    }
+
+    var simultaneousHome = Path.Combine(storageRoot, "duas origens");
+    var simultaneousData = Path.Combine(simultaneousHome, "SlashDeskData");
+    Directory.CreateDirectory(simultaneousData);
+    await File.WriteAllTextAsync(Path.Combine(simultaneousData, "settings.json"),
+        """{"theme":"Light"}""");
+    AppPaths.Initialize(new AppDataEnvironment(
+        DistributionMode.Portable,
+        simultaneousHome,
+        localDataRoot));
+    var simultaneous = AppPaths.EnsureDataLayout();
+    Require(
+        !simultaneous.Migrated &&
+        simultaneous.CompetingSourcePreserved &&
+        File.ReadAllText(AppPaths.SettingsFile).Contains("Light", StringComparison.Ordinal) &&
+        simultaneous.BackupPath is not null && File.Exists(simultaneous.BackupPath),
+        "duas origens priorizam portátil sem mescla destrutiva e preservam a outra origem");
+
+    var movedHome = Path.Combine(storageRoot, "portátil movido");
+    Directory.Move(portableHome, movedHome);
+    AppPaths.Initialize(new AppDataEnvironment(DistributionMode.Portable, movedHome, localDataRoot));
+    Require(
+        File.ReadAllText(AppPaths.SnippetsFile).Contains(preservedSnippetId.ToString(), StringComparison.Ordinal) &&
+        File.ReadAllText(AppPaths.CaptureHistoryFile).Contains("history-preserved", StringComparison.Ordinal),
+        "atalhos e histórico acompanham a pasta portátil movida");
+
+    var movedCaptureDirectory = Path.Combine(movedHome, "Capturas");
+    Directory.CreateDirectory(movedCaptureDirectory);
+    var movedCapture = Path.Combine(movedCaptureDirectory, "imagem preservada.png");
+    await File.WriteAllBytesAsync(movedCapture, [1, 2, 3]);
+    var relativeRecord = new CaptureRecord
+    {
+        FilePath = Path.Combine(portableHome, "Capturas", "imagem preservada.png"),
+        PortableRelativePath = Path.Combine("Capturas", "imagem preservada.png")
+    };
+    Require(
+        CapturePathResolver.Resolve(relativeRecord, AppPaths.Current) == movedCapture,
+        "caminho relativo localiza mídia após mover a pasta portátil");
+
+    await File.WriteAllTextAsync(AppPaths.CaptureHistoryFile,
+        "[{\"id\":\"valid-item\",\"createdAt\":\"2026-08-06T12:00:00-03:00\"," +
+        "\"type\":\"regiao\",\"mediaKind\":\"image\",\"filePath\":\"C:\\\\ok.png\"," +
+        "\"width\":100,\"height\":80}," +
+        "{\"id\":\"corrupt-item\",\"createdAt\":[],\"width\":\"inválido\"}]");
+    var tolerantHistory = new CaptureService();
+    await tolerantHistory.LoadAsync();
+    Require(
+        tolerantHistory.History.Count == 1 && tolerantHistory.History[0].Id == "valid-item",
+        "item de histórico corrompido não impede carregar registros válidos");
+
+    var invalidPortableRoot = Path.Combine(storageRoot, "sem-permissão");
+    await File.WriteAllTextAsync(invalidPortableRoot, "não é um diretório");
+    var invalidPortable = new AppDataEnvironment(
+        DistributionMode.Portable,
+        invalidPortableRoot,
+        localDataRoot);
+    Require(
+        !invalidPortable.TryProbePortableWrite(out var portableWriteError) &&
+        !string.IsNullOrWhiteSpace(portableWriteError),
+        "portátil detecta diretório sem capacidade de gravação sem alternar origem");
+
+    AppPaths.Initialize(new AppDataEnvironment(
+        DistributionMode.Installed,
+        Path.Combine(storageRoot, "installed-bin"),
+        localDataRoot));
+    Require(
+        AppPaths.DataDirectory == installedLegacy &&
+        !AppPaths.IsPortable,
+        "modo instalado usa %LocalAppData%\\SlashDesk");
+
+    using (var frame1 = new System.Drawing.Bitmap(4, 4))
+    using (var frame2 = new System.Drawing.Bitmap(4, 4))
+    {
+        frame1.SetPixel(0, 0, System.Drawing.Color.Red);
+        frame2.SetPixel(0, 0, System.Drawing.Color.Blue);
+        using var gifRecording = new GifRecordingResult(
+            [frame1.Clone() as System.Drawing.Bitmap ?? throw new InvalidOperationException(),
+             frame2.Clone() as System.Drawing.Bitmap ?? throw new InvalidOperationException()],
+            10,
+            new System.Drawing.Rectangle(0, 0, 4, 4));
+        var gifPath = new GifRecordingService().Save(
+            gifRecording,
+            new CaptureSettings
+            {
+                OutputDirectoryTemplate = root,
+                FileNameTemplate = "animated"
+            },
+            "gif");
+        var gifBytes = await File.ReadAllBytesAsync(gifPath);
+        Require(
+            System.Text.Encoding.ASCII.GetString(gifBytes).Contains(
+                "NETSCAPE2.0",
+                StringComparison.Ordinal),
+            "GIF inclui extensão de repetição NETSCAPE");
+        using var gifStream = File.OpenRead(gifPath);
+        var decoder = new System.Windows.Media.Imaging.GifBitmapDecoder(
+            gifStream,
+            System.Windows.Media.Imaging.BitmapCreateOptions.PreservePixelFormat,
+            System.Windows.Media.Imaging.BitmapCacheOption.OnLoad);
+        Require(decoder.Frames.Count == 2, "GIF preserva todos os quadros");
+    }
     Require(
         GlobalCaptureShortcutService.IsValid("Ctrl+Shift+PrintScreen"),
         "atalho de captura pelo teclado");
@@ -337,6 +840,232 @@ try
                 $"renderiza ferramenta {annotation.Kind}");
         }
     }
+
+    var updateTests = Path.Combine(root, "updates");
+    Directory.CreateDirectory(updateTests);
+    var now = new DateTimeOffset(2026, 8, 6, 12, 0, 0, TimeSpan.Zero);
+    var updateHandler = new FakeUpdateHttpHandler(ReleaseJson("3.0.0"));
+    var updateService = new UpdateService(
+        new HttpClient(updateHandler),
+        Path.Combine(updateTests, "state.json"),
+        "2.9.1",
+        () => now,
+        TimeSpan.FromSeconds(1));
+    var updateFound = await updateService.CheckAsync(force: true);
+    Require(
+        updateFound.UpdateAvailable &&
+        updateFound.LatestVersion == "3.0.0" &&
+        updateFound.Release?.PortableAsset.Name == "SlashDesk-3.0.0-portable-win-x64.zip" &&
+        updateFound.DownloadSize == 12_345,
+        "release estável aplica versão e artefatos exatos");
+    Require(updateHandler.Calls == 1, "consulta única ao GitHub");
+
+    await updateService.IgnoreVersionAsync("3.0.0");
+    var ignored = await updateService.CheckAsync(force: true);
+    Require(ignored.Status == UpdateCheckStatus.Ignored && !ignored.UpdateAvailable,
+        "versão ignorada não é oferecida novamente");
+    updateHandler.ResponseJson = ReleaseJson("3.1.0");
+    var afterIgnored = await updateService.CheckAsync(force: true);
+    Require(afterIgnored.UpdateAvailable && afterIgnored.LatestVersion == "3.1.0",
+        "versão superior volta a ser oferecida");
+
+    await updateService.RemindLaterAsync("3.1.0");
+    var deferred = await updateService.CheckAsync(force: true);
+    Require(deferred.Status == UpdateCheckStatus.Deferred && !deferred.UpdateAvailable,
+        "lembrar depois adia somente a versão atual");
+    now += UpdateService.RemindLaterInterval + TimeSpan.FromMinutes(1);
+    var afterDeferral = await updateService.CheckAsync(force: true);
+    Require(afterDeferral.UpdateAvailable, "lembrar depois volta a oferecer");
+
+    var cacheHandler = new FakeUpdateHttpHandler(ReleaseJson("3.0.0"));
+    var cacheService = new UpdateService(
+        new HttpClient(cacheHandler),
+        Path.Combine(updateTests, "cache-state.json"),
+        "2.9.1",
+        () => now,
+        TimeSpan.FromSeconds(1));
+    await Task.WhenAll(cacheService.CheckAsync(), cacheService.CheckAsync());
+    Require(cacheHandler.Calls == 1, "pedidos simultâneos usam exclusão e cache");
+
+    var stableFilterHandler = new FakeUpdateHttpHandler(ReleaseJson(
+        "3.0.0", includeStable: false, includeDraft: true, includePrerelease: true));
+    var stableFilterService = new UpdateService(
+        new HttpClient(stableFilterHandler),
+        Path.Combine(updateTests, "stable-filter.json"),
+        "2.9.1",
+        () => now,
+        TimeSpan.FromSeconds(1));
+    var stableFilter = await stableFilterService.CheckAsync(force: true);
+    Require(stableFilter.Status == UpdateCheckStatus.NoRelease,
+        "draft e prerelease são ignoradas no canal estável");
+
+    var currentService = new UpdateService(
+        new HttpClient(new FakeUpdateHttpHandler(ReleaseJson("2.9.1"))),
+        Path.Combine(updateTests, "current.json"),
+        "2.9.1",
+        () => now,
+        TimeSpan.FromSeconds(1));
+    Require((await currentService.CheckAsync(force: true)).Status == UpdateCheckStatus.UpToDate,
+        "nenhuma atualização quando versões coincidem");
+
+    var offlineService = new UpdateService(
+        new HttpClient(new FakeUpdateHttpHandler(new HttpRequestException("offline"))),
+        Path.Combine(updateTests, "offline.json"),
+        "2.9.1",
+        () => now,
+        TimeSpan.FromSeconds(1));
+    Require((await offlineService.CheckAsync(force: true)).Status == UpdateCheckStatus.Offline,
+        "ausência de internet não lança erro invasivo");
+
+    var timeoutService = new UpdateService(
+        new HttpClient(new FakeUpdateHttpHandler(TimeSpan.FromMilliseconds(200))),
+        Path.Combine(updateTests, "timeout.json"),
+        "2.9.1",
+        () => now,
+        TimeSpan.FromMilliseconds(20));
+    Require((await timeoutService.CheckAsync(force: true)).Status == UpdateCheckStatus.Offline,
+        "timeout de atualização é tratado");
+
+    var transactionRoot = Path.Combine(root, "update-transaction");
+    Directory.CreateDirectory(transactionRoot);
+    var transactionData = Path.Combine(transactionRoot, "SlashDeskData");
+    Directory.CreateDirectory(transactionData);
+    var preservedUpdateData = new Dictionary<string, string>
+    {
+        ["snippets.md"] = "atalhos, categorias, hyperlinks e variáveis preservados",
+        ["settings.json"] = "{\"theme\":\"Dark\",\"checkUpdatesOnStartup\":true}",
+        ["usage.json"] = "{\"totalExpansions\":17}",
+        ["capture-history.json"] = "[{\"id\":\"preservado-na-atualizacao\"}]"
+    };
+    foreach (var item in preservedUpdateData)
+    {
+        await File.WriteAllTextAsync(Path.Combine(transactionData, item.Key), item.Value);
+    }
+    var targetExecutable = Path.Combine(transactionRoot, "SlashDesk.exe");
+    var stagedExecutable = Path.Combine(transactionRoot, "SlashDesk.new.exe");
+    var backupExecutable = Path.Combine(transactionRoot, "SlashDesk.previous.exe");
+    var failedExecutable = Path.Combine(transactionRoot, "SlashDesk.failed.exe");
+    await File.WriteAllTextAsync(targetExecutable, "versão anterior");
+    await File.WriteAllTextAsync(stagedExecutable, "versão nova");
+    PortableUpdateFileTransaction.Apply(targetExecutable, stagedExecutable, backupExecutable);
+    Require(
+        await File.ReadAllTextAsync(targetExecutable) == "versão nova" &&
+        await File.ReadAllTextAsync(backupExecutable) == "versão anterior" &&
+        preservedUpdateData.All(item =>
+            File.ReadAllText(Path.Combine(transactionData, item.Key)) == item.Value),
+        "substituição troca somente o executável e preserva atalhos, histórico, configurações e estatísticas");
+    PortableUpdateFileTransaction.Rollback(targetExecutable, backupExecutable, failedExecutable);
+    Require(
+        await File.ReadAllTextAsync(targetExecutable) == "versão anterior" &&
+        preservedUpdateData.All(item =>
+            File.ReadAllText(Path.Combine(transactionData, item.Key)) == item.Value),
+        "rollback restaura executável sem alterar atalhos, histórico, configurações e estatísticas");
+
+    var replacementInvoked = false;
+    RequireThrows<IOException>(() => PortableUpdateFileTransaction.Apply(
+        targetExecutable,
+        failedExecutable,
+        backupExecutable,
+        (_, _, _) =>
+        {
+            replacementInvoked = true;
+            throw new IOException("falha simulada");
+        }), "falha na substituição é propagada");
+    Require(replacementInvoked && preservedUpdateData.All(item =>
+            File.ReadAllText(Path.Combine(transactionData, item.Key)) == item.Value),
+        "falha na substituição preserva dados");
+
+    var portableUpdateHome = Path.Combine(root, "Portátil Atualização");
+    Directory.CreateDirectory(portableUpdateHome);
+    var portableExecutable = Path.Combine(portableUpdateHome, "SlashDesk.exe");
+    File.Copy(Environment.ProcessPath!, portableExecutable);
+    AppPaths.Initialize(new AppDataEnvironment(DistributionMode.Portable, portableUpdateHome,
+        Path.Combine(root, "legacy-update")));
+    AppPaths.EnsureDataLayout();
+    var updaterDataSentinel = Path.Combine(AppPaths.DataDirectory, "history-sentinel.txt");
+    await File.WriteAllTextAsync(updaterDataSentinel, "histórico intacto");
+    var updaterVersion = Version.Parse(
+        FileVersionInfo.GetVersionInfo(portableExecutable).FileVersion ?? "1.0.0.0").ToString(3);
+    var packageBytes = CreatePortableZip(portableExecutable);
+    var packageHash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(packageBytes))
+        .ToLowerInvariant();
+    var packageName = $"SlashDesk-{updaterVersion}-portable-win-x64.zip";
+    var checksumBytes = System.Text.Encoding.ASCII.GetBytes($"{packageHash}  {packageName}");
+    var packageRelease = CreatePackageRelease(updaterVersion, packageName, packageBytes.Length,
+        checksumBytes.Length);
+    var packageHandler = new FakePackageHttpHandler(packageBytes, checksumBytes);
+    var packageService = new PortableUpdateService(
+        new HttpClient(packageHandler), portableExecutable, currentProcessId: 0);
+    var preparedPackage = await packageService.PrepareAsync(packageRelease);
+    Require(
+        File.Exists(preparedPackage.Manifest.StagedExecutable) &&
+        File.Exists(preparedPackage.Manifest.HelperExecutable) &&
+        await File.ReadAllTextAsync(updaterDataSentinel) == "histórico intacto",
+        "pacote válido é preparado dentro de SlashDeskData sem alterar histórico");
+
+    var badChecksum = checksumBytes.ToArray();
+    badChecksum[0] = badChecksum[0] == (byte)'0' ? (byte)'1' : (byte)'0';
+    var invalidChecksumService = new PortableUpdateService(
+        new HttpClient(new FakePackageHttpHandler(packageBytes, badChecksum)),
+        portableExecutable,
+        currentProcessId: 0);
+    await RequireThrowsAsync<InvalidDataException>(
+        () => invalidChecksumService.PrepareAsync(packageRelease),
+        "checksum inválido impede atualização");
+
+    var incompleteRelease = CreatePackageRelease(
+        updaterVersion, packageName, packageBytes.Length + 10, checksumBytes.Length);
+    var incompleteService = new PortableUpdateService(
+        new HttpClient(new FakePackageHttpHandler(packageBytes, checksumBytes)),
+        portableExecutable,
+        currentProcessId: 0);
+    await RequireThrowsAsync<EndOfStreamException>(
+        () => incompleteService.PrepareAsync(incompleteRelease),
+        "download incompleto impede atualização");
+
+    var concurrentHandler = new FakePackageHttpHandler(packageBytes, checksumBytes)
+    {
+        Delay = TimeSpan.FromMilliseconds(250)
+    };
+    var concurrentPackageService = new PortableUpdateService(
+        new HttpClient(concurrentHandler), portableExecutable, currentProcessId: 0);
+    using var concurrentCancellation = new CancellationTokenSource();
+    var firstPrepare = concurrentPackageService.PrepareAsync(
+        packageRelease, cancellationToken: concurrentCancellation.Token);
+    await concurrentHandler.Started.Task.WaitAsync(TimeSpan.FromSeconds(2));
+    await RequireThrowsAsync<InvalidOperationException>(
+        () => concurrentPackageService.PrepareAsync(packageRelease),
+        "dois pedidos simultâneos de atualização são bloqueados");
+    concurrentCancellation.Cancel();
+    await RequireThrowsAsync<OperationCanceledException>(
+        () => firstPrepare,
+        "fechamento durante download cancela preparação");
+    Require(await File.ReadAllTextAsync(updaterDataSentinel) == "histórico intacto",
+        "cancelamento do download preserva SlashDeskData");
+
+    var noCallbackFactory = new FakeRecorderBackendFactory { CompleteOnStop = false };
+    using (var lifecycle = new ScreenRecordingService(
+               noCallbackFactory,
+               TimeSpan.FromMilliseconds(60)))
+    {
+        var task = lifecycle.StartAsync(
+            new RecordingTarget(RecordingTargetKind.Window,
+                new System.Drawing.Rectangle(0, 0, 320, 240), new IntPtr(1)),
+            new CaptureSettings { OutputDirectoryTemplate = root, FileNameTemplate = "no-callback" },
+            new RecordingSettings());
+        Require(noCallbackFactory.Backend.RecordCalled.Wait(TimeSpan.FromSeconds(2)),
+            "backend para timeout sem callback");
+        lifecycle.Stop();
+        await RequireThrowsAsync<TimeoutException>(() => task, "timeout real sem callback");
+        var disposeClock = Stopwatch.StartNew();
+        lifecycle.Dispose();
+        Require(disposeClock.Elapsed < TimeSpan.FromMilliseconds(100),
+            "Dispose após timeout não bloqueia UI");
+        Require(noCallbackFactory.Backend.DisposeCalls == 0,
+            "timeout sem callback não concorre Dispose com código nativo");
+        Require(lifecycle.State == ScreenRecordingState.Failed,
+            "timeout sem callback encerra estado Finalizando");
+    }
 }
 finally
 {
@@ -371,4 +1100,356 @@ static void Require(bool condition, string scenario)
     {
         throw new InvalidOperationException($"Falha no cenário: {scenario}");
     }
+}
+
+static void RequireThrows<TException>(Action action, string scenario)
+    where TException : Exception
+{
+    try
+    {
+        action();
+    }
+    catch (TException)
+    {
+        return;
+    }
+
+    throw new InvalidOperationException($"Falha no smoke test: {scenario}");
+}
+
+static async Task WaitUntilAsync(Func<bool> condition, string scenario)
+{
+    var timeout = Stopwatch.StartNew();
+    while (!condition())
+    {
+        if (timeout.Elapsed > TimeSpan.FromSeconds(2))
+        {
+            throw new InvalidOperationException($"Timeout no cenário: {scenario}");
+        }
+        await Task.Delay(10);
+    }
+}
+
+static async Task RequireThrowsAsync<TException>(Func<Task> action, string scenario)
+    where TException : Exception
+{
+    try
+    {
+        await action();
+    }
+    catch (TException)
+    {
+        return;
+    }
+    throw new InvalidOperationException($"Falha no smoke test: {scenario}");
+}
+
+static Task WriteValidMp4Async(string path) => File.WriteAllBytesAsync(
+    path,
+    [
+        0, 0, 0, 12, (byte)'f', (byte)'t', (byte)'y', (byte)'p', 0, 0, 0, 0,
+        0, 0, 0, 12, (byte)'m', (byte)'d', (byte)'a', (byte)'t', 1, 2, 3, 4,
+        0, 0, 0, 8, (byte)'m', (byte)'o', (byte)'o', (byte)'v'
+    ]);
+
+static string ReleaseJson(
+    string version,
+    bool includeStable = true,
+    bool includeDraft = false,
+    bool includePrerelease = false)
+{
+    var releases = new List<string>();
+    if (includeDraft)
+    {
+        releases.Add(ReleaseEntry(version, draft: true, prerelease: false));
+    }
+    if (includePrerelease)
+    {
+        releases.Add(ReleaseEntry(version + "-rc.1", draft: false, prerelease: true));
+    }
+    if (includeStable)
+    {
+        releases.Add(ReleaseEntry(version, draft: false, prerelease: false));
+    }
+    return $"[{string.Join(',', releases)}]";
+}
+
+static string ReleaseEntry(string version, bool draft, bool prerelease) => $$"""
+    {
+      "tag_name": "v{{version}}",
+      "name": "SlashDesk {{version}}",
+      "body": "Notas {{version}}",
+      "html_url": "https://github.com/lucasllira/SlashText/releases/tag/v{{version}}",
+      "published_at": "2026-08-06T12:00:00Z",
+      "draft": {{draft.ToString().ToLowerInvariant()}},
+      "prerelease": {{prerelease.ToString().ToLowerInvariant()}},
+      "assets": [
+        {
+          "name": "SlashDesk-{{version}}-portable-win-x64.zip",
+          "browser_download_url": "https://example.invalid/SlashDesk-{{version}}-portable-win-x64.zip",
+          "size": 12345
+        },
+        {
+          "name": "SlashDesk-{{version}}-portable-win-x64.zip.sha256",
+          "browser_download_url": "https://example.invalid/SlashDesk-{{version}}-portable-win-x64.zip.sha256",
+          "size": 128
+        }
+      ]
+    }
+    """;
+
+static byte[] CreatePortableZip(string executable)
+{
+    using var output = new MemoryStream();
+    using (var archive = new ZipArchive(output, ZipArchiveMode.Create, leaveOpen: true))
+    {
+        var entry = archive.CreateEntry("SlashDesk.exe", CompressionLevel.NoCompression);
+        using var destination = entry.Open();
+        using var source = File.OpenRead(executable);
+        source.CopyTo(destination);
+    }
+    return output.ToArray();
+}
+
+static ReleaseInfo CreatePackageRelease(
+    string version,
+    string packageName,
+    long packageSize,
+    long checksumSize) => new(
+        version,
+        $"SlashDesk {version}",
+        "Notas",
+        $"https://github.com/lucasllira/SlashText/releases/tag/v{version}",
+        DateTimeOffset.UtcNow,
+        new ReleaseAssetInfo(
+            packageName,
+            $"https://github.com/lucasllira/SlashText/releases/download/v{version}/{packageName}",
+            packageSize),
+        new ReleaseAssetInfo(
+            packageName + ".sha256",
+            $"https://github.com/lucasllira/SlashText/releases/download/v{version}/{packageName}.sha256",
+            checksumSize));
+
+sealed class FakePackageHttpHandler(byte[] package, byte[] checksum) : HttpMessageHandler
+{
+    public TimeSpan Delay { get; init; }
+    public TaskCompletionSource Started { get; } =
+        new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+    protected override async Task<HttpResponseMessage> SendAsync(
+        HttpRequestMessage request,
+        CancellationToken cancellationToken)
+    {
+        Started.TrySetResult();
+        if (Delay > TimeSpan.Zero)
+        {
+            await Task.Delay(Delay, cancellationToken);
+        }
+        var body = request.RequestUri?.AbsolutePath.EndsWith(".sha256", StringComparison.OrdinalIgnoreCase) == true
+            ? checksum
+            : package;
+        return new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+        {
+            Content = new ByteArrayContent(body)
+        };
+    }
+}
+
+sealed class FakeUpdateHttpHandler : HttpMessageHandler
+{
+    private readonly Exception? _exception;
+    private readonly TimeSpan _delay;
+    private int _calls;
+
+    public FakeUpdateHttpHandler(string responseJson) => ResponseJson = responseJson;
+    public FakeUpdateHttpHandler(Exception exception) => _exception = exception;
+    public FakeUpdateHttpHandler(TimeSpan delay)
+    {
+        _delay = delay;
+        ResponseJson = "[]";
+    }
+
+    public string ResponseJson { get; set; } = "[]";
+    public int Calls => Volatile.Read(ref _calls);
+
+    protected override async Task<HttpResponseMessage> SendAsync(
+        HttpRequestMessage request,
+        CancellationToken cancellationToken)
+    {
+        Interlocked.Increment(ref _calls);
+        if (_exception is not null)
+        {
+            throw _exception;
+        }
+        if (_delay > TimeSpan.Zero)
+        {
+            await Task.Delay(_delay, cancellationToken);
+        }
+        return new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+        {
+            Content = new StringContent(ResponseJson)
+        };
+    }
+}
+
+sealed class FakeRecorderBackendFactory : IScreenRecorderBackendFactory
+{
+    public FakeRecorderBackend Backend { get; } = new();
+    public bool SendDuplicateCallbacks
+    {
+        get => Backend.SendDuplicateCallbacks;
+        init => Backend.SendDuplicateCallbacks = value;
+    }
+    public bool CompleteOnStop
+    {
+        get => Backend.CompleteOnStop;
+        init => Backend.CompleteOnStop = value;
+    }
+    public bool FailOnStop
+    {
+        get => Backend.FailOnStop;
+        init => Backend.FailOnStop = value;
+    }
+    public int CallbackDelayMs
+    {
+        get => Backend.CallbackDelayMs;
+        init => Backend.CallbackDelayMs = value;
+    }
+    public bool BlockStop
+    {
+        get => Backend.BlockStop;
+        init => Backend.BlockStop = value;
+    }
+
+    public IScreenRecorderBackend Create(RecorderOptions options) => Backend;
+}
+
+sealed class FakeRecorderBackend : IScreenRecorderBackend
+{
+    private int _activeCalls;
+    private int _maximumConcurrentCalls;
+    private int _disposeCalls;
+    private int _stopCalls;
+    private string _path = string.Empty;
+    private readonly ManualResetEventSlim _stopRelease = new(false);
+
+    public event EventHandler<RecordingCompleteEventArgs>? Completed;
+    public event EventHandler<RecordingFailedEventArgs>? Failed;
+    public event EventHandler<RecordingStatusEventArgs>? StatusChanged;
+    public ManualResetEventSlim RecordCalled { get; } = new(false);
+    public ManualResetEventSlim StopEntered { get; } = new(false);
+    public bool SendDuplicateCallbacks { get; set; }
+    public bool CompleteOnStop { get; set; } = true;
+    public bool FailOnStop { get; set; }
+    public int CallbackDelayMs { get; set; }
+    public bool BlockStop { get; set; }
+    public int DisposeCalls => Volatile.Read(ref _disposeCalls);
+    public int StopCalls => Volatile.Read(ref _stopCalls);
+    public int MaximumConcurrentCalls => Volatile.Read(ref _maximumConcurrentCalls);
+
+    public void Record(string path)
+    {
+        NativeCall(() =>
+        {
+            _path = path;
+            RecordCalled.Set();
+            StatusChanged?.Invoke(this, new RecordingStatusEventArgs(RecorderStatus.Recording));
+        });
+    }
+
+    public void Pause() => NativeCall(() =>
+        StatusChanged?.Invoke(this, new RecordingStatusEventArgs(RecorderStatus.Paused)));
+
+    public void Resume() => NativeCall(() =>
+        StatusChanged?.Invoke(this, new RecordingStatusEventArgs(RecorderStatus.Recording)));
+
+    public void Stop()
+    {
+        NativeCall(() =>
+        {
+            Interlocked.Increment(ref _stopCalls);
+            StopEntered.Set();
+            if (BlockStop)
+            {
+                _stopRelease.Wait(TimeSpan.FromSeconds(3));
+            }
+            if (FailOnStop)
+            {
+                Failed?.Invoke(this, new RecordingFailedEventArgs("falha simulada", _path));
+                return;
+            }
+            if (CompleteOnStop)
+            {
+                if (CallbackDelayMs > 0)
+                {
+                    _ = Task.Run(async () =>
+                    {
+                        await Task.Delay(CallbackDelayMs);
+                        CompleteLater();
+                    });
+                }
+                else
+                {
+                    CompleteLater();
+                }
+            }
+        });
+    }
+
+    public void ReleaseStop() => _stopRelease.Set();
+
+    public void CompleteLater()
+    {
+        WriteValidMp4(_path);
+        Completed?.Invoke(
+            this,
+            new RecordingCompleteEventArgs(_path, new List<FrameData>()));
+        if (SendDuplicateCallbacks)
+        {
+            Failed?.Invoke(
+                this,
+                new RecordingFailedEventArgs("callback tardio", _path));
+        }
+    }
+
+    public void Dispose()
+    {
+        NativeCall(() => Interlocked.Increment(ref _disposeCalls));
+    }
+
+    private void NativeCall(Action action)
+    {
+        var concurrent = Interlocked.Increment(ref _activeCalls);
+        UpdateMaximum(concurrent);
+        try
+        {
+            Thread.Sleep(15);
+            action();
+        }
+        finally
+        {
+            Interlocked.Decrement(ref _activeCalls);
+        }
+    }
+
+    private void UpdateMaximum(int value)
+    {
+        while (true)
+        {
+            var current = Volatile.Read(ref _maximumConcurrentCalls);
+            if (current >= value ||
+                Interlocked.CompareExchange(ref _maximumConcurrentCalls, value, current) == current)
+            {
+                return;
+            }
+        }
+    }
+
+    private static void WriteValidMp4(string path) => File.WriteAllBytes(
+        path,
+        [
+            0, 0, 0, 12, (byte)'f', (byte)'t', (byte)'y', (byte)'p', 0, 0, 0, 0,
+            0, 0, 0, 12, (byte)'m', (byte)'d', (byte)'a', (byte)'t', 1, 2, 3, 4,
+            0, 0, 0, 8, (byte)'m', (byte)'o', (byte)'o', (byte)'v'
+        ]);
 }

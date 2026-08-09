@@ -14,6 +14,7 @@ $themePath = 'src/SlashText/Services/ThemeService.cs'
 $importPath = 'src/SlashText/Services/SnippetImportService.cs'
 $backupPath = 'src/SlashText/Services/BackupService.cs'
 $recordingPath = 'src/SlashText/Services/ScreenRecordingService.cs'
+$recordingBackendPath = 'src/SlashText/Services/ScreenRecorderBackend.cs'
 $gifPath = 'src/SlashText/Services/GifRecordingService.cs'
 $recordingBarPath = 'src/SlashText/Views/RecordingControlWindow.cs'
 $gifPreviewPath = 'src/SlashText/Views/GifPreviewWindow.cs'
@@ -32,6 +33,8 @@ $theme = Get-Content $themePath -Raw
 $import = Get-Content $importPath -Raw
 $backup = Get-Content $backupPath -Raw
 $recording = Get-Content $recordingPath -Raw
+$recordingBackend = Get-Content $recordingBackendPath -Raw
+$recordingCode = $recording + $recordingBackend
 $gif = Get-Content $gifPath -Raw
 $recordingBar = Get-Content $recordingBarPath -Raw
 $gifPreview = Get-Content $gifPreviewPath -Raw
@@ -159,17 +162,26 @@ foreach ($guideSection in @(
     }
 }
 
-if (-not $project.Contains('<Version>2.9.0</Version>')) {
-    throw 'Versão funcional deve ser 2.9.0.'
+if (-not $project.Contains('<Version>2.9.1</Version>')) {
+    throw 'Versão funcional deve ser 2.9.1.'
 }
 
 if (-not $project.Contains('ScreenRecorderLib') -or
-    -not $recording.Contains('Recorder.CreateRecorder') -or
-    -not $recording.Contains('H264VideoEncoder') -or
-    -not $recording.Contains('.Pause()') -or
-    -not $recording.Contains('.Resume()') -or
-    -not $recording.Contains('.Stop()')) {
+    -not $recordingCode.Contains('Recorder.CreateRecorder') -or
+    -not $recordingCode.Contains('H264VideoEncoder') -or
+    -not $recordingCode.Contains('.Pause()') -or
+    -not $recordingCode.Contains('.Resume()') -or
+    -not $recordingCode.Contains('.Stop()')) {
     throw 'Gravação MP4 local incompleta.'
+}
+
+if ($recording.Contains('CleanupRecorder') -or
+    -not $recording.Contains('EnqueueNative("recording.finalize"') -or
+    -not $recording.Contains('Interlocked.CompareExchange(ref _finalizationClaimed, 1, 0)') -or
+    -not $recording.Contains('IsHardwareEncodingEnabled = true') -or
+    -not $recording.Contains('IsFixedFramerate = false') -or
+    -not $recording.Contains('IsLogEnabled = true')) {
+    throw 'Ciclo de finalização MP4 inseguro ou dependente de aceleração de hardware.'
 }
 
 foreach ($control in @(
@@ -179,9 +191,10 @@ foreach ($control in @(
     'RecordingCursorCheckBox',
     'StartMp4RecordingButton',
     'GifFpsBox',
-    'GifDurationBox',
-    'GifWidthBox',
     'GifQualityBox',
+    'GifFpsDescriptionText',
+    'GifQualityDescriptionText',
+    'RecordingQualityDescriptionText',
     'StartGifRecordingButton',
     'CaptureDelayBox',
     'CaptureCursorCheckBox',
@@ -195,9 +208,25 @@ foreach ($control in @(
 }
 
 if (-not $gif.Contains('GifBitmapEncoder') -or
+    -not $gif.Contains('EnsureLoopExtension(temporaryPath)') -or
+    -not $gif.Contains('"NETSCAPE2.0"u8') -or
+    -not $gif.Contains('File.Move(temporaryPath, path)') -or
+    -not $recording.Contains('ValidateMp4File(recordedPath)') -or
+    -not $recording.Contains('recording.mp4') -or
     -not $gifPreview.Contains('Prévia antes de salvar') -or
     -not $recordingBar.Contains('Finalizar')) {
-    throw 'GIF ou barra flutuante incompletos.'
+    throw 'Correções críticas de GIF ou MP4 incompletas.'
+}
+
+$windowTargetIndex = $code.LastIndexOf('target = _captureService.WindowUnderCursorTarget();')
+$hideBeforeWindowIndex = if ($windowTargetIndex -ge 0) {
+    $code.LastIndexOf('Hide();', $windowTargetIndex)
+} else {
+    -1
+}
+if ($hideBeforeWindowIndex -lt 0 -or
+    $windowTargetIndex - $hideBeforeWindowIndex -gt 300) {
+    throw 'A seleção de janela MP4 deve ocorrer após ocultar o SlashDesk.'
 }
 
 foreach ($historyAction in @(

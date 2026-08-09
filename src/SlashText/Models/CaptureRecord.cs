@@ -7,6 +7,7 @@ public sealed class CaptureRecord
     public string Type { get; set; } = string.Empty;
     public string MediaKind { get; set; } = "image";
     public string FilePath { get; set; } = string.Empty;
+    public string? PortableRelativePath { get; set; }
     public int Width { get; set; }
     public int Height { get; set; }
     public double DurationSeconds { get; set; }

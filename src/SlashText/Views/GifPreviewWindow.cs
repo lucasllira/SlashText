@@ -45,9 +45,9 @@ public sealed class GifPreviewWindow : Window
                 },
                 new TextBlock
                 {
-                    Text = $"{recording.Frames.Count} quadros · {recording.Fps} FPS · " +
+                    Text = $"{recording.FrameCount} quadros · {recording.Fps} FPS · " +
                            $"{recording.Duration.TotalSeconds:0.0}s · " +
-                           $"{recording.Frames[0].Width}×{recording.Frames[0].Height}",
+                           $"{recording.Width}×{recording.Height}",
                     Margin = new Thickness(0, 4, 0, 0),
                     Foreground = (Brush)Application.Current.FindResource("MutedBrush")
                 }
@@ -86,18 +86,18 @@ public sealed class GifPreviewWindow : Window
         root.Children.Add(actions);
         Content = root;
 
-        _preview.Source = GifRecordingService.ToBitmapSource(recording.Frames[0]);
+        ShowFrame(0);
         _timer = new DispatcherTimer
         {
-            Interval = TimeSpan.FromMilliseconds(1000d / Math.Max(1, recording.Fps))
+            Interval = FrameDelay(0)
         };
-        _timer.Tick += (_, _) =>
-        {
-            _index = (_index + 1) % recording.Frames.Count;
-            _preview.Source = GifRecordingService.ToBitmapSource(recording.Frames[_index]);
-        };
+        _timer.Tick += PreviewTimer_OnTick;
         _timer.Start();
-        Closed += (_, _) => _timer.Stop();
+        Closed += (_, _) =>
+        {
+            _timer.Stop();
+            _timer.Tick -= PreviewTimer_OnTick;
+        };
         PreviewKeyDown += (_, args) =>
         {
             if (args.Key == Key.Escape)
@@ -106,4 +106,20 @@ public sealed class GifPreviewWindow : Window
             }
         };
     }
+
+    private void PreviewTimer_OnTick(object? sender, EventArgs e)
+    {
+        _index = (_index + 1) % _recording.FrameCount;
+        ShowFrame(_index);
+        _timer.Interval = FrameDelay(_index);
+    }
+
+    private void ShowFrame(int index)
+    {
+        using var bitmap = _recording.LoadFrame(index);
+        _preview.Source = GifRecordingService.ToBitmapSource(bitmap);
+    }
+
+    private TimeSpan FrameDelay(int index) => TimeSpan.FromMilliseconds(
+        Math.Max(2, _recording.FrameDelaysCentiseconds[index]) * 10d);
 }

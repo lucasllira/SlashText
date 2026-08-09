@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
+using System.Reflection;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
@@ -32,6 +33,7 @@ public partial class MainWindow : Window
     private readonly GifRecordingService _gifRecordingService = new();
     private readonly GlobalCaptureShortcutService _captureShortcuts = new();
     private readonly UpdateService _updateService = new();
+    private readonly PortableUpdateService _portableUpdateService = new();
     private readonly JsonFileStore<AppSettings> _settingsStore = new(AppPaths.SettingsFile);
     private readonly ObservableCollection<Snippet> _snippets = [];
     private readonly SuggestionWindow _suggestionWindow = new();
@@ -48,11 +50,16 @@ public partial class MainWindow : Window
         new() { Interval = TimeSpan.FromMilliseconds(900) };
     private int _quickAccentPreviewIndex = 1;
     private ScreenRecordingService? _recordingService;
+    private GifRecordingSession? _gifRecordingSession;
     private RecordingControlWindow? _recordingControl;
+    private string? _lastReleaseUrl;
+    private int _updateOfferActive;
+    private CancellationTokenSource? _activeUpdateCancellation;
 
     public MainWindow()
     {
         InitializeComponent();
+        InitializeRecordingPresetControls();
         InitializeTray();
         Loaded += MainWindow_OnLoaded;
         Closing += MainWindow_OnClosing;
@@ -82,12 +89,20 @@ public partial class MainWindow : Window
         try
         {
             _settings = await _settingsStore.LoadAsync();
+            _settings.Capture ??= new CaptureSettings();
+            _settings.Capture.Recording ??= new RecordingSettings();
+            RecordingPresetCatalog.Normalize(_settings.Capture.Recording);
             ThemeService.Apply(_settings.Theme);
             await _usageService.LoadAsync();
             CloseToTrayCheckBox.IsChecked = _settings.CloseToTray;
             StartWithWindowsCheckBox.IsChecked = _settings.StartWithWindows;
             ShowSuggestionsCheckBox.IsChecked = _settings.ShowSuggestions;
             CheckUpdatesCheckBox.IsChecked = _settings.CheckUpdatesOnStartup;
+            AboutVersionText.Text = $"Versão {ProductVersion()} · Licença MIT · código aberto";
+            UpdateChannelText.Text = $"Canal: estável · modo {AppPaths.Mode.ToString().ToLowerInvariant()}";
+            BackupLocationText.Text =
+                $"Backups em {AppPaths.BackupsDirectory}. Nenhum arquivo é enviado para a nuvem.";
+            await RefreshUpdateStatusAsync();
             SelectComboByTag(ThemeBox, _settings.Theme);
             QuickAccentEnabledCheckBox.IsChecked = _settings.QuickAccentEnabled;
             SelectComboByTag(QuickAccentActivationBox, _settings.QuickAccentActivationKey);
@@ -449,7 +464,7 @@ public partial class MainWindow : Window
             _keyboardHook.UpdateSnippets(_snippets);
             RefreshNavigation();
             RefreshStatistics();
-            StatusText.Text = "Salvo em SlashDeskData/snippets.md";
+            StatusText.Text = "Salvo em %LocalAppData%\\SlashDesk\\snippets.md";
         }
         catch (Exception exception)
         {
@@ -1408,6 +1423,50 @@ public partial class MainWindow : Window
     private static string SelectedTag(ComboBox box, string fallback) =>
         box.SelectedItem is ComboBoxItem { Tag: string tag } ? tag : fallback;
 
+    private void InitializeRecordingPresetControls()
+    {
+        AddPresetItems(RecordingQualityBox, RecordingPresetCatalog.Mp4Quality,
+            item => item.Name, item => item.Value);
+        AddPresetItems(GifFpsBox, RecordingPresetCatalog.GifFps,
+            item => $"{item.Value} FPS — {item.Name}", item => item.Value.ToString());
+        AddPresetItems(GifQualityBox, RecordingPresetCatalog.GifQuality,
+            item => item.Name, item => item.Value.ToString());
+    }
+
+    private static void AddPresetItems<T>(
+        ComboBox box,
+        IReadOnlyList<RecordingPreset<T>> presets,
+        Func<RecordingPreset<T>, string> content,
+        Func<RecordingPreset<T>, string> tag)
+    {
+        box.Items.Clear();
+        foreach (var preset in presets)
+        {
+            box.Items.Add(new ComboBoxItem
+            {
+                Content = content(preset),
+                Tag = tag(preset),
+                ToolTip = preset.Description
+            });
+        }
+    }
+
+    private void RecordingPreset_OnChanged(object sender, SelectionChangedEventArgs e)
+    {
+        UpdatePresetDescription(RecordingQualityBox, RecordingQualityDescriptionText);
+        UpdatePresetDescription(GifFpsBox, GifFpsDescriptionText);
+        UpdatePresetDescription(GifQualityBox, GifQualityDescriptionText);
+    }
+
+    private static void UpdatePresetDescription(ComboBox box, TextBlock description)
+    {
+        var text = box.SelectedItem is ComboBoxItem { ToolTip: string value }
+            ? value
+            : string.Empty;
+        description.Text = text;
+        box.ToolTip = text;
+    }
+
     private static void SelectComboByTag(ComboBox box, string value)
     {
         foreach (var item in box.Items.OfType<ComboBoxItem>())
@@ -1425,6 +1484,8 @@ public partial class MainWindow : Window
     private void LoadCaptureSettings()
     {
         var capture = _settings.Capture ??= new CaptureSettings();
+        capture.Recording ??= new RecordingSettings();
+        RecordingPresetCatalog.Normalize(capture.Recording);
         CaptureMonitorShortcutBox.Text = capture.ActiveMonitorShortcut;
         CaptureRegionShortcutBox.Text = capture.RegionShortcut;
         CaptureWindowShortcutBox.Text = capture.WindowShortcut;
@@ -1442,10 +1503,9 @@ public partial class MainWindow : Window
         SelectComboByTag(RecordingFpsBox, capture.Recording.VideoFps.ToString());
         SelectComboByTag(RecordingQualityBox, capture.Recording.VideoQuality);
         RecordingCursorCheckBox.IsChecked = capture.Recording.IncludeCursor;
-        GifFpsBox.Text = capture.Recording.GifFps.ToString();
-        GifDurationBox.Text = capture.Recording.GifDurationSeconds.ToString();
-        GifWidthBox.Text = capture.Recording.GifWidth.ToString();
-        GifQualityBox.Text = capture.Recording.GifQuality.ToString();
+        SelectComboByTag(GifFpsBox, capture.Recording.GifFps.ToString());
+        SelectComboByTag(GifQualityBox, capture.Recording.GifQuality.ToString());
+        RecordingPreset_OnChanged(this, null!);
         SelectComboByTag(CaptureHistoryFilterBox, "all");
         CaptureQualityBox.IsEnabled =
             capture.ImageFormat.Equals("JPEG", StringComparison.OrdinalIgnoreCase);
@@ -1494,6 +1554,17 @@ public partial class MainWindow : Window
             error = "Informe a pasta e o modelo de nome do arquivo.";
             return false;
         }
+        var gifFps = ParseSelectedInt(GifFpsBox, 10);
+        var gifQuality = ParseSelectedInt(GifQualityBox, 128);
+        if (!RecordingPresetCatalog.GifFps.Any(item => item.Value == gifFps) ||
+            !RecordingPresetCatalog.GifQuality.Any(item => item.Value == gifQuality))
+        {
+            error = "Selecione um preset disponível de FPS e qualidade do GIF.";
+            return false;
+        }
+
+        var legacyGifDuration = _settings.Capture.Recording.GifDurationSeconds;
+        var legacyGifWidth = _settings.Capture.Recording.GifWidth;
 
         var quality = int.TryParse(CaptureQualityBox.Text, out var parsedQuality)
             ? Math.Clamp(parsedQuality, 1, 100)
@@ -1519,10 +1590,10 @@ public partial class MainWindow : Window
                 VideoFps = ParseSelectedInt(RecordingFpsBox, 30),
                 VideoQuality = SelectedTag(RecordingQualityBox, "Alta"),
                 IncludeCursor = RecordingCursorCheckBox.IsChecked == true,
-                GifFps = ParseBounded(GifFpsBox.Text, 10, 2, 20),
-                GifDurationSeconds = ParseBounded(GifDurationBox.Text, 5, 1, 30),
-                GifWidth = ParseBounded(GifWidthBox.Text, 960, 240, 1920),
-                GifQuality = ParseBounded(GifQualityBox.Text, 80, 1, 100)
+                GifFps = gifFps,
+                GifDurationSeconds = legacyGifDuration,
+                GifWidth = legacyGifWidth,
+                GifQuality = gifQuality
             }
         };
         CaptureQualityBox.Text = quality.ToString();
@@ -1709,7 +1780,7 @@ public partial class MainWindow : Window
 
     private async void StartMp4Recording_OnClick(object sender, RoutedEventArgs e)
     {
-        if (_recordingService?.IsRecording == true)
+        if (_recordingControl is not null || _recordingService?.IsRecording == true)
         {
             _recordingControl?.Activate();
             return;
@@ -1723,29 +1794,48 @@ public partial class MainWindow : Window
 
         try
         {
-            var target = ResolveRecordingTarget("Selecione a região do vídeo");
+            RecordingTarget? target;
+            if (SelectedTag(RecordingTargetBox, "Monitor").Equals(
+                    "Window",
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                Hide();
+                await Task.Delay(250);
+                target = _captureService.WindowUnderCursorTarget();
+            }
+            else
+            {
+                target = ResolveRecordingTarget("Selecione a região do vídeo");
+            }
             if (target is null)
             {
+                ShowFromTray();
                 return;
             }
 
-            Hide();
+            if (IsVisible)
+            {
+                Hide();
+            }
             await Task.Delay(180);
             _recordingService = new ScreenRecordingService();
             _recordingService.RecordingFailed += (_, message) =>
-                Dispatcher.Invoke(() => StatusText.Text = message);
+                _ = Dispatcher.BeginInvoke(() => StatusText.Text = message);
             var completion = _recordingService.StartAsync(
                 target,
                 _settings.Capture,
                 _settings.Capture.Recording);
-            _recordingControl = new RecordingControlWindow(_recordingService);
+            _recordingControl = new RecordingControlWindow(_recordingService, "MP4");
             _recordingControl.Show();
             var path = await completion;
             var elapsed = _recordingService.Elapsed;
+            var completedRecordingId = _recordingService.RecordingId.ToString("N");
             _recordingControl.Close();
             _recordingControl = null;
             _recordingService.Dispose();
             _recordingService = null;
+            AppDiagnosticLog.Write("recording.interface-restored",
+                ("recordingId", completedRecordingId), ("media", "MP4"), ("result", "success"));
             await _captureService.AddMediaRecordAsync(new CaptureRecord
             {
                 CreatedAt = DateTimeOffset.Now,
@@ -1762,14 +1852,18 @@ public partial class MainWindow : Window
         }
         catch (Exception exception)
         {
+            var failedRecordingId = _recordingService?.RecordingId.ToString("N") ?? "unknown";
             _recordingControl?.Close();
             _recordingControl = null;
             _recordingService?.Dispose();
             _recordingService = null;
             ShowFromTray();
+            AppDiagnosticLog.Write("recording.interface-restored",
+                ("recordingId", failedRecordingId), ("media", "MP4"), ("result", "failure"));
             MessageBox.Show(
                 exception.Message +
-                "\n\nO SlashDesk usa o encoder H.264 do Windows. Em edições N/KN, instale o Media Feature Pack do Windows.",
+                "\n\nO SlashDesk usa H.264/Media Foundation. Em edições N/KN, instale o Media Feature Pack do Windows." +
+                $"\nLogs: {AppPaths.LogsDirectory}",
                 "Não foi possível gravar",
                 MessageBoxButton.OK,
                 MessageBoxImage.Warning);
@@ -1778,6 +1872,11 @@ public partial class MainWindow : Window
 
     private async void StartGifRecording_OnClick(object sender, RoutedEventArgs e)
     {
+        if (_recordingControl is not null)
+        {
+            _recordingControl.Activate();
+            return;
+        }
         if (!TryReadCaptureSettings(out var settingsError))
         {
             MessageBox.Show(settingsError, "GIF", MessageBoxButton.OK, MessageBoxImage.Warning);
@@ -1794,31 +1893,48 @@ public partial class MainWindow : Window
         {
             Hide();
             await Task.Delay(180);
-            var progress = new Progress<RecordingProgress>(item =>
-                StatusText.Text = $"{item.Status} · {item.Elapsed:mm\\:ss}");
-            using var recording = await _gifRecordingService.CaptureAsync(
+            _gifRecordingSession = _gifRecordingService.StartRecording(
                 target.Bounds,
-                _settings.Capture.Recording,
-                progress);
+                _settings.Capture.Recording);
+            _recordingControl = new RecordingControlWindow(_gifRecordingSession, "GIF");
+            _recordingControl.Show();
+            using var recording = await _gifRecordingSession.Completion;
+            var completedRecordingId = _gifRecordingSession.RecordingId.ToString("N");
+            _recordingControl.Close();
+            _recordingControl = null;
+            _gifRecordingSession.Dispose();
+            _gifRecordingSession = null;
             ShowFromTray();
+            AppDiagnosticLog.Write("recording.interface-restored",
+                ("recordingId", completedRecordingId), ("media", "GIF"), ("result", "captured"));
+            if (recording.Metrics?.DroppedFrames > 0)
+            {
+                MessageBox.Show(
+                    $"O pipeline descartou {recording.Metrics.DroppedFrames:N0} quadro(s) por sobrecarga. " +
+                    "O tempo foi preservado no GIF e o evento foi registrado nos logs.",
+                    "GIF finalizado com sobrecarga",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+            }
             var preview = new GifPreviewWindow(recording) { Owner = this };
             if (preview.ShowDialog() != true)
             {
                 StatusText.Text = "GIF descartado";
                 return;
             }
-            var path = _gifRecordingService.Save(
+            var path = await _gifRecordingService.SaveAsync(
                 recording,
                 _settings.Capture,
-                target.Type);
+                target.Type,
+                _settings.Capture.Recording.GifQuality);
             await _captureService.AddMediaRecordAsync(new CaptureRecord
             {
                 CreatedAt = DateTimeOffset.Now,
                 Type = target.Type,
                 MediaKind = "gif",
                 FilePath = path,
-                Width = recording.Frames[0].Width,
-                Height = recording.Frames[0].Height,
+                Width = recording.Width,
+                Height = recording.Height,
                 DurationSeconds = recording.Duration.TotalSeconds
             });
             StatusText.Text = $"GIF salvo: {Path.GetFileName(path)}";
@@ -1826,12 +1942,26 @@ public partial class MainWindow : Window
         }
         catch (OperationCanceledException)
         {
+            var cancelledRecordingId = _gifRecordingSession?.RecordingId.ToString("N") ?? "unknown";
+            _recordingControl?.Close();
+            _recordingControl = null;
+            _gifRecordingSession?.Dispose();
+            _gifRecordingSession = null;
             ShowFromTray();
+            AppDiagnosticLog.Write("recording.interface-restored",
+                ("recordingId", cancelledRecordingId), ("media", "GIF"), ("result", "cancelled"));
             StatusText.Text = "Gravação de GIF cancelada";
         }
         catch (Exception exception)
         {
+            var failedRecordingId = _gifRecordingSession?.RecordingId.ToString("N") ?? "unknown";
+            _recordingControl?.Close();
+            _recordingControl = null;
+            _gifRecordingSession?.Dispose();
+            _gifRecordingSession = null;
             ShowFromTray();
+            AppDiagnosticLog.Write("recording.interface-restored",
+                ("recordingId", failedRecordingId), ("media", "GIF"), ("result", "failure"));
             MessageBox.Show(
                 exception.Message,
                 "Não foi possível criar o GIF",
@@ -1847,21 +1977,12 @@ public partial class MainWindow : Window
         {
             return _captureService.SelectRecordingRegion(this, regionPurpose);
         }
-        if (selected.Equals("Window", StringComparison.OrdinalIgnoreCase))
-        {
-            return _captureService.WindowUnderCursorTarget();
-        }
         return _captureService.ActiveMonitorTarget();
     }
 
     private static int ParseSelectedInt(ComboBox box, int fallback) =>
         int.TryParse(SelectedTag(box, fallback.ToString()), out var value)
             ? value
-            : fallback;
-
-    private static int ParseBounded(string text, int fallback, int minimum, int maximum) =>
-        int.TryParse(text, out var value)
-            ? Math.Clamp(value, minimum, maximum)
             : fallback;
 
     private void CaptureFormat_OnChanged(object sender, SelectionChangedEventArgs e)
@@ -1890,17 +2011,18 @@ public partial class MainWindow : Window
         var mostRecent = _captureService.History.FirstOrDefault();
         if (mostRecent is not null)
         {
+            var mostRecentPath = _captureService.ResolveFilePath(mostRecent);
             CapturePreviewDetailsText.Text =
                 $"{mostRecent.CreatedAt:dd/MM/yyyy HH:mm}  ·  {mostRecent.Type}  ·  " +
                 $"{mostRecent.Width}×{mostRecent.Height}";
             if (!mostRecent.MediaKind.Equals("video", StringComparison.OrdinalIgnoreCase) &&
-                !string.IsNullOrWhiteSpace(mostRecent.FilePath) &&
-                File.Exists(mostRecent.FilePath))
+                !string.IsNullOrWhiteSpace(mostRecentPath) &&
+                File.Exists(mostRecentPath))
             {
                 try
                 {
                     using var stream = File.Open(
-                        mostRecent.FilePath,
+                        mostRecentPath,
                         FileMode.Open,
                         FileAccess.Read,
                         FileShare.ReadWrite);
@@ -1932,9 +2054,10 @@ public partial class MainWindow : Window
             item.Type.Equals(filter, StringComparison.OrdinalIgnoreCase));
         foreach (var item in filtered.Take(40))
         {
-            var file = string.IsNullOrWhiteSpace(item.FilePath)
+            var resolvedPath = _captureService.ResolveFilePath(item);
+            var file = string.IsNullOrWhiteSpace(resolvedPath)
                 ? "Somente clipboard"
-                : Path.GetFileName(item.FilePath);
+                : Path.GetFileName(resolvedPath);
             var row = new Grid
             {
                 Margin = new Thickness(0, 0, 0, 7)
@@ -1999,9 +2122,12 @@ public partial class MainWindow : Window
 
     private void OpenHistoryItem_OnClick(object sender, RoutedEventArgs e)
     {
-        if (sender is not Button { Tag: CaptureRecord record } ||
-            string.IsNullOrWhiteSpace(record.FilePath) ||
-            !File.Exists(record.FilePath))
+        if (sender is not Button { Tag: CaptureRecord record })
+        {
+            return;
+        }
+        var path = _captureService.ResolveFilePath(record);
+        if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
         {
             MessageBox.Show(
                 "O arquivo não está mais disponível.",
@@ -2010,7 +2136,7 @@ public partial class MainWindow : Window
                 MessageBoxImage.Information);
             return;
         }
-        Process.Start(new ProcessStartInfo(record.FilePath) { UseShellExecute = true });
+        Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
     }
 
     private void CopyHistoryItem_OnClick(object sender, RoutedEventArgs e)
@@ -2021,8 +2147,9 @@ public partial class MainWindow : Window
         }
         try
         {
-            CaptureService.CopyFileToClipboard(record.FilePath);
-            StatusText.Text = $"Arquivo copiado: {Path.GetFileName(record.FilePath)}";
+            var path = _captureService.ResolveFilePath(record);
+            CaptureService.CopyFileToClipboard(path);
+            StatusText.Text = $"Arquivo copiado: {Path.GetFileName(path)}";
         }
         catch (Exception exception)
         {
@@ -2042,7 +2169,8 @@ public partial class MainWindow : Window
         }
         if (await _captureService.EditExistingAsync(record.Id, _settings.Capture, this))
         {
-            StatusText.Text = $"Captura atualizada: {Path.GetFileName(record.FilePath)}";
+            StatusText.Text =
+                $"Captura atualizada: {Path.GetFileName(_captureService.ResolveFilePath(record))}";
             RefreshCaptureHistory();
         }
     }
@@ -2092,17 +2220,24 @@ public partial class MainWindow : Window
 
     private async void CheckUpdates_OnClick(object sender, RoutedEventArgs e)
     {
+        CheckUpdatesButton.IsEnabled = false;
         try
         {
-            var result = await _updateService.CheckAsync();
-            var choice = MessageBox.Show(
-                result.Message + (result.Url is null ? string.Empty : "\n\nAbrir a página de download?"),
-                "Atualizações do SlashDesk",
-                result.Url is null ? MessageBoxButton.OK : MessageBoxButton.YesNo,
-                result.UpdateAvailable ? MessageBoxImage.Information : MessageBoxImage.None);
-            if (choice == MessageBoxResult.Yes && result.Url is not null)
+            var result = await _updateService.CheckAsync(force: true);
+            UpdateUpdateDisplay(await _updateService.LoadStateAsync());
+            if (result.UpdateAvailable && result.Release is not null)
             {
-                Process.Start(new ProcessStartInfo(result.Url) { UseShellExecute = true });
+                await OfferUpdateAsync(result);
+            }
+            else
+            {
+                MessageBox.Show(
+                    result.Message,
+                    "Atualizações do SlashDesk",
+                    MessageBoxButton.OK,
+                    result.Status == UpdateCheckStatus.Offline
+                        ? MessageBoxImage.Information
+                        : MessageBoxImage.None);
             }
         }
         catch (Exception exception)
@@ -2113,6 +2248,10 @@ public partial class MainWindow : Window
                 MessageBoxButton.OK,
                 MessageBoxImage.Warning);
         }
+        finally
+        {
+            CheckUpdatesButton.IsEnabled = true;
+        }
     }
 
     private async Task CheckUpdatesSilentlyAsync()
@@ -2120,17 +2259,16 @@ public partial class MainWindow : Window
         try
         {
             var result = await _updateService.CheckAsync();
-            if (result.UpdateAvailable)
+            UpdateUpdateDisplay(await _updateService.LoadStateAsync());
+            if (result.UpdateAvailable && result.Release is not null)
             {
-                Dispatcher.Invoke(() =>
-                {
-                    StatusText.Text = result.Message;
-                    _trayIcon?.ShowBalloonTip(
-                        2500,
-                        "Atualização disponível",
-                        result.Message,
-                        Forms.ToolTipIcon.Info);
-                });
+                StatusText.Text = result.Message;
+                _trayIcon?.ShowBalloonTip(
+                    2500,
+                    "Atualização disponível",
+                    result.Message,
+                    Forms.ToolTipIcon.Info);
+                await OfferUpdateAsync(result);
             }
         }
         catch
@@ -2138,6 +2276,120 @@ public partial class MainWindow : Window
             // A inicialização nunca é bloqueada por uma consulta opcional.
         }
     }
+
+    private async Task OfferUpdateAsync(UpdateCheckResult result)
+    {
+        if (result.Release is null || Interlocked.Exchange(ref _updateOfferActive, 1) != 0)
+        {
+            return;
+        }
+        try
+        {
+            var dialog = new UpdateAvailableWindow(result) { Owner = this };
+            dialog.ShowDialog();
+            switch (dialog.Decision)
+            {
+                case UpdateDecision.UpdateNow:
+                    if (AppPaths.IsPortable)
+                    {
+                        await DownloadAndApplyUpdateAsync(result.Release);
+                    }
+                    else
+                    {
+                        MessageBox.Show(
+                            "Esta compilação instalada ainda não possui um instalador transacional. " +
+                            "A página oficial será aberta para uma atualização manual que preserva " +
+                            "%LocalAppData%\\SlashDesk.",
+                            "Atualização da versão instalada",
+                            MessageBoxButton.OK,
+                            MessageBoxImage.Information);
+                        Process.Start(new ProcessStartInfo(result.Release.PageUrl) { UseShellExecute = true });
+                    }
+                    break;
+                case UpdateDecision.RemindLater:
+                    await _updateService.RemindLaterAsync(result.Release.Version);
+                    break;
+                case UpdateDecision.IgnoreVersion:
+                    await _updateService.IgnoreVersionAsync(result.Release.Version);
+                    break;
+            }
+            UpdateUpdateDisplay(await _updateService.LoadStateAsync());
+        }
+        finally
+        {
+            Interlocked.Exchange(ref _updateOfferActive, 0);
+        }
+    }
+
+    private async Task DownloadAndApplyUpdateAsync(ReleaseInfo release)
+    {
+        var progressWindow = new UpdateProgressWindow { Owner = this };
+        _activeUpdateCancellation = progressWindow.Cancellation;
+        progressWindow.Show();
+        try
+        {
+            var prepared = await _portableUpdateService.PrepareAsync(
+                release,
+                progressWindow,
+                progressWindow.Cancellation.Token);
+            progressWindow.Report(new UpdateProgress(
+                "Download validado. Encerrando para substituir somente SlashDesk.exe...",
+                0,
+                null,
+                IsApplying: true));
+            PortableUpdateService.LaunchHelper(prepared);
+            progressWindow.AllowClose();
+            _exitRequested = true;
+            Close();
+        }
+        catch (OperationCanceledException)
+        {
+            progressWindow.AllowClose();
+            StatusText.Text = "Atualização cancelada; nenhum arquivo do aplicativo foi alterado";
+        }
+        catch (Exception exception)
+        {
+            progressWindow.AllowClose();
+            AppDiagnosticLog.WriteException("update.prepare.failed", exception);
+            MessageBox.Show(
+                "A atualização não foi aplicada. O executável atual e SlashDeskData foram " +
+                "preservados.\n\n" + exception.Message,
+                "Falha na atualização",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+        }
+        finally
+        {
+            _activeUpdateCancellation = null;
+        }
+    }
+
+    private async Task RefreshUpdateStatusAsync() =>
+        UpdateUpdateDisplay(await _updateService.LoadStateAsync());
+
+    private void UpdateUpdateDisplay(UpdateState state)
+    {
+        LastUpdateCheckText.Text = state.LastCheckedUtc is null
+            ? "Última verificação: ainda não verificado"
+            : $"Última verificação: {state.LastCheckedUtc.Value.ToLocalTime():g}";
+        LastUpdateResultText.Text = $"Resultado: {state.LastResult}";
+        _lastReleaseUrl = state.LastReleaseUrl;
+        ReleaseNotesButton.Visibility = string.IsNullOrWhiteSpace(_lastReleaseUrl)
+            ? Visibility.Collapsed
+            : Visibility.Visible;
+    }
+
+    private void ReleaseNotes_OnClick(object sender, RoutedEventArgs e)
+    {
+        if (!string.IsNullOrWhiteSpace(_lastReleaseUrl))
+        {
+            Process.Start(new ProcessStartInfo(_lastReleaseUrl) { UseShellExecute = true });
+        }
+    }
+
+    private static string ProductVersion() =>
+        (Assembly.GetEntryAssembly() ?? Assembly.GetExecutingAssembly())
+            .GetName().Version?.ToString(3) ?? "0.0.0";
 
     private void OpenGitHub_OnClick(object sender, RoutedEventArgs e)
     {
@@ -2248,6 +2500,7 @@ public partial class MainWindow : Window
             return;
         }
 
+        _activeUpdateCancellation?.Cancel();
         DisposeServices();
     }
 
@@ -2289,6 +2542,7 @@ public partial class MainWindow : Window
         _captureShortcuts.Dispose();
         _recordingControl?.Close();
         _recordingService?.Dispose();
+        _gifRecordingSession?.Dispose();
         _suggestionWindow.Close();
         _quickAccentWindow.Close();
         if (_trayIcon is not null)
