@@ -304,21 +304,23 @@ internal sealed class PortableUpdateService
                 asset.DownloadUrl, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
             response.EnsureSuccessStatusCode();
             var total = response.Content.Headers.ContentLength ?? (asset.Size > 0 ? asset.Size : null);
-            await using var source = await response.Content.ReadAsStreamAsync(cancellationToken);
-            await using var output = new FileStream(
-                partial, FileMode.CreateNew, FileAccess.Write, FileShare.None, 81920,
-                FileOptions.Asynchronous | FileOptions.SequentialScan);
-            var buffer = new byte[81920];
             long received = 0;
-            while (true)
+            await using (var source = await response.Content.ReadAsStreamAsync(cancellationToken))
+            await using (var output = new FileStream(
+                             partial, FileMode.CreateNew, FileAccess.Write, FileShare.None, 81920,
+                             FileOptions.Asynchronous | FileOptions.SequentialScan))
             {
-                var read = await source.ReadAsync(buffer, cancellationToken);
-                if (read == 0) break;
-                await output.WriteAsync(buffer.AsMemory(0, read), cancellationToken);
-                received += read;
-                progress?.Report(new UpdateProgress("Baixando atualização", received, total));
+                var buffer = new byte[81920];
+                while (true)
+                {
+                    var read = await source.ReadAsync(buffer, cancellationToken);
+                    if (read == 0) break;
+                    await output.WriteAsync(buffer.AsMemory(0, read), cancellationToken);
+                    received += read;
+                    progress?.Report(new UpdateProgress("Baixando atualização", received, total));
+                }
+                await output.FlushAsync(cancellationToken);
             }
-            await output.FlushAsync(cancellationToken);
             if (asset.Size > 0 && received != asset.Size)
             {
                 throw new EndOfStreamException(
