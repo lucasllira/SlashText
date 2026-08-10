@@ -19,27 +19,33 @@ public static class ThemeService
                    theme.Equals("System", StringComparison.OrdinalIgnoreCase) && IsSystemDark();
         IsDark = dark;
 
-        Set("CanvasBrush", dark ? "#071018" : "#EEF2F4");
-        Set("SurfaceBrush", dark ? "#0C161F" : "#FCFDFC");
-        Set("ElevatedBrush", dark ? "#111E28" : "#F4F7F8");
-        Set("PanelBrush", dark ? "#0F1A23" : "#F8FAFA");
-        Set("ChromeBrush", dark ? "#13212B" : "#EDF2F4");
-        Set("InputBrush", dark ? "#09131B" : "#FFFFFF");
-        Set("InkBrush", dark ? "#F3F6F8" : "#15212B");
-        Set("MutedBrush", dark ? "#9AABB7" : "#65737E");
-        Set("DividerBrush", dark ? "#243642" : "#D5DEE3");
-        Set("AccentBrush", dark ? "#26C6D8" : "#079FB2");
+        // SlashDesk / Atalhos / V2: semantic tokens measured from the approved handoff.
+        Set("CanvasBrush", dark ? "#10191E" : "#F8FAFB");
+        Set("SurfaceBrush", dark ? "#152127" : "#FFFFFF");
+        Set("ElevatedBrush", dark ? "#111C21" : "#F4F7F8");
+        Set("PanelBrush", dark ? "#111C21" : "#F4F7F8");
+        Set("ChromeBrush", dark ? "#10191E" : "#F8FAFB");
+        Set("InputBrush", dark ? "#111C21" : "#FFFFFF");
+        Set("InkBrush", dark ? "#EDF6F8" : "#14232B");
+        Set("MutedBrush", dark ? "#9BABB2" : "#64747C");
+        Set("TertiaryBrush", dark ? "#708087" : "#8A989F");
+        Set("DividerBrush", dark ? "#293940" : "#D7E0E4");
+        Set("BorderStrongBrush", dark ? "#3A4B52" : "#C4D1D6");
+        Set("AccentBrush", dark ? "#30C8DF" : "#089BB2");
+        Set("AccentStrongBrush", dark ? "#72D9E8" : "#087F95");
+        Set("AccentBorderBrush", dark ? "#1D6070" : "#9BDBE4");
         Set("CodeBrush", dark ? "#060A0E" : "#151821");
-        Set("HoverBrush", dark ? "#172630" : "#E8EFF1");
-        Set("SelectedBrush", dark ? "#113944" : "#DDF5F8");
-        Set("ControlBrush", dark ? "#15242E" : "#EDF2F4");
-        Set("ControlHoverBrush", dark ? "#1E313C" : "#E1E9EC");
-        Set("ControlPressedBrush", dark ? "#29404D" : "#D5E0E5");
-        Set("AccentSubtleBrush", dark ? "#10333D" : "#E0F6F8");
-        Set("FocusBrush", dark ? "#6628C7D9" : "#50079FB2");
-        Set("DangerBrush", dark ? "#FF7D89" : "#C63C4A");
+        Set("HoverBrush", dark ? "#1B2B32" : "#EDF4F6");
+        Set("SelectedBrush", dark ? "#0C343D" : "#E7F8FB");
+        Set("ControlBrush", dark ? "#111C21" : "#F4F7F8");
+        Set("ControlHoverBrush", dark ? "#1B2B32" : "#EDF4F6");
+        Set("ControlPressedBrush", dark ? "#293940" : "#D7E0E4");
+        Set("AccentSubtleBrush", dark ? "#0C343D" : "#E7F8FB");
+        Set("FocusBrush", dark ? "#8030C8DF" : "#70089BB2");
+        Set("DangerBrush", dark ? "#FF7F8D" : "#C84E5B");
         Set("DangerSubtleBrush", dark ? "#3A1D23" : "#FCE8EA");
-        Set("SuccessBrush", dark ? "#4FD7A5" : "#188A62");
+        Set("SuccessBrush", dark ? "#42D894" : "#19A66A");
+        Set("WarningBrush", dark ? "#F0AD4F" : "#D89024");
 
         foreach (Window window in System.Windows.Application.Current.Windows)
         {

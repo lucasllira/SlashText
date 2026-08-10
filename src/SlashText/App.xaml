@@ -9,33 +9,38 @@
                 <ResourceDictionary Source="Styles/Components.xaml"/>
             </ResourceDictionary.MergedDictionaries>
 
-            <Color x:Key="CanvasColor">#F3F5F7</Color>
+            <Color x:Key="CanvasColor">#F8FAFB</Color>
         <Color x:Key="SurfaceColor">#FFFFFFFF</Color>
-        <Color x:Key="InkColor">#17212B</Color>
-        <Color x:Key="MutedColor">#64717E</Color>
-        <Color x:Key="AccentColor">#0AA9BB</Color>
+        <Color x:Key="InkColor">#14232B</Color>
+        <Color x:Key="MutedColor">#64747C</Color>
+        <Color x:Key="AccentColor">#089BB2</Color>
 
         <SolidColorBrush x:Key="CanvasBrush" Color="{StaticResource CanvasColor}"/>
         <SolidColorBrush x:Key="SurfaceBrush" Color="{StaticResource SurfaceColor}"/>
         <SolidColorBrush x:Key="InkBrush" Color="{StaticResource InkColor}"/>
         <SolidColorBrush x:Key="MutedBrush" Color="{StaticResource MutedColor}"/>
+        <SolidColorBrush x:Key="TertiaryBrush" Color="#8A989F"/>
         <SolidColorBrush x:Key="AccentBrush" Color="{StaticResource AccentColor}"/>
-        <SolidColorBrush x:Key="ElevatedBrush" Color="#F8FAFB"/>
-        <SolidColorBrush x:Key="PanelBrush" Color="#FBFCFD"/>
-        <SolidColorBrush x:Key="ChromeBrush" Color="#F1F5F7"/>
+        <SolidColorBrush x:Key="AccentStrongBrush" Color="#087F95"/>
+        <SolidColorBrush x:Key="AccentBorderBrush" Color="#9BDBE4"/>
+        <SolidColorBrush x:Key="ElevatedBrush" Color="#F4F7F8"/>
+        <SolidColorBrush x:Key="PanelBrush" Color="#F4F7F8"/>
+        <SolidColorBrush x:Key="ChromeBrush" Color="#F8FAFB"/>
         <SolidColorBrush x:Key="InputBrush" Color="#FFFFFFFF"/>
-        <SolidColorBrush x:Key="DividerBrush" Color="#DCE3E8"/>
+        <SolidColorBrush x:Key="DividerBrush" Color="#D7E0E4"/>
+        <SolidColorBrush x:Key="BorderStrongBrush" Color="#C4D1D6"/>
         <SolidColorBrush x:Key="CodeBrush" Color="#151821"/>
-        <SolidColorBrush x:Key="HoverBrush" Color="#EEF0F6"/>
-        <SolidColorBrush x:Key="SelectedBrush" Color="#DDF6F8"/>
-        <SolidColorBrush x:Key="ControlBrush" Color="#F2F5F7"/>
-        <SolidColorBrush x:Key="ControlHoverBrush" Color="#E4EAEE"/>
-        <SolidColorBrush x:Key="ControlPressedBrush" Color="#D8E1E6"/>
-        <SolidColorBrush x:Key="AccentSubtleBrush" Color="#E3F7F9"/>
-        <SolidColorBrush x:Key="FocusBrush" Color="#50009EB3"/>
-        <SolidColorBrush x:Key="DangerBrush" Color="#C63C4A"/>
+        <SolidColorBrush x:Key="HoverBrush" Color="#EDF4F6"/>
+        <SolidColorBrush x:Key="SelectedBrush" Color="#E7F8FB"/>
+        <SolidColorBrush x:Key="ControlBrush" Color="#F4F7F8"/>
+        <SolidColorBrush x:Key="ControlHoverBrush" Color="#EDF4F6"/>
+        <SolidColorBrush x:Key="ControlPressedBrush" Color="#D7E0E4"/>
+        <SolidColorBrush x:Key="AccentSubtleBrush" Color="#E7F8FB"/>
+        <SolidColorBrush x:Key="FocusBrush" Color="#70089BB2"/>
+        <SolidColorBrush x:Key="DangerBrush" Color="#C84E5B"/>
         <SolidColorBrush x:Key="DangerSubtleBrush" Color="#FCE8EA"/>
-        <SolidColorBrush x:Key="SuccessBrush" Color="#188A62"/>
+        <SolidColorBrush x:Key="SuccessBrush" Color="#19A66A"/>
+        <SolidColorBrush x:Key="WarningBrush" Color="#D89024"/>
 
         <Style TargetType="Button">
             <Setter Property="FontFamily" Value="Segoe UI Variable Text, Segoe UI"/>

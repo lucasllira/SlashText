@@ -99,15 +99,52 @@ foreach ($resource in @(
 }
 
 foreach ($shellElement in @(
-    '<RowDefinition Height="60"/>',
-    '<RowDefinition Height="46"/>',
+    '<RowDefinition Height="34"/>',
+    '<RowDefinition Height="66"/>',
+    '<RowDefinition Height="52"/>',
     'Style="{StaticResource AppShellHeader}"',
     'Style="{StaticResource AppNavigationBar}"',
-    'Produtividade local para Windows',
+    'Crie, organize e edite seus textos prontos.',
     'Style="{StaticResource AppNavigationButton}"'
 )) {
     if (-not $xaml.Contains($shellElement)) {
         throw "Shell visual novo ausente: $shellElement"
+    }
+}
+
+$namedControls = [regex]::Matches($xaml, 'x:Name="([A-Za-z_][A-Za-z0-9_]*)"') |
+    ForEach-Object { $_.Groups[1].Value } |
+    Sort-Object -Unique
+if ($namedControls.Count -lt 129) {
+    throw "Inventário de controles regrediu: $($namedControls.Count), mínimo 129"
+}
+if ($handlers.Count -lt 56) {
+    throw "Inventário de handlers regrediu: $($handlers.Count), mínimo 56"
+}
+
+foreach ($shortcutStructure in @(
+    'x:Name="SearchBox"',
+    'x:Name="CategoriesPanel"',
+    'x:Name="MostUsedPanel"',
+    'x:Name="SnippetListPanel"',
+    'x:Name="SnippetCountText"',
+    'x:Name="ShortcutEditorPanel"',
+    'x:Name="ShortcutVariablesPanel"'
+)) {
+    if (-not $xaml.Contains($shortcutStructure)) {
+        throw "Estrutura independente de Atalhos ausente: $shortcutStructure"
+    }
+}
+
+foreach ($shortcutBehavior in @(
+    'item.Content.Contains(query',
+    '_selectedCategory',
+    '_showMostUsed',
+    'DisplayAll_OnClick',
+    'DisplayMostUsed_OnClick'
+)) {
+    if (-not $code.Contains($shortcutBehavior)) {
+        throw "Comportamento do piloto de Atalhos ausente: $shortcutBehavior"
     }
 }
 
@@ -150,7 +187,7 @@ foreach ($component in @(
 
 foreach ($referenceStyle in @(
     'Style="{StaticResource WorkspaceSidebar}"',
-    'Style="{StaticResource PageHeading}"',
+    'Style="{StaticResource SidebarSectionTitle}"',
     'Style="{StaticResource FieldLabel}"',
     'Style="{StaticResource SubtlePanel}"'
 )) {

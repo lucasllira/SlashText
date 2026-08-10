@@ -43,6 +43,8 @@ public partial class MainWindow : Window
     private Forms.NotifyIcon? _trayIcon;
     private AppSettings _settings = new();
     private Snippet? _selected;
+    private string? _selectedCategory;
+    private bool _showMostUsed;
     private bool _exitRequested;
     private bool _servicesDisposed;
     private bool _initialized;
@@ -230,6 +232,7 @@ public partial class MainWindow : Window
         }
 
         MonitorStatusText.Text = "Monitoramento ativo";
+        ShellStatusText.Text = "Monitoramento ativo";
     }
 
     private void QuickAccentService_OnChanged(object? sender, QuickAccentChangedEventArgs e)
@@ -326,41 +329,110 @@ public partial class MainWindow : Window
 
     private void RefreshNavigation()
     {
-        if (CategoriesPanel is null)
+        if (CategoriesPanel is null || SnippetListPanel is null)
         {
             return;
         }
 
         var query = SearchBox.Text.Trim();
-        var filtered = string.IsNullOrWhiteSpace(query)
-            ? _snippets
-            : _snippets.Where(item =>
+        IEnumerable<Snippet> filtered = _snippets;
+        if (!string.IsNullOrWhiteSpace(query))
+        {
+            filtered = filtered.Where(item =>
                 item.Name.Contains(query, StringComparison.CurrentCultureIgnoreCase) ||
                 item.Trigger.Contains(query, StringComparison.OrdinalIgnoreCase) ||
-                item.Category.Contains(query, StringComparison.CurrentCultureIgnoreCase));
-
-        CategoriesPanel.Children.Clear();
-        foreach (var group in filtered
-                     .GroupBy(item => item.Category)
-                     .OrderBy(item => item.Key, StringComparer.CurrentCultureIgnoreCase))
-        {
-            var list = new StackPanel();
-            foreach (var snippet in group.OrderBy(item => item.Trigger))
-            {
-                list.Children.Add(CreateSnippetButton(snippet));
-            }
-
-            CategoriesPanel.Children.Add(new Expander
-            {
-                Header = $"{group.Key}  ·  {group.Count()}",
-                IsExpanded = true,
-                Margin = new Thickness(0, 0, 0, 8),
-                FontWeight = FontWeights.SemiBold,
-                Content = list
-            });
+                item.Category.Contains(query, StringComparison.CurrentCultureIgnoreCase) ||
+                item.Content.Contains(query, StringComparison.CurrentCultureIgnoreCase));
         }
 
+        if (!string.IsNullOrWhiteSpace(_selectedCategory))
+        {
+            filtered = filtered.Where(item =>
+                item.Category.Equals(_selectedCategory, StringComparison.CurrentCultureIgnoreCase));
+        }
+
+        if (_showMostUsed)
+        {
+            filtered = filtered
+                .Select(item => new { Snippet = item, Usage = _usageService.For(item.Id)?.Count ?? 0 })
+                .Where(item => item.Usage > 0)
+                .OrderByDescending(item => item.Usage)
+                .ThenBy(item => item.Snippet.Trigger, StringComparer.CurrentCultureIgnoreCase)
+                .Select(item => item.Snippet);
+        }
+        else
+        {
+            filtered = filtered.OrderBy(item => item.Trigger, StringComparer.CurrentCultureIgnoreCase);
+        }
+
+        var visible = filtered.ToList();
+
+        CategoriesPanel.Children.Clear();
+        CategoriesPanel.Children.Add(CreateCategoryButton(null, "Todos", _snippets.Count));
+        foreach (var group in _snippets
+                     .GroupBy(item => string.IsNullOrWhiteSpace(item.Category) ? "Geral" : item.Category)
+                     .OrderBy(item => item.Key, StringComparer.CurrentCultureIgnoreCase))
+        {
+            CategoriesPanel.Children.Add(CreateCategoryButton(group.Key, group.Key, group.Count()));
+        }
+
+        SnippetListPanel.Children.Clear();
+        if (visible.Count == 0)
+        {
+            SnippetListPanel.Children.Add(new TextBlock
+            {
+                Text = "Nenhum atalho corresponde aos filtros.",
+                Margin = new Thickness(10, 14, 10, 0),
+                TextWrapping = TextWrapping.Wrap,
+                Foreground = (Brush)FindResource("MutedBrush"),
+                FontSize = 12
+            });
+        }
+        else
+        {
+            foreach (var snippet in visible)
+            {
+                SnippetListPanel.Children.Add(CreateSnippetButton(snippet));
+            }
+        }
+
+        SnippetCountText.Text = $"{visible.Count}/{_snippets.Count}";
+        ShellCollectionStatusText.Text = $"{_snippets.Count} atalhos · {CategoriesPanel.Children.Count - 1} categorias";
         RefreshMostUsed();
+    }
+
+    private Button CreateCategoryButton(string? category, string label, int count)
+    {
+        var selected = string.Equals(category, _selectedCategory, StringComparison.CurrentCultureIgnoreCase);
+        var content = new Grid();
+        content.Children.Add(new TextBlock
+        {
+            Text = label,
+            FontWeight = selected ? FontWeights.SemiBold : FontWeights.Normal,
+            TextTrimming = TextTrimming.CharacterEllipsis
+        });
+        content.Children.Add(new TextBlock
+        {
+            Text = count.ToString(),
+            HorizontalAlignment = HorizontalAlignment.Right,
+            Foreground = (Brush)FindResource("MutedBrush")
+        });
+
+        var button = new Button
+        {
+            Style = (Style)FindResource("SidebarItemButton"),
+            Tag = category,
+            Background = selected ? (Brush)FindResource("SelectedBrush") : Brushes.Transparent,
+            BorderBrush = selected ? (Brush)FindResource("AccentBorderBrush") : Brushes.Transparent,
+            Foreground = selected ? (Brush)FindResource("AccentStrongBrush") : (Brush)FindResource("InkBrush"),
+            Content = content
+        };
+        button.Click += (_, _) =>
+        {
+            _selectedCategory = category;
+            RefreshNavigation();
+        };
+        return button;
     }
 
     private Button CreateSnippetButton(Snippet snippet)
@@ -368,7 +440,8 @@ public partial class MainWindow : Window
         var selected = ReferenceEquals(snippet, _selected);
         var button = new Button
         {
-            HorizontalContentAlignment = HorizontalAlignment.Left,
+            Style = (Style)FindResource("SidebarItemButton"),
+            HorizontalContentAlignment = HorizontalAlignment.Stretch,
             Background = selected
                 ? (Brush)FindResource("SelectedBrush")
                 : Brushes.Transparent,
@@ -376,8 +449,8 @@ public partial class MainWindow : Window
                 ? (Brush)FindResource("AccentBrush")
                 : Brushes.Transparent,
             BorderThickness = new Thickness(1),
-            Padding = new Thickness(10, 8, 10, 8),
-            Margin = new Thickness(0, 3, 0, 0),
+            Padding = new Thickness(10, 7, 10, 7),
+            Margin = new Thickness(0, 2, 0, 0),
             Tag = snippet,
             Content = new StackPanel
             {
@@ -394,7 +467,7 @@ public partial class MainWindow : Window
                     },
                     new TextBlock
                     {
-                        Text = snippet.Name,
+                        Text = $"{snippet.Name} · {snippet.Category}",
                         TextTrimming = TextTrimming.CharacterEllipsis,
                         FontSize = 11,
                         Margin = new Thickness(0, 2, 0, 0),
@@ -409,32 +482,28 @@ public partial class MainWindow : Window
 
     private void RefreshMostUsed()
     {
-        MostUsedPanel.Children.Clear();
-        var ranked = _snippets
-            .Select(item => new { Snippet = item, Usage = _usageService.For(item.Id) })
-            .Where(item => item.Usage?.Count > 0)
-            .OrderByDescending(item => item.Usage!.Count)
-            .Take(3)
-            .ToList();
+        ApplyDisplayFilterState(DisplayAllButton, !_showMostUsed);
+        ApplyDisplayFilterState(DisplayMostUsedButton, _showMostUsed);
+    }
 
-        if (ranked.Count == 0)
-        {
-            MostUsedPanel.Children.Add(new TextBlock
-            {
-                Text = "Os atalhos usados aparecerão aqui.",
-                TextWrapping = TextWrapping.Wrap,
-                Foreground = (Brush)FindResource("MutedBrush"),
-                FontSize = 12
-            });
-            return;
-        }
+    private void DisplayAll_OnClick(object sender, RoutedEventArgs e)
+    {
+        _showMostUsed = false;
+        RefreshNavigation();
+    }
 
-        foreach (var item in ranked)
-        {
-            var button = CreateSnippetButton(item.Snippet);
-            button.Content = $"{item.Snippet.Trigger}  ·  {item.Usage!.Count}x";
-            MostUsedPanel.Children.Add(button);
-        }
+    private void DisplayMostUsed_OnClick(object sender, RoutedEventArgs e)
+    {
+        _showMostUsed = true;
+        RefreshNavigation();
+    }
+
+    private void ApplyDisplayFilterState(Button button, bool selected)
+    {
+        button.Background = selected ? (Brush)FindResource("SelectedBrush") : (Brush)FindResource("SurfaceBrush");
+        button.BorderBrush = selected ? (Brush)FindResource("AccentBorderBrush") : (Brush)FindResource("DividerBrush");
+        button.Foreground = selected ? (Brush)FindResource("AccentStrongBrush") : (Brush)FindResource("InkBrush");
+        button.FontWeight = selected ? FontWeights.SemiBold : FontWeights.Normal;
     }
 
     private void SelectSnippet(Snippet snippet)
@@ -812,8 +881,22 @@ public partial class MainWindow : Window
         }
     }
 
-    private void ContentEditor_OnTextChanged(object sender, TextChangedEventArgs e) =>
+    private void ContentEditor_OnTextChanged(object sender, TextChangedEventArgs e)
+    {
+        if (StatusText is not null)
+        {
+            StatusText.Text = "Alterações não salvas";
+        }
         UpdatePreview();
+    }
+
+    private void EditorField_OnTextChanged(object sender, TextChangedEventArgs e)
+    {
+        if (StatusText is not null)
+        {
+            StatusText.Text = "Alterações não salvas";
+        }
+    }
 
     private void UpdatePreview()
     {
@@ -900,6 +983,24 @@ public partial class MainWindow : Window
                 : (Brush)FindResource("MutedBrush");
         }
 
+        (ShellPageTitle.Text, ShellPageDescription.Text) = ReferenceEquals(view, ShortcutsView)
+            ? ("Atalhos", "Crie, organize e edite seus textos prontos.")
+            : ReferenceEquals(view, QuickAccentView)
+                ? ("Acento Rápido", "Digite caracteres especiais sem interromper seu fluxo.")
+                : ReferenceEquals(view, CaptureView)
+                    ? ("Captura", "Capture, edite e grave sua tela localmente.")
+                    : ReferenceEquals(view, StatisticsView)
+                        ? ("Estatísticas", "Acompanhe o uso real dos recursos do SlashDesk.")
+                        : ReferenceEquals(view, SettingsView)
+                            ? ("Configurações", "Personalize o comportamento do SlashDesk.")
+                            : ("Sobre", "Versão, privacidade, suporte e atualizações.");
+        ShortcutHeaderActions.Visibility = ReferenceEquals(view, ShortcutsView)
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+        ShellCollectionStatusText.Visibility = ReferenceEquals(view, ShortcutsView)
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+
         if (ReferenceEquals(view, QuickAccentView))
         {
             UpdateQuickAccentPreviewSelection();
@@ -910,6 +1011,34 @@ public partial class MainWindow : Window
             _quickAccentPreviewTimer.Stop();
         }
     }
+
+    private void TitleBar_OnMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ClickCount == 2)
+        {
+            ToggleMaximizedState();
+            return;
+        }
+
+        if (e.ButtonState == MouseButtonState.Pressed)
+        {
+            DragMove();
+        }
+    }
+
+    private void MinimizeWindow_OnClick(object sender, RoutedEventArgs e) =>
+        WindowState = WindowState.Minimized;
+
+    private void MaximizeWindow_OnClick(object sender, RoutedEventArgs e) =>
+        ToggleMaximizedState();
+
+    private void CloseWindow_OnClick(object sender, RoutedEventArgs e) =>
+        Close();
+
+    private void ToggleMaximizedState() =>
+        WindowState = WindowState == WindowState.Maximized
+            ? WindowState.Normal
+            : WindowState.Maximized;
 
     private void RefreshStatistics()
     {
@@ -2497,6 +2626,7 @@ public partial class MainWindow : Window
         var compact = width < 1080;
         if (compact)
         {
+            WorkspaceHost.Margin = new Thickness(20, 12, 20, 12);
             ShortcutSecondaryRow.Height = new GridLength(250);
             ShortcutLeftColumn.Width = new GridLength(250);
             ShortcutLeftDividerColumn.Width = GridLength.Auto;
@@ -2520,11 +2650,13 @@ public partial class MainWindow : Window
         }
         else
         {
+            var narrow = width < 1180;
+            WorkspaceHost.Margin = new Thickness(narrow ? 20 : 32, 20, narrow ? 20 : 32, 20);
             ShortcutSecondaryRow.Height = new GridLength(0);
-            ShortcutLeftColumn.Width = new GridLength(260);
-            ShortcutLeftDividerColumn.Width = new GridLength(1);
-            ShortcutRightDividerColumn.Width = new GridLength(1);
-            ShortcutRightColumn.Width = new GridLength(260);
+            ShortcutLeftColumn.Width = new GridLength(narrow ? 260 : 280);
+            ShortcutLeftDividerColumn.Width = new GridLength(narrow ? 12 : 16);
+            ShortcutRightDividerColumn.Width = new GridLength(narrow ? 12 : 16);
+            ShortcutRightColumn.Width = new GridLength(narrow ? 280 : 384);
 
             Grid.SetRow(ShortcutSidebarPanel, 0);
             Grid.SetColumn(ShortcutSidebarPanel, 0);
