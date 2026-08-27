@@ -15,7 +15,7 @@ Pacote de handoff independente do Figma para implementar o piloto visual do Slas
 
 ## Como revisar
 
-Abra `prototype.html` em um navegador. Use o botão de tema no cabeçalho para alternar entre claro e escuro. A busca, as categorias, o filtro de exibição e a seleção de atalhos são independentes e funcionais.
+Abra `prototype.html` em um navegador. Use o botão de tema no cabeçalho para alternar entre claro e escuro. A busca, as categorias, o filtro de exibição e a seleção de atalhos são independentes e funcionais. Arraste os divisores verticais para redimensionar a lista, o editor e as variáveis; use duplo clique para restaurar a largura padrão.
 
 Os dados visíveis são demonstrativos. A implementação WPF deve usar as coleções, bindings, handlers, comandos, serviços e persistência já existentes no aplicativo.
 
@@ -27,3 +27,4 @@ Os dados visíveis são demonstrativos. A implementação WPF deve usar as cole�
 4. Interações do protótipo como descrição dos estados.
 
 O pacote não autoriza merge, tag ou Release. O ponto de parada é um PR em rascunho com build portátil de teste.
+

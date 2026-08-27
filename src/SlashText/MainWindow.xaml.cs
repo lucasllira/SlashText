@@ -5,6 +5,7 @@ using System.IO;
 using System.Reflection;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
@@ -58,6 +59,14 @@ public partial class MainWindow : Window
     private string? _lastReleaseUrl;
     private int _updateOfferActive;
     private CancellationTokenSource? _activeUpdateCancellation;
+    private int _shortcutResponsiveBand = -1;
+
+    private const double ShortcutLeftMinimum = 220;
+    private const double ShortcutLeftMaximum = 460;
+    private const double ShortcutRightMinimum = 240;
+    private const double ShortcutRightMaximum = 480;
+    private const double ShortcutSplitterStep = 16;
+    private const double ShortcutDividerSpace = 32;
 
     public MainWindow()
     {
@@ -425,7 +434,8 @@ public partial class MainWindow : Window
             Background = selected ? (Brush)FindResource("SelectedBrush") : Brushes.Transparent,
             BorderBrush = selected ? (Brush)FindResource("AccentBorderBrush") : Brushes.Transparent,
             Foreground = selected ? (Brush)FindResource("AccentStrongBrush") : (Brush)FindResource("InkBrush"),
-            Content = content
+            Content = content,
+            ToolTip = $"{label} · {count} atalhos"
         };
         button.Click += (_, _) =>
         {
@@ -460,6 +470,8 @@ public partial class MainWindow : Window
                     {
                         Text = snippet.Trigger,
                         TextTrimming = TextTrimming.CharacterEllipsis,
+                        ToolTip = snippet.Trigger,
+                        FontFamily = (FontFamily)FindResource("FontFamily.Mono"),
                         FontWeight = FontWeights.SemiBold,
                         Foreground = selected
                             ? (Brush)FindResource("AccentBrush")
@@ -469,12 +481,14 @@ public partial class MainWindow : Window
                     {
                         Text = $"{snippet.Name} · {snippet.Category}",
                         TextTrimming = TextTrimming.CharacterEllipsis,
+                        ToolTip = $"{snippet.Name} · {snippet.Category}",
                         FontSize = 11,
                         Margin = new Thickness(0, 2, 0, 0),
                         Foreground = (Brush)FindResource("MutedBrush")
                     }
                 }
-            }
+            },
+            ToolTip = $"{snippet.Name}\n{snippet.Trigger}\nCategoria: {snippet.Category}"
         };
         button.Click += (_, _) => SelectSnippet((Snippet)button.Tag);
         return button;
@@ -2623,56 +2637,139 @@ public partial class MainWindow : Window
             return;
         }
 
-        var compact = width < 1080;
-        if (compact)
+        var band = width <= 1050 ? 0 : width < 1180 ? 1 : 2;
+        var bandChanged = band != _shortcutResponsiveBand;
+        _shortcutResponsiveBand = band;
+
+        var horizontalMargin = band < 2 ? 20d : 32d;
+        WorkspaceHost.Margin = new Thickness(horizontalMargin, band == 0 ? 12 : 20,
+            horizontalMargin, band == 0 ? 12 : 20);
+        ShortcutSecondaryRow.Height = new GridLength(0);
+        ShortcutLeftDividerColumn.Width = new GridLength(16);
+        ShortcutRightDividerColumn.Width = new GridLength(16);
+
+        Grid.SetRow(ShortcutSidebarPanel, 0);
+        Grid.SetColumn(ShortcutSidebarPanel, 0);
+        Grid.SetColumnSpan(ShortcutSidebarPanel, 1);
+        Grid.SetRow(ShortcutEditorPanel, 0);
+        Grid.SetColumn(ShortcutEditorPanel, 2);
+        Grid.SetColumnSpan(ShortcutEditorPanel, 1);
+        Grid.SetRow(ShortcutVariablesPanel, 0);
+        Grid.SetColumn(ShortcutVariablesPanel, 4);
+        Grid.SetColumnSpan(ShortcutVariablesPanel, 1);
+
+        ShortcutLeftDivider.Visibility = Visibility.Visible;
+        ShortcutRightDivider.Visibility = Visibility.Visible;
+        NormalizeShortcutColumns(width, bandChanged);
+    }
+
+    private void NormalizeShortcutColumns(double windowWidth, bool restoreDefaults = false)
+    {
+        var band = _shortcutResponsiveBand < 0
+            ? windowWidth <= 1050 ? 0 : windowWidth < 1180 ? 1 : 2
+            : _shortcutResponsiveBand;
+        var margin = band < 2 ? 20d : 32d;
+        var editorMinimum = band == 0 ? 420d : band == 1 ? 440d : 520d;
+        var available = Math.Max(0, windowWidth - (margin * 2));
+        var sideSpace = Math.Max(
+            ShortcutLeftMinimum + ShortcutRightMinimum,
+            available - ShortcutDividerSpace - editorMinimum);
+
+        ShortcutEditorColumn.MinWidth = editorMinimum;
+        ShortcutLeftColumn.MinWidth = ShortcutLeftMinimum;
+        ShortcutRightColumn.MinWidth = ShortcutRightMinimum;
+        ShortcutLeftColumn.MaxWidth = Math.Max(
+            ShortcutLeftMinimum,
+            Math.Min(ShortcutLeftMaximum, sideSpace - ShortcutRightMinimum));
+        ShortcutRightColumn.MaxWidth = Math.Max(
+            ShortcutRightMinimum,
+            Math.Min(ShortcutRightMaximum, sideSpace - ShortcutLeftMinimum));
+
+        var defaultLeft = band == 0 ? 240d : band == 1 ? 260d : 280d;
+        var defaultRight = band == 0 ? 240d : band == 1 ? 280d : 384d;
+        var left = restoreDefaults ? defaultLeft : ShortcutLeftColumn.ActualWidth;
+        var right = restoreDefaults ? defaultRight : ShortcutRightColumn.ActualWidth;
+        if (left <= 0) left = defaultLeft;
+        if (right <= 0) right = defaultRight;
+
+        left = Math.Clamp(left, ShortcutLeftMinimum, ShortcutLeftColumn.MaxWidth);
+        right = Math.Clamp(right, ShortcutRightMinimum, ShortcutRightColumn.MaxWidth);
+        var overflow = Math.Max(0, left + right - sideSpace);
+        if (overflow > 0)
         {
-            WorkspaceHost.Margin = new Thickness(20, 12, 20, 12);
-            ShortcutSecondaryRow.Height = new GridLength(250);
-            ShortcutLeftColumn.Width = new GridLength(250);
-            ShortcutLeftDividerColumn.Width = GridLength.Auto;
-            ShortcutRightDividerColumn.Width = GridLength.Auto;
-            ShortcutRightColumn.Width = new GridLength(250);
+            var rightReduction = Math.Min(overflow, right - ShortcutRightMinimum);
+            right -= rightReduction;
+            overflow -= rightReduction;
+            left -= Math.Min(overflow, left - ShortcutLeftMinimum);
+        }
 
-            Grid.SetRow(ShortcutEditorPanel, 0);
-            Grid.SetColumn(ShortcutEditorPanel, 0);
-            Grid.SetColumnSpan(ShortcutEditorPanel, 5);
+        ShortcutLeftColumn.Width = new GridLength(left);
+        ShortcutRightColumn.Width = new GridLength(right);
+        ShortcutLeftColumn.MaxWidth = Math.Max(
+            ShortcutLeftMinimum,
+            Math.Min(ShortcutLeftMaximum, sideSpace - right));
+        ShortcutRightColumn.MaxWidth = Math.Max(
+            ShortcutRightMinimum,
+            Math.Min(ShortcutRightMaximum, sideSpace - left));
+    }
 
-            Grid.SetRow(ShortcutSidebarPanel, 1);
-            Grid.SetColumn(ShortcutSidebarPanel, 0);
-            Grid.SetColumnSpan(ShortcutSidebarPanel, 2);
+    private void ShortcutSplitter_OnPreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Home)
+        {
+            RestoreShortcutSplitter((GridSplitter)sender);
+            e.Handled = true;
+            return;
+        }
+        if (e.Key is not (Key.Left or Key.Right))
+        {
+            return;
+        }
 
-            Grid.SetRow(ShortcutVariablesPanel, 1);
-            Grid.SetColumn(ShortcutVariablesPanel, 2);
-            Grid.SetColumnSpan(ShortcutVariablesPanel, 3);
-
-            ShortcutLeftDivider.Visibility = Visibility.Collapsed;
-            ShortcutRightDivider.Visibility = Visibility.Collapsed;
+        var direction = e.Key == Key.Right ? 1d : -1d;
+        if (ReferenceEquals(sender, ShortcutLeftDivider))
+        {
+            ShortcutLeftColumn.Width = new GridLength(
+                Math.Clamp(ShortcutLeftColumn.ActualWidth + (direction * ShortcutSplitterStep),
+                    ShortcutLeftMinimum, ShortcutLeftColumn.MaxWidth));
         }
         else
         {
-            var narrow = width < 1180;
-            WorkspaceHost.Margin = new Thickness(narrow ? 20 : 32, 20, narrow ? 20 : 32, 20);
-            ShortcutSecondaryRow.Height = new GridLength(0);
-            ShortcutLeftColumn.Width = new GridLength(narrow ? 260 : 280);
-            ShortcutLeftDividerColumn.Width = new GridLength(narrow ? 12 : 16);
-            ShortcutRightDividerColumn.Width = new GridLength(narrow ? 12 : 16);
-            ShortcutRightColumn.Width = new GridLength(narrow ? 280 : 384);
-
-            Grid.SetRow(ShortcutSidebarPanel, 0);
-            Grid.SetColumn(ShortcutSidebarPanel, 0);
-            Grid.SetColumnSpan(ShortcutSidebarPanel, 1);
-
-            Grid.SetRow(ShortcutEditorPanel, 0);
-            Grid.SetColumn(ShortcutEditorPanel, 2);
-            Grid.SetColumnSpan(ShortcutEditorPanel, 1);
-
-            Grid.SetRow(ShortcutVariablesPanel, 0);
-            Grid.SetColumn(ShortcutVariablesPanel, 4);
-            Grid.SetColumnSpan(ShortcutVariablesPanel, 1);
-
-            ShortcutLeftDivider.Visibility = Visibility.Visible;
-            ShortcutRightDivider.Visibility = Visibility.Visible;
+            ShortcutRightColumn.Width = new GridLength(
+                Math.Clamp(ShortcutRightColumn.ActualWidth - (direction * ShortcutSplitterStep),
+                    ShortcutRightMinimum, ShortcutRightColumn.MaxWidth));
         }
+        NormalizeShortcutColumns(ActualWidth);
+        e.Handled = true;
+    }
+
+    private void ShortcutSplitter_OnMouseDoubleClick(object sender, MouseButtonEventArgs e)
+    {
+        RestoreShortcutSplitter((GridSplitter)sender);
+        e.Handled = true;
+    }
+
+    private void RestoreShortcutSplitter(GridSplitter splitter)
+    {
+        var band = _shortcutResponsiveBand;
+        if (ReferenceEquals(splitter, ShortcutLeftDivider))
+        {
+            ShortcutLeftColumn.Width = new GridLength(band == 0 ? 240 : band == 1 ? 260 : 280);
+        }
+        else
+        {
+            ShortcutRightColumn.Width = new GridLength(band == 0 ? 240 : band == 1 ? 280 : 384);
+        }
+        NormalizeShortcutColumns(ActualWidth);
+    }
+
+    private static void ShortcutSplitter_OnDragStarted(object sender, DragStartedEventArgs e) =>
+        ((GridSplitter)sender).Tag = "Dragging";
+
+    private void ShortcutSplitter_OnDragCompleted(object sender, DragCompletedEventArgs e)
+    {
+        ((GridSplitter)sender).Tag = null;
+        NormalizeShortcutColumns(ActualWidth);
     }
 
     private void MainWindow_OnStateChanged(object? sender, EventArgs e)
@@ -2758,3 +2855,4 @@ public partial class MainWindow : Window
         }
     }
 }
+

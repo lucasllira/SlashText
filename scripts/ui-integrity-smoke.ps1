@@ -148,6 +148,29 @@ foreach ($shortcutBehavior in @(
     }
 }
 
+foreach ($splitterRequirement in @(
+    'Style="{StaticResource WorkspaceColumnSplitter}"',
+    'ResizeBehavior="PreviousAndNext"',
+    'Property="ShowsPreview" Value="False"',
+    'ShortcutSplitter_OnPreviewKeyDown',
+    'ShortcutSplitter_OnMouseDoubleClick',
+    'ShortcutSplitter_OnDragStarted',
+    'ShortcutSplitter_OnDragCompleted',
+    'ShortcutLeftMinimum = 220',
+    'ShortcutLeftMaximum = 460',
+    'ShortcutRightMinimum = 240',
+    'ShortcutRightMaximum = 480',
+    'ShortcutSplitterStep = 16',
+    'ShortcutEditorColumn.MinWidth = editorMinimum'
+)) {
+    if (-not ($xaml.Contains($splitterRequirement) -or
+              $code.Contains($splitterRequirement) -or
+              $resources.Contains($splitterRequirement) -or
+              $foundation.Contains($splitterRequirement))) {
+        throw "Divisor responsivo de Atalhos ausente: $splitterRequirement"
+    }
+}
+
 foreach ($dictionary in @(
     'Styles/Foundation.xaml',
     'Styles/Icons.xaml',
@@ -536,3 +559,4 @@ if (-not $quickAccent.Contains('_activationDown')) {
 }
 
 Write-Host "UI integrity smoke: OK ($($handlers.Count) handlers)"
+

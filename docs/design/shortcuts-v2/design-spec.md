@@ -39,7 +39,20 @@ Window
 └─ Row 28: StatusBar
 ```
 
-Em 980 × 680, reduza as margens laterais para 20 px, os gaps para 12 px e permita que a coluna direita use aproximadamente 280 px. Não esconda ações nem estruturas. Use rolagem vertical dentro de listas/painéis; não introduza corte horizontal oculto.
+Em 980 × 680, reduza as margens laterais para 20 px e permita que as laterais cheguem a aproximadamente 240 px, preservando pelo menos 420 px para o editor. Não esconda ações nem estruturas. Use rolagem vertical dentro de listas/painéis; não introduza corte horizontal oculto.
+
+### Colunas redimensionáveis
+
+- Inserir `GridSplitter` vertical entre lista/editor e editor/variáveis.
+- Área interativa do divisor: 8 px; linha central de 2 px, ampliada e realçada no hover, foco e arraste.
+- Coluna esquerda: padrão 280 px, mínimo 220 px e máximo 460 px.
+- Editor central: mínimo 520 px na referência; em larguras compactas pode chegar a 420 px sem perder toolbar, ações ou criar corte horizontal oculto.
+- Coluna direita: padrão 384 px, mínimo 240 px e máximo 480 px.
+- O limite máximo de cada lateral deve ser recalculado conforme a largura disponível e o mínimo do editor.
+- Duplo clique restaura a largura padrão do respectivo painel.
+- Teclas direcionais alteram 16 px quando o divisor está focado; `Home` restaura o padrão.
+- Persistir as larguras somente se houver integração segura com as configurações existentes; não criar formato paralelo nem quebrar `AppSettings`.
+- Ao reduzir a janela, limitar automaticamente os painéis laterais antes de permitir overflow.
 
 ## Tipografia
 
@@ -119,6 +132,17 @@ As quatro estruturas abaixo são independentes e devem permanecer simultaneament
 | Error | Danger em borda/rótulo; mensagem textual próxima ao campo |
 | Unsaved | Ponto + texto Warning no cabeçalho do editor |
 
+## Movimento
+
+- Duração padrão: 160–220 ms para hover, focus, pressed e seleção.
+- Entrada dos três painéis: 360 ms, com `Opacity` e deslocamento vertical máximo de 7 px.
+- Atualização da lista: 230 ms, com atraso progressivo máximo de 18 ms entre os primeiros itens.
+- Curva principal: equivalente a `cubic-bezier(.2, .8, .2, 1)`.
+- Evitar animações de largura, altura ou posicionamento que provoquem relayout perceptível.
+- No WPF, prefira `Opacity`, `TranslateTransform` e recursos de cor do tema.
+- Respeitar a configuração de redução de movimento do Windows; nesse estado, aplicar mudanças imediatamente.
+- Durante o arraste, o painel acompanha o ponteiro sem atraso. O realce do divisor usa 160–180 ms; a restauração por duplo clique usa 240 ms.
+
 ## Rolagem e responsividade
 
 - A lista de atalhos possui rolagem própria.
@@ -139,3 +163,4 @@ As quatro estruturas abaixo são independentes e devem permanecer simultaneament
 - Toolbar integrada ao editor.
 - Rodapé de ações alinhado e estável.
 - Nenhum texto cortado, sobreposição ou node equivalente “solto”.
+

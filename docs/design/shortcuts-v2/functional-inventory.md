@@ -24,6 +24,8 @@ Este arquivo é um checklist de preservação. Ele não substitui a inspeção d
 - Filtro “Mais utilizados”.
 - Lista completa, rolagem, total e estados vazios.
 - Seleção preservada após filtro quando aplicável.
+- Divisores redimensionáveis entre lista/editor e editor/variáveis, mantendo os limites mínimos de cada área.
+- Nome completo disponível em tooltip quando o item precisar ser truncado.
 
 ## Operações de snippet
 
@@ -68,3 +70,4 @@ Registrar em tabela:
 | Serviços tocados |  |  |  |
 
 Qualquer redução deve ser investigada antes de abrir o PR.
+
