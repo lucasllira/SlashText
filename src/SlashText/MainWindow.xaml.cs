@@ -2763,7 +2763,7 @@ public partial class MainWindow : Window
         NormalizeShortcutColumns(ActualWidth);
     }
 
-    private static void ShortcutSplitter_OnDragStarted(object sender, DragStartedEventArgs e) =>
+    private void ShortcutSplitter_OnDragStarted(object sender, DragStartedEventArgs e) =>
         ((GridSplitter)sender).Tag = "Dragging";
 
     private void ShortcutSplitter_OnDragCompleted(object sender, DragCompletedEventArgs e)
