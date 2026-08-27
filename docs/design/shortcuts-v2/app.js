@@ -167,4 +167,3 @@ document.getElementById("themeToggle").addEventListener("click", () => {
 renderList();
 renderEditor();
 restoreSavedWidths();
-

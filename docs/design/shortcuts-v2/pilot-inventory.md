@@ -74,4 +74,3 @@ Handler acrescentado ao inventário XAML: ciclo compartilhado dos divisores de c
 - seleção atualizando o editor: validada;
 - tema claro/escuro: validado;
 - divisores por teclado, passos de 16 px e restauração: validados.
-

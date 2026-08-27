@@ -27,4 +27,3 @@ Os dados visíveis são demonstrativos. A implementação WPF deve usar as cole�
 4. Interações do protótipo como descrição dos estados.
 
 O pacote não autoriza merge, tag ou Release. O ponto de parada é um PR em rascunho com build portátil de teste.
-

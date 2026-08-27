@@ -70,4 +70,3 @@ Registrar em tabela:
 | Serviços tocados |  |  |  |
 
 Qualquer redução deve ser investigada antes de abrir o PR.
-

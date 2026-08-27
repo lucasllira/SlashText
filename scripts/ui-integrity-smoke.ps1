@@ -559,4 +559,3 @@ if (-not $quickAccent.Contains('_activationDown')) {
 }
 
 Write-Host "UI integrity smoke: OK ($($handlers.Count) handlers)"
-

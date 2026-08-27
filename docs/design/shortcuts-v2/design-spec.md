@@ -163,4 +163,3 @@ As quatro estruturas abaixo são independentes e devem permanecer simultaneament
 - Toolbar integrada ao editor.
 - Rodapé de ações alinhado e estável.
 - Nenhum texto cortado, sobreposição ou node equivalente “solto”.
-
