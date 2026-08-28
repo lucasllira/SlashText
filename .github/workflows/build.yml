@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main]
+    branches: [main, agent/slashdesk-shortcuts-v2-splitters]
   workflow_dispatch:
 
 permissions:
