@@ -36,6 +36,8 @@ public partial class MainWindow : Window
     private readonly GlobalCaptureShortcutService _captureShortcuts = new();
     private readonly UpdateService _updateService = new();
     private readonly PortableUpdateService _portableUpdateService = new();
+    private readonly SingleFlightGate _expansionRequestGate = new();
+    private readonly SingleFlightGate _captureGate = new();
     private readonly JsonFileStore<AppSettings> _settingsStore = new(AppPaths.SettingsFile);
     private readonly ObservableCollection<Snippet> _snippets = [];
     private readonly SuggestionWindow _suggestionWindow = new();
@@ -80,6 +82,7 @@ public partial class MainWindow : Window
         Activated += MainWindow_OnActivated;
         _keyboardHook.ExpansionRequested += KeyboardHook_OnExpansionRequested;
         _keyboardHook.SuggestionsChanged += KeyboardHook_OnSuggestionsChanged;
+        _suggestionWindow.SnippetChosen += SuggestionWindow_OnSnippetChosen;
         _quickAccentService.Changed += QuickAccentService_OnChanged;
         _quickAccentService.CharacterInserted += QuickAccentService_OnCharacterInserted;
         _captureShortcuts.Triggered += CaptureShortcuts_OnTriggered;
@@ -284,9 +287,15 @@ public partial class MainWindow : Window
                 return;
             }
 
-            _suggestionWindow.UpdateSuggestions(e.Snippets, e.ScreenPosition);
+            _suggestionWindow.UpdateSuggestions(
+                e.Snippets,
+                e.ScreenPosition,
+                e.SelectedIndex);
         }));
     }
+
+    private void SuggestionWindow_OnSnippetChosen(Snippet snippet) =>
+        _keyboardHook.ConfirmSuggestion(snippet, SuggestionConfirmation.Click);
 
     private void KeyboardHook_OnExpansionRequested(
         object? sender,
@@ -294,8 +303,22 @@ public partial class MainWindow : Window
     {
         Dispatcher.BeginInvoke(new Action(async () =>
         {
+            using var expansionLease = _expansionRequestGate.TryEnter();
+            if (expansionLease is null)
+            {
+                SafeDiagnosticLog.Write("expansion.ignored_busy");
+                StatusText.Text = "Outra expansão ainda está em andamento";
+                return;
+            }
             try
             {
+                SafeDiagnosticLog.Write("expansion.started", new Dictionary<string, object?>
+                {
+                    ["targetHandleValid"] = e.TargetWindow != IntPtr.Zero,
+                    ["typedCharacterCount"] = e.TypedCharacterCount,
+                    ["confirmation"] = e.Confirmation.ToString()
+                });
+                _keyboardHook.ResetBuffer(BufferResetReason.ExpansionStarted);
                 _suggestionWindow.Hide();
                 IReadOnlyDictionary<string, string> values =
                     new Dictionary<string, string>();
@@ -306,6 +329,7 @@ public partial class MainWindow : Window
                     var form = VariableInputWindow.ShowForTarget(fields, e.TargetWindow);
                     if (form.DialogResult != true)
                     {
+                        _keyboardHook.ResetBuffer(BufferResetReason.SuggestionCancelled);
                         StatusText.Text = "Expansão cancelada";
                         return;
                     }
@@ -316,19 +340,38 @@ public partial class MainWindow : Window
                 var inserted = await _expansionService.ExpandAsync(
                     e.Snippet,
                     values,
-                    e.TargetWindow);
+                    e.TargetWindow,
+                    e.TypedCharacterCount,
+                    CancellationToken.None);
                 await _usageService.RecordAsync(e.Snippet, inserted);
                 RefreshStatistics();
                 StatusText.Text = $"{e.Snippet.Trigger} inserido";
+                SafeDiagnosticLog.Write("expansion.completed", new Dictionary<string, object?>
+                {
+                    ["insertedCharacterCount"] = inserted
+                });
+            }
+            catch (ExpansionBusyException)
+            {
+                StatusText.Text = "Outra expansão ainda está em andamento";
             }
             catch (Exception exception)
             {
+                SafeDiagnosticLog.Write("expansion.failed", new Dictionary<string, object?>
+                {
+                    ["exceptionType"] = exception.GetType().Name,
+                    ["reason"] = exception is OperationCanceledException ? "target_changed" : "operation_failed"
+                });
                 StatusText.Text = $"Falha ao inserir {e.Snippet.Trigger}";
                 MessageBox.Show(
                     exception.Message,
                     "Não foi possível inserir o texto",
                     MessageBoxButton.OK,
                     MessageBoxImage.Warning);
+            }
+            finally
+            {
+                _keyboardHook.ResetBuffer(BufferResetReason.ExpansionFinished);
             }
         }));
     }
@@ -528,7 +571,9 @@ public partial class MainWindow : Window
         CategoryBox.Text = snippet.Category;
         FormatBox.SelectedIndex = snippet.Format == SnippetFormat.Markdown ? 1 : 0;
         RichTextMarkdownConverter.Load(ContentEditor, snippet.Content, snippet.Format);
-        StatusText.Text = snippet.Enabled ? "Atalho ativo" : "Atalho pausado";
+        StatusText.Text = snippet.HasLegacyIncompatibleTrigger
+            ? "Atalho legado preservado, mas incompatível com o monitor atual; corrija o gatilho para reativá-lo"
+            : snippet.Enabled ? "Atalho ativo" : "Atalho pausado";
         RefreshNavigation();
         UpdatePreview();
     }
@@ -565,6 +610,17 @@ public partial class MainWindow : Window
             Enabled = previous?.Enabled ?? true,
             ConfirmKeys = previous?.ConfirmKeys.ToList() ?? ["Enter", "Tab", "Space"]
         };
+
+        if (!TriggerRule.TryValidate(candidate.Trigger, out var triggerError))
+        {
+            MessageBox.Show(
+                triggerError,
+                "Atalho incompatível",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+            TriggerBox.Focus();
+            return;
+        }
 
         var nextState = _snippets
             .Where(item => !ReferenceEquals(item, previous))
@@ -1845,6 +1901,13 @@ public partial class MainWindow : Window
 
     private async void CaptureScrolling_OnClick(object sender, RoutedEventArgs e)
     {
+        using var captureLease = _captureGate.TryEnter();
+        if (captureLease is null)
+        {
+            SafeDiagnosticLog.Write("capture.ignored_busy");
+            StatusText.Text = "Já existe uma captura em andamento";
+            return;
+        }
         var target = _captureService.WindowUnderCursorTarget();
         if (target is null)
         {
@@ -1886,8 +1949,23 @@ public partial class MainWindow : Window
         CaptureShortcutAction action,
         bool invokedByShortcut)
     {
+        using var captureLease = _captureGate.TryEnter();
+        if (captureLease is null)
+        {
+            StatusText.Text = "Já existe uma captura em andamento";
+            return;
+        }
+
+        var wasVisible = IsVisible;
+        var shouldHide = _settings.Capture.HideSlashDeskDuringCapture && wasVisible;
         try
         {
+            SafeDiagnosticLog.Write("capture.started", new Dictionary<string, object?>
+            {
+                ["action"] = action.ToString(),
+                ["invokedByShortcut"] = invokedByShortcut,
+                ["windowWasVisible"] = wasVisible
+            });
             await WaitForCaptureDelayAsync();
             System.Drawing.Rectangle? bounds = null;
             System.Drawing.Bitmap? editedRegion = null;
@@ -1902,12 +1980,11 @@ public partial class MainWindow : Window
             {
                 bounds = _captureService.ActiveMonitorBounds();
             }
+            else if (action == CaptureShortcutAction.Window)
+            {
+                bounds = _captureService.WindowUnderCursorBounds();
+            }
 
-            var wasVisible = IsVisible;
-            var shouldHide =
-                _settings.Capture.HideSlashDeskDuringCapture &&
-                wasVisible &&
-                !invokedByShortcut;
             if (shouldHide)
             {
                 Hide();
@@ -1920,11 +1997,6 @@ public partial class MainWindow : Window
                     null,
                     _settings.Capture.IncludeCursor);
             }
-            else if (action == CaptureShortcutAction.Window)
-            {
-                bounds = _captureService.WindowUnderCursorBounds();
-            }
-
             CaptureRecord? result = null;
             if (editedRegion is not null)
             {
@@ -1965,15 +2037,43 @@ public partial class MainWindow : Window
             {
                 ShowFromTray();
             }
+            SafeDiagnosticLog.Write("capture.completed", new Dictionary<string, object?>
+            {
+                ["action"] = action.ToString(),
+                ["resultCreated"] = result is not null
+            });
         }
         catch (Exception exception)
         {
-            ShowFromTray();
-            MessageBox.Show(
-                exception.Message,
-                "Não foi possível capturar",
-                MessageBoxButton.OK,
-                MessageBoxImage.Warning);
+            SafeDiagnosticLog.Write("capture.failed", new Dictionary<string, object?>
+            {
+                ["action"] = action.ToString(),
+                ["exceptionType"] = exception.GetType().Name
+            });
+            if (wasVisible)
+            {
+                ShowFromTray();
+                MessageBox.Show(
+                    exception.Message,
+                    "Não foi possível capturar",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+            }
+            else
+            {
+                _trayIcon?.ShowBalloonTip(
+                    2500,
+                    "Não foi possível capturar",
+                    exception.Message,
+                    Forms.ToolTipIcon.Warning);
+            }
+        }
+        finally
+        {
+            if (shouldHide && wasVisible && !IsVisible)
+            {
+                ShowFromTray();
+            }
         }
     }
 

@@ -51,6 +51,93 @@ var fields = engine.GetFillableFields("Olá {{nome}}, chamado {{chamado|INC000}}
 Require(fields.Count == 2, "campos únicos");
 Require(fields[1].DefaultValue == "INC000", "valor padrão");
 
+Require(TriggerRule.TryValidate("/teste", out _), "regra única aceita prefixo barra");
+Require(TriggerRule.TryValidate(":ação_2-rapida", out _), "regra única aceita letras Unicode, números, hífen e sublinhado");
+Require(!TriggerRule.TryValidate("teste", out _), "regra única rejeita gatilho sem prefixo");
+Require(!TriggerRule.TryValidate("/inválido!", out _), "regra única rejeita caractere impossível para o monitor");
+var maximumTrigger = "/" + new string('a', TriggerRule.MaximumLength - 1);
+Require(TriggerRule.TryValidate(maximumTrigger, out _), "gatilho no tamanho máximo");
+Require(!TriggerRule.TryValidate(maximumTrigger + "a", out _), "gatilho acima do tamanho máximo");
+Require(TriggerRule.ConflictsWith("/TESTE", ["/teste"]), "conflito ignora maiúsculas e minúsculas");
+Require(TriggerRule.IsPrefixOfAnother("/at", ["/atendimento"]), "gatilhos com prefixos semelhantes");
+
+var bufferState = new KeyboardBufferState();
+bufferState.Append('/', new IntPtr(10), new IntPtr(11));
+bufferState.Append('a', new IntPtr(10), new IntPtr(11));
+bufferState.Append('t', new IntPtr(10), new IntPtr(11));
+Require(bufferState.Text == "/at", "buffer mantém sugestão parcial");
+Require(bufferState.TargetChanged(new IntPtr(12), new IntPtr(11)), "troca de janela detectada no buffer");
+bufferState.Clear(BufferResetReason.MouseClick);
+Require(!bufferState.HasValue && bufferState.LastResetReason == BufferResetReason.MouseClick, "clique limpa buffer");
+bufferState.Append(':', new IntPtr(20), new IntPtr(21));
+bufferState.Append('x', new IntPtr(20), new IntPtr(21));
+Require(bufferState.TargetChanged(new IntPtr(20), new IntPtr(22)), "troca de controle focado limpa buffer");
+
+var planOneTab = ExpansionPlan.Create("Primeiro campo" + TemplateEngine.TabMarker + "Segundo campo");
+Require(planOneTab.Count == 2 && planOneTab[0].SendTabAfter && !planOneTab[1].SendTabAfter, "sequência com um Tab");
+var planManyTabs = ExpansionPlan.Create(
+    "Campo 1" + TemplateEngine.TabMarker + "Campo 2" + TemplateEngine.TabMarker + "Campo 3");
+Require(planManyTabs.Count == 3 && planManyTabs.Count(step => step.SendTabAfter) == 2, "sequência com vários Tabs");
+Require(Enum.IsDefined(SuggestionConfirmation.Enter) &&
+        Enum.IsDefined(SuggestionConfirmation.Tab) &&
+        Enum.IsDefined(SuggestionConfirmation.Space) &&
+        Enum.IsDefined(SuggestionConfirmation.Click), "formas de confirmação da sugestão");
+
+var expansionGate = new SingleFlightGate();
+using (var firstExpansion = expansionGate.TryEnter())
+{
+    Require(firstExpansion is not null && expansionGate.IsActive, "primeira expansão entra no single-flight");
+    Require(expansionGate.TryEnter() is null, "segunda expansão simultânea é ignorada");
+}
+using var afterExpansion = expansionGate.TryEnter();
+Require(!expansionGate.IsActive || afterExpansion is not null, "trava de expansão liberada");
+var captureGate = new SingleFlightGate();
+try
+{
+    using var captureLease = captureGate.TryEnter();
+    Require(captureGate.TryEnter() is null, "apenas uma captura simultânea");
+    throw new InvalidOperationException("falha simulada");
+}
+catch (InvalidOperationException)
+{
+    // A liberação ocorre pelo finally implícito de using.
+}
+Require(!captureGate.IsActive, "trava de captura liberada após exceção");
+
+var debounce = new DebounceGate(TimeSpan.FromMilliseconds(300));
+Require(debounce.TryAccept(1_000_000), "primeiro evento do debounce");
+Require(!debounce.TryAccept(1_000_001), "evento repetido é bloqueado pelo debounce");
+Require(
+    (GlobalCaptureShortcutService.ApplyNoRepeat(2) & GlobalCaptureShortcutService.ModNoRepeat) != 0,
+    "MOD_NOREPEAT aplicado a hotkeys");
+
+var workArea = new System.Windows.Rect(-1920, 0, 1920, 1040);
+var toolbarSize = new System.Windows.Size(760, 92);
+foreach (var selection in new[]
+{
+    new System.Windows.Rect(-1918, 2, 80, 60),
+    new System.Windows.Rect(-82, 2, 80, 60),
+    new System.Windows.Rect(-1918, 958, 80, 80),
+    new System.Windows.Rect(-82, 958, 80, 80),
+    new System.Windows.Rect(-1900, 20, 1880, 1000)
+})
+{
+    var placement = ToolbarPlacementCalculator.Calculate(selection, workArea, toolbarSize);
+    Require(workArea.Contains(placement.Bounds.TopLeft) &&
+            workArea.Contains(placement.Bounds.BottomRight), "barra dentro da área útil nos quatro cantos");
+}
+var sideTaskbarArea = new System.Windows.Rect(80, -1080, 1840, 1080);
+var sidePlacement = ToolbarPlacementCalculator.Calculate(
+    new System.Windows.Rect(80, -1080, 120, 90), sideTaskbarArea, toolbarSize);
+Require(sidePlacement.Bounds.Left >= sideTaskbarArea.Left, "barra respeita taskbar lateral e monitor acima");
+var mixedDpiLogicalArea = new System.Windows.Rect(-1536, 0, 1536, 832);
+var mixedDpiPlacement = ToolbarPlacementCalculator.Calculate(
+    new System.Windows.Rect(-1530, 760, 100, 70), mixedDpiLogicalArea, new System.Windows.Size(608, 74));
+Require(mixedDpiLogicalArea.Contains(mixedDpiPlacement.Bounds.TopLeft), "barra em coordenadas lógicas de DPI misto");
+var narrowPlacement = ToolbarPlacementCalculator.Calculate(
+    new System.Windows.Rect(10, 10, 40, 40), new System.Windows.Rect(0, 0, 320, 480), new System.Windows.Size(900, 160));
+Require(narrowPlacement.Bounds.Width <= 296 && narrowPlacement.MaximumWidth == 296, "barra maior que a tela é limitada para quebra em linhas");
+
 var root = Path.Combine(Path.GetTempPath(), $"slashtext-smoke-{Guid.NewGuid():N}");
 var snippetsFile = Path.Combine(root, "snippets.md");
 var backups = Path.Combine(root, "backups");

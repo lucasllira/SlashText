@@ -16,6 +16,7 @@ public sealed class Snippet
     public SnippetFormat Format { get; set; } = SnippetFormat.Plain;
     public bool Enabled { get; set; } = true;
     public List<string> ConfirmKeys { get; set; } = ["Enter", "Tab", "Space"];
+    public bool HasLegacyIncompatibleTrigger { get; set; }
 
     public override string ToString() => $"{Trigger}  ·  {Name}";
 }

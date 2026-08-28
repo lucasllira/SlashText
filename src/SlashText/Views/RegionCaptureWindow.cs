@@ -11,6 +11,8 @@ using DrawingBitmap = System.Drawing.Bitmap;
 using DrawingColor = System.Drawing.Color;
 using DrawingGraphics = System.Drawing.Graphics;
 using DrawingPixelFormat = System.Drawing.Imaging.PixelFormat;
+using Forms = System.Windows.Forms;
+using DrawingPoint = System.Drawing.Point;
 
 namespace SlashText.Views;
 
@@ -159,9 +161,8 @@ public sealed class RegionCaptureWindow : Window
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 
-        var tools = new StackPanel
+        var tools = new WrapPanel
         {
-            Orientation = Orientation.Horizontal,
             HorizontalAlignment = HorizontalAlignment.Center
         };
         tools.Children.Add(ToolbarButton(
@@ -179,9 +180,8 @@ public sealed class RegionCaptureWindow : Window
         tools.Children.Add(ToolButton("Número", "Inserir marcador numerado", CaptureAnnotationKind.Number));
         root.Children.Add(tools);
 
-        var options = new StackPanel
+        var options = new WrapPanel
         {
-            Orientation = Orientation.Horizontal,
             HorizontalAlignment = HorizontalAlignment.Center,
             Margin = new Thickness(0, 3, 0, 0)
         };
@@ -935,20 +935,36 @@ public sealed class RegionCaptureWindow : Window
 
     private void PositionToolbar()
     {
-        _toolbar.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+        var selectionCenter = _canvas.PointToScreen(new Point(
+            _localSelection.Left + (_localSelection.Width / 2),
+            _localSelection.Top + (_localSelection.Height / 2)));
+        var monitor = Forms.Screen.FromPoint(new DrawingPoint(
+            (int)Math.Round(selectionCenter.X),
+            (int)Math.Round(selectionCenter.Y)));
+        var workTopLeft = _canvas.PointFromScreen(new Point(
+            monitor.WorkingArea.Left,
+            monitor.WorkingArea.Top));
+        var workBottomRight = _canvas.PointFromScreen(new Point(
+            monitor.WorkingArea.Right,
+            monitor.WorkingArea.Bottom));
+        var workingArea = new Rect(
+            Math.Min(workTopLeft.X, workBottomRight.X),
+            Math.Min(workTopLeft.Y, workBottomRight.Y),
+            Math.Abs(workBottomRight.X - workTopLeft.X),
+            Math.Abs(workBottomRight.Y - workTopLeft.Y));
+
+        _toolbar.MaxWidth = Math.Max(160, workingArea.Width - 24);
+        _toolbar.Measure(new Size(_toolbar.MaxWidth, double.PositiveInfinity));
         var desired = _toolbar.DesiredSize;
-        var width = ActualWidth > 0 ? ActualWidth : Width;
-        var height = ActualHeight > 0 ? ActualHeight : Height;
-        var left = Math.Clamp(
-            _localSelection.Left + ((_localSelection.Width - desired.Width) / 2),
-            12,
-            Math.Max(12, width - desired.Width - 12));
-        var below = _localSelection.Bottom + 14;
-        var top = below + desired.Height <= height - 12
-            ? below
-            : Math.Max(12, _localSelection.Top - desired.Height - 14);
-        Canvas.SetLeft(_toolbar, left);
-        Canvas.SetTop(_toolbar, top);
+        var placement = ToolbarPlacementCalculator.Calculate(
+            _localSelection,
+            workingArea,
+            desired);
+        _toolbar.Width = desired.Width > placement.MaximumWidth
+            ? placement.MaximumWidth
+            : double.NaN;
+        Canvas.SetLeft(_toolbar, placement.Bounds.Left);
+        Canvas.SetTop(_toolbar, placement.Bounds.Top);
     }
 
     private void SetHandlesVisibility(Visibility visibility)

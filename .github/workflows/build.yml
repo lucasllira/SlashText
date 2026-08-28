@@ -103,6 +103,14 @@ jobs:
           "Portable visible entries after first run: $($visible.Count)"
           "Portable EXE bytes: $bytes"
           "Portable SHA-256: $hash"
+          New-Item package/SlashDeskData -ItemType Directory -Force | Out-Null
+          Copy-Item snippets.md package/SlashDeskData/snippets.md
+          $packageFiles = Get-ChildItem package -Recurse -File |
+            ForEach-Object { $_.FullName.Substring((Resolve-Path package).Path.Length + 1).Replace('\', '/') } |
+            Sort-Object
+          if (($packageFiles -join ',') -ne 'SlashDesk.exe,SlashDeskData/snippets.md') {
+            throw "O candidato deve conter somente SlashDesk.exe e SlashDeskData/snippets.md."
+          }
 
       - name: Upload installed staging
         uses: actions/upload-artifact@v4
