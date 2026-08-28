@@ -96,7 +96,7 @@ public sealed class JsonFileStore<T> where T : new()
             .ConfigureAwait(false);
         await AtomicFile.WriteAsync(
             _path,
-            stream => JsonSerializer.SerializeAsync(stream, value, Options, cancellationToken).AsTask(),
+            stream => JsonSerializer.SerializeAsync(stream, value, Options, cancellationToken),
             cancellationToken).ConfigureAwait(false);
     }
 

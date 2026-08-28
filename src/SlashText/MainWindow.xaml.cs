@@ -2473,7 +2473,7 @@ public partial class MainWindow : Window
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or InvalidOperationException)
         {
             AppDiagnosticLog.WriteException("settings.debounced-save-failed", exception);
-            Dispatcher.BeginInvoke(() => StatusText.Text = "Não foi possível salvar as configurações");
+            _ = Dispatcher.BeginInvoke(() => StatusText.Text = "Não foi possível salvar as configurações");
         }
     }
 

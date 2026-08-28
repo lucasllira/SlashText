@@ -87,7 +87,7 @@ internal sealed class CaptureHistoryStore
             .ConfigureAwait(false);
         await AtomicFile.WriteAsync(
             _path,
-            stream => JsonSerializer.SerializeAsync(stream, snapshot, Options, cancellationToken).AsTask(),
+            stream => JsonSerializer.SerializeAsync(stream, snapshot, Options, cancellationToken),
             cancellationToken).ConfigureAwait(false);
     }
 
