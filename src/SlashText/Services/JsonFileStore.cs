@@ -30,6 +30,7 @@ public sealed class JsonFileStore<T> where T : new()
 
     private readonly string _path;
     private volatile bool _writeBlockedByCorruption;
+    private long _requestedWriteVersion;
 
     public JsonFileStore(string path)
     {
@@ -92,8 +93,13 @@ public sealed class JsonFileStore<T> where T : new()
                 $"{Path.GetFileName(_path)} está inválido e foi preservado. " +
                 "Restaure um backup antes de gravar novos dados.");
         }
+        var version = Interlocked.Increment(ref _requestedWriteVersion);
         using var lease = await FileOperationCoordinator.AcquireAsync(_path, cancellationToken)
             .ConfigureAwait(false);
+        if (version != Volatile.Read(ref _requestedWriteVersion))
+        {
+            return;
+        }
         await AtomicFile.WriteAsync(
             _path,
             stream => JsonSerializer.SerializeAsync(stream, value, Options, cancellationToken),

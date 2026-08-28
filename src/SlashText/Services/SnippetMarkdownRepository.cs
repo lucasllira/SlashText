@@ -19,6 +19,7 @@ public sealed partial class SnippetMarkdownRepository
 
     private readonly string _filePath;
     private readonly string _backupDirectory;
+    private long _requestedWriteVersion;
 
     public SnippetMarkdownRepository(string? filePath = null, string? backupDirectory = null)
     {
@@ -50,6 +51,7 @@ public sealed partial class SnippetMarkdownRepository
         IEnumerable<Snippet> snippets,
         CancellationToken cancellationToken = default)
     {
+        var version = Interlocked.Increment(ref _requestedWriteVersion);
         var ordered = snippets
             .OrderBy(item => item.Category, StringComparer.CurrentCultureIgnoreCase)
             .ThenBy(item => item.Trigger, StringComparer.OrdinalIgnoreCase)
@@ -65,6 +67,10 @@ public sealed partial class SnippetMarkdownRepository
         Directory.CreateDirectory(directory);
         using var lease = await FileOperationCoordinator.AcquireAsync(_filePath, cancellationToken)
             .ConfigureAwait(false);
+        if (version != Volatile.Read(ref _requestedWriteVersion))
+        {
+            return;
+        }
 
         if (File.Exists(_filePath))
         {
