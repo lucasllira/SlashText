@@ -393,13 +393,11 @@ try
     var concurrentPath = Path.Combine(root, "concurrent.json");
     var concurrentStore = new JsonFileStore<AppSettings>(concurrentPath);
     var concurrentWrites = Enumerable.Range(0, 20)
-        .Select(async index =>
-        {
-            await Task.Delay(index * 3);
-            await concurrentStore.SaveAsync(new AppSettings { Theme = $"Theme-{index}" });
-        });
-    await Task.WhenAll(concurrentWrites);
-    Require((await concurrentStore.LoadAsync()).Theme == "Theme-19",
+        .Select(index => concurrentStore.SaveAsync(new AppSettings { Theme = $"Theme-{index}" }))
+        .ToList();
+    var finalConcurrentWrite = concurrentStore.SaveAsync(new AppSettings { Theme = "Theme-final" });
+    await Task.WhenAll(concurrentWrites.Append(finalConcurrentWrite));
+    Require((await concurrentStore.LoadAsync()).Theme == "Theme-final",
         "gravações concorrentes permanecem válidas e o último valor prevalece");
 
     var assetAnalysis = await new AssetMaintenanceService(

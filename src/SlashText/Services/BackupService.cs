@@ -345,13 +345,20 @@ public sealed partial class BackupService
         {
             var source = Path.Combine(rollback, name);
             var destination = Path.Combine(_dataDirectory, name);
-            if (File.Exists(source)) File.Copy(source, destination, overwrite: true);
+            if (File.Exists(source))
+                File.Copy(source, destination, overwrite: true);
+            else if (File.Exists(destination))
+                File.Delete(destination);
         }
         var assets = Path.Combine(rollback, "assets");
         if (Directory.Exists(assets))
         {
             if (Directory.Exists(_assetsDirectory)) Directory.Delete(_assetsDirectory, recursive: true);
             CopyDirectory(assets, _assetsDirectory);
+        }
+        else if (Directory.Exists(_assetsDirectory))
+        {
+            Directory.Delete(_assetsDirectory, recursive: true);
         }
     }
 

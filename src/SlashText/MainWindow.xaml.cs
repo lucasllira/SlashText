@@ -2480,9 +2480,10 @@ public partial class MainWindow : Window
     private void FlushPendingSettingsSave()
     {
         _settingsSaveDebounce?.Cancel();
+        var snapshot = SettingsSnapshot();
         try
         {
-            Task.Run(() => _settingsStore.SaveAsync(SettingsSnapshot())).Wait(TimeSpan.FromSeconds(2));
+            Task.Run(() => _settingsStore.SaveAsync(snapshot)).Wait(TimeSpan.FromSeconds(2));
         }
         catch (Exception exception)
         {
