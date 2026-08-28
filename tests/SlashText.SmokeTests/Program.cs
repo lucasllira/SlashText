@@ -111,32 +111,63 @@ Require(
     (GlobalCaptureShortcutService.ApplyNoRepeat(2) & GlobalCaptureShortcutService.ModNoRepeat) != 0,
     "MOD_NOREPEAT aplicado a hotkeys");
 
-var workArea = new System.Windows.Rect(-1920, 0, 1920, 1040);
-var toolbarSize = new System.Windows.Size(760, 92);
-foreach (var selection in new[]
+var toolbarScenarios = new[]
 {
-    new System.Windows.Rect(-1918, 2, 80, 60),
-    new System.Windows.Rect(-82, 2, 80, 60),
-    new System.Windows.Rect(-1918, 958, 80, 80),
-    new System.Windows.Rect(-82, 958, 80, 80),
-    new System.Windows.Rect(-1900, 20, 1880, 1000)
-})
+    (Name: "primário 100% taskbar inferior", Work: new System.Windows.Rect(0, 0, 1920, 1040), Dpi: 1d),
+    (Name: "primário 125%", Work: new System.Windows.Rect(0, 0, 2560, 1392), Dpi: 1.25d),
+    (Name: "primário 150%", Work: new System.Windows.Rect(0, 0, 2560, 1400), Dpi: 1.5d),
+    (Name: "secundário à esquerda DPI diferente", Work: new System.Windows.Rect(-1920, 0, 1920, 1040), Dpi: 1.25d),
+    (Name: "secundário acima", Work: new System.Windows.Rect(0, -1080, 1920, 1080), Dpi: 1.5d),
+    (Name: "taskbar lateral", Work: new System.Windows.Rect(80, 0, 1840, 1080), Dpi: 1d)
+};
+foreach (var scenario in toolbarScenarios)
 {
-    var placement = ToolbarPlacementCalculator.Calculate(selection, workArea, toolbarSize);
-    Require(workArea.Contains(placement.Bounds.TopLeft) &&
-            workArea.Contains(placement.Bounds.BottomRight), "barra dentro da área útil nos quatro cantos");
+    var margin = 12 * scenario.Dpi;
+    var selections = new[]
+    {
+        new System.Windows.Rect(scenario.Work.Left, scenario.Work.Top, 80, 60),
+        new System.Windows.Rect(scenario.Work.Right - 80, scenario.Work.Top, 80, 60),
+        new System.Windows.Rect(scenario.Work.Left, scenario.Work.Bottom - 80, 80, 80),
+        new System.Windows.Rect(scenario.Work.Right - 80, scenario.Work.Bottom - 80, 80, 80),
+        new System.Windows.Rect(scenario.Work.Left + 10, scenario.Work.Top + 10, 24, 24),
+        new System.Windows.Rect(
+            scenario.Work.Left + 4,
+            scenario.Work.Top + 4,
+            scenario.Work.Width - 8,
+            scenario.Work.Height - 8)
+    };
+    foreach (var selection in selections)
+    {
+        var availableWidth = scenario.Work.Width - (margin * 2);
+        var naturalWidth = 900 * scenario.Dpi;
+        var finalWidth = Math.Min(naturalWidth, availableWidth);
+        var rows = Math.Max(1, (int)Math.Ceiling(naturalWidth / availableWidth));
+        var finalHeight = (72 + ((rows - 1) * 48)) * scenario.Dpi;
+        var placement = ToolbarPlacementCalculator.Calculate(
+            selection,
+            scenario.Work,
+            new System.Windows.Size(finalWidth, finalHeight),
+            naturalWidth,
+            dpiScale: scenario.Dpi);
+        Require(
+            placement.Bounds.Left >= scenario.Work.Left + margin - .01 &&
+            placement.Bounds.Top >= scenario.Work.Top + margin - .01 &&
+            placement.Bounds.Right <= scenario.Work.Right - margin + .01 &&
+            placement.Bounds.Bottom <= scenario.Work.Bottom - margin + .01,
+            $"retângulo completo da barra permanece na área útil: {scenario.Name}");
+    }
 }
-var sideTaskbarArea = new System.Windows.Rect(80, -1080, 1840, 1080);
-var sidePlacement = ToolbarPlacementCalculator.Calculate(
-    new System.Windows.Rect(80, -1080, 120, 90), sideTaskbarArea, toolbarSize);
-Require(sidePlacement.Bounds.Left >= sideTaskbarArea.Left, "barra respeita taskbar lateral e monitor acima");
-var mixedDpiLogicalArea = new System.Windows.Rect(-1536, 0, 1536, 832);
-var mixedDpiPlacement = ToolbarPlacementCalculator.Calculate(
-    new System.Windows.Rect(-1530, 760, 100, 70), mixedDpiLogicalArea, new System.Windows.Size(608, 74));
-Require(mixedDpiLogicalArea.Contains(mixedDpiPlacement.Bounds.TopLeft), "barra em coordenadas lógicas de DPI misto");
 var narrowPlacement = ToolbarPlacementCalculator.Calculate(
-    new System.Windows.Rect(10, 10, 40, 40), new System.Windows.Rect(0, 0, 320, 480), new System.Windows.Size(900, 160));
-Require(narrowPlacement.Bounds.Width <= 296 && narrowPlacement.MaximumWidth == 296, "barra maior que a tela é limitada para quebra em linhas");
+    new System.Windows.Rect(430, 350, 48, 48),
+    new System.Windows.Rect(0, 0, 480, 440),
+    new System.Windows.Size(456, 184),
+    naturalWidth: 900);
+Require(
+    narrowPlacement.Bounds.Width == 456 &&
+    narrowPlacement.Mode == ToolbarLayoutMode.Compact &&
+    narrowPlacement.ExpectedRows == 2 &&
+    narrowPlacement.Side is ToolbarPlacementSide.Above or ToolbarPlacementSide.InsideBottom,
+    "barra larga no canto inferior direito usa modo compacto e posição vertical segura");
 
 var root = Path.Combine(Path.GetTempPath(), $"slashtext-smoke-{Guid.NewGuid():N}");
 var snippetsFile = Path.Combine(root, "snippets.md");

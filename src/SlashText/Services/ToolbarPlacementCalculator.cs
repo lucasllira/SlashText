@@ -6,14 +6,22 @@ public enum ToolbarPlacementSide
 {
     Below,
     Above,
-    Right,
-    Left,
+    InsideBottom,
+    InsideTop,
     Safe
+}
+
+public enum ToolbarLayoutMode
+{
+    Normal,
+    Compact
 }
 
 public readonly record struct ToolbarPlacement(
     Rect Bounds,
     ToolbarPlacementSide Side,
+    ToolbarLayoutMode Mode,
+    int ExpectedRows,
     double MaximumWidth);
 
 public static class ToolbarPlacementCalculator
@@ -21,52 +29,62 @@ public static class ToolbarPlacementCalculator
     public static ToolbarPlacement Calculate(
         Rect selection,
         Rect workingArea,
-        Size desiredSize,
+        Size finalSize,
+        double naturalWidth = 0,
         double margin = 12,
-        double gap = 14)
+        double gap = 14,
+        double dpiScale = 1)
     {
-        var availableWidth = Math.Max(1, workingArea.Width - (margin * 2));
-        var width = Math.Min(Math.Max(1, desiredSize.Width), availableWidth);
-        var height = Math.Min(Math.Max(1, desiredSize.Height), Math.Max(1, workingArea.Height - (margin * 2)));
+        var scaledMargin = Math.Max(1, margin * Math.Max(1, dpiScale));
+        var scaledGap = Math.Max(1, gap * Math.Max(1, dpiScale));
+        var availableWidth = Math.Max(1, workingArea.Width - (scaledMargin * 2));
+        var availableHeight = Math.Max(1, workingArea.Height - (scaledMargin * 2));
+        var width = Math.Min(Math.Max(1, finalSize.Width), availableWidth);
+        var height = Math.Min(Math.Max(1, finalSize.Height), availableHeight);
+        var effectiveNaturalWidth = naturalWidth > 0 ? naturalWidth : finalSize.Width;
+        var expectedRows = Math.Max(1, (int)Math.Ceiling(Math.Max(width, effectiveNaturalWidth) / availableWidth));
+        var mode = expectedRows > 1 || effectiveNaturalWidth > availableWidth
+            ? ToolbarLayoutMode.Compact
+            : ToolbarLayoutMode.Normal;
         var centeredLeft = Clamp(
             selection.Left + ((selection.Width - width) / 2),
-            workingArea.Left + margin,
-            workingArea.Right - margin - width);
+            workingArea.Left + scaledMargin,
+            workingArea.Right - scaledMargin - width);
 
-        var belowTop = selection.Bottom + gap;
-        if (belowTop + height <= workingArea.Bottom - margin)
+        var belowTop = selection.Bottom + scaledGap;
+        if (belowTop + height <= workingArea.Bottom - scaledMargin)
         {
-            return Result(centeredLeft, belowTop, width, height, ToolbarPlacementSide.Below, availableWidth);
+            return Result(centeredLeft, belowTop, width, height, ToolbarPlacementSide.Below, mode, expectedRows, availableWidth);
         }
 
-        var aboveTop = selection.Top - gap - height;
-        if (aboveTop >= workingArea.Top + margin)
+        var aboveTop = selection.Top - scaledGap - height;
+        if (aboveTop >= workingArea.Top + scaledMargin)
         {
-            return Result(centeredLeft, aboveTop, width, height, ToolbarPlacementSide.Above, availableWidth);
+            return Result(centeredLeft, aboveTop, width, height, ToolbarPlacementSide.Above, mode, expectedRows, availableWidth);
         }
 
-        var centeredTop = Clamp(
-            selection.Top + ((selection.Height - height) / 2),
-            workingArea.Top + margin,
-            workingArea.Bottom - margin - height);
-        var rightLeft = selection.Right + gap;
-        if (rightLeft + width <= workingArea.Right - margin)
+        var insideBottom = selection.Bottom - scaledGap - height;
+        if (insideBottom >= workingArea.Top + scaledMargin &&
+            insideBottom + height <= workingArea.Bottom - scaledMargin)
         {
-            return Result(rightLeft, centeredTop, width, height, ToolbarPlacementSide.Right, availableWidth);
+            return Result(centeredLeft, insideBottom, width, height, ToolbarPlacementSide.InsideBottom, mode, expectedRows, availableWidth);
         }
 
-        var leftLeft = selection.Left - gap - width;
-        if (leftLeft >= workingArea.Left + margin)
+        var insideTop = selection.Top + scaledGap;
+        if (insideTop >= workingArea.Top + scaledMargin &&
+            insideTop + height <= workingArea.Bottom - scaledMargin)
         {
-            return Result(leftLeft, centeredTop, width, height, ToolbarPlacementSide.Left, availableWidth);
+            return Result(centeredLeft, insideTop, width, height, ToolbarPlacementSide.InsideTop, mode, expectedRows, availableWidth);
         }
 
         return Result(
-            Clamp(centeredLeft, workingArea.Left + margin, workingArea.Right - margin - width),
-            Clamp(workingArea.Bottom - margin - height, workingArea.Top + margin, workingArea.Bottom - margin - height),
+            Clamp(centeredLeft, workingArea.Left + scaledMargin, workingArea.Right - scaledMargin - width),
+            Clamp(workingArea.Bottom - scaledMargin - height, workingArea.Top + scaledMargin, workingArea.Bottom - scaledMargin - height),
             width,
             height,
             ToolbarPlacementSide.Safe,
+            mode,
+            expectedRows,
             availableWidth);
     }
 
@@ -76,8 +94,10 @@ public static class ToolbarPlacementCalculator
         double width,
         double height,
         ToolbarPlacementSide side,
+        ToolbarLayoutMode mode,
+        int expectedRows,
         double maximumWidth) =>
-        new(new Rect(left, top, width, height), side, maximumWidth);
+        new(new Rect(left, top, width, height), side, mode, expectedRows, maximumWidth);
 
     private static double Clamp(double value, double minimum, double maximum) =>
         maximum <= minimum ? minimum : Math.Clamp(value, minimum, maximum);

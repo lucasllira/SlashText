@@ -420,7 +420,7 @@ foreach ($captureElement in @(
     'CaptureVirtualDesktopBitmap()',
     'UpdateShade(',
     'PositionHandles()',
-    'PositionToolbar()',
+    'RequestToolbarPosition()',
     'Selecionar novamente',
     'EditedBitmap',
     'AddInlineTextEditor(',
@@ -429,6 +429,18 @@ foreach ($captureElement in @(
 )) {
     if (-not $region.Contains($captureElement)) {
         throw "Seleção de região sem o elemento Snipping Tool: $captureElement"
+    }
+}
+
+foreach ($toolbarElement in @(
+    'MonitorWorkAreaProvider.FromSelection',
+    'SelectionInPhysicalPixels()',
+    '_toolbarLayout.Width',
+    'SetWindowPos(',
+    'capture.toolbar-positioned'
+)) {
+    if (-not $region.Contains($toolbarElement)) {
+        throw "Barra de marcações sem contenção per-monitor: $toolbarElement"
     }
 }
 

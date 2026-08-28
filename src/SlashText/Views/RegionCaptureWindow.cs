@@ -6,13 +6,13 @@ using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
+using System.Windows.Threading;
 using SlashText.Services;
 using DrawingBitmap = System.Drawing.Bitmap;
 using DrawingColor = System.Drawing.Color;
 using DrawingGraphics = System.Drawing.Graphics;
 using DrawingPixelFormat = System.Drawing.Imaging.PixelFormat;
 using Forms = System.Windows.Forms;
-using DrawingPoint = System.Drawing.Point;
 
 namespace SlashText.Views;
 
@@ -46,6 +46,7 @@ public sealed class RegionCaptureWindow : Window
         IsHitTestVisible = false
     };
     private readonly Border _toolbar;
+    private readonly Window _toolbarWindow;
     private readonly Border[] _handles;
     private readonly DrawingBitmap _desktopBitmap;
     private readonly List<CaptureAnnotation> _annotations = [];
@@ -63,6 +64,8 @@ public sealed class RegionCaptureWindow : Window
     private int _color = DrawingColor.Red.ToArgb();
     private float _thickness = 4;
     private int _nextNumber = 1;
+    private Grid _toolbarLayout = null!;
+    private bool _toolbarPositionPending;
 
     public DrawingBitmap? EditedBitmap { get; private set; }
 
@@ -144,11 +147,36 @@ public sealed class RegionCaptureWindow : Window
         _canvas.Children.Add(_sizeBadge);
 
         _toolbar = BuildToolbar();
-        _canvas.Children.Add(_toolbar);
+        _toolbarWindow = new Window
+        {
+            Title = "Ferramentas de captura",
+            WindowStyle = WindowStyle.None,
+            ResizeMode = ResizeMode.NoResize,
+            AllowsTransparency = true,
+            Background = Brushes.Transparent,
+            SizeToContent = SizeToContent.Height,
+            ShowInTaskbar = false,
+            ShowActivated = false,
+            Topmost = true,
+            Opacity = 0,
+            Content = _toolbar
+        };
+        _toolbarWindow.DpiChanged += (_, _) => RequestToolbarPosition();
         Content = _canvas;
 
-        Loaded += (_, _) => UpdateShade(default);
-        Closed += (_, _) => _desktopBitmap.Dispose();
+        Loaded += (_, _) =>
+        {
+            _toolbarWindow.Owner = this;
+            UpdateShade(default);
+        };
+        Closed += (_, _) =>
+        {
+            if (_toolbarWindow.IsVisible)
+            {
+                _toolbarWindow.Close();
+            }
+            _desktopBitmap.Dispose();
+        };
         MouseLeftButtonDown += OnMouseDown;
         MouseMove += OnMouseMove;
         MouseLeftButtonUp += OnMouseUp;
@@ -158,6 +186,7 @@ public sealed class RegionCaptureWindow : Window
     private Border BuildToolbar()
     {
         var root = new Grid();
+        _toolbarLayout = root;
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 
@@ -362,7 +391,7 @@ public sealed class RegionCaptureWindow : Window
 
         _start = point;
         _dragging = true;
-        _toolbar.Visibility = Visibility.Collapsed;
+        _toolbarWindow.Hide();
         SetHandlesVisibility(Visibility.Collapsed);
         _selection.Visibility = Visibility.Visible;
         _sizeBadge.Visibility = Visibility.Visible;
@@ -440,9 +469,9 @@ public sealed class RegionCaptureWindow : Window
         PositionAnnotationLayer();
         SetHandlesVisibility(Visibility.Visible);
         PositionHandles();
-        PositionToolbar();
-        UpdateToolSelection();
         _toolbar.Visibility = Visibility.Visible;
+        RequestToolbarPosition();
+        UpdateToolSelection();
         Cursor = Cursors.Cross;
         e.Handled = true;
     }
@@ -788,6 +817,7 @@ public sealed class RegionCaptureWindow : Window
             return;
         }
 
+        _toolbarWindow.Hide();
         using var crop = CropFrozenSelection();
         EditedBitmap?.Dispose();
         EditedBitmap = CaptureAnnotationRenderer.Render(
@@ -833,7 +863,7 @@ public sealed class RegionCaptureWindow : Window
         _annotationLayer.Visibility = Visibility.Collapsed;
         _annotationLayer.Children.Clear();
         _sizeBadge.Visibility = Visibility.Collapsed;
-        _toolbar.Visibility = Visibility.Collapsed;
+        _toolbarWindow.Hide();
         SetHandlesVisibility(Visibility.Collapsed);
         _annotations.Clear();
         _redo.Clear();
@@ -933,39 +963,109 @@ public sealed class RegionCaptureWindow : Window
         }
     }
 
-    private void PositionToolbar()
+    private void RequestToolbarPosition()
     {
-        var selectionCenter = _canvas.PointToScreen(new Point(
-            _localSelection.Left + (_localSelection.Width / 2),
-            _localSelection.Top + (_localSelection.Height / 2)));
-        var monitor = Forms.Screen.FromPoint(new DrawingPoint(
-            (int)Math.Round(selectionCenter.X),
-            (int)Math.Round(selectionCenter.Y)));
-        var workTopLeft = _canvas.PointFromScreen(new Point(
-            monitor.WorkingArea.Left,
-            monitor.WorkingArea.Top));
-        var workBottomRight = _canvas.PointFromScreen(new Point(
-            monitor.WorkingArea.Right,
-            monitor.WorkingArea.Bottom));
-        var workingArea = new Rect(
-            Math.Min(workTopLeft.X, workBottomRight.X),
-            Math.Min(workTopLeft.Y, workBottomRight.Y),
-            Math.Abs(workBottomRight.X - workTopLeft.X),
-            Math.Abs(workBottomRight.Y - workTopLeft.Y));
-
-        _toolbar.MaxWidth = Math.Max(160, workingArea.Width - 24);
-        _toolbar.Measure(new Size(_toolbar.MaxWidth, double.PositiveInfinity));
-        var desired = _toolbar.DesiredSize;
-        var placement = ToolbarPlacementCalculator.Calculate(
-            _localSelection,
-            workingArea,
-            desired);
-        _toolbar.Width = desired.Width > placement.MaximumWidth
-            ? placement.MaximumWidth
-            : double.NaN;
-        Canvas.SetLeft(_toolbar, placement.Bounds.Left);
-        Canvas.SetTop(_toolbar, placement.Bounds.Top);
+        if (!_selectionReady || _toolbarPositionPending)
+        {
+            return;
+        }
+        _toolbarPositionPending = true;
+        _ = Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() =>
+        {
+            _toolbarPositionPending = false;
+            PositionToolbarAfterLayout();
+        }));
     }
+
+    private void PositionToolbarAfterLayout()
+    {
+        if (!_selectionReady)
+        {
+            return;
+        }
+
+        var selectionPixels = SelectionInPhysicalPixels();
+        var monitor = MonitorWorkAreaProvider.FromSelection(selectionPixels);
+        var marginPixels = Math.Max(1, 12 * monitor.DpiScaleX);
+        var maximumWidthPixels = Math.Max(1, monitor.WorkAreaPixels.Width - (marginPixels * 2));
+        var maximumWidthDips = maximumWidthPixels / monitor.DpiScaleX;
+
+        _toolbar.Width = double.NaN;
+        _toolbar.MaxWidth = double.PositiveInfinity;
+        _toolbarLayout.Width = double.NaN;
+        _toolbar.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+        var naturalDips = _toolbar.DesiredSize;
+
+        var finalWidthDips = Math.Min(naturalDips.Width, maximumWidthDips);
+        _toolbar.Width = finalWidthDips;
+        _toolbar.MaxWidth = finalWidthDips;
+        _toolbarLayout.Width = Math.Max(1, finalWidthDips -
+            _toolbar.Padding.Left - _toolbar.Padding.Right -
+            _toolbar.BorderThickness.Left - _toolbar.BorderThickness.Right);
+        _toolbarWindow.Width = finalWidthDips;
+        _toolbarWindow.Opacity = 0;
+        if (!_toolbarWindow.IsVisible)
+        {
+            _toolbarWindow.Show();
+        }
+        _toolbarWindow.UpdateLayout();
+
+        var finalDips = new Size(
+            Math.Max(1, _toolbar.ActualWidth),
+            Math.Max(1, _toolbar.ActualHeight));
+        var finalPixels = new Size(
+            Math.Ceiling(finalDips.Width * monitor.DpiScaleX),
+            Math.Ceiling(finalDips.Height * monitor.DpiScaleY));
+        var placement = ToolbarPlacementCalculator.Calculate(
+            selectionPixels,
+            monitor.WorkAreaPixels,
+            finalPixels,
+            naturalDips.Width * monitor.DpiScaleX,
+            dpiScale: Math.Max(monitor.DpiScaleX, monitor.DpiScaleY));
+
+        var handle = new WindowInteropHelper(_toolbarWindow).Handle;
+        _ = SetWindowPos(
+            handle,
+            new nint(-1),
+            (int)Math.Round(placement.Bounds.Left),
+            (int)Math.Round(placement.Bounds.Top),
+            Math.Max(1, (int)Math.Ceiling(placement.Bounds.Width)),
+            Math.Max(1, (int)Math.Ceiling(placement.Bounds.Height)),
+            SwpNoActivate | SwpShowWindow);
+        _toolbarWindow.Opacity = 1;
+
+        SafeDiagnosticLog.Write("capture.toolbar-positioned", new Dictionary<string, object?>
+        {
+            ["selectionPixels"] = RectDescription(selectionPixels),
+            ["workAreaPixels"] = RectDescription(monitor.WorkAreaPixels),
+            ["dpiScaleX"] = monitor.DpiScaleX,
+            ["dpiScaleY"] = monitor.DpiScaleY,
+            ["naturalWidthDips"] = naturalDips.Width,
+            ["finalWidthDips"] = finalDips.Width,
+            ["finalHeightDips"] = finalDips.Height,
+            ["finalBoundsPixels"] = RectDescription(placement.Bounds),
+            ["placement"] = placement.Side.ToString(),
+            ["layoutMode"] = placement.Mode.ToString(),
+            ["expectedRows"] = placement.ExpectedRows
+        });
+    }
+
+    private Rect SelectionInPhysicalPixels()
+    {
+        var virtualScreen = Forms.SystemInformation.VirtualScreen;
+        var canvasWidth = Math.Max(1, _canvas.ActualWidth);
+        var canvasHeight = Math.Max(1, _canvas.ActualHeight);
+        var scaleX = virtualScreen.Width / canvasWidth;
+        var scaleY = virtualScreen.Height / canvasHeight;
+        return new Rect(
+            virtualScreen.Left + (_localSelection.Left * scaleX),
+            virtualScreen.Top + (_localSelection.Top * scaleY),
+            _localSelection.Width * scaleX,
+            _localSelection.Height * scaleY);
+    }
+
+    private static string RectDescription(Rect rectangle) =>
+        $"{rectangle.Left:0},{rectangle.Top:0},{rectangle.Width:0},{rectangle.Height:0}";
 
     private void SetHandlesVisibility(Visibility visibility)
     {
@@ -1059,4 +1159,18 @@ public sealed class RegionCaptureWindow : Window
     [DllImport("gdi32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool DeleteObject(IntPtr handle);
+
+    private const uint SwpNoActivate = 0x0010;
+    private const uint SwpShowWindow = 0x0040;
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool SetWindowPos(
+        nint window,
+        nint insertAfter,
+        int x,
+        int y,
+        int width,
+        int height,
+        uint flags);
 }
