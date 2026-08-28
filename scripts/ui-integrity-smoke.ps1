@@ -137,7 +137,7 @@ foreach ($shortcutStructure in @(
 }
 
 foreach ($shortcutBehavior in @(
-    'item.Content.Contains(query',
+    'SnippetSearch.Matches(item, query)',
     '_selectedCategory',
     '_showMostUsed',
     'DisplayAll_OnClick',

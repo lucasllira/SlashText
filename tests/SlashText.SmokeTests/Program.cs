@@ -279,6 +279,161 @@ try
         File.Exists(manualBackup) && backupService.ListSnapshots().Count == 2,
         "backup manual e listagem de cópias");
 
+    var reliabilityData = Path.Combine(root, "reliability-data");
+    var reliabilityBackups = Path.Combine(reliabilityData, "Backups");
+    var reliabilityAssets = Path.Combine(reliabilityData, "assets", "nested");
+    Directory.CreateDirectory(reliabilityAssets);
+    var reliabilitySnippets = Path.Combine(reliabilityData, "snippets.md");
+    var reliabilityRepository = new SnippetMarkdownRepository(
+        reliabilitySnippets,
+        reliabilityBackups);
+    await reliabilityRepository.SaveAsync([
+        new Snippet
+        {
+            Name = "Com imagem",
+            Trigger = "/imagem",
+            Category = "Teste",
+            Content = "Texto pesquisável exclusivo\n![Imagem](assets/nested/picture.png)"
+        }
+    ]);
+    await File.WriteAllTextAsync(Path.Combine(reliabilityData, "settings.json"), "{}");
+    await File.WriteAllTextAsync(Path.Combine(reliabilityData, "usage.json"), "{}");
+    await File.WriteAllTextAsync(Path.Combine(reliabilityData, "capture-history.json"), "[]");
+    var assetBytes = Enumerable.Range(0, 128).Select(item => (byte)item).ToArray();
+    await File.WriteAllBytesAsync(Path.Combine(reliabilityAssets, "picture.png"), assetBytes);
+    await File.WriteAllBytesAsync(Path.Combine(reliabilityAssets, "orphan.png"), [9, 8, 7]);
+    var reliabilityBackup = new BackupService(
+        reliabilityBackups,
+        dataDirectory: reliabilityData);
+    var fullBackup = reliabilityBackup.CreateManualSnapshot();
+    var fullValidation = BackupService.ValidateSnapshot(fullBackup);
+    Require(!fullValidation.IsLegacy && fullValidation.FileCount == 6,
+        "backup novo inclui quatro stores e assets recursivos");
+    using (var archive = ZipFile.OpenRead(fullBackup))
+    {
+        var manifestEntry = archive.GetEntry("backup-manifest.json");
+        Require(manifestEntry is not null, "backup novo contém manifesto");
+        using var manifest = System.Text.Json.JsonDocument.Parse(manifestEntry!.Open());
+        var files = manifest.RootElement.GetProperty("files");
+        Require(
+            files.EnumerateArray().All(item =>
+                item.GetProperty("size").GetInt64() >= 0 &&
+                item.GetProperty("sha256").GetString()?.Length == 64),
+            "manifesto contém tamanho e SHA-256 de cada arquivo");
+    }
+
+    await File.WriteAllTextAsync(reliabilitySnippets, "estado alterado");
+    await File.WriteAllBytesAsync(Path.Combine(reliabilityAssets, "picture.png"), [1]);
+    var restoreResult = reliabilityBackup.RestoreSnapshot(fullBackup);
+    Require(!restoreResult.LegacyWithoutAssets && File.Exists(restoreResult.SafetyBackupPath),
+        "restauração cria backup de segurança");
+    Require(
+        (await File.ReadAllBytesAsync(Path.Combine(reliabilityAssets, "picture.png"))).SequenceEqual(assetBytes),
+        "round trip restaura asset byte a byte");
+    Require((await reliabilityRepository.LoadAsync()).Single().Content.Contains(
+        "Texto pesquisável exclusivo", StringComparison.Ordinal),
+        "round trip restaura snippets.md sem mudar o formato");
+
+    var legacyBackup = Path.Combine(root, "legacy-backup.zip");
+    using (var legacyArchive = ZipFile.Open(legacyBackup, ZipArchiveMode.Create))
+    {
+        var entry = legacyArchive.CreateEntry("settings.json");
+        await using var writer = new StreamWriter(entry.Open());
+        await writer.WriteAsync("{\"theme\":\"Dark\"}");
+    }
+    var assetBeforeLegacyRestore = await File.ReadAllBytesAsync(
+        Path.Combine(reliabilityAssets, "picture.png"));
+    var legacyResult = reliabilityBackup.RestoreSnapshot(legacyBackup);
+    Require(legacyResult.LegacyWithoutAssets, "backup legado sem assets é reconhecido");
+    Require((await File.ReadAllBytesAsync(Path.Combine(reliabilityAssets, "picture.png")))
+        .SequenceEqual(assetBeforeLegacyRestore), "restore legado preserva assets atuais");
+
+    var traversalBackup = Path.Combine(root, "traversal.zip");
+    using (var unsafeArchive = ZipFile.Open(traversalBackup, ZipArchiveMode.Create))
+    {
+        var entry = unsafeArchive.CreateEntry("../settings.json");
+        await using var writer = new StreamWriter(entry.Open());
+        await writer.WriteAsync("{}");
+    }
+    RequireThrows<InvalidDataException>(
+        () => BackupService.ValidateSnapshot(traversalBackup),
+        "restauração bloqueia path traversal");
+
+    var tamperedBackup = Path.Combine(root, "tampered.zip");
+    File.Copy(fullBackup, tamperedBackup);
+    using (var changed = ZipFile.Open(tamperedBackup, ZipArchiveMode.Update))
+    {
+        changed.GetEntry("settings.json")!.Delete();
+        var entry = changed.CreateEntry("settings.json");
+        await using var writer = new StreamWriter(entry.Open());
+        await writer.WriteAsync("{\"tampered\":true}");
+    }
+    RequireThrows<InvalidDataException>(
+        () => BackupService.ValidateSnapshot(tamperedBackup),
+        "backup recusa hash ou tamanho divergente");
+
+    var corruptSettings = Path.Combine(root, "corrupt-settings.json");
+    await File.WriteAllTextAsync(corruptSettings, "{invalid");
+    var corruptStore = new JsonFileStore<AppSettings>(corruptSettings);
+    var corruptResult = await corruptStore.LoadDetailedAsync();
+    Require(
+        corruptResult.Status == JsonLoadStatus.InvalidJson &&
+        corruptResult.PreservedPath is not null && File.Exists(corruptResult.PreservedPath) &&
+        await File.ReadAllTextAsync(corruptSettings) == "{invalid",
+        "JSON inválido é preservado e padrões ficam somente em memória");
+    var secondCorruptResult = await corruptStore.LoadDetailedAsync();
+    Require(
+        secondCorruptResult.PreservedPath == corruptResult.PreservedPath &&
+        Directory.GetFiles(root, "corrupt-settings.corrupted-*.json").Length == 1,
+        "mesma corrupção não cria cópias repetidas");
+    await RequireThrowsAsync<InvalidOperationException>(
+        () => corruptStore.SaveAsync(new AppSettings()),
+        "store não sobrescreve JSON corrompido automaticamente");
+
+    var concurrentPath = Path.Combine(root, "concurrent.json");
+    var concurrentStore = new JsonFileStore<AppSettings>(concurrentPath);
+    var concurrentWrites = Enumerable.Range(0, 20)
+        .Select(async index =>
+        {
+            await Task.Delay(index * 3);
+            await concurrentStore.SaveAsync(new AppSettings { Theme = $"Theme-{index}" });
+        });
+    await Task.WhenAll(concurrentWrites);
+    Require((await concurrentStore.LoadAsync()).Theme == "Theme-19",
+        "gravações concorrentes permanecem válidas e o último valor prevalece");
+
+    var assetAnalysis = await new AssetMaintenanceService(
+        reliabilitySnippets,
+        Path.Combine(reliabilityData, "assets")).AnalyzeAsync();
+    Require(
+        assetAnalysis.Orphans.Any(item => item.RelativePath == "nested/orphan.png") &&
+        assetAnalysis.Orphans.All(item => item.RelativePath != "nested/picture.png"),
+        "análise separa asset referenciado e órfão sem excluir automaticamente");
+
+    var searchSnippet = (await reliabilityRepository.LoadAsync()).Single();
+    Require(SnippetSearch.Matches(searchSnippet, "pesquisável exclusivo"),
+        "busca considera conteúdo legível do snippet");
+    Require(!SnippetSearch.Matches(searchSnippet, "não existe"),
+        "busca não altera nem inclui item sem correspondência");
+
+    var quickAccentArea = new System.Drawing.Rectangle(-1920, -1080, 1840, 1040);
+    foreach (var position in new[] { "TopCenter", "Center", "BottomCenter" })
+    {
+        var quickAccentBounds = QuickAccentPlacementCalculator.Place(
+            quickAccentArea,
+            new System.Drawing.Size(720, 120),
+            position,
+            24);
+        Require(quickAccentArea.Contains(quickAccentBounds),
+            $"Acento Rápido fica dentro da área útil em {position}");
+    }
+    var narrowAccent = QuickAccentPlacementCalculator.Place(
+        new System.Drawing.Rectangle(80, 0, 320, 600),
+        new System.Drawing.Size(900, 180),
+        "BottomCenter");
+    Require(narrowAccent.Left >= 80 && narrowAccent.Right <= 400,
+        "Acento Rápido respeita taskbar lateral e conteúdo maior que a área");
+
     var code = "Antes\n```powershell\nGet-Date\n```\nDepois";
     Require(
         RichTextMarkdownConverter.ToHtml(code).Contains("<pre", StringComparison.Ordinal),

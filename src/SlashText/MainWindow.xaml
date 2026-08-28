@@ -1505,6 +1505,9 @@
                                             <Button Content="Abrir pasta"
                                                     Margin="0,0,0,8"
                                                     Click="OpenBackupFolder_OnClick"/>
+                                            <Button Content="Limpar assets não usados"
+                                                    Margin="8,0,0,8"
+                                                    Click="CleanOrphanAssets_OnClick"/>
                                         </WrapPanel>
                                         <TextBlock x:Name="BackupLocationText"
                                                    Margin="0,6,0,0"

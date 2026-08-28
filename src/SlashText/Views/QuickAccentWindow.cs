@@ -1,7 +1,12 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Interop;
+using System.Runtime.InteropServices;
 using SlashText.Services;
+using Forms = System.Windows.Forms;
+using DrawingPoint = System.Drawing.Point;
+using DrawingSize = System.Drawing.Size;
 
 namespace SlashText.Views;
 
@@ -75,15 +80,49 @@ public sealed class QuickAccentWindow : Window
         }
 
         Show();
-        Left = Math.Max(8, (SystemParameters.WorkArea.Width - ActualWidth) / 2);
-        Top = position switch
-        {
-            "TopCenter" => 24,
-            "Center" => Math.Max(8, (SystemParameters.WorkArea.Height - ActualHeight) / 2),
-            _ => Math.Max(8, SystemParameters.WorkArea.Height - ActualHeight - 42)
-        };
+        UpdateLayout();
+        PositionOnActiveMonitor(position);
+    }
+
+    private void PositionOnActiveMonitor(string position)
+    {
+        var anchor = CaretLocator.GetScreenPosition();
+        var screen = Forms.Screen.FromPoint(new DrawingPoint((int)anchor.X, (int)anchor.Y));
+        var handle = new WindowInteropHelper(this).Handle;
+        var dpi = Math.Max(96u, GetDpiForWindow(handle));
+        var scale = dpi / 96d;
+        var desired = new DrawingSize(
+            Math.Max(1, (int)Math.Ceiling(ActualWidth * scale)),
+            Math.Max(1, (int)Math.Ceiling(ActualHeight * scale)));
+        var bounds = QuickAccentPlacementCalculator.Place(
+            screen.WorkingArea,
+            desired,
+            position,
+            Math.Max(8, (int)Math.Round(16 * scale)));
+        _ = SetWindowPos(
+            handle,
+            IntPtr.Zero,
+            bounds.Left,
+            bounds.Top,
+            bounds.Width,
+            bounds.Height,
+            0x0010 | 0x0004);
     }
 
     private static Brush FindBrush(string key, Brush fallback) =>
         System.Windows.Application.Current.TryFindResource(key) as Brush ?? fallback;
+
+    [DllImport("user32.dll")]
+    private static extern uint GetDpiForWindow(IntPtr window);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool SetWindowPos(
+        IntPtr window,
+        IntPtr insertAfter,
+        int x,
+        int y,
+        int width,
+        int height,
+        uint flags);
 }

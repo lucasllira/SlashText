@@ -63,6 +63,8 @@ public sealed partial class SnippetMarkdownRepository
         var markdown = Serialize(ordered);
         var directory = Path.GetDirectoryName(_filePath) ?? AppPaths.BaseDirectory;
         Directory.CreateDirectory(directory);
+        using var lease = await FileOperationCoordinator.AcquireAsync(_filePath, cancellationToken)
+            .ConfigureAwait(false);
 
         if (File.Exists(_filePath))
         {
@@ -74,22 +76,21 @@ public sealed partial class SnippetMarkdownRepository
 
         }
 
-        var temporaryFile = Path.Combine(directory, $".snippets-{Guid.NewGuid():N}.tmp");
-        try
+        var bytes = new UTF8Encoding(false).GetBytes(markdown);
+        await AtomicFile.WriteAsync(
+            _filePath,
+            stream => stream.WriteAsync(bytes, cancellationToken).AsTask(),
+            cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task ValidateFileAsync(string path, CancellationToken cancellationToken = default)
+    {
+        var markdown = await File.ReadAllTextAsync(path, cancellationToken).ConfigureAwait(false);
+        var snippets = Parse(markdown);
+        if (markdown.Contains("<!-- slashtext:", StringComparison.OrdinalIgnoreCase) &&
+            snippets.Count == 0)
         {
-            await File.WriteAllTextAsync(
-                temporaryFile,
-                markdown,
-                new UTF8Encoding(false),
-                cancellationToken);
-            File.Move(temporaryFile, _filePath, true);
-        }
-        finally
-        {
-            if (File.Exists(temporaryFile))
-            {
-                File.Delete(temporaryFile);
-            }
+            throw new InvalidDataException("O backup contém um snippets.md inválido.");
         }
     }
 

@@ -12,3 +12,8 @@ public sealed class CaptureRecord
     public int Height { get; set; }
     public double DurationSeconds { get; set; }
 }
+
+public sealed record CaptureDeleteResult(
+    bool EntryRemoved,
+    bool FileDeleted,
+    Exception? FileDeleteError);

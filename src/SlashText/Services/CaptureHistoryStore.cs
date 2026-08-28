@@ -13,11 +13,14 @@ internal sealed class CaptureHistoryStore
         WriteIndented = true
     };
     private readonly string _path;
+    private volatile bool _writeBlockedByCorruption;
 
     public CaptureHistoryStore(string path)
     {
         _path = path;
     }
+
+    public string? PreservedCorruptPath { get; private set; }
 
     public async Task<List<CaptureRecord>> LoadAsync(CancellationToken cancellationToken = default)
     {
@@ -31,8 +34,12 @@ internal sealed class CaptureHistoryStore
             using var document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
             if (document.RootElement.ValueKind != JsonValueKind.Array)
             {
+                PreservedCorruptPath = CorruptFilePreserver.Preserve(_path);
+                _writeBlockedByCorruption = true;
                 return [];
             }
+            _writeBlockedByCorruption = false;
+            PreservedCorruptPath = null;
             var records = new List<CaptureRecord>();
             foreach (var element in document.RootElement.EnumerateArray())
             {
@@ -51,9 +58,16 @@ internal sealed class CaptureHistoryStore
             }
             return records;
         }
-        catch (Exception exception) when (exception is JsonException or IOException)
+        catch (JsonException exception)
         {
             AppDiagnosticLog.WriteException("history.file-corrupt", exception);
+            PreservedCorruptPath = CorruptFilePreserver.Preserve(_path);
+            _writeBlockedByCorruption = true;
+            return [];
+        }
+        catch (IOException exception)
+        {
+            AppDiagnosticLog.WriteException("history.file-read-failed", exception);
             return [];
         }
     }
@@ -62,25 +76,33 @@ internal sealed class CaptureHistoryStore
         IReadOnlyList<CaptureRecord> records,
         CancellationToken cancellationToken = default)
     {
-        var directory = Path.GetDirectoryName(_path) ?? AppPaths.DataDirectory;
-        Directory.CreateDirectory(directory);
-        var temporary = Path.Combine(directory, $".capture-history-{Guid.NewGuid():N}.tmp");
-        try
+        if (_writeBlockedByCorruption)
         {
-            await using (var stream = File.Create(temporary))
-            {
-                await JsonSerializer.SerializeAsync(stream, records, Options, cancellationToken);
-                await stream.FlushAsync(cancellationToken);
-                stream.Flush(flushToDisk: true);
-            }
-            File.Move(temporary, _path, overwrite: true);
+            throw new InvalidOperationException(
+                "capture-history.json está inválido e foi preservado; " +
+                "o histórico em memória não substituirá o original.");
         }
-        finally
-        {
-            if (File.Exists(temporary))
-            {
-                File.Delete(temporary);
-            }
-        }
+        var snapshot = records.Select(Clone).ToArray();
+        using var lease = await FileOperationCoordinator.AcquireAsync(_path, cancellationToken)
+            .ConfigureAwait(false);
+        await AtomicFile.WriteAsync(
+            _path,
+            stream => JsonSerializer.SerializeAsync(stream, snapshot, Options, cancellationToken).AsTask(),
+            cancellationToken).ConfigureAwait(false);
     }
+
+    public void AllowRecoveryWrite() => _writeBlockedByCorruption = false;
+
+    private static CaptureRecord Clone(CaptureRecord item) => new()
+    {
+        Id = item.Id,
+        CreatedAt = item.CreatedAt,
+        Type = item.Type,
+        MediaKind = item.MediaKind,
+        FilePath = item.FilePath,
+        PortableRelativePath = item.PortableRelativePath,
+        Width = item.Width,
+        Height = item.Height,
+        DurationSeconds = item.DurationSeconds
+    };
 }

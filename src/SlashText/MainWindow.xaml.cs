@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Reflection;
+using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -62,6 +63,8 @@ public partial class MainWindow : Window
     private int _updateOfferActive;
     private CancellationTokenSource? _activeUpdateCancellation;
     private int _shortcutResponsiveBand = -1;
+    private CancellationTokenSource? _settingsSaveDebounce;
+    private Task _pendingSettingsSave = Task.CompletedTask;
 
     private const double ShortcutLeftMinimum = 220;
     private const double ShortcutLeftMaximum = 460;
@@ -101,66 +104,136 @@ public partial class MainWindow : Window
         {
             return;
         }
+
+        var startupWarnings = new List<string>();
         try
         {
-            _settings = await _settingsStore.LoadAsync();
+            var settingsResult = await _settingsStore.LoadDetailedAsync();
+            _settings = settingsResult.Value;
+            if (settingsResult.Status == JsonLoadStatus.InvalidJson)
+                startupWarnings.Add(
+                    $"settings.json inválido. Cópia preservada em {settingsResult.PreservedPath}.");
+            else if (settingsResult.Status is JsonLoadStatus.AccessDenied or JsonLoadStatus.Locked or JsonLoadStatus.ReadError)
+                startupWarnings.Add($"settings.json não pôde ser lido ({settingsResult.Status}).");
             _settings.Capture ??= new CaptureSettings();
             _settings.Capture.Recording ??= new RecordingSettings();
             RecordingPresetCatalog.Normalize(_settings.Capture.Recording);
             ThemeService.Apply(_settings.Theme);
+        }
+        catch (Exception exception)
+        {
+            startupWarnings.Add($"Configurações: {exception.Message}");
+            _settings = new AppSettings();
+            ThemeService.Apply(_settings.Theme);
+        }
+
+        CloseToTrayCheckBox.IsChecked = _settings.CloseToTray;
+        StartWithWindowsCheckBox.IsChecked = _settings.StartWithWindows;
+        ShowSuggestionsCheckBox.IsChecked = _settings.ShowSuggestions;
+        CheckUpdatesCheckBox.IsChecked = _settings.CheckUpdatesOnStartup;
+        AboutVersionText.Text = $"Versão {ProductVersion()} · Licença MIT · código aberto";
+        SettingsVersionText.Text = $"Versão atual: {ProductVersion()}";
+        UpdateChannelText.Text = $"Canal: estável · modo {AppPaths.Mode.ToString().ToLowerInvariant()}";
+        BackupLocationText.Text =
+            $"Backups em {AppPaths.BackupsDirectory}. Nenhum arquivo é enviado para a nuvem.";
+        SelectComboByTag(ThemeBox, _settings.Theme);
+
+        try
+        {
             await _usageService.LoadAsync();
-            CloseToTrayCheckBox.IsChecked = _settings.CloseToTray;
-            StartWithWindowsCheckBox.IsChecked = _settings.StartWithWindows;
-            ShowSuggestionsCheckBox.IsChecked = _settings.ShowSuggestions;
-            CheckUpdatesCheckBox.IsChecked = _settings.CheckUpdatesOnStartup;
-            AboutVersionText.Text = $"Versão {ProductVersion()} · Licença MIT · código aberto";
-            SettingsVersionText.Text = $"Versão atual: {ProductVersion()}";
-            UpdateChannelText.Text = $"Canal: estável · modo {AppPaths.Mode.ToString().ToLowerInvariant()}";
-            BackupLocationText.Text =
-                $"Backups em {AppPaths.BackupsDirectory}. Nenhum arquivo é enviado para a nuvem.";
-            await RefreshUpdateStatusAsync();
-            SelectComboByTag(ThemeBox, _settings.Theme);
-            QuickAccentEnabledCheckBox.IsChecked = _settings.QuickAccentEnabled;
-            SelectComboByTag(QuickAccentActivationBox, _settings.QuickAccentActivationKey);
-            SelectComboByTag(QuickAccentPositionBox, _settings.QuickAccentToolbarPosition);
-            QuickAccentUnicodeCheckBox.IsChecked = _settings.QuickAccentShowUnicode;
-            QuickAccentSortCheckBox.IsChecked = _settings.QuickAccentSortByUsage;
-            QuickAccentDelayBox.Text = _settings.QuickAccentInputDelayMs.ToString();
-            QuickAccentDelaySlider.Value = Math.Clamp(
-                _settings.QuickAccentInputDelayMs,
-                (int)QuickAccentDelaySlider.Minimum,
-                (int)QuickAccentDelaySlider.Maximum);
-            QuickAccentExcludedAppsBox.Text = _settings.QuickAccentExcludedApps;
-            ApplyQuickAccentCharacterSetSelection(_settings.QuickAccentCharacterSets);
-            ApplyQuickAccentSettings();
+            if (_usageService.LastLoadResult?.Status == JsonLoadStatus.InvalidJson)
+                startupWarnings.Add(
+                    $"usage.json inválido. Cópia preservada em {_usageService.LastLoadResult.PreservedPath}.");
+        }
+        catch (Exception exception)
+        {
+            startupWarnings.Add($"Estatísticas: {exception.Message}");
+        }
+
+        QuickAccentEnabledCheckBox.IsChecked = _settings.QuickAccentEnabled;
+        SelectComboByTag(QuickAccentActivationBox, _settings.QuickAccentActivationKey);
+        SelectComboByTag(QuickAccentPositionBox, _settings.QuickAccentToolbarPosition);
+        QuickAccentUnicodeCheckBox.IsChecked = _settings.QuickAccentShowUnicode;
+        QuickAccentSortCheckBox.IsChecked = _settings.QuickAccentSortByUsage;
+        QuickAccentDelayBox.Text = _settings.QuickAccentInputDelayMs.ToString();
+        QuickAccentDelaySlider.Value = Math.Clamp(
+            _settings.QuickAccentInputDelayMs,
+            (int)QuickAccentDelaySlider.Minimum,
+            (int)QuickAccentDelaySlider.Maximum);
+        QuickAccentExcludedAppsBox.Text = _settings.QuickAccentExcludedApps;
+        ApplyQuickAccentCharacterSetSelection(_settings.QuickAccentCharacterSets);
+        ApplyQuickAccentSettings();
+        try
+        {
+            _quickAccentService.Start();
+        }
+        catch (Exception exception)
+        {
+            startupWarnings.Add($"Acento Rápido: {exception.Message}");
+        }
+
+        try
+        {
             await _captureService.LoadAsync();
+            if (_captureService.PreservedCorruptHistoryPath is not null)
+                startupWarnings.Add(
+                    $"capture-history.json inválido. Cópia preservada em {_captureService.PreservedCorruptHistoryPath}.");
             await _captureService.CleanOlderThanAsync(
                 _settings.Capture.HistoryRetentionDays,
                 deleteFiles: false);
-            LoadCaptureSettings();
-            _initialized = true;
+        }
+        catch (Exception exception)
+        {
+            startupWarnings.Add($"Histórico de captura: {exception.Message}");
+        }
+        LoadCaptureSettings();
+        try
+        {
+            ConfigureCaptureShortcuts();
+        }
+        catch (Exception exception)
+        {
+            startupWarnings.Add($"Atalhos de captura: {exception.Message}");
+        }
 
+        var snippetsAvailable = false;
+        try
+        {
             var loaded = await _repository.LoadAsync();
             ReplaceList(loaded);
-            _backupService.CreateDailySnapshot();
             StartMonitoring();
-            _quickAccentService.Start();
-
+            snippetsAvailable = true;
             if (_snippets.Count > 0)
-            {
                 SelectSnippet(_snippets[0]);
-            }
             else
-            {
                 BeginNewSnippet();
-            }
+        }
+        catch (Exception exception)
+        {
+            startupWarnings.Add(
+                $"snippets.md não pôde ser carregado; expansão e edição ficaram desativadas. {exception.Message}");
+            BeginNewSnippet();
+        }
 
-            RefreshStatistics();
-            ShowView(ShortcutsView, ShortcutsTabButton);
-            StatusText.Text = $"{_snippets.Count} atalho(s) carregado(s)";
-            ConfigureCaptureShortcuts();
-            RefreshCaptureHistory();
+        try
+        {
+            _backupService.CreateDailySnapshot();
+        }
+        catch (Exception exception)
+        {
+            startupWarnings.Add($"Backup diário: {exception.Message}");
+        }
 
+        _initialized = true;
+        RefreshStatistics();
+        ShowView(ShortcutsView, ShortcutsTabButton);
+        StatusText.Text = snippetsAvailable
+            ? $"{_snippets.Count} atalho(s) carregado(s)"
+            : "Módulo de atalhos indisponível; captura e Acento Rápido continuam ativos";
+        RefreshCaptureHistory();
+        try
+        {
+            await RefreshUpdateStatusAsync();
             if (!_settings.OnboardingCompleted)
             {
                 var onboarding = new OnboardingWindow { Owner = this };
@@ -175,12 +248,18 @@ public partial class MainWindow : Window
         }
         catch (Exception exception)
         {
+            startupWarnings.Add($"Inicialização complementar: {exception.Message}");
+        }
+
+        if (startupWarnings.Count > 0)
+        {
+            AppDiagnosticLog.Write("startup.completed-with-warnings", ("count", startupWarnings.Count));
             MessageBox.Show(
-                $"Não foi possível iniciar o SlashDesk.\n\n{exception.Message}",
-                "SlashDesk",
+                "O SlashDesk iniciou com alguns módulos em modo seguro:\n\n" +
+                string.Join("\n", startupWarnings),
+                "Recuperação de dados",
                 MessageBoxButton.OK,
                 MessageBoxImage.Warning);
-            BeginNewSnippet();
         }
     }
 
@@ -390,11 +469,7 @@ public partial class MainWindow : Window
         IEnumerable<Snippet> filtered = _snippets;
         if (!string.IsNullOrWhiteSpace(query))
         {
-            filtered = filtered.Where(item =>
-                item.Name.Contains(query, StringComparison.CurrentCultureIgnoreCase) ||
-                item.Trigger.Contains(query, StringComparison.OrdinalIgnoreCase) ||
-                item.Category.Contains(query, StringComparison.CurrentCultureIgnoreCase) ||
-                item.Content.Contains(query, StringComparison.CurrentCultureIgnoreCase));
+            filtered = filtered.Where(item => SnippetSearch.Matches(item, query));
         }
 
         if (!string.IsNullOrWhiteSpace(_selectedCategory))
@@ -1376,16 +1451,22 @@ public partial class MainWindow : Window
 
         try
         {
-            _backupService.RestoreSnapshot(picker.FileName);
+            var restore = _backupService.RestoreSnapshot(picker.FileName);
             _settings = await _settingsStore.LoadAsync();
             ThemeService.Apply(_settings.Theme);
             ReplaceList(await _repository.LoadAsync());
             _keyboardHook.UpdateSnippets(_snippets);
             await _usageService.LoadAsync();
+            await _captureService.LoadAsync();
             RefreshStatistics();
+            RefreshCaptureHistory();
             RefreshBackupSummary();
             MessageBox.Show(
-                "Backup restaurado. As preferências completas serão aplicadas na próxima abertura do SlashDesk.",
+                "Backup restaurado de forma transacional. " +
+                (restore.LegacyWithoutAssets
+                    ? "Este backup legado não continha imagens; os assets atuais foram preservados. "
+                    : string.Empty) +
+                "As preferências completas serão aplicadas na próxima abertura do SlashDesk.",
                 "Restauração concluída",
                 MessageBoxButton.OK,
                 MessageBoxImage.Information);
@@ -1404,6 +1485,49 @@ public partial class MainWindow : Window
     {
         Directory.CreateDirectory(AppPaths.BackupsDirectory);
         Process.Start(new ProcessStartInfo(AppPaths.BackupsDirectory) { UseShellExecute = true });
+    }
+
+    private async void CleanOrphanAssets_OnClick(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var maintenance = new AssetMaintenanceService();
+            var analysis = await maintenance.AnalyzeAsync();
+            if (analysis.Orphans.Count == 0)
+            {
+                MessageBox.Show(
+                    "Nenhum asset órfão foi encontrado.",
+                    "Manutenção de assets",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+                return;
+            }
+            var size = FormatBytes(analysis.TotalBytes);
+            if (MessageBox.Show(
+                    $"Foram encontrados {analysis.Orphans.Count:N0} arquivo(s) não referenciado(s), " +
+                    $"ocupando {size}. Um backup completo será criado antes da exclusão. Continuar?",
+                    "Limpar assets não usados",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Warning) != MessageBoxResult.Yes)
+                return;
+
+            var backup = _backupService.CreateManualSnapshot();
+            var deleted = maintenance.DeleteOrphans(analysis);
+            RefreshBackupSummary();
+            MessageBox.Show(
+                $"{deleted:N0} asset(s) removido(s). Backup: {Path.GetFileName(backup)}",
+                "Manutenção concluída",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or InvalidDataException)
+        {
+            MessageBox.Show(
+                "Nenhum arquivo foi removido automaticamente.\n\n" + exception.Message,
+                "Não foi possível analisar os assets",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+        }
     }
 
     private void RefreshBackupSummary()
@@ -1440,7 +1564,7 @@ public partial class MainWindow : Window
         {
             ApplyTrayTheme(trayMenu);
         }
-        await _settingsStore.SaveAsync(_settings);
+        await SaveSettingsSafelyAsync();
         ShowView(SettingsView, SettingsTabButton);
     }
 
@@ -1584,7 +1708,8 @@ public partial class MainWindow : Window
         _settings.QuickAccentExcludedApps = QuickAccentExcludedAppsBox.Text;
         _settings.QuickAccentCharacterSets = SelectedQuickAccentCharacterSets();
         ApplyQuickAccentSettings();
-        await _settingsStore.SaveAsync(_settings);
+        QueueSettingsSave();
+        await Task.CompletedTask;
     }
 
     private void ApplyQuickAccentSettings()
@@ -1792,7 +1917,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        await _settingsStore.SaveAsync(_settings);
+        if (!await SaveSettingsSafelyAsync()) return;
         ConfigureCaptureShortcuts();
         StatusText.Text = "Configurações de captura salvas";
     }
@@ -2103,7 +2228,7 @@ public partial class MainWindow : Window
             MessageBox.Show(settingsError, "Gravação", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
-        await _settingsStore.SaveAsync(_settings);
+        if (!await SaveSettingsSafelyAsync()) return;
 
         try
         {
@@ -2195,7 +2320,7 @@ public partial class MainWindow : Window
             MessageBox.Show(settingsError, "GIF", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
-        await _settingsStore.SaveAsync(_settings);
+        if (!await SaveSettingsSafelyAsync()) return;
         var target = _captureService.SelectRecordingRegion(this, "Selecione a região do GIF");
         if (target is null)
         {
@@ -2298,6 +2423,73 @@ public partial class MainWindow : Window
             ? value
             : fallback;
 
+    private static string FormatBytes(long bytes) => bytes switch
+    {
+        >= 1024L * 1024 * 1024 => $"{bytes / (1024d * 1024 * 1024):N1} GB",
+        >= 1024L * 1024 => $"{bytes / (1024d * 1024):N1} MB",
+        >= 1024 => $"{bytes / 1024d:N1} KB",
+        _ => $"{bytes:N0} bytes"
+    };
+
+    private AppSettings SettingsSnapshot() =>
+        JsonSerializer.Deserialize<AppSettings>(JsonSerializer.Serialize(_settings))
+        ?? new AppSettings();
+
+    private async Task<bool> SaveSettingsSafelyAsync()
+    {
+        try
+        {
+            await _settingsStore.SaveAsync(SettingsSnapshot());
+            return true;
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or InvalidOperationException)
+        {
+            AppDiagnosticLog.WriteException("settings.save-failed", exception);
+            StatusText.Text = "Não foi possível salvar as configurações";
+            return false;
+        }
+    }
+
+    private void QueueSettingsSave()
+    {
+        var snapshot = SettingsSnapshot();
+        var next = new CancellationTokenSource();
+        var previous = Interlocked.Exchange(ref _settingsSaveDebounce, next);
+        previous?.Cancel();
+        previous?.Dispose();
+        _pendingSettingsSave = SaveSettingsAfterDelayAsync(snapshot, next.Token);
+    }
+
+    private async Task SaveSettingsAfterDelayAsync(AppSettings snapshot, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await Task.Delay(350, cancellationToken).ConfigureAwait(false);
+            await _settingsStore.SaveAsync(snapshot, cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or InvalidOperationException)
+        {
+            AppDiagnosticLog.WriteException("settings.debounced-save-failed", exception);
+            Dispatcher.BeginInvoke(() => StatusText.Text = "Não foi possível salvar as configurações");
+        }
+    }
+
+    private void FlushPendingSettingsSave()
+    {
+        _settingsSaveDebounce?.Cancel();
+        try
+        {
+            Task.Run(() => _settingsStore.SaveAsync(SettingsSnapshot())).Wait(TimeSpan.FromSeconds(2));
+        }
+        catch (Exception exception)
+        {
+            AppDiagnosticLog.WriteException("settings.shutdown-flush-failed", exception);
+        }
+    }
+
     private void CaptureFormat_OnChanged(object sender, SelectionChangedEventArgs e)
     {
         if (CaptureQualityBox is not null && CaptureFormatBox is not null)
@@ -2368,9 +2560,11 @@ public partial class MainWindow : Window
         foreach (var item in filtered.Take(40))
         {
             var resolvedPath = _captureService.ResolveFilePath(item);
-            var file = string.IsNullOrWhiteSpace(resolvedPath)
+            var hasPath = !string.IsNullOrWhiteSpace(resolvedPath);
+            var fileExists = hasPath && File.Exists(resolvedPath);
+            var file = !hasPath
                 ? "Somente clipboard"
-                : Path.GetFileName(resolvedPath);
+                : fileExists ? Path.GetFileName(resolvedPath) : "Arquivo não encontrado";
             var row = new Grid
             {
                 Margin = new Thickness(0, 0, 0, 7)
@@ -2389,11 +2583,17 @@ public partial class MainWindow : Window
                 Foreground = (Brush)FindResource("MutedBrush")
             });
             var actions = new StackPanel { Orientation = Orientation.Horizontal };
-            actions.Children.Add(HistoryButton("Abrir", item, OpenHistoryItem_OnClick));
-            actions.Children.Add(HistoryButton("Copiar", item, CopyHistoryItem_OnClick));
-            if (item.MediaKind.Equals("image", StringComparison.OrdinalIgnoreCase))
+            if (fileExists)
             {
-                actions.Children.Add(HistoryButton("Editar", item, EditHistoryItem_OnClick));
+                actions.Children.Add(HistoryButton("Abrir", item, OpenHistoryItem_OnClick));
+                actions.Children.Add(HistoryButton(
+                    item.MediaKind.Equals("image", StringComparison.OrdinalIgnoreCase)
+                        ? "Copiar imagem"
+                        : "Copiar arquivo",
+                    item,
+                    CopyHistoryItem_OnClick));
+                if (item.MediaKind.Equals("image", StringComparison.OrdinalIgnoreCase))
+                    actions.Children.Add(HistoryButton("Editar", item, EditHistoryItem_OnClick));
             }
             actions.Children.Add(HistoryButton("Excluir", item, DeleteHistoryItem_OnClick));
             Grid.SetColumn(actions, 1);
@@ -2461,10 +2661,18 @@ public partial class MainWindow : Window
         try
         {
             var path = _captureService.ResolveFilePath(record);
-            CaptureService.CopyFileToClipboard(path);
-            StatusText.Text = $"Arquivo copiado: {Path.GetFileName(path)}";
+            if (record.MediaKind.Equals("image", StringComparison.OrdinalIgnoreCase))
+            {
+                CaptureService.CopyImageToClipboard(path);
+                StatusText.Text = $"Imagem copiada: {Path.GetFileName(path)}";
+            }
+            else
+            {
+                CaptureService.CopyFileToClipboard(path);
+                StatusText.Text = $"Arquivo copiado: {Path.GetFileName(path)}";
+            }
         }
-        catch (Exception exception)
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or NotSupportedException)
         {
             MessageBox.Show(
                 exception.Message,
@@ -2503,9 +2711,18 @@ public partial class MainWindow : Window
         {
             return;
         }
-        await _captureService.DeleteAsync(
+        var result = await _captureService.DeleteDetailedAsync(
             record.Id,
             deleteFile: choice == MessageBoxResult.Yes);
+        if (result.FileDeleteError is not null)
+        {
+            MessageBox.Show(
+                "A entrada foi removida do histórico, mas o arquivo permaneceu no disco.\n\n" +
+                result.FileDeleteError.Message,
+                "Histórico",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+        }
         RefreshCaptureHistory();
     }
 
@@ -2934,6 +3151,7 @@ public partial class MainWindow : Window
         }
 
         _servicesDisposed = true;
+        FlushPendingSettingsSave();
         Activated -= MainWindow_OnActivated;
         _keyboardHook.ExpansionRequested -= KeyboardHook_OnExpansionRequested;
         _keyboardHook.SuggestionsChanged -= KeyboardHook_OnSuggestionsChanged;

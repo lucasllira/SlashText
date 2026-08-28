@@ -19,6 +19,7 @@ public sealed class UsageService
 
     public IReadOnlyList<UsageRecord> Records => _records;
     public QuickAccentUsageRecord QuickAccent => _quickAccent;
+    public JsonLoadResult<UsageSnapshot>? LastLoadResult => _store.LastLoadResult;
 
     public UsageService(string? usageFile = null)
     {
@@ -30,13 +31,9 @@ public sealed class UsageService
     {
         _records.Clear();
         _quickAccent = new QuickAccentUsageRecord();
-        if (!File.Exists(_usageFile))
-        {
-            return;
-        }
-
         try
         {
+            if (!File.Exists(_usageFile)) return;
             var json = await File.ReadAllTextAsync(_usageFile);
             using var document = JsonDocument.Parse(json);
             if (document.RootElement.ValueKind == JsonValueKind.Array)
@@ -46,7 +43,7 @@ public sealed class UsageService
                 return;
             }
 
-            var snapshot = JsonSerializer.Deserialize<UsageSnapshot>(json, ReadOptions);
+            var snapshot = await _store.LoadAsync();
             if (snapshot is null)
             {
                 return;
@@ -58,11 +55,11 @@ public sealed class UsageService
         }
         catch (JsonException)
         {
-            // Um arquivo inválido não impede o uso do aplicativo.
+            _ = await _store.LoadDetailedAsync();
         }
-        catch (IOException)
+        catch (IOException exception)
         {
-            // As estatísticas são auxiliares; o expansor continua funcionando.
+            AppDiagnosticLog.WriteException("usage.read-failed", exception);
         }
     }
 
@@ -119,6 +116,11 @@ public sealed class UsageService
         _store.SaveAsync(new UsageSnapshot
         {
             Snippets = _records.ToList(),
-            QuickAccent = _quickAccent
+            QuickAccent = new QuickAccentUsageRecord
+            {
+                Count = _quickAccent.Count,
+                LastUsedAt = _quickAccent.LastUsedAt,
+                Characters = new Dictionary<string, long>(_quickAccent.Characters)
+            }
         });
 }

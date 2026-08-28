@@ -17,30 +17,41 @@ public sealed class CaptureService
     private const uint MonitorDefaultToNearest = 2;
     private readonly CaptureHistoryStore _historyStore =
         new(AppPaths.CaptureHistoryFile);
+    private readonly SemaphoreSlim _historyGate = new(1, 1);
     private List<CaptureRecord> _history = [];
+    private CaptureRecord[] _historySnapshot = [];
 
-    public IReadOnlyList<CaptureRecord> History => _history;
+    public IReadOnlyList<CaptureRecord> History => Volatile.Read(ref _historySnapshot);
+    public string? PreservedCorruptHistoryPath => _historyStore.PreservedCorruptPath;
     public string ResolveFilePath(CaptureRecord record) =>
         CapturePathResolver.Resolve(record, AppPaths.Current);
     public async Task LoadAsync()
     {
-        _history = await _historyStore.LoadAsync();
-        foreach (var record in _history)
+        await _historyGate.WaitAsync();
+        try
         {
-            if (string.IsNullOrWhiteSpace(record.Id))
+            _history = await _historyStore.LoadAsync();
+            var ids = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var record in _history)
             {
-                record.Id = Guid.NewGuid().ToString("N");
+                if (string.IsNullOrWhiteSpace(record.Id) || !ids.Add(record.Id))
+                    record.Id = Guid.NewGuid().ToString("N");
+                ids.Add(record.Id);
+                if (string.IsNullOrWhiteSpace(record.MediaKind))
+                {
+                    record.MediaKind = Path.GetExtension(ResolveFilePath(record))
+                        .Equals(".mp4", StringComparison.OrdinalIgnoreCase)
+                        ? "video"
+                        : Path.GetExtension(ResolveFilePath(record))
+                            .Equals(".gif", StringComparison.OrdinalIgnoreCase) ? "gif" : "image";
+                }
             }
-            if (string.IsNullOrWhiteSpace(record.MediaKind))
-            {
-                record.MediaKind = Path.GetExtension(ResolveFilePath(record))
-                    .Equals(".mp4", StringComparison.OrdinalIgnoreCase)
-                    ? "video"
-                    : Path.GetExtension(ResolveFilePath(record))
-                        .Equals(".gif", StringComparison.OrdinalIgnoreCase)
-                        ? "gif"
-                        : "image";
-            }
+            _history = _history.OrderByDescending(item => item.CreatedAt).Take(1000).ToList();
+            PublishHistorySnapshot();
+        }
+        finally
+        {
+            _historyGate.Release();
         }
     }
 
@@ -163,32 +174,57 @@ public sealed class CaptureService
 
     public async Task AddMediaRecordAsync(CaptureRecord record)
     {
-        record.PortableRelativePath ??=
-            CapturePathResolver.CreatePortableRelativePath(record.FilePath, AppPaths.Current);
-        _history.Insert(0, record);
-        if (_history.Count > 1000)
+        await _historyGate.WaitAsync();
+        try
         {
-            _history.RemoveRange(1000, _history.Count - 1000);
+            record.PortableRelativePath ??=
+                CapturePathResolver.CreatePortableRelativePath(record.FilePath, AppPaths.Current);
+            if (_history.Any(item => item.Id.Equals(record.Id, StringComparison.OrdinalIgnoreCase))) return;
+            _history.Add(record);
+            NormalizeHistory();
+            PublishHistorySnapshot();
+            await _historyStore.SaveAsync(_history);
         }
-        await _historyStore.SaveAsync(_history);
+        finally
+        {
+            _historyGate.Release();
+        }
     }
 
     public async Task<bool> DeleteAsync(string id, bool deleteFile)
+        => (await DeleteDetailedAsync(id, deleteFile)).EntryRemoved;
+
+    public async Task<CaptureDeleteResult> DeleteDetailedAsync(string id, bool deleteFile)
     {
-        var record = _history.FirstOrDefault(item => item.Id == id);
-        if (record is null)
+        await _historyGate.WaitAsync();
+        try
         {
-            return false;
+            var record = _history.FirstOrDefault(item => item.Id == id);
+            if (record is null) return new CaptureDeleteResult(false, false, null);
+            Exception? fileError = null;
+            var fileDeleted = false;
+            var path = ResolveFilePath(record);
+            if (deleteFile && !string.IsNullOrWhiteSpace(path) && File.Exists(path))
+            {
+                try
+                {
+                    File.Delete(path);
+                    fileDeleted = true;
+                }
+                catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+                {
+                    fileError = exception;
+                }
+            }
+            _history.Remove(record);
+            PublishHistorySnapshot();
+            await _historyStore.SaveAsync(_history);
+            return new CaptureDeleteResult(true, fileDeleted, fileError);
         }
-        if (deleteFile &&
-            !string.IsNullOrWhiteSpace(ResolveFilePath(record)) &&
-            File.Exists(ResolveFilePath(record)))
+        finally
         {
-            File.Delete(ResolveFilePath(record));
+            _historyGate.Release();
         }
-        _history.Remove(record);
-        await _historyStore.SaveAsync(_history);
-        return true;
     }
 
     public async Task<int> CleanOlderThanAsync(int days, bool deleteFiles)
@@ -197,30 +233,30 @@ public sealed class CaptureService
         {
             return 0;
         }
-        var threshold = DateTimeOffset.Now.AddDays(-days);
-        var expired = _history.Where(item => item.CreatedAt < threshold).ToList();
-        foreach (var record in expired)
+        await _historyGate.WaitAsync();
+        try
         {
-            if (deleteFiles &&
-                !string.IsNullOrWhiteSpace(ResolveFilePath(record)) &&
-                File.Exists(ResolveFilePath(record)))
+            var threshold = DateTimeOffset.Now.AddDays(-days);
+            var expired = _history.Where(item => item.CreatedAt < threshold).ToList();
+            foreach (var record in expired)
             {
-                try
+                if (deleteFiles && !string.IsNullOrWhiteSpace(ResolveFilePath(record)) &&
+                    File.Exists(ResolveFilePath(record)))
                 {
-                    File.Delete(ResolveFilePath(record));
+                    try { File.Delete(ResolveFilePath(record)); }
+                    catch (IOException) { }
+                    catch (UnauthorizedAccessException) { }
                 }
-                catch (IOException)
-                {
-                    // A entrada é removida mesmo quando outro aplicativo mantém o arquivo aberto.
-                }
+                _history.Remove(record);
             }
-            _history.Remove(record);
+            PublishHistorySnapshot();
+            if (expired.Count > 0) await _historyStore.SaveAsync(_history);
+            return expired.Count;
         }
-        if (expired.Count > 0)
+        finally
         {
-            await _historyStore.SaveAsync(_history);
+            _historyGate.Release();
         }
-        return expired.Count;
     }
 
     public async Task<bool> EditExistingAsync(
@@ -251,28 +287,45 @@ public sealed class CaptureService
         }
 
         using var edited = editor.EditedBitmap;
-        var extension = Path.GetExtension(resolvedPath);
-        var temporary = resolvedPath + ".editing";
-        if (extension.Equals(".jpg", StringComparison.OrdinalIgnoreCase) ||
-            extension.Equals(".jpeg", StringComparison.OrdinalIgnoreCase))
+        await _historyGate.WaitAsync();
+        try
         {
-            var encoder = ImageCodecInfo.GetImageEncoders()
-                .First(item => item.FormatID == ImageFormat.Jpeg.Guid);
-            using var parameters = new EncoderParameters(1);
-            parameters.Param[0] = new EncoderParameter(
-                System.Drawing.Imaging.Encoder.Quality,
-                Math.Clamp(settings.JpegQuality, 1, 100));
-            edited.Save(temporary, encoder, parameters);
+            if (!_history.Contains(record)) return false;
+            var extension = Path.GetExtension(resolvedPath);
+            var temporary = resolvedPath + $".{Guid.NewGuid():N}.editing";
+            try
+            {
+                if (extension.Equals(".jpg", StringComparison.OrdinalIgnoreCase) ||
+                    extension.Equals(".jpeg", StringComparison.OrdinalIgnoreCase))
+                {
+                    var encoder = ImageCodecInfo.GetImageEncoders()
+                        .First(item => item.FormatID == ImageFormat.Jpeg.Guid);
+                    using var parameters = new EncoderParameters(1);
+                    parameters.Param[0] = new EncoderParameter(
+                        System.Drawing.Imaging.Encoder.Quality,
+                        Math.Clamp(settings.JpegQuality, 1, 100));
+                    edited.Save(temporary, encoder, parameters);
+                }
+                else
+                {
+                    edited.Save(temporary, ImageFormat.Png);
+                }
+                AtomicFile.Replace(temporary, resolvedPath);
+            }
+            finally
+            {
+                AtomicFile.TryDelete(temporary);
+            }
+            record.Width = edited.Width;
+            record.Height = edited.Height;
+            PublishHistorySnapshot();
+            await _historyStore.SaveAsync(_history);
+            return true;
         }
-        else
+        finally
         {
-            edited.Save(temporary, ImageFormat.Png);
+            _historyGate.Release();
         }
-        File.Move(temporary, resolvedPath, true);
-        record.Width = edited.Width;
-        record.Height = edited.Height;
-        await _historyStore.SaveAsync(_history);
-        return true;
     }
 
     public static void CopyFileToClipboard(string path)
@@ -286,6 +339,19 @@ public sealed class CaptureService
             path
         };
         Clipboard.SetFileDropList(collection);
+    }
+
+    public static void CopyImageToClipboard(string path)
+    {
+        if (!File.Exists(path)) throw new FileNotFoundException("O arquivo não está mais disponível.", path);
+        using var stream = File.Open(path, FileMode.Open, FileAccess.Read, FileShare.Read);
+        var image = new BitmapImage();
+        image.BeginInit();
+        image.CacheOption = BitmapCacheOption.OnLoad;
+        image.StreamSource = stream;
+        image.EndInit();
+        image.Freeze();
+        Clipboard.SetImage(image);
     }
 
     public async Task<CaptureRecord?> ProcessEditedRegionAsync(
@@ -427,12 +493,19 @@ public sealed class CaptureService
                 Width = output.Width,
                 Height = output.Height
             };
-            _history.Insert(0, record);
-            if (_history.Count > 1000)
+            await _historyGate.WaitAsync();
+            try
             {
-                _history.RemoveRange(1000, _history.Count - 1000);
+                if (!_history.Any(item => item.Id.Equals(record.Id, StringComparison.OrdinalIgnoreCase)))
+                    _history.Add(record);
+                NormalizeHistory();
+                PublishHistorySnapshot();
+                await _historyStore.SaveAsync(_history);
             }
-            await _historyStore.SaveAsync(_history);
+            finally
+            {
+                _historyGate.Release();
+            }
             return record;
         }
         finally
@@ -443,6 +516,19 @@ public sealed class CaptureService
             }
         }
     }
+
+    private void NormalizeHistory()
+    {
+        _history = _history
+            .GroupBy(item => item.Id, StringComparer.OrdinalIgnoreCase)
+            .Select(group => group.First())
+            .OrderByDescending(item => item.CreatedAt)
+            .Take(1000)
+            .ToList();
+    }
+
+    private void PublishHistorySnapshot() =>
+        Volatile.Write(ref _historySnapshot, _history.ToArray());
 
     public static Bitmap CaptureBitmap(Rectangle bounds, bool includeCursor = false)
     {
