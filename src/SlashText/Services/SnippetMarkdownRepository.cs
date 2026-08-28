@@ -164,7 +164,7 @@ public sealed partial class SnippetMarkdownRepository
             };
 
             snippet.HasLegacyIncompatibleTrigger = !TriggerRule.TryValidate(snippet.Trigger, out _);
-            Validate(snippet, snippets, allowLegacyTrigger: true);
+            Validate(snippet, snippets);
             snippets.Add(snippet);
             index = closingFenceIndex;
         }
@@ -199,13 +199,10 @@ public sealed partial class SnippetMarkdownRepository
         return builder.ToString();
     }
 
-    private static void Validate(
-        Snippet snippet,
-        IEnumerable<Snippet> existing,
-        bool allowLegacyTrigger = false)
+    private static void Validate(Snippet snippet, IEnumerable<Snippet> existing)
     {
         if (!TriggerRule.TryValidate(snippet.Trigger, out var triggerError) &&
-            !(allowLegacyTrigger && snippet.HasLegacyIncompatibleTrigger))
+            !snippet.HasLegacyIncompatibleTrigger)
         {
             throw new InvalidDataException(triggerError);
         }

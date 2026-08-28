@@ -172,6 +172,20 @@ try
     loaded = await repository.LoadAsync();
     Require(loaded.Any(item => item.Trigger == ":teste"), "gatilho com dois pontos");
 
+    var legacySnippet = new Snippet
+    {
+        Name = "Legado preservado",
+        Trigger = "/legado.incompatível",
+        Category = "Geral",
+        Content = "Preservar sem ativar",
+        HasLegacyIncompatibleTrigger = true
+    };
+    await repository.SaveAsync([snippet, colonSnippet, legacySnippet]);
+    loaded = await repository.LoadAsync();
+    Require(
+        loaded.Any(item => item.Trigger == legacySnippet.Trigger && item.HasLegacyIncompatibleTrigger),
+        "gatilho legado incompatível é preservado e sinalizado");
+
     var textBlazeFile = Path.Combine(root, "textblaze.json");
     await File.WriteAllTextAsync(
         textBlazeFile,
