@@ -29,13 +29,21 @@ jobs:
       - name: Build
         run: dotnet build SlashText.sln --configuration Release --no-restore -p:Platform=x64
 
+      - name: UI inventory comparison
+        shell: pwsh
+        run: ./scripts/compare-ui-inventory.ps1
+
       - name: UI integrity smoke
         shell: pwsh
-        run: |
-          ./scripts/compare-ui-inventory.ps1
-          ./scripts/ui-integrity-smoke.ps1
-          ./scripts/release-workflow-smoke.ps1
-          ./scripts/capture-toolbar-visual-contract-smoke.ps1
+        run: ./scripts/ui-integrity-smoke.ps1
+
+      - name: Release workflow smoke
+        shell: pwsh
+        run: ./scripts/release-workflow-smoke.ps1
+
+      - name: Capture toolbar Visual Contract smoke
+        shell: pwsh
+        run: ./scripts/capture-toolbar-visual-contract-smoke.ps1
 
       - name: Smoke tests
         run: dotnet run --project tests/SlashText.SmokeTests/SlashText.SmokeTests.csproj --configuration Release --no-build -p:Platform=x64
