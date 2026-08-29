@@ -37,11 +37,18 @@ foreach ($state in @('DefaultState', 'CaptureState', 'ShapesState', 'EmojiState'
 foreach ($visualFix in @(
     'FontFamily="Segoe UI Emoji"',
     'Adaptativo · referência 1440 × 900',
-    'Foreground="#FFFF375F"'
+    'Foreground="#FFFF375F"',
+    'Preview.CaptureMenuButton',
+    'Preview.EmojiButton'
 )) {
     if (-not $preview.Contains($visualFix)) {
         throw "Correção visual obrigatória ausente: $visualFix"
     }
+}
+$contract = Get-Content 'src/SlashText/Styles/CaptureToolbarVisualContract.xaml' -Raw
+if (-not $contract.Contains('Property="Stretch" Value="None"') -or
+    -not $contract.Contains('Property="Padding" Value="9"')) {
+    throw 'Viewport canônico de 20 × 20 não está preservado.'
 }
 
 $app = Get-Content 'src/SlashText/App.xaml.cs' -Raw
