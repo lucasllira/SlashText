@@ -40,7 +40,7 @@ foreach ($state in @('DefaultState', 'CaptureState', 'ShapesState', 'EmojiState'
 foreach ($visualFix in @(
     'Adaptativo · referência 1440 × 900',
     'Preview.CaptureMenuButton',
-    'Preview.EmojiButton',
+    'EmojiCatalogGrid',
     'Preview.PropertyButton',
     'Catalog:36'
 )) {
@@ -58,7 +58,8 @@ if (-not $previewCode.Contains('NotoEmojiCatalog.CreateImageSource')) {
 }
 $contract = Get-Content 'src/SlashText/Styles/CaptureToolbarVisualContract.xaml' -Raw
 if (-not $contract.Contains('Property="Stretch" Value="None"') -or
-    -not $contract.Contains('Property="Padding" Value="9"')) {
+    -not $contract.Contains('Property="Padding" Value="9"') -or
+    -not $contract.Contains('Preview.EmojiButton')) {
     throw 'Viewport canônico de 20 × 20 não está preservado.'
 }
 
