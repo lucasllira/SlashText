@@ -1,8 +1,6 @@
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
-using System.Windows.Controls;
-using System.Windows.Media.Imaging;
 
 namespace SlashText.Services;
 
@@ -218,52 +216,15 @@ public static class CaptureAnnotationRenderer
     {
         var pixels = Math.Max(12, (int)Math.Ceiling(
             annotation.Size * ((scaleX + scaleY) / 2d)));
-        using var stamp = RenderStamp(annotation.Text, pixels);
-        graphics.DrawImageUnscaled(
-            stamp,
-            (int)Math.Round(center.X - stamp.Width / 2d),
-            (int)Math.Round(center.Y - stamp.Height / 2d));
-    }
-
-    private static Bitmap RenderStamp(string text, int pixels)
-    {
-        var block = new TextBlock
-        {
-            Text = text,
-            FontFamily = new System.Windows.Media.FontFamily("Segoe UI Emoji"),
-            FontSize = pixels,
-            Background = System.Windows.Media.Brushes.Transparent,
-            UseLayoutRounding = true
-        };
-        block.Measure(new System.Windows.Size(double.PositiveInfinity, double.PositiveInfinity));
-        var width = Math.Max(1, (int)Math.Ceiling(block.DesiredSize.Width));
-        var height = Math.Max(1, (int)Math.Ceiling(block.DesiredSize.Height));
-        block.Arrange(new System.Windows.Rect(0, 0, width, height));
-        var rendered = new RenderTargetBitmap(
-            width,
-            height,
-            96,
-            96,
-            System.Windows.Media.PixelFormats.Pbgra32);
-        rendered.Render(block);
-        var bitmap = new Bitmap(width, height, PixelFormat.Format32bppPArgb);
-        var data = bitmap.LockBits(
-            new Rectangle(0, 0, width, height),
-            ImageLockMode.WriteOnly,
-            PixelFormat.Format32bppPArgb);
-        try
-        {
-            rendered.CopyPixels(
-                System.Windows.Int32Rect.Empty,
-                data.Scan0,
-                Math.Abs(data.Stride) * height,
-                data.Stride);
-        }
-        finally
-        {
-            bitmap.UnlockBits(data);
-        }
-        return bitmap;
+        using var stamp = NotoEmojiCatalog.CreateBitmap(annotation.Text);
+        var destination = new RectangleF(
+            (float)(center.X - pixels / 2d),
+            (float)(center.Y - pixels / 2d),
+            pixels,
+            pixels);
+        graphics.InterpolationMode = InterpolationMode.HighQualityBicubic;
+        graphics.PixelOffsetMode = PixelOffsetMode.HighQuality;
+        graphics.DrawImage(stamp, destination);
     }
 
     private static Color WithOpacity(Color color, float opacity) =>

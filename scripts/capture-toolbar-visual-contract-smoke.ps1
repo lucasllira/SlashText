@@ -4,7 +4,10 @@ $required = @(
     'docs/capture-toolbar-visual-contract.md',
     'src/SlashText/Styles/CaptureToolbarVisualContract.xaml',
     'src/SlashText/Views/CaptureToolbarPreviewWindow.xaml',
-    'src/SlashText/Views/CaptureToolbarPreviewWindow.xaml.cs'
+    'src/SlashText/Views/CaptureToolbarPreviewWindow.xaml.cs',
+    'src/SlashText/Services/NotoEmojiCatalog.cs',
+    'src/SlashText/Assets/NotoEmoji/LICENSE.txt',
+    'src/SlashText/Assets/NotoEmoji/NOTICE.md'
 )
 foreach ($path in $required) {
     if (-not (Test-Path $path)) {
@@ -35,9 +38,7 @@ foreach ($state in @('DefaultState', 'CaptureState', 'ShapesState', 'EmojiState'
     }
 }
 foreach ($visualFix in @(
-    'FontFamily="Segoe UI Emoji"',
     'Adaptativo · referência 1440 × 900',
-    'Foreground="#FFFF375F"',
     'Preview.CaptureMenuButton',
     'Preview.EmojiButton',
     'Preview.PropertyButton',
@@ -46,6 +47,14 @@ foreach ($visualFix in @(
     if (-not $preview.Contains($visualFix)) {
         throw "Correção visual obrigatória ausente: $visualFix"
     }
+}
+$notoAssets = @(Get-ChildItem 'src/SlashText/Assets/NotoEmoji' -Filter '*.png')
+if ($notoAssets.Count -ne 36) {
+    throw "Catálogo Noto deve conter 36 PNGs; encontrado: $($notoAssets.Count)"
+}
+$previewCode = Get-Content 'src/SlashText/Views/CaptureToolbarPreviewWindow.xaml.cs' -Raw
+if (-not $previewCode.Contains('NotoEmojiCatalog.CreateImageSource')) {
+    throw 'O preview não usa os mesmos assets Noto da captura real.'
 }
 $contract = Get-Content 'src/SlashText/Styles/CaptureToolbarVisualContract.xaml' -Raw
 if (-not $contract.Contains('Property="Stretch" Value="None"') -or

@@ -39,8 +39,8 @@ escura para manter contraste previsível sobre a imagem.
 
 O modelo transitório suporta contorno, preenchimento, opacidade, espessura,
 tamanho, negrito e carimbo. Retângulos e elipses impedem preenchimento e
-contorno simultaneamente ausentes. Emoticons usam Segoe UI Emoji no overlay e
-são rasterizados por WPF em ARGB transparente antes de compor o bitmap final.
+contorno simultaneamente ausentes. Emoticons usam os mesmos PNGs Google Noto
+Emoji no seletor, no overlay e no bitmap final.
 Limpar todas as marcações cria uma etapa de histórico e pode ser desfeito.
 
 ## Acessibilidade e movimento

@@ -184,6 +184,13 @@ Require(
     CaptureMotion.Duration(animationsEnabled: false, 160) == TimeSpan.Zero &&
     CaptureMotion.Duration(animationsEnabled: true, 160) == TimeSpan.FromMilliseconds(160),
     "animações respeitam a preferência do Windows");
+Require(
+    NotoEmojiCatalog.Items.Count == 36 &&
+    NotoEmojiCatalog.Items.Select(item => item.Value).Distinct().Count() == 36,
+    "catálogo Noto Emoji contém 36 opções únicas");
+Require(
+    NotoEmojiCatalog.Items.All(NotoEmojiCatalog.HasAsset),
+    "todos os emojis Noto possuem PNG incorporado");
 
 foreach (var anchor in new[]
          {

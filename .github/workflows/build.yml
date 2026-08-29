@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main, agent/slashdesk-shortcuts-v2-splitters, agent/slashdesk-functional-reliability, feat/capture-toolbar-fluent]
+    branches: [main, agent/slashdesk-shortcuts-v2-splitters, agent/slashdesk-functional-reliability, feat/capture-toolbar-fluent, feat/capture-toolbar-visual-contract]
   workflow_dispatch:
 
 permissions:
