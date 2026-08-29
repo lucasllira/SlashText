@@ -14,6 +14,9 @@ public partial class CaptureToolbarPreviewWindow : Window
     public CaptureToolbarPreviewWindow()
     {
         InitializeComponent();
+        var workArea = SystemParameters.WorkArea;
+        Width = Math.Max(MinWidth, Math.Min(1280, workArea.Width - 24));
+        Height = Math.Max(MinHeight, Math.Min(800, workArea.Height - 24));
         _states = new(StringComparer.OrdinalIgnoreCase)
         {
             ["default"] = DefaultState,
