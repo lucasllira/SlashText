@@ -34,6 +34,15 @@ foreach ($state in @('DefaultState', 'CaptureState', 'ShapesState', 'EmojiState'
         throw "Estado obrigatório ausente no preview: $state"
     }
 }
+foreach ($visualFix in @(
+    'FontFamily="Segoe UI Emoji"',
+    'Adaptativo · referência 1440 × 900',
+    'Foreground="#FFFF375F"'
+)) {
+    if (-not $preview.Contains($visualFix)) {
+        throw "Correção visual obrigatória ausente: $visualFix"
+    }
+}
 
 $app = Get-Content 'src/SlashText/App.xaml.cs' -Raw
 if (-not $app.Contains('--capture-toolbar-preview') -or
