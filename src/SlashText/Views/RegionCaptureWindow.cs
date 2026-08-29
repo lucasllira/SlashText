@@ -279,7 +279,7 @@ public sealed class RegionCaptureWindow : Window
         var button = new ToggleButton
         {
             Style = (Style)FindResource("CaptureToolbarToggleButton"),
-            Content = Icon(geometryKey),
+            Content = ToolbarIcon(geometryKey),
             ToolTip = toolTip
         };
         AutomationProperties.SetName(button, toolTip);
@@ -307,7 +307,7 @@ public sealed class RegionCaptureWindow : Window
         var button = new Button
         {
             Style = (Style)FindResource("CaptureToolbarIconButton"),
-            Content = Icon(geometryKey),
+            Content = ToolbarIcon(geometryKey),
             ToolTip = toolTip,
         };
         AutomationProperties.SetName(button, toolTip);
@@ -362,7 +362,7 @@ public sealed class RegionCaptureWindow : Window
         };
     }
 
-    private static Path Icon(string geometryKey) => new()
+    private static Path ToolbarIcon(string geometryKey) => new()
     {
         Data = (Geometry)Application.Current.FindResource(geometryKey),
         Stroke = ResourceBrush("CaptureToolbarTextBrush"),
