@@ -68,7 +68,9 @@ o número 1, nunca um quadrado contendo “12”.
 2. Menu Capturar: configuração atual, Copiar e Salvar.
 3. Formas: retângulo, elipse, linha, seta, número e emoticon; propriedades de
    preenchimento e contorno.
-4. Emoticons: 18 carimbos coloridos e tamanho configurável.
+4. Emoticons: 36 carimbos Unicode frequentes, categorias, rolagem e tamanho
+   configurável. A seleção foi ampliada com base nos caracteres comuns exibidos
+   por teclados móveis, incluindo a referência visual fornecida do Google.
 
 ## Regras de comportamento
 
@@ -98,7 +100,7 @@ Checklist:
 - [ ] Capturar é percebido como botão dividido.
 - [ ] Menu Capturar é compacto e ancorado.
 - [ ] Formas e propriedades aparecem em uma barra contextual independente.
-- [ ] Emoticons são coloridos e possuem 18 opções.
+- [ ] Emoticons são coloridos, possuem 36 opções e continuam legíveis com rolagem.
 - [ ] Estados selecionados não parecem botões grandes ou pesados.
 - [ ] Não existem superfícies azuladas no tema preto.
 - [ ] Nenhuma ação é cortada nas bordas do monitor.
