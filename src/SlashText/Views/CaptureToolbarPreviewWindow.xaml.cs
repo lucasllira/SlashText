@@ -1,0 +1,67 @@
+using System;
+using System.Collections.Generic;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Input;
+
+namespace SlashText.Views;
+
+public partial class CaptureToolbarPreviewWindow : Window
+{
+    private readonly Dictionary<string, FrameworkElement> _states;
+    private readonly Dictionary<string, Button> _stateButtons;
+
+    public CaptureToolbarPreviewWindow()
+    {
+        InitializeComponent();
+        _states = new(StringComparer.OrdinalIgnoreCase)
+        {
+            ["default"] = DefaultState,
+            ["capture"] = CaptureState,
+            ["shapes"] = ShapesState,
+            ["emoji"] = EmojiState
+        };
+        _stateButtons = new(StringComparer.OrdinalIgnoreCase)
+        {
+            ["default"] = DefaultButton,
+            ["capture"] = CaptureButton,
+            ["shapes"] = ShapesButton,
+            ["emoji"] = EmojiButton
+        };
+        ShowState("default");
+    }
+
+    private void OnStateClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button { CommandParameter: string state }) ShowState(state);
+    }
+
+    private void ShowState(string state)
+    {
+        foreach (var item in _states) item.Value.Visibility =
+            item.Key.Equals(state, StringComparison.OrdinalIgnoreCase)
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+        foreach (var item in _stateButtons) item.Value.Tag =
+            item.Key.Equals(state, StringComparison.OrdinalIgnoreCase)
+                ? "Selected"
+                : null;
+        StateTitle.Text = state switch
+        {
+            "capture" => "Menu Capturar",
+            "shapes" => "Formas e propriedades",
+            "emoji" => "Emoticons e carimbos",
+            _ => "Barra principal"
+        };
+    }
+
+    protected override void OnPreviewKeyDown(KeyEventArgs e)
+    {
+        base.OnPreviewKeyDown(e);
+        if (e.Key == Key.Escape) Close();
+        else if (e.Key == Key.D1) ShowState("default");
+        else if (e.Key == Key.D2) ShowState("capture");
+        else if (e.Key == Key.D3) ShowState("shapes");
+        else if (e.Key == Key.D4) ShowState("emoji");
+    }
+}
