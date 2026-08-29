@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Windows;
 using SlashText.Services;
+using SlashText.Views;
 
 namespace SlashText;
 
@@ -13,6 +14,17 @@ public partial class App : System.Windows.Application
 
     protected override void OnStartup(StartupEventArgs e)
     {
+        if (e.Args.Contains("--capture-toolbar-preview", StringComparer.OrdinalIgnoreCase))
+        {
+            _helperMode = true;
+            ShutdownMode = ShutdownMode.OnMainWindowClose;
+            var preview = new CaptureToolbarPreviewWindow();
+            MainWindow = preview;
+            preview.Show();
+            base.OnStartup(e);
+            return;
+        }
+
         if (PortableUpdateService.TryRunHelper(e.Args, out var helperExitCode))
         {
             _helperMode = true;
