@@ -1,0 +1,268 @@
+<Window x:Class="SlashText.Views.CaptureToolbarPreviewWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="SlashDesk — Visual Contract da captura"
+        Width="1440" Height="900" MinWidth="1080" MinHeight="720"
+        WindowStartupLocation="CenterScreen"
+        Background="#FF000000"
+        FontFamily="Segoe UI Variable Text, Segoe UI"
+        Foreground="#FFF5F5F5">
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="../Styles/CaptureToolbarVisualContract.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Window.Resources>
+
+    <Grid Background="{StaticResource Preview.Canvas}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="72"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="38"/>
+        </Grid.RowDefinitions>
+
+        <Border Grid.Row="0" Background="#FF0D0D0D"
+                BorderBrush="{StaticResource Preview.Divider}" BorderThickness="0,0,0,1">
+            <Grid Margin="24,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel VerticalAlignment="Center">
+                    <TextBlock Text="Visual Contract · Captura" FontSize="18" FontWeight="SemiBold"/>
+                    <TextBlock Text="Preview isolado — nenhuma captura ou dado real é iniciado"
+                               Foreground="{StaticResource Preview.Muted}" FontSize="12" Margin="0,3,0,0"/>
+                </StackPanel>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button x:Name="DefaultButton" Content="1  Barra" CommandParameter="default"
+                            Click="OnStateClick" Style="{StaticResource Preview.StateButton}"/>
+                    <Button x:Name="CaptureButton" Content="2  Capturar" CommandParameter="capture"
+                            Click="OnStateClick" Style="{StaticResource Preview.StateButton}"/>
+                    <Button x:Name="ShapesButton" Content="3  Formas" CommandParameter="shapes"
+                            Click="OnStateClick" Style="{StaticResource Preview.StateButton}"/>
+                    <Button x:Name="EmojiButton" Content="4  Emoticons" CommandParameter="emoji"
+                            Click="OnStateClick" Style="{StaticResource Preview.StateButton}"/>
+                </StackPanel>
+                <TextBlock Grid.Column="2" Text="ESC fecha" Foreground="{StaticResource Preview.Muted}"
+                           FontSize="12" Margin="18,0,0,0" VerticalAlignment="Center"/>
+            </Grid>
+        </Border>
+
+        <Grid Grid.Row="1" Margin="24">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="44"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+            <StackPanel Orientation="Horizontal">
+                <TextBlock x:Name="StateTitle" Text="Barra principal" FontSize="22" FontWeight="SemiBold"
+                           VerticalAlignment="Center"/>
+                <Border Background="#FF14383D" BorderBrush="{StaticResource Preview.Accent}"
+                        BorderThickness="1" CornerRadius="10" Padding="10,4" Margin="12,6,0,6">
+                    <TextBlock Text="TEMA PRETO" Foreground="{StaticResource Preview.Accent}"
+                               FontSize="10" FontWeight="SemiBold"/>
+                </Border>
+            </StackPanel>
+
+            <Border Grid.Row="1" Background="#FF030303" BorderBrush="#FF171717"
+                    BorderThickness="1" CornerRadius="16" ClipToBounds="True">
+                <Grid>
+                    <Grid.Background>
+                        <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                            <GradientStop Color="#FF080B0D" Offset="0"/>
+                            <GradientStop Color="#FF000000" Offset="1"/>
+                        </LinearGradientBrush>
+                    </Grid.Background>
+
+                    <!-- ESTADO 1 -->
+                    <Grid x:Name="DefaultState" Margin="60,42">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+                        <Border Width="760" Height="370" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                Background="#FF080808" BorderBrush="{StaticResource Preview.Accent}"
+                                BorderThickness="2" CornerRadius="2">
+                            <Grid>
+                                <Rectangle Margin="-1" Stroke="{StaticResource Preview.Accent}"
+                                           StrokeThickness="1" StrokeDashArray="4,4"/>
+                                <TextBlock Text="760 × 370" HorizontalAlignment="Left" VerticalAlignment="Top"
+                                           Margin="-1,-32,0,0" Padding="10,5" FontFamily="Cascadia Mono, Consolas"
+                                           FontSize="12" Background="#FF171A1D" Foreground="{StaticResource Preview.Text}"/>
+                            </Grid>
+                        </Border>
+                        <StackPanel Grid.Row="1" HorizontalAlignment="Center" Margin="0,16,0,40">
+                            <Border Style="{StaticResource Preview.ToolbarSurface}">
+                                <StackPanel Orientation="Horizontal">
+                                    <Border CornerRadius="8" ClipToBounds="True">
+                                        <StackPanel Orientation="Horizontal">
+                                            <Button Content="Capturar" Width="86" Height="40" Foreground="White"
+                                                    Background="{StaticResource Preview.Accent}" BorderThickness="0"
+                                                    FontWeight="SemiBold"/>
+                                            <Button Width="32" Height="40" Background="{StaticResource Preview.Accent}"
+                                                    BorderBrush="#FF0D7782" BorderThickness="1,0,0,0">
+                                                <Path Data="{StaticResource PreviewIcon.ChevronDown}" Style="{StaticResource Preview.Icon}" Width="16" Height="16"/>
+                                            </Button>
+                                        </StackPanel>
+                                    </Border>
+                                    <Border Width="1" Height="24" Margin="7,8" Background="{StaticResource Preview.Divider}"/>
+                                    <Button Tag="Selected" ToolTip="Seta" Style="{StaticResource Preview.IconButton}"><Path Data="{StaticResource PreviewIcon.Arrow}" Style="{StaticResource Preview.Icon}" Stroke="{StaticResource Preview.Accent}"/></Button>
+                                    <Button ToolTip="Marca-texto" Style="{StaticResource Preview.IconButton}"><Path Data="{StaticResource PreviewIcon.Highlighter}" Style="{StaticResource Preview.Icon}"/></Button>
+                                    <Button ToolTip="Formas" Style="{StaticResource Preview.IconButton}"><Path Data="{StaticResource PreviewIcon.Shapes}" Style="{StaticResource Preview.Icon}"/></Button>
+                                    <Button ToolTip="Lápis" Style="{StaticResource Preview.IconButton}"><Path Data="{StaticResource PreviewIcon.Pencil}" Style="{StaticResource Preview.Icon}"/></Button>
+                                    <Button ToolTip="Texto" Style="{StaticResource Preview.IconButton}"><Path Data="{StaticResource PreviewIcon.Text}" Style="{StaticResource Preview.Icon}"/></Button>
+                                    <Button ToolTip="Número" Style="{StaticResource Preview.IconButton}"><Path Data="{StaticResource PreviewIcon.Number}" Style="{StaticResource Preview.Icon}"/></Button>
+                                    <Button ToolTip="Emoticons" Style="{StaticResource Preview.IconButton}"><Path Data="{StaticResource PreviewIcon.Emoji}" Style="{StaticResource Preview.Icon}"/></Button>
+                                    <Button ToolTip="Apagar marcações" IsEnabled="False" Style="{StaticResource Preview.IconButton}"><Path Data="{StaticResource PreviewIcon.Eraser}" Style="{StaticResource Preview.Icon}"/></Button>
+                                    <Border Width="1" Height="24" Margin="7,8" Background="{StaticResource Preview.Divider}"/>
+                                    <Button ToolTip="Desfazer" IsEnabled="False" Style="{StaticResource Preview.IconButton}"><Path Data="{StaticResource PreviewIcon.Undo}" Style="{StaticResource Preview.Icon}"/></Button>
+                                    <Button ToolTip="Refazer" IsEnabled="False" Style="{StaticResource Preview.IconButton}"><Path Data="{StaticResource PreviewIcon.Redo}" Style="{StaticResource Preview.Icon}"/></Button>
+                                    <Button ToolTip="Refazer seleção" Style="{StaticResource Preview.IconButton}"><Path Data="{StaticResource PreviewIcon.Reselect}" Style="{StaticResource Preview.Icon}"/></Button>
+                                    <Button ToolTip="Cancelar" Style="{StaticResource Preview.IconButton}"><Path Data="{StaticResource PreviewIcon.Close}" Style="{StaticResource Preview.Icon}"/></Button>
+                                </StackPanel>
+                            </Border>
+                            <TextBlock Text="Ícones canônicos · grade 20 × 20 · botões 40 × 40"
+                                       Foreground="{StaticResource Preview.Muted}" FontSize="11"
+                                       HorizontalAlignment="Center" Margin="0,12,0,0"/>
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- ESTADO 2 -->
+                    <Grid x:Name="CaptureState" Visibility="Collapsed" Margin="60,46">
+                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <Border Style="{StaticResource Preview.ToolbarSurface}">
+                                <StackPanel Orientation="Horizontal">
+                                    <Border CornerRadius="8" ClipToBounds="True">
+                                        <StackPanel Orientation="Horizontal">
+                                            <Button Content="Capturar" Width="86" Height="40" Foreground="White" Background="{StaticResource Preview.Accent}" BorderThickness="0" FontWeight="SemiBold"/>
+                                            <Button Width="32" Height="40" Background="{StaticResource Preview.AccentHover}" BorderBrush="#FF0D7782" BorderThickness="1,0,0,0"><Path Data="{StaticResource PreviewIcon.ChevronDown}" Style="{StaticResource Preview.Icon}" Width="16" Height="16"/></Button>
+                                        </StackPanel>
+                                    </Border>
+                                    <Border Width="1" Height="24" Margin="7,8" Background="{StaticResource Preview.Divider}"/>
+                                    <Button Tag="Selected" Style="{StaticResource Preview.IconButton}"><Path Data="{StaticResource PreviewIcon.Arrow}" Style="{StaticResource Preview.Icon}" Stroke="{StaticResource Preview.Accent}"/></Button>
+                                    <Button Style="{StaticResource Preview.IconButton}"><Path Data="{StaticResource PreviewIcon.Highlighter}" Style="{StaticResource Preview.Icon}"/></Button>
+                                    <Button Style="{StaticResource Preview.IconButton}"><Path Data="{StaticResource PreviewIcon.Shapes}" Style="{StaticResource Preview.Icon}"/></Button>
+                                    <Button Style="{StaticResource Preview.IconButton}"><Path Data="{StaticResource PreviewIcon.Pencil}" Style="{StaticResource Preview.Icon}"/></Button>
+                                    <Button Style="{StaticResource Preview.IconButton}"><Path Data="{StaticResource PreviewIcon.Text}" Style="{StaticResource Preview.Icon}"/></Button>
+                                    <Button Style="{StaticResource Preview.IconButton}"><Path Data="{StaticResource PreviewIcon.Number}" Style="{StaticResource Preview.Icon}"/></Button>
+                                    <Button Style="{StaticResource Preview.IconButton}"><Path Data="{StaticResource PreviewIcon.Emoji}" Style="{StaticResource Preview.Icon}"/></Button>
+                                </StackPanel>
+                            </Border>
+                            <Border Width="286" Margin="-430,10,0,0" Padding="8" HorizontalAlignment="Center"
+                                    Background="{StaticResource Preview.Elevated}" BorderBrush="{StaticResource Preview.Border}"
+                                    BorderThickness="1" CornerRadius="12">
+                                <StackPanel>
+                                    <Button Height="44" Background="{StaticResource Preview.Hover}" BorderThickness="0" Foreground="{StaticResource Preview.Text}" HorizontalContentAlignment="Stretch" Padding="12,0">
+                                        <StackPanel Orientation="Horizontal"><Path Data="{StaticResource PreviewIcon.Arrow}" Style="{StaticResource Preview.Icon}"/><TextBlock Text="Concluir conforme configuração" Margin="12,0,0,0" VerticalAlignment="Center"/></StackPanel>
+                                    </Button>
+                                    <Button Height="44" Background="Transparent" BorderThickness="0" Foreground="{StaticResource Preview.Text}" HorizontalContentAlignment="Stretch" Padding="12,0">
+                                        <StackPanel Orientation="Horizontal"><Path Data="{StaticResource PreviewIcon.Copy}" Style="{StaticResource Preview.Icon}"/><TextBlock Text="Copiar" Margin="12,0,0,0" VerticalAlignment="Center"/></StackPanel>
+                                    </Button>
+                                    <Button Height="44" Background="Transparent" BorderThickness="0" Foreground="{StaticResource Preview.Text}" HorizontalContentAlignment="Stretch" Padding="12,0">
+                                        <StackPanel Orientation="Horizontal"><Path Data="{StaticResource PreviewIcon.Save}" Style="{StaticResource Preview.Icon}"/><TextBlock Text="Salvar…" Margin="12,0,0,0" VerticalAlignment="Center"/></StackPanel>
+                                    </Button>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- ESTADO 3 -->
+                    <Grid x:Name="ShapesState" Visibility="Collapsed" Margin="40">
+                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <Border Style="{StaticResource Preview.ToolbarSurface}">
+                                <StackPanel Orientation="Horizontal">
+                                    <Border CornerRadius="8" ClipToBounds="True"><StackPanel Orientation="Horizontal"><Button Content="Capturar" Width="86" Height="40" Foreground="White" Background="{StaticResource Preview.Accent}" BorderThickness="0" FontWeight="SemiBold"/><Button Width="32" Height="40" Background="{StaticResource Preview.Accent}" BorderThickness="0"><Path Data="{StaticResource PreviewIcon.ChevronDown}" Style="{StaticResource Preview.Icon}" Width="16" Height="16"/></Button></StackPanel></Border>
+                                    <Border Width="1" Height="24" Margin="7,8" Background="{StaticResource Preview.Divider}"/>
+                                    <Button Style="{StaticResource Preview.IconButton}"><Path Data="{StaticResource PreviewIcon.Arrow}" Style="{StaticResource Preview.Icon}"/></Button>
+                                    <Button Style="{StaticResource Preview.IconButton}"><Path Data="{StaticResource PreviewIcon.Highlighter}" Style="{StaticResource Preview.Icon}"/></Button>
+                                    <Button Tag="Selected" Style="{StaticResource Preview.IconButton}"><Path Data="{StaticResource PreviewIcon.Shapes}" Style="{StaticResource Preview.Icon}" Stroke="{StaticResource Preview.Accent}"/></Button>
+                                    <Button Style="{StaticResource Preview.IconButton}"><Path Data="{StaticResource PreviewIcon.Pencil}" Style="{StaticResource Preview.Icon}"/></Button>
+                                    <Button Style="{StaticResource Preview.IconButton}"><Path Data="{StaticResource PreviewIcon.Text}" Style="{StaticResource Preview.Icon}"/></Button>
+                                    <Button Style="{StaticResource Preview.IconButton}"><Path Data="{StaticResource PreviewIcon.Number}" Style="{StaticResource Preview.Icon}"/></Button>
+                                    <Button Style="{StaticResource Preview.IconButton}"><Path Data="{StaticResource PreviewIcon.Emoji}" Style="{StaticResource Preview.Icon}"/></Button>
+                                    <Button Style="{StaticResource Preview.IconButton}"><Path Data="{StaticResource PreviewIcon.Eraser}" Style="{StaticResource Preview.Icon}"/></Button>
+                                    <Border Width="1" Height="24" Margin="7,8" Background="{StaticResource Preview.Divider}"/>
+                                    <Button Style="{StaticResource Preview.IconButton}"><Path Data="{StaticResource PreviewIcon.Undo}" Style="{StaticResource Preview.Icon}"/></Button>
+                                    <Button Style="{StaticResource Preview.IconButton}"><Path Data="{StaticResource PreviewIcon.Close}" Style="{StaticResource Preview.Icon}"/></Button>
+                                </StackPanel>
+                            </Border>
+                            <Border Style="{StaticResource Preview.ToolbarSurface}" Margin="0,10,0,0">
+                                <StackPanel Orientation="Horizontal">
+                                    <Button Tag="Selected" ToolTip="Retângulo" Style="{StaticResource Preview.IconButton}"><Path Data="{StaticResource PreviewIcon.Rectangle}" Style="{StaticResource Preview.Icon}" Stroke="{StaticResource Preview.Accent}"/></Button>
+                                    <Button ToolTip="Elipse" Style="{StaticResource Preview.IconButton}"><Path Data="{StaticResource PreviewIcon.Ellipse}" Style="{StaticResource Preview.Icon}"/></Button>
+                                    <Button ToolTip="Linha" Style="{StaticResource Preview.IconButton}"><Path Data="{StaticResource PreviewIcon.Line}" Style="{StaticResource Preview.Icon}"/></Button>
+                                    <Button ToolTip="Seta" Style="{StaticResource Preview.IconButton}"><Path Data="{StaticResource PreviewIcon.Arrow}" Style="{StaticResource Preview.Icon}"/></Button>
+                                    <Button ToolTip="Número" Style="{StaticResource Preview.IconButton}"><Path Data="{StaticResource PreviewIcon.Number}" Style="{StaticResource Preview.Icon}"/></Button>
+                                    <Button ToolTip="Emoticons" Style="{StaticResource Preview.IconButton}"><Path Data="{StaticResource PreviewIcon.Emoji}" Style="{StaticResource Preview.Icon}"/></Button>
+                                    <Border Width="1" Height="24" Margin="7,8" Background="{StaticResource Preview.Divider}"/>
+                                    <Button Height="40" Padding="13,0" Foreground="{StaticResource Preview.Muted}" Background="Transparent" BorderThickness="0" Content="Sem preenchimento  ▾"/>
+                                    <Button Height="40" Padding="13,0" Foreground="{StaticResource Preview.Text}" Background="Transparent" BorderThickness="0"><StackPanel Orientation="Horizontal"><Ellipse Width="14" Height="14" Fill="#FFFF2D37" Margin="0,0,8,0"/><TextBlock Text="Contorno  ▾" VerticalAlignment="Center"/></StackPanel></Button>
+                                </StackPanel>
+                            </Border>
+                            <Border Width="360" Margin="280,10,0,0" Padding="16" Background="{StaticResource Preview.Elevated}" BorderBrush="{StaticResource Preview.Border}" BorderThickness="1" CornerRadius="12">
+                                <StackPanel>
+                                    <TextBlock Text="Contorno" FontWeight="SemiBold" Margin="0,0,0,12"/>
+                                    <UniformGrid Columns="6" Rows="3">
+                                        <Ellipse Width="30" Height="30" Fill="#FFFF2D37" Stroke="White" StrokeThickness="2" Margin="5"/><Ellipse Width="30" Height="30" Fill="#FFFFD60A" Margin="5"/><Ellipse Width="30" Height="30" Fill="#FF35C759" Margin="5"/><Ellipse Width="30" Height="30" Fill="#FF32ADE6" Margin="5"/><Ellipse Width="30" Height="30" Fill="#FF0A84FF" Margin="5"/><Ellipse Width="30" Height="30" Fill="#FFBF5AF2" Margin="5"/>
+                                        <Ellipse Width="30" Height="30" Fill="#FFFF375F" Margin="5"/><Ellipse Width="30" Height="30" Fill="#FFFF9F0A" Margin="5"/><Ellipse Width="30" Height="30" Fill="#FF64D2FF" Margin="5"/><Ellipse Width="30" Height="30" Fill="#FF5E5CE6" Margin="5"/><Ellipse Width="30" Height="30" Fill="#FFFFFFFF" Margin="5"/><Ellipse Width="30" Height="30" Fill="#FF8E8E93" Margin="5"/>
+                                        <Ellipse Width="30" Height="30" Fill="#FF000000" Stroke="#FF777777" Margin="5"/><Ellipse Width="30" Height="30" Fill="#FFFF6482" Margin="5"/><Ellipse Width="30" Height="30" Fill="#FF30D158" Margin="5"/><Ellipse Width="30" Height="30" Fill="#FF40C8E0" Margin="5"/><Ellipse Width="30" Height="30" Fill="#FFAC8E68" Margin="5"/><Ellipse Width="30" Height="30" Fill="#FFFFD3B6" Margin="5"/>
+                                    </UniformGrid>
+                                    <TextBlock Text="Opacidade  100%" Foreground="{StaticResource Preview.Muted}" Margin="0,14,0,6"/>
+                                    <Slider Minimum="10" Maximum="100" Value="100" Foreground="{StaticResource Preview.Accent}"/>
+                                    <TextBlock Text="Espessura  4 px" Foreground="{StaticResource Preview.Muted}" Margin="0,12,0,6"/>
+                                    <Slider Minimum="1" Maximum="20" Value="4" Foreground="{StaticResource Preview.Accent}"/>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- ESTADO 4 -->
+                    <Grid x:Name="EmojiState" Visibility="Collapsed" Margin="40">
+                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <Border Style="{StaticResource Preview.ToolbarSurface}">
+                                <StackPanel Orientation="Horizontal">
+                                    <Border CornerRadius="8" ClipToBounds="True"><StackPanel Orientation="Horizontal"><Button Content="Capturar" Width="86" Height="40" Foreground="White" Background="{StaticResource Preview.Accent}" BorderThickness="0" FontWeight="SemiBold"/><Button Width="32" Height="40" Background="{StaticResource Preview.Accent}" BorderThickness="0"><Path Data="{StaticResource PreviewIcon.ChevronDown}" Style="{StaticResource Preview.Icon}" Width="16" Height="16"/></Button></StackPanel></Border>
+                                    <Border Width="1" Height="24" Margin="7,8" Background="{StaticResource Preview.Divider}"/>
+                                    <Button Style="{StaticResource Preview.IconButton}"><Path Data="{StaticResource PreviewIcon.Arrow}" Style="{StaticResource Preview.Icon}"/></Button>
+                                    <Button Style="{StaticResource Preview.IconButton}"><Path Data="{StaticResource PreviewIcon.Highlighter}" Style="{StaticResource Preview.Icon}"/></Button>
+                                    <Button Style="{StaticResource Preview.IconButton}"><Path Data="{StaticResource PreviewIcon.Shapes}" Style="{StaticResource Preview.Icon}"/></Button>
+                                    <Button Style="{StaticResource Preview.IconButton}"><Path Data="{StaticResource PreviewIcon.Pencil}" Style="{StaticResource Preview.Icon}"/></Button>
+                                    <Button Style="{StaticResource Preview.IconButton}"><Path Data="{StaticResource PreviewIcon.Text}" Style="{StaticResource Preview.Icon}"/></Button>
+                                    <Button Style="{StaticResource Preview.IconButton}"><Path Data="{StaticResource PreviewIcon.Number}" Style="{StaticResource Preview.Icon}"/></Button>
+                                    <Button Tag="Selected" Style="{StaticResource Preview.IconButton}"><Path Data="{StaticResource PreviewIcon.Emoji}" Style="{StaticResource Preview.Icon}" Stroke="{StaticResource Preview.Accent}"/></Button>
+                                    <Button Style="{StaticResource Preview.IconButton}"><Path Data="{StaticResource PreviewIcon.Eraser}" Style="{StaticResource Preview.Icon}"/></Button>
+                                    <Border Width="1" Height="24" Margin="7,8" Background="{StaticResource Preview.Divider}"/>
+                                    <Button Style="{StaticResource Preview.IconButton}"><Path Data="{StaticResource PreviewIcon.Undo}" Style="{StaticResource Preview.Icon}"/></Button>
+                                    <Button Style="{StaticResource Preview.IconButton}"><Path Data="{StaticResource PreviewIcon.Close}" Style="{StaticResource Preview.Icon}"/></Button>
+                                </StackPanel>
+                            </Border>
+                            <Border Width="350" Margin="220,10,0,0" Padding="16" Background="{StaticResource Preview.Elevated}" BorderBrush="{StaticResource Preview.Border}" BorderThickness="1" CornerRadius="12">
+                                <StackPanel>
+                                    <TextBlock Text="Emoticons" FontWeight="SemiBold" FontSize="14"/>
+                                    <TextBlock Text="Clique para inserir na captura" Foreground="{StaticResource Preview.Muted}" FontSize="11" Margin="0,3,0,12"/>
+                                    <UniformGrid Columns="6" Rows="3" FontFamily="Segoe UI Emoji" FontSize="25">
+                                        <Button Content="❤️" Height="44" Background="#FF25363A" BorderBrush="{StaticResource Preview.Accent}" BorderThickness="1"/><Button Content="⭐" Height="44" Background="Transparent" BorderThickness="0"/><Button Content="❓" Height="44" Background="Transparent" BorderThickness="0"/><Button Content="✔️" Height="44" Background="Transparent" BorderThickness="0"/><Button Content="❌" Height="44" Background="Transparent" BorderThickness="0"/><Button Content="🔥" Height="44" Background="Transparent" BorderThickness="0"/>
+                                        <Button Content="👍" Height="44" Background="Transparent" BorderThickness="0"/><Button Content="👎" Height="44" Background="Transparent" BorderThickness="0"/><Button Content="👏" Height="44" Background="Transparent" BorderThickness="0"/><Button Content="🙌" Height="44" Background="Transparent" BorderThickness="0"/><Button Content="👀" Height="44" Background="Transparent" BorderThickness="0"/><Button Content="💯" Height="44" Background="Transparent" BorderThickness="0"/>
+                                        <Button Content="🙂" Height="44" Background="Transparent" BorderThickness="0"/><Button Content="😟" Height="44" Background="Transparent" BorderThickness="0"/><Button Content="😘" Height="44" Background="Transparent" BorderThickness="0"/><Button Content="😍" Height="44" Background="Transparent" BorderThickness="0"/><Button Content="😂" Height="44" Background="Transparent" BorderThickness="0"/><Button Content="😭" Height="44" Background="Transparent" BorderThickness="0"/>
+                                    </UniformGrid>
+                                    <TextBlock Text="Tamanho  32 px" Foreground="{StaticResource Preview.Muted}" Margin="0,16,0,6"/>
+                                    <Slider Minimum="24" Maximum="64" Value="32" Foreground="{StaticResource Preview.Accent}"/>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </Grid>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <Border Grid.Row="2" Background="#FF0D0D0D" BorderBrush="{StaticResource Preview.Divider}" BorderThickness="0,1,0,0">
+            <Grid Margin="24,0">
+                <TextBlock Text="Somente preview visual · não integrado à captura · PR empilhado"
+                           Foreground="{StaticResource Preview.Muted}" FontSize="11" VerticalAlignment="Center"/>
+                <TextBlock Text="1440 × 900 · Visual Contract v1" HorizontalAlignment="Right"
+                           Foreground="{StaticResource Preview.Muted}" FontSize="11" VerticalAlignment="Center"/>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>
