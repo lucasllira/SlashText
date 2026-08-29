@@ -169,6 +169,43 @@ Require(
     narrowPlacement.Side is ToolbarPlacementSide.Above or ToolbarPlacementSide.InsideBottom,
     "barra larga no canto inferior direito usa modo compacto e posição vertical segura");
 
+var toolSelection = new CaptureToolSelection(CaptureAnnotationKind.Arrow);
+Require(toolSelection.IsSelected(CaptureAnnotationKind.Arrow), "ferramenta inicial selecionada");
+toolSelection.Select(CaptureAnnotationKind.Pencil);
+Require(
+    toolSelection.IsSelected(CaptureAnnotationKind.Pencil) &&
+    !toolSelection.IsSelected(CaptureAnnotationKind.Arrow),
+    "somente uma ferramenta de desenho permanece selecionada");
+Require(
+    CaptureToolbarLayoutPolicy.ShouldUseCompactMode(540) &&
+    !CaptureToolbarLayoutPolicy.ShouldUseCompactMode(680),
+    "barra alterna entre modo compacto e normal sem corte");
+Require(
+    CaptureMotion.Duration(animationsEnabled: false, 160) == TimeSpan.Zero &&
+    CaptureMotion.Duration(animationsEnabled: true, 160) == TimeSpan.FromMilliseconds(160),
+    "animações respeitam a preferência do Windows");
+
+foreach (var anchor in new[]
+         {
+             new System.Windows.Rect(0, 0, 36, 36),
+             new System.Windows.Rect(1884, 0, 36, 36),
+             new System.Windows.Rect(0, 1004, 36, 36),
+             new System.Windows.Rect(1884, 1004, 36, 36)
+         })
+{
+    var popover = ToolbarPlacementCalculator.Calculate(
+        anchor,
+        new System.Windows.Rect(0, 0, 1920, 1040),
+        new System.Windows.Size(340, 420),
+        naturalWidth: 340,
+        gap: 8,
+        dpiScale: 1);
+    Require(
+        popover.Bounds.Left >= 12 && popover.Bounds.Top >= 12 &&
+        popover.Bounds.Right <= 1908 && popover.Bounds.Bottom <= 1028,
+        "popover contextual permanece dentro da área útil nos quatro cantos");
+}
+
 var root = Path.Combine(Path.GetTempPath(), $"slashtext-smoke-{Guid.NewGuid():N}");
 var snippetsFile = Path.Combine(root, "snippets.md");
 var backups = Path.Combine(root, "backups");
@@ -938,6 +975,33 @@ try
             },
             new CaptureAnnotation
             {
+                Kind = CaptureAnnotationKind.Line,
+                Start = new System.Windows.Point(5, 80),
+                End = new System.Windows.Point(110, 10),
+                OutlineArgb = System.Drawing.Color.Cyan.ToArgb(),
+                Opacity = .7f,
+                Thickness = 8
+            },
+            new CaptureAnnotation
+            {
+                Kind = CaptureAnnotationKind.Rectangle,
+                Start = new System.Windows.Point(15, 15),
+                End = new System.Windows.Point(80, 65),
+                FillArgb = System.Drawing.Color.Orange.ToArgb(),
+                OutlineArgb = null,
+                Opacity = .6f
+            },
+            new CaptureAnnotation
+            {
+                Kind = CaptureAnnotationKind.Ellipse,
+                Start = new System.Windows.Point(20, 15),
+                End = new System.Windows.Point(85, 70),
+                FillArgb = null,
+                OutlineArgb = System.Drawing.Color.Blue.ToArgb(),
+                Thickness = 12
+            },
+            new CaptureAnnotation
+            {
                 Kind = CaptureAnnotationKind.Pencil,
                 Points =
                 [
@@ -971,7 +1035,71 @@ try
                 HasChangedPixel(renderedCapture),
                 $"renderiza ferramenta {annotation.Kind}");
         }
+
+        var invisible = new CaptureAnnotation
+        {
+            Kind = CaptureAnnotationKind.Rectangle,
+            FillArgb = null,
+            OutlineArgb = null
+        };
+        Require(!invisible.HasVisibleShapeStyle, "bloqueia forma totalmente invisível");
+
+        System.Drawing.Bitmap? renderedStamp = null;
+        Exception? stampFailure = null;
+        var stampThread = new Thread(() =>
+        {
+            try
+            {
+                renderedStamp = CaptureAnnotationRenderer.Render(
+                    source,
+                    [new CaptureAnnotation
+                    {
+                        Kind = CaptureAnnotationKind.Stamp,
+                        Start = new System.Windows.Point(60, 45),
+                        Text = "❤️",
+                        Size = 48
+                    }],
+                    120,
+                    90);
+            }
+            catch (Exception exception)
+            {
+                stampFailure = exception;
+            }
+        });
+        stampThread.SetApartmentState(ApartmentState.STA);
+        stampThread.Start();
+        stampThread.Join();
+        if (stampFailure is not null)
+        {
+            throw new InvalidOperationException("Renderização do emoticon falhou.", stampFailure);
+        }
+        using (renderedStamp)
+        {
+            Require(renderedStamp is not null && HasChangedPixel(renderedStamp),
+                "emoticon colorido é renderizado no bitmap final");
+        }
     }
+
+    var annotationHistory = new CaptureAnnotationHistory();
+    var stampAnnotation = new CaptureAnnotation
+    {
+        Kind = CaptureAnnotationKind.Stamp,
+        Text = "⭐",
+        Size = 32
+    };
+    annotationHistory.Add(stampAnnotation);
+    Require(annotationHistory.Items.Count == 1 && annotationHistory.CanUndo,
+        "emoticon entra no histórico de desfazer");
+    annotationHistory.Undo();
+    Require(annotationHistory.Items.Count == 0 && annotationHistory.CanRedo,
+        "desfaz emoticon");
+    annotationHistory.Redo();
+    Require(annotationHistory.Items.Count == 1, "refaz emoticon");
+    annotationHistory.ClearAll();
+    Require(annotationHistory.Items.Count == 0, "limpa todas as marcações");
+    annotationHistory.Undo();
+    Require(annotationHistory.Items.Count == 1, "limpeza de marcações pode ser desfeita");
 
     var updateTests = Path.Combine(root, "updates");
     Directory.CreateDirectory(updateTests);
