@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main, agent/slashdesk-shortcuts-v2-splitters, agent/slashdesk-functional-reliability]
+    branches: [main, agent/slashdesk-shortcuts-v2-splitters, agent/slashdesk-functional-reliability, feat/capture-toolbar-fluent]
   workflow_dispatch:
 
 permissions:
@@ -35,6 +35,7 @@ jobs:
           ./scripts/compare-ui-inventory.ps1
           ./scripts/ui-integrity-smoke.ps1
           ./scripts/release-workflow-smoke.ps1
+          ./scripts/capture-toolbar-visual-contract-smoke.ps1
 
       - name: Smoke tests
         run: dotnet run --project tests/SlashText.SmokeTests/SlashText.SmokeTests.csproj --configuration Release --no-build -p:Platform=x64
@@ -112,6 +113,13 @@ jobs:
             throw "O candidato deve conter somente SlashDesk.exe e SlashDeskData/snippets.md."
           }
 
+      - name: Create capture toolbar visual preview package
+        shell: pwsh
+        run: |
+          New-Item preview-package -ItemType Directory -Force | Out-Null
+          Copy-Item publish-portable/SlashDesk.exe preview-package/SlashDesk.exe
+          Set-Content -Path preview-package/Abrir-Preview.cmd -Encoding ascii -Value '@echo off', 'start "" "%~dp0SlashDesk.exe" --capture-toolbar-preview'
+
       - name: Upload installed staging
         uses: actions/upload-artifact@v4
         with:
@@ -124,4 +132,11 @@ jobs:
         with:
           name: SlashDesk-3.0.0-portable-test-candidate-win-x64
           path: package/
+          if-no-files-found: error
+
+      - name: Upload capture toolbar visual preview
+        uses: actions/upload-artifact@v4
+        with:
+          name: SlashDesk-capture-toolbar-visual-preview-win-x64
+          path: preview-package/
           if-no-files-found: error
