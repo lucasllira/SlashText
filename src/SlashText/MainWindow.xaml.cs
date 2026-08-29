@@ -1969,6 +1969,7 @@ public partial class MainWindow : Window
             await WaitForCaptureDelayAsync();
             System.Drawing.Rectangle? bounds = null;
             System.Drawing.Bitmap? editedRegion = null;
+            var requestedRegionOutput = CaptureEditorOutput.Default;
             var type = action switch
             {
                 CaptureShortcutAction.ActiveMonitor => "monitor",
@@ -1995,7 +1996,8 @@ public partial class MainWindow : Window
             {
                 editedRegion = _captureService.SelectAndEditRegion(
                     null,
-                    _settings.Capture.IncludeCursor);
+                    _settings.Capture.IncludeCursor,
+                    out requestedRegionOutput);
             }
             CaptureRecord? result = null;
             if (editedRegion is not null)
@@ -2005,7 +2007,8 @@ public partial class MainWindow : Window
                     result = await _captureService.ProcessEditedRegionAsync(
                         editedRegion,
                         type,
-                        _settings.Capture);
+                        _settings.Capture,
+                        requestedRegionOutput);
                 }
             }
             else if (bounds is not null)
