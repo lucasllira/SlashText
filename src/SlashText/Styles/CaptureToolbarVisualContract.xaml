@@ -19,16 +19,16 @@
     <!-- Grade óptica 20 x 20. Cada Geometry é o asset canônico. -->
     <Geometry x:Key="PreviewIcon.Arrow">M3,16 L16,3 M9,3 L16,3 L16,10</Geometry>
     <Geometry x:Key="PreviewIcon.Highlighter">M4,14 L8,10 L14.5,3.5 L16.5,5.5 L10,12 L6,16 Z M3,17 L10,17</Geometry>
-    <Geometry x:Key="PreviewIcon.Shapes">M2.5,4 L9.5,4 L9.5,11 L2.5,11 Z M11,10 A4,4 0 1 0 19,10 A4,4 0 1 0 11,10</Geometry>
+    <Geometry x:Key="PreviewIcon.Shapes">M2.5,4.5 L9,4.5 L9,11 L2.5,11 Z M11,10 A3.5,3.5 0 1 0 18,10 A3.5,3.5 0 1 0 11,10</Geometry>
     <Geometry x:Key="PreviewIcon.Pencil">M3,16 L4.2,11.5 L13.2,2.5 L17.5,6.8 L8.5,15.8 Z M11.4,4.3 L15.7,8.6</Geometry>
     <Geometry x:Key="PreviewIcon.Text">M2.5,3.5 L17.5,3.5 M10,3.5 L10,17 M6.5,17 L13.5,17</Geometry>
     <!-- Número é um marcador circular, não um quadrado com “12”. -->
-    <Geometry x:Key="PreviewIcon.Number">M10,2 A8,8 0 1 0 10,18 A8,8 0 1 0 10,2 M7.8,8 L10,6.2 L10,14 M7.8,14 L12.2,14</Geometry>
-    <Geometry x:Key="PreviewIcon.Emoji">M10,2.5 A7.5,7.5 0 1 0 10,17.5 A7.5,7.5 0 1 0 10,2.5 M7,8 L7,8.2 M13,8 L13,8.2 M6.5,11.5 C8,14 12,14 13.5,11.5</Geometry>
+    <Geometry x:Key="PreviewIcon.Number">M10,2.5 A7.5,7.5 0 1 0 10,17.5 A7.5,7.5 0 1 0 10,2.5 M8,8 L10,6.5 L10,13.5 M8,13.5 L12,13.5</Geometry>
+    <Geometry x:Key="PreviewIcon.Emoji">M10,2.5 A7.5,7.5 0 1 0 10,17.5 A7.5,7.5 0 1 0 10,2.5 M7,7.8 L7,8.2 M13,7.8 L13,8.2 M6.5,11.5 C8,14 12,14 13.5,11.5</Geometry>
     <Geometry x:Key="PreviewIcon.Eraser">M3,14 L11.5,3 L17,8.5 L10.5,17 L6,17 Z M6.5,11 L11,15</Geometry>
     <Geometry x:Key="PreviewIcon.Undo">M7,5 L3,9 L7,13 M3.5,9 L11,9 C15,9 17,12 16,16</Geometry>
     <Geometry x:Key="PreviewIcon.Redo">M13,5 L17,9 L13,13 M16.5,9 L9,9 C5,9 3,12 4,16</Geometry>
-    <Geometry x:Key="PreviewIcon.Reselect">M3,7 L3,3 L7,3 M13,3 L17,3 L17,7 M17,13 L17,17 L13,17 M7,17 L3,17 L3,13</Geometry>
+    <Geometry x:Key="PreviewIcon.Reselect">M3.5,7 L3.5,3.5 L7,3.5 M13,3.5 L16.5,3.5 L16.5,7 M16.5,13 L16.5,16.5 L13,16.5 M7,16.5 L3.5,16.5 L3.5,13</Geometry>
     <Geometry x:Key="PreviewIcon.Close">M3,3 L17,17 M17,3 L3,17</Geometry>
     <Geometry x:Key="PreviewIcon.ChevronDown">M4,7 L10,13 L16,7</Geometry>
     <Geometry x:Key="PreviewIcon.Copy">M7,7 L17,7 L17,17 L7,17 Z M3,3 L13,3 L13,7 M3,3 L3,13 L7,13</Geometry>
@@ -40,12 +40,14 @@
     <Style x:Key="Preview.Icon" TargetType="Path">
         <Setter Property="Width" Value="20"/>
         <Setter Property="Height" Value="20"/>
-        <Setter Property="Stretch" Value="Uniform"/>
+        <Setter Property="Stretch" Value="None"/>
         <Setter Property="Stroke" Value="{StaticResource Preview.Text}"/>
         <Setter Property="StrokeThickness" Value="1.6"/>
         <Setter Property="StrokeStartLineCap" Value="Round"/>
         <Setter Property="StrokeEndLineCap" Value="Round"/>
         <Setter Property="StrokeLineJoin" Value="Round"/>
+        <Setter Property="SnapsToDevicePixels" Value="True"/>
+        <Setter Property="UseLayoutRounding" Value="True"/>
         <Setter Property="IsHitTestVisible" Value="False"/>
     </Style>
 
@@ -53,7 +55,8 @@
         <Setter Property="Width" Value="40"/>
         <Setter Property="Height" Value="40"/>
         <Setter Property="Margin" Value="1"/>
-        <Setter Property="Padding" Value="10"/>
+        <!-- 40 - bordas de 1 px - padding de 9 px = viewport real de 20 px. -->
+        <Setter Property="Padding" Value="9"/>
         <Setter Property="Background" Value="Transparent"/>
         <Setter Property="BorderBrush" Value="Transparent"/>
         <Setter Property="BorderThickness" Value="1"/>
@@ -65,7 +68,8 @@
                             BorderBrush="{TemplateBinding BorderBrush}"
                             BorderThickness="{TemplateBinding BorderThickness}"
                             CornerRadius="8" Padding="{TemplateBinding Padding}">
-                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"
+                                          TextElement.Foreground="{TemplateBinding Foreground}"/>
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
@@ -80,6 +84,90 @@
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
                             <Setter TargetName="Surface" Property="Opacity" Value="0.38"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="Preview.CaptureButton" TargetType="Button">
+        <Setter Property="Width" Value="86"/>
+        <Setter Property="Height" Value="40"/>
+        <Setter Property="Foreground" Value="#FF061316"/>
+        <Setter Property="Background" Value="{StaticResource Preview.Accent}"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="Surface" Background="{TemplateBinding Background}"
+                            CornerRadius="8,0,0,8">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"
+                                          TextElement.Foreground="{TemplateBinding Foreground}"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Surface" Property="Background" Value="{StaticResource Preview.AccentHover}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="Preview.CaptureMenuButton" TargetType="Button">
+        <Setter Property="Width" Value="32"/>
+        <Setter Property="Height" Value="40"/>
+        <Setter Property="Padding" Value="5"/>
+        <Setter Property="Foreground" Value="#FF061316"/>
+        <Setter Property="Background" Value="{StaticResource Preview.Accent}"/>
+        <Setter Property="BorderBrush" Value="#FF0D7782"/>
+        <Setter Property="BorderThickness" Value="1,0,0,0"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="Surface" Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="0,8,8,0" Padding="{TemplateBinding Padding}">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Surface" Property="Background" Value="{StaticResource Preview.AccentHover}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="Preview.EmojiButton" TargetType="Button">
+        <Setter Property="Height" Value="44"/>
+        <Setter Property="Padding" Value="0"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderBrush" Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="Surface" Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="8">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Surface" Property="Background" Value="{StaticResource Preview.Hover}"/>
+                        </Trigger>
+                        <Trigger Property="Tag" Value="Selected">
+                            <Setter TargetName="Surface" Property="Background" Value="{StaticResource Preview.Selected}"/>
+                            <Setter TargetName="Surface" Property="BorderBrush" Value="{StaticResource Preview.Accent}"/>
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
@@ -104,7 +192,8 @@
                             BorderBrush="{TemplateBinding BorderBrush}"
                             BorderThickness="{TemplateBinding BorderThickness}"
                             CornerRadius="8" Padding="{TemplateBinding Padding}">
-                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"
+                                          TextElement.Foreground="{TemplateBinding Foreground}"/>
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
