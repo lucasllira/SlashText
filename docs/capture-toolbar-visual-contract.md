@@ -11,6 +11,8 @@ SlashDesk.exe --capture-toolbar-preview
 ```
 
 O preview não inicializa dados, bandeja, atualização ou monitoramento de teclado.
+Sua janela respeita a área útil do Windows e reduz automaticamente de 1280 × 800
+quando DPI, resolução ou barra de tarefas disponibilizam menos espaço.
 
 ## Relação com o Design System
 
@@ -76,7 +78,8 @@ o número 1, nunca um quadrado contendo “12”.
 - Escape fecha o preview; teclas 1 a 4 alternam os estados.
 - O preto é neutro. Não são permitidas superfícies azul-marinho.
 - Ícones usam espessura 1,6, terminação arredondada e grade 20 × 20.
-- Emoticons usam Segoe UI Emoji e preservam cor e transparência.
+- Emoticons usam Segoe UI Emoji. Cada item também possui uma cor de fallback
+  explícita para permanecer legível quando o WPF renderiza o glifo monocromático.
 
 ## Critério de aprovação
 
