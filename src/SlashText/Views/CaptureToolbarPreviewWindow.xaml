@@ -193,8 +193,21 @@
                                     <Button ToolTip="Número" Style="{StaticResource Preview.IconButton}"><Path Data="{StaticResource PreviewIcon.Number}" Style="{StaticResource Preview.Icon}"/></Button>
                                     <Button ToolTip="Emoticons" Style="{StaticResource Preview.IconButton}"><Path Data="{StaticResource PreviewIcon.Emoji}" Style="{StaticResource Preview.Icon}"/></Button>
                                     <Border Width="1" Height="24" Margin="7,8" Background="{StaticResource Preview.Divider}"/>
-                                    <Button Height="40" Padding="13,0" Foreground="{StaticResource Preview.Muted}" Background="Transparent" BorderThickness="0" Content="Sem preenchimento  ▾"/>
-                                    <Button Height="40" Padding="13,0" Foreground="{StaticResource Preview.Text}" Background="Transparent" BorderThickness="0"><StackPanel Orientation="Horizontal"><Ellipse Width="14" Height="14" Fill="#FFFF2D37" Margin="0,0,8,0"/><TextBlock Text="Contorno  ▾" VerticalAlignment="Center"/></StackPanel></Button>
+                                    <Button Style="{StaticResource Preview.PropertyButton}">
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="Sem preenchimento" Foreground="{StaticResource Preview.Muted}" VerticalAlignment="Center"/>
+                                            <Path Data="{StaticResource PreviewIcon.ChevronDown}" Style="{StaticResource Preview.Icon}"
+                                                  Width="20" Height="20" Stroke="{StaticResource Preview.Muted}" Margin="5,0,0,0"/>
+                                        </StackPanel>
+                                    </Button>
+                                    <Button Style="{StaticResource Preview.PropertyButton}">
+                                        <StackPanel Orientation="Horizontal">
+                                            <Ellipse Width="14" Height="14" Fill="#FFFF2D37" Margin="0,0,8,0"/>
+                                            <TextBlock Text="Contorno" Foreground="{StaticResource Preview.Text}" VerticalAlignment="Center"/>
+                                            <Path Data="{StaticResource PreviewIcon.ChevronDown}" Style="{StaticResource Preview.Icon}"
+                                                  Width="20" Height="20" Stroke="{StaticResource Preview.Text}" Margin="5,0,0,0"/>
+                                        </StackPanel>
+                                    </Button>
                                 </StackPanel>
                             </Border>
                             <Border Width="360" Margin="280,10,0,0" Padding="16" Background="{StaticResource Preview.Elevated}" BorderBrush="{StaticResource Preview.Border}" BorderThickness="1" CornerRadius="12">
@@ -235,11 +248,20 @@
                                     <Button Style="{StaticResource Preview.IconButton}"><Path Data="{StaticResource PreviewIcon.Close}" Style="{StaticResource Preview.Icon}"/></Button>
                                 </StackPanel>
                             </Border>
-                            <Border Width="350" Margin="220,10,0,0" Padding="16" Background="{StaticResource Preview.Elevated}" BorderBrush="{StaticResource Preview.Border}" BorderThickness="1" CornerRadius="12">
+                            <Border Width="410" Margin="220,10,0,0" Padding="16" Background="{StaticResource Preview.Elevated}" BorderBrush="{StaticResource Preview.Border}" BorderThickness="1" CornerRadius="12">
                                 <StackPanel>
                                     <TextBlock Text="Emoticons" FontWeight="SemiBold" FontSize="14"/>
-                                    <TextBlock Text="Clique para inserir na captura" Foreground="{StaticResource Preview.Muted}" FontSize="11" Margin="0,3,0,12"/>
-                                    <UniformGrid Columns="6" Rows="3">
+                                    <TextBlock Text="Clique para inserir na captura" Foreground="{StaticResource Preview.Muted}" FontSize="11" Margin="0,3,0,8"/>
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                        <Button Tag="Selected" Style="{StaticResource Preview.EmojiCategoryButton}"><TextBlock Text="🙂" FontFamily="Segoe UI Emoji" FontSize="19" Foreground="#FFFFD60A"/></Button>
+                                        <Button Style="{StaticResource Preview.EmojiCategoryButton}"><TextBlock Text="👍" FontFamily="Segoe UI Emoji" FontSize="19" Foreground="#FFFFCC70"/></Button>
+                                        <Button Style="{StaticResource Preview.EmojiCategoryButton}"><TextBlock Text="⭐" FontFamily="Segoe UI Emoji" FontSize="19" Foreground="#FFFFD60A"/></Button>
+                                        <Button Style="{StaticResource Preview.EmojiCategoryButton}"><TextBlock Text="💡" FontFamily="Segoe UI Emoji" FontSize="19" Foreground="#FFFFD60A"/></Button>
+                                        <Button Style="{StaticResource Preview.EmojiCategoryButton}"><TextBlock Text="🎉" FontFamily="Segoe UI Emoji" FontSize="19" Foreground="#FFBF8CFF"/></Button>
+                                    </StackPanel>
+                                    <TextBlock Text="Frequentes" Foreground="{StaticResource Preview.Muted}" FontSize="10" FontWeight="SemiBold" Margin="2,0,0,4"/>
+                                    <ScrollViewer MaxHeight="238" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                                    <UniformGrid Tag="Catalog:36" Columns="6" Rows="6">
                                         <Button Tag="Selected" Style="{StaticResource Preview.EmojiButton}"><TextBlock Text="❤️" FontFamily="Segoe UI Emoji" FontSize="25" Foreground="#FFFF375F"/></Button>
                                         <Button Style="{StaticResource Preview.EmojiButton}"><TextBlock Text="⭐" FontFamily="Segoe UI Emoji" FontSize="25" Foreground="#FFFFD60A"/></Button>
                                         <Button Style="{StaticResource Preview.EmojiButton}"><TextBlock Text="❓" FontFamily="Segoe UI Emoji" FontSize="25" Foreground="#FFFF2D87"/></Button>
@@ -258,7 +280,26 @@
                                         <Button Style="{StaticResource Preview.EmojiButton}"><TextBlock Text="😍" FontFamily="Segoe UI Emoji" FontSize="25" Foreground="#FFFFD60A"/></Button>
                                         <Button Style="{StaticResource Preview.EmojiButton}"><TextBlock Text="😂" FontFamily="Segoe UI Emoji" FontSize="25" Foreground="#FFFFD60A"/></Button>
                                         <Button Style="{StaticResource Preview.EmojiButton}"><TextBlock Text="😭" FontFamily="Segoe UI Emoji" FontSize="25" Foreground="#FF64D2FF"/></Button>
+                                        <Button Style="{StaticResource Preview.EmojiButton}"><TextBlock Text="😀" FontFamily="Segoe UI Emoji" FontSize="25" Foreground="#FFFFD60A"/></Button>
+                                        <Button Style="{StaticResource Preview.EmojiButton}"><TextBlock Text="😃" FontFamily="Segoe UI Emoji" FontSize="25" Foreground="#FFFFD60A"/></Button>
+                                        <Button Style="{StaticResource Preview.EmojiButton}"><TextBlock Text="😄" FontFamily="Segoe UI Emoji" FontSize="25" Foreground="#FFFFD60A"/></Button>
+                                        <Button Style="{StaticResource Preview.EmojiButton}"><TextBlock Text="😁" FontFamily="Segoe UI Emoji" FontSize="25" Foreground="#FFFFD60A"/></Button>
+                                        <Button Style="{StaticResource Preview.EmojiButton}"><TextBlock Text="😆" FontFamily="Segoe UI Emoji" FontSize="25" Foreground="#FFFFD60A"/></Button>
+                                        <Button Style="{StaticResource Preview.EmojiButton}"><TextBlock Text="😅" FontFamily="Segoe UI Emoji" FontSize="25" Foreground="#FFFFD60A"/></Button>
+                                        <Button Style="{StaticResource Preview.EmojiButton}"><TextBlock Text="🤣" FontFamily="Segoe UI Emoji" FontSize="25" Foreground="#FFFFD60A"/></Button>
+                                        <Button Style="{StaticResource Preview.EmojiButton}"><TextBlock Text="😉" FontFamily="Segoe UI Emoji" FontSize="25" Foreground="#FFFFD60A"/></Button>
+                                        <Button Style="{StaticResource Preview.EmojiButton}"><TextBlock Text="😮" FontFamily="Segoe UI Emoji" FontSize="25" Foreground="#FFFFD60A"/></Button>
+                                        <Button Style="{StaticResource Preview.EmojiButton}"><TextBlock Text="🤩" FontFamily="Segoe UI Emoji" FontSize="25" Foreground="#FFFFD60A"/></Button>
+                                        <Button Style="{StaticResource Preview.EmojiButton}"><TextBlock Text="🥳" FontFamily="Segoe UI Emoji" FontSize="25" Foreground="#FFFFD60A"/></Button>
+                                        <Button Style="{StaticResource Preview.EmojiButton}"><TextBlock Text="🙃" FontFamily="Segoe UI Emoji" FontSize="25" Foreground="#FFFFD60A"/></Button>
+                                        <Button Style="{StaticResource Preview.EmojiButton}"><TextBlock Text="😊" FontFamily="Segoe UI Emoji" FontSize="25" Foreground="#FFFFD60A"/></Button>
+                                        <Button Style="{StaticResource Preview.EmojiButton}"><TextBlock Text="🥲" FontFamily="Segoe UI Emoji" FontSize="25" Foreground="#FF64D2FF"/></Button>
+                                        <Button Style="{StaticResource Preview.EmojiButton}"><TextBlock Text="🥹" FontFamily="Segoe UI Emoji" FontSize="25" Foreground="#FF64D2FF"/></Button>
+                                        <Button Style="{StaticResource Preview.EmojiButton}"><TextBlock Text="😴" FontFamily="Segoe UI Emoji" FontSize="25" Foreground="#FF64D2FF"/></Button>
+                                        <Button Style="{StaticResource Preview.EmojiButton}"><TextBlock Text="😎" FontFamily="Segoe UI Emoji" FontSize="25" Foreground="#FFFFD60A"/></Button>
+                                        <Button Style="{StaticResource Preview.EmojiButton}"><TextBlock Text="🎉" FontFamily="Segoe UI Emoji" FontSize="25" Foreground="#FFBF8CFF"/></Button>
                                     </UniformGrid>
+                                    </ScrollViewer>
                                     <TextBlock Text="Tamanho  32 px" Foreground="{StaticResource Preview.Muted}" Margin="0,16,0,6"/>
                                     <Slider Minimum="24" Maximum="64" Value="32" Foreground="{StaticResource Preview.Accent}"/>
                                 </StackPanel>
