@@ -39,7 +39,9 @@ foreach ($visualFix in @(
     'Adaptativo · referência 1440 × 900',
     'Foreground="#FFFF375F"',
     'Preview.CaptureMenuButton',
-    'Preview.EmojiButton'
+    'Preview.EmojiButton',
+    'Preview.PropertyButton',
+    'Catalog:36'
 )) {
     if (-not $preview.Contains($visualFix)) {
         throw "Correção visual obrigatória ausente: $visualFix"
