@@ -44,6 +44,7 @@ captura real sem reinterpretar o desenho.
 | Barra principal | 54 px de altura visual |
 | Botão de ícone | 40 × 40 px |
 | Ícone | 20 × 20 px em grade óptica |
+| Viewport do ícone | 20 × 20 px reais, sem `Stretch` |
 | Botão Capturar | 86 × 40 px |
 | Segmento de menu | 32 × 40 px |
 | Gap interno | 2 px |
@@ -78,6 +79,8 @@ o número 1, nunca um quadrado contendo “12”.
 - Escape fecha o preview; teclas 1 a 4 alternam os estados.
 - O preto é neutro. Não são permitidas superfícies azul-marinho.
 - Ícones usam espessura 1,6, terminação arredondada e grade 20 × 20.
+- O botão reserva exatamente 20 × 20 px depois de borda e padding; nenhum traço
+  pode tocar ou ultrapassar o viewport.
 - Emoticons usam Segoe UI Emoji. Cada item também possui uma cor de fallback
   explícita para permanecer legível quando o WPF renderiza o glifo monocromático.
 
