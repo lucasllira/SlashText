@@ -821,7 +821,7 @@
                                 </Grid.ColumnDefinitions>
                                 <StackPanel>
                                     <TextBlock Text="Captura de tela" Style="{StaticResource PageTitle}"/>
-                                    <TextBlock Text="Capturas e edições 100% locais, rápidas e privadas."
+                                    <TextBlock Text="Capturas e gravações 100% locais, rápidas e privadas."
                                                Style="{StaticResource PageDescription}"/>
                                 </StackPanel>
                                 <Border Grid.Column="1" Style="{StaticResource CompactStatusPill}"
@@ -1385,7 +1385,7 @@
 
                             <StackPanel>
                                 <TextBlock Text="Configurações" Style="{StaticResource PageTitle}"/>
-                                <TextBlock Text="Preferências do aplicativo, aparência e funcionamento no Windows."
+                                <TextBlock Text="Personalize o SlashDesk para trabalhar exatamente do seu jeito."
                                            Style="{StaticResource PageDescription}"/>
                             </StackPanel>
 
@@ -1409,7 +1409,7 @@
                                                   SelectionChanged="ThemeBox_OnSelectionChanged">
                                             <ComboBoxItem Content="Seguir o Windows" Tag="System"/>
                                             <ComboBoxItem Content="Claro" Tag="Light"/>
-                                            <ComboBoxItem Content="Escuro" Tag="Dark"/>
+                                            <ComboBoxItem Content="Preto" Tag="Dark"/>
                                         </ComboBox>
                                         <TextBlock Text="A mudança é aplicada em todas as telas, diálogos e menus."
                                                    Margin="0,10,0,0"
@@ -1433,9 +1433,6 @@
                                                   Click="Settings_OnClick"/>
                                         <CheckBox x:Name="ShowSuggestionsCheckBox" Style="{StaticResource ToggleSwitch}"
                                                   Content="Mostrar sugestões ao digitar / ou :"
-                                                  Click="Settings_OnClick"/>
-                                        <CheckBox x:Name="CheckUpdatesCheckBox" Style="{StaticResource ToggleSwitch}"
-                                                  Content="Verificar atualizações automaticamente"
                                                   Click="Settings_OnClick"/>
                                     </StackPanel>
                                 </Border>
@@ -1532,6 +1529,11 @@
                                                    Margin="0,4,0,0" Foreground="{DynamicResource MutedBrush}"/>
                                     </StackPanel>
                                     <StackPanel Grid.Column="2">
+                                        <CheckBox x:Name="CheckUpdatesCheckBox"
+                                                  Style="{StaticResource ToggleSwitch}"
+                                                  Content="Verificar atualizações automaticamente"
+                                                  Margin="0,0,0,10"
+                                                  Click="Settings_OnClick"/>
                                         <TextBlock x:Name="SettingsLastUpdateCheckText"
                                                    Text="Última verificação: ainda não verificado"
                                                    Foreground="{DynamicResource MutedBrush}"/>

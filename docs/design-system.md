@@ -1,6 +1,6 @@
 # SlashDesk Design System
 
-Versão do guia: 2.0
+Versão do guia: 3.0
 Aplicação inicial: SlashDesk 2.8.1
 Redesign funcional validado: SlashDesk 3.0.0
 
@@ -27,7 +27,7 @@ criado quando representar um estado ou componente realmente novo e reutilizável
 
 - navegação principal horizontal;
 - identidade ciano;
-- temas Claro, Escuro e Seguir o Windows;
+- temas Claro, Preto e Seguir o Windows (o valor persistido `Dark` é mantido por compatibilidade);
 - tipografia Segoe UI Variable, com fallback Segoe UI;
 - Cascadia Mono/Consolas apenas para comandos e variáveis;
 - shell compacto, conteúdo denso e poucos níveis de superfície;
@@ -45,19 +45,19 @@ As telas usam somente chaves semânticas. Os valores são aplicados pelo
 
 | Token | Claro | Escuro | Uso |
 |---|---:|---:|---|
-| `CanvasBrush` | `#EEF2F4` | `#071018` | fundo da janela |
-| `SurfaceBrush` | `#FCFDFC` | `#0C161F` | superfície principal |
-| `ElevatedBrush` | `#F4F7F8` | `#111E28` | grupo secundário |
-| `PanelBrush` | `#F8FAFA` | `#0F1A23` | barras e painéis |
-| `ChromeBrush` | `#EDF2F4` | `#13212B` | áreas técnicas/preview |
-| `InputBrush` | `#FFFFFF` | `#09131B` | campos editáveis |
-| `InkBrush` | `#15212B` | `#F3F6F8` | texto principal |
-| `MutedBrush` | `#65737E` | `#9AABB7` | texto secundário |
-| `DividerBrush` | `#D5DEE3` | `#243642` | bordas e divisores |
-| `AccentBrush` | `#079FB2` | `#26C6D8` | ação/foco/seleção |
-| `AccentSubtleBrush` | `#E0F6F8` | `#10333D` | fundo de destaque |
-| `HoverBrush` | `#E8EFF1` | `#172630` | hover |
-| `SelectedBrush` | `#DDF5F8` | `#113944` | item selecionado |
+| `CanvasBrush` | `#F3F3F3` | `#000000` | fundo da janela |
+| `SurfaceBrush` | `#FFFFFF` | `#0B0B0B` | superfície principal |
+| `ElevatedBrush` | `#F8F8F8` | `#151515` | grupo secundário |
+| `PanelBrush` | `#F7F7F7` | `#101010` | barras e painéis |
+| `ChromeBrush` | `#FAFAFA` | `#050505` | áreas técnicas/preview |
+| `InputBrush` | `#FFFFFF` | `#171717` | campos editáveis |
+| `InkBrush` | `#1B1B1B` | `#F5F5F5` | texto principal |
+| `MutedBrush` | `#616161` | `#B3B3B3` | texto secundário |
+| `DividerBrush` | `#DADADA` | `#303030` | bordas e divisores |
+| `AccentBrush` | `#089BB2` | `#2BC3D6` | ação/foco/seleção |
+| `AccentSubtleBrush` | `#E7F8FB` | `#102F34` | fundo de destaque |
+| `HoverBrush` | `#ECECEC` | `#1D1D1D` | hover |
+| `SelectedBrush` | `#E7F8FB` | `#12383E` | item selecionado |
 | `DangerBrush` | `#C63C4A` | `#FF7D89` | ação destrutiva |
 | `SuccessBrush` | `#188A62` | `#4FD7A5` | sucesso/monitor ativo |
 
@@ -140,6 +140,15 @@ Estilos de fundação disponíveis:
 - `PageSupportingText`
 - `FieldLabel`
 - `SubtlePanel`
+- `FluentSectionHeading`
+- `FluentSupportingText`
+- `FluentSettingsRow`
+- `FluentActionCard`
+
+`ToggleSwitch` possui trilho de 40 × 20 px dentro de uma área reservada de 54 px.
+Essa geometria é fixa: o rótulo pode quebrar linha, mas nunca empurra, corta ou
+desloca o controle para fora do card. O estado ativo usa fundo ciano e o foco por
+teclado usa um anel externo independente.
 - `BrandMark`
 - `CompactStatusPill`
 

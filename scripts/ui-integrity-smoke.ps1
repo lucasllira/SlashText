@@ -201,10 +201,32 @@ foreach ($component in @(
     'WorkspaceSidebar',
     'PageHeading',
     'FieldLabel',
-    'SubtlePanel'
+    'SubtlePanel',
+    'FluentSectionHeading',
+    'FluentSupportingText'
 )) {
     if (-not $foundation.Contains("x:Key=`"$component`"")) {
         throw "Componente do design system ausente: $component"
+    }
+}
+
+foreach ($component in @(
+    'ToggleSwitch',
+    'FluentSettingsRow',
+    'FluentActionCard'
+)) {
+    if (-not $components.Contains("x:Key=`"$component`"")) {
+        throw "Componente Fluent ausente: $component"
+    }
+}
+
+if (([regex]::Matches($xaml, 'x:Name="CheckUpdatesCheckBox"')).Count -ne 1) {
+    throw 'A preferência de atualização automática deve aparecer uma única vez.'
+}
+
+foreach ($trueBlackToken in @('#000000', '#0B0B0B', '#050505')) {
+    if (-not $theme.Contains($trueBlackToken)) {
+        throw "Token do tema preto ausente: $trueBlackToken"
     }
 }
 

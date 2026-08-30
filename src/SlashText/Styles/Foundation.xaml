@@ -27,6 +27,11 @@
     <sys:Double x:Key="Space.6">24</sys:Double>
     <sys:Double x:Key="Space.8">32</sys:Double>
 
+    <!-- Motion tokens: short, functional transitions only. -->
+    <Duration x:Key="Motion.Fast">0:0:0.10</Duration>
+    <Duration x:Key="Motion.Normal">0:0:0.16</Duration>
+    <QuadraticEase x:Key="Motion.EaseOut" EasingMode="EaseOut"/>
+
     <CornerRadius x:Key="Radius.Small">6</CornerRadius>
     <CornerRadius x:Key="Radius.Control">8</CornerRadius>
     <CornerRadius x:Key="Radius.Card">10</CornerRadius>
@@ -182,6 +187,21 @@
         <Setter Property="FontSize" Value="{StaticResource FontSize.Body}"/>
         <Setter Property="Foreground" Value="{DynamicResource MutedBrush}"/>
         <Setter Property="Margin" Value="0,4,0,0"/>
+        <Setter Property="TextWrapping" Value="Wrap"/>
+    </Style>
+
+    <Style x:Key="FluentSectionHeading" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{StaticResource FontFamily.Display}"/>
+        <Setter Property="FontSize" Value="{StaticResource FontSize.Section}"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Foreground" Value="{DynamicResource InkBrush}"/>
+        <Setter Property="TextOptions.TextFormattingMode" Value="Display"/>
+    </Style>
+
+    <Style x:Key="FluentSupportingText" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{StaticResource FontFamily.Body}"/>
+        <Setter Property="FontSize" Value="{StaticResource FontSize.Caption}"/>
+        <Setter Property="Foreground" Value="{DynamicResource MutedBrush}"/>
         <Setter Property="TextWrapping" Value="Wrap"/>
     </Style>
 
