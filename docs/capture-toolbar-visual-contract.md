@@ -83,8 +83,8 @@ o número 1, nunca um quadrado contendo “12”.
 - Ícones usam espessura 1,6, terminação arredondada e grade 20 × 20.
 - O botão reserva exatamente 20 × 20 px depois de borda e padding; nenhum traço
   pode tocar ou ultrapassar o viewport.
-- Emoticons usam Segoe UI Emoji. Cada item também possui uma cor de fallback
-  explícita para permanecer legível quando o WPF renderiza o glifo monocromático.
+- Emoticons usam PNGs oficiais Google Noto Emoji. O mesmo asset aparece no
+  preview, no overlay e no bitmap final, sem depender de fontes instaladas.
 
 ## Critério de aprovação
 

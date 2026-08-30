@@ -24,6 +24,75 @@ public readonly record struct ToolbarPlacement(
     int ExpectedRows,
     double MaximumWidth);
 
+public enum AnchoredPopoverSide
+{
+    Below,
+    Above,
+    Safe
+}
+
+public readonly record struct AnchoredPopoverPlacement(
+    Rect Bounds,
+    AnchoredPopoverSide Side);
+
+public static class AnchoredPopoverPlacementCalculator
+{
+    public static AnchoredPopoverPlacement Calculate(
+        Rect anchor,
+        Rect workingArea,
+        Size finalSize,
+        double margin = 12,
+        double gap = 8,
+        double dpiScale = 1)
+    {
+        var scaledMargin = Math.Max(1, margin * Math.Max(1, dpiScale));
+        var scaledGap = Math.Max(1, gap * Math.Max(1, dpiScale));
+        var width = Math.Min(
+            Math.Max(1, finalSize.Width),
+            Math.Max(1, workingArea.Width - (scaledMargin * 2)));
+        var height = Math.Min(
+            Math.Max(1, finalSize.Height),
+            Math.Max(1, workingArea.Height - (scaledMargin * 2)));
+        var left = Clamp(
+            anchor.Left,
+            workingArea.Left + scaledMargin,
+            workingArea.Right - scaledMargin - width);
+
+        var belowTop = anchor.Bottom + scaledGap;
+        if (belowTop + height <= workingArea.Bottom - scaledMargin)
+        {
+            return Result(left, belowTop, width, height, AnchoredPopoverSide.Below);
+        }
+
+        var aboveTop = anchor.Top - scaledGap - height;
+        if (aboveTop >= workingArea.Top + scaledMargin)
+        {
+            return Result(left, aboveTop, width, height, AnchoredPopoverSide.Above);
+        }
+
+        return Result(
+            left,
+            Clamp(
+                belowTop,
+                workingArea.Top + scaledMargin,
+                workingArea.Bottom - scaledMargin - height),
+            width,
+            height,
+            AnchoredPopoverSide.Safe);
+    }
+
+    private static AnchoredPopoverPlacement Result(
+        double left,
+        double top,
+        double width,
+        double height,
+        AnchoredPopoverSide side) =>
+        new(new Rect(left, top, width, height), side);
+
+    private static double Clamp(double value, double minimum, double maximum) =>
+        maximum <= minimum ? minimum : Math.Clamp(value, minimum, maximum);
+}
+
 public static class ToolbarPlacementCalculator
 {
     public static ToolbarPlacement Calculate(

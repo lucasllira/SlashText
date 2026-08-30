@@ -1,8 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Windows;
+using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
+using SlashText.Services;
 
 namespace SlashText.Views;
 
@@ -31,7 +34,31 @@ public partial class CaptureToolbarPreviewWindow : Window
             ["shapes"] = ShapesButton,
             ["emoji"] = EmojiButton
         };
+        PopulateNotoEmojiCatalog();
         ShowState("default");
+    }
+
+    private void PopulateNotoEmojiCatalog()
+    {
+        foreach (var emoji in NotoEmojiCatalog.Items)
+        {
+            var button = new Button
+            {
+                Style = (Style)FindResource("Preview.EmojiButton"),
+                Tag = emoji == NotoEmojiCatalog.Items[0] ? "Selected" : null,
+                ToolTip = emoji.Name,
+                Content = new Image
+                {
+                    Source = NotoEmojiCatalog.CreateImageSource(emoji.Value),
+                    Width = 28,
+                    Height = 28,
+                    Stretch = Stretch.Uniform,
+                    IsHitTestVisible = false
+                }
+            };
+            AutomationProperties.SetName(button, $"Emoticon {emoji.Name}");
+            EmojiCatalogGrid.Children.Add(button);
+        }
     }
 
     private void OnStateClick(object sender, RoutedEventArgs e)

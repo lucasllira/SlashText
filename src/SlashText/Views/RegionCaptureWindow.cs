@@ -81,6 +81,7 @@ public sealed class RegionCaptureWindow : Window
     private Grid _toolbarLayout = null!;
     private bool _toolbarPositionPending;
     private Window? _contextWindow;
+    private FrameworkElement? _contextAnchor;
     private MonitorWorkArea _activeMonitor;
     private Rect _toolbarBoundsPixels;
     private Button _undoButton = null!;
@@ -91,6 +92,7 @@ public sealed class RegionCaptureWindow : Window
     private Button _overflowButton = null!;
     private Border _captureSeparator = null!;
     private Border _actionSeparator = null!;
+    private Border _captureSplitButton = null!;
     private bool _compactToolbar;
 
     public DrawingBitmap? EditedBitmap { get; private set; }
@@ -215,7 +217,7 @@ public sealed class RegionCaptureWindow : Window
     {
         var root = new Grid
         {
-            Height = 44,
+            Height = 40,
             HorizontalAlignment = HorizontalAlignment.Center
         };
         _toolbarLayout = root;
@@ -234,6 +236,7 @@ public sealed class RegionCaptureWindow : Window
         tools.Children.Add(ToolButton("CaptureIconPencil", "Lápis", CaptureAnnotationKind.Pencil));
         tools.Children.Add(ToolButton("CaptureIconText", "Texto", CaptureAnnotationKind.Text));
         tools.Children.Add(ToolButton("CaptureIconNumber", "Número", CaptureAnnotationKind.Number));
+        tools.Children.Add(ToolButton("CaptureIconEmoji", "Emoticons", CaptureAnnotationKind.Stamp));
         _eraseButton = IconButton("CaptureIconEraser", "Apagar todas as marcações", (_, _) => ClearAllAnnotations());
         tools.Children.Add(_eraseButton);
         _actionSeparator = Separator();
@@ -290,7 +293,8 @@ public sealed class RegionCaptureWindow : Window
             Cursor = tool == CaptureAnnotationKind.Text ? Cursors.IBeam : Cursors.Cross;
             UpdateToolSelection();
             if (repeated || tool is CaptureAnnotationKind.Rectangle or
-                    CaptureAnnotationKind.Text or CaptureAnnotationKind.Number)
+                    CaptureAnnotationKind.Text or CaptureAnnotationKind.Number or
+                    CaptureAnnotationKind.Stamp)
             {
                 ShowToolContext(tool);
             }
@@ -321,13 +325,7 @@ public sealed class RegionCaptureWindow : Window
         var capture = new Button
         {
             Content = "Capturar",
-            Width = 88,
-            Height = 36,
-            Background = ResourceBrush("CaptureToolbarAccentBrush"),
-            Foreground = Brushes.White,
-            BorderBrush = Brushes.Transparent,
-            FontWeight = FontWeights.SemiBold,
-            Padding = new Thickness(12, 5, 10, 5),
+            Style = (Style)FindResource("CaptureToolbarCaptureButton"),
             ToolTip = "Concluir conforme configuração"
         };
         AutomationProperties.SetName(capture, "Capturar conforme configuração");
@@ -336,30 +334,29 @@ public sealed class RegionCaptureWindow : Window
         {
             Content = new Path
             {
-                Data = Geometry.Parse("M3,6 L7,10 L11,6"),
-                Stroke = Brushes.White,
+                Data = Geometry.Parse("M4,7 L10,13 L16,7"),
+                Stroke = Brush("#061316"),
                 StrokeThickness = 1.6,
-                Stretch = Stretch.Uniform
+                StrokeStartLineCap = PenLineCap.Round,
+                StrokeEndLineCap = PenLineCap.Round,
+                Stretch = Stretch.None,
+                Width = 20,
+                Height = 20
             },
-            Width = 30,
-            Height = 36,
-            Background = ResourceBrush("CaptureToolbarAccentBrush"),
-            Foreground = Brushes.White,
-            BorderBrush = ResourceBrush("CaptureToolbarSelectedBrush"),
-            BorderThickness = new Thickness(1, 0, 0, 0),
-            Padding = new Thickness(8),
+            Style = (Style)FindResource("CaptureToolbarCaptureMenuButton"),
             ToolTip = "Opções de captura"
         };
         AutomationProperties.SetName(menu, "Abrir opções de captura");
         menu.Click += (_, _) => ShowCaptureMenu();
         panel.Children.Add(capture);
         panel.Children.Add(menu);
-        return new Border
+        _captureSplitButton = new Border
         {
             CornerRadius = new CornerRadius(8),
             ClipToBounds = true,
             Child = panel
         };
+        return _captureSplitButton;
     }
 
     private static Path ToolbarIcon(string geometryKey) => new()
@@ -373,6 +370,9 @@ public sealed class RegionCaptureWindow : Window
         Stretch = Stretch.Uniform,
         Width = 18,
         Height = 18,
+        Margin = new Thickness(1),
+        SnapsToDevicePixels = true,
+        UseLayoutRounding = true,
         IsHitTestVisible = false
     };
 
@@ -393,7 +393,7 @@ public sealed class RegionCaptureWindow : Window
         panel.Children.Add(ContextAction("Concluir conforme configuração", () => Complete(CaptureEditorOutput.Default)));
         panel.Children.Add(ContextAction("Copiar", () => Complete(CaptureEditorOutput.Clipboard)));
         panel.Children.Add(ContextAction("Salvar", () => Complete(CaptureEditorOutput.File)));
-        ShowContextWindow(panel, 220);
+        ShowContextWindow(panel, 220, _captureSplitButton);
     }
 
     private void ShowOverflowMenu()
@@ -406,6 +406,7 @@ public sealed class RegionCaptureWindow : Window
         AddOverflowTool(panel, "Lápis", CaptureAnnotationKind.Pencil);
         AddOverflowTool(panel, "Texto", CaptureAnnotationKind.Text);
         AddOverflowTool(panel, "Número", CaptureAnnotationKind.Number);
+        AddOverflowTool(panel, "Emoticons", CaptureAnnotationKind.Stamp);
         panel.Children.Add(ContextAction("Apagar todas as marcações", ClearAllAnnotations));
         panel.Children.Add(ContextAction("Refazer seleção", ResetSelection));
         ShowContextWindow(panel, 260);
@@ -546,17 +547,16 @@ public sealed class RegionCaptureWindow : Window
         var panel = ContextStack(280);
         panel.Children.Add(ContextTitle("Emoticons e carimbos"));
         var grid = new UniformGrid { Columns = 6 };
-        foreach (var stamp in StampValues)
+        foreach (var emoji in NotoEmojiCatalog.Items)
         {
-            var value = stamp;
+            var value = emoji.Value;
             var button = new Button
             {
-                Content = value,
-                FontFamily = new FontFamily("Segoe UI Emoji"),
-                FontSize = 20,
-                Width = 40,
-                Height = 38,
+                Content = EmojiImage(value, 28),
+                Width = 42,
+                Height = 42,
                 Margin = new Thickness(2),
+                Padding = new Thickness(6),
                 Background = value == _selectedStamp
                     ? ResourceBrush("CaptureToolbarSelectedBrush")
                     : Brushes.Transparent,
@@ -564,9 +564,9 @@ public sealed class RegionCaptureWindow : Window
                 BorderBrush = value == _selectedStamp
                     ? ResourceBrush("CaptureToolbarAccentBrush")
                     : Brushes.Transparent,
-                ToolTip = $"Inserir {value}"
+                ToolTip = emoji.Name
             };
-            AutomationProperties.SetName(button, $"Emoticon {value}");
+            AutomationProperties.SetName(button, $"Emoticon {emoji.Name}");
             button.Click += (_, _) =>
             {
                 _selectedStamp = value;
@@ -580,6 +580,16 @@ public sealed class RegionCaptureWindow : Window
             value => _annotationSize = (float)value, " px"));
         return panel;
     }
+
+    private static Image EmojiImage(string value, double size) => new()
+    {
+        Source = NotoEmojiCatalog.CreateImageSource(value),
+        Width = size,
+        Height = size,
+        Stretch = Stretch.Uniform,
+        SnapsToDevicePixels = true,
+        IsHitTestVisible = false
+    };
 
     private Button ContextTool(string label, CaptureAnnotationKind tool)
     {
@@ -738,9 +748,13 @@ public sealed class RegionCaptureWindow : Window
         return grid;
     }
 
-    private void ShowContextWindow(FrameworkElement content, double width)
+    private void ShowContextWindow(
+        FrameworkElement content,
+        double width,
+        FrameworkElement? anchor = null)
     {
         HideContextWindow(reactivateOverlay: false);
+        _contextAnchor = anchor;
         var scaleY = Math.Max(1, _activeMonitor.DpiScaleY);
         var maximumHeightDips = Math.Max(
             180,
@@ -815,21 +829,39 @@ public sealed class RegionCaptureWindow : Window
         var size = new Size(
             Math.Ceiling(_contextWindow.ActualWidth * scaleX),
             Math.Ceiling(_contextWindow.ActualHeight * scaleY));
-        var placement = ToolbarPlacementCalculator.Calculate(
-            _toolbarBoundsPixels,
-            _activeMonitor.WorkAreaPixels,
-            size,
-            size.Width,
-            gap: 8,
-            dpiScale: Math.Max(scaleX, scaleY));
+        Rect bounds;
+        if (_contextAnchor is not null)
+        {
+            var topLeft = _contextAnchor.PointToScreen(new Point(0, 0));
+            var bottomRight = _contextAnchor.PointToScreen(new Point(
+                _contextAnchor.ActualWidth,
+                _contextAnchor.ActualHeight));
+            var anchorBounds = new Rect(topLeft, bottomRight);
+            bounds = AnchoredPopoverPlacementCalculator.Calculate(
+                anchorBounds,
+                _activeMonitor.WorkAreaPixels,
+                size,
+                gap: 8,
+                dpiScale: Math.Max(scaleX, scaleY)).Bounds;
+        }
+        else
+        {
+            bounds = ToolbarPlacementCalculator.Calculate(
+                _toolbarBoundsPixels,
+                _activeMonitor.WorkAreaPixels,
+                size,
+                size.Width,
+                gap: 8,
+                dpiScale: Math.Max(scaleX, scaleY)).Bounds;
+        }
         var handle = new WindowInteropHelper(_contextWindow).Handle;
         _ = SetWindowPos(
             handle,
             new nint(-1),
-            (int)Math.Round(placement.Bounds.Left),
-            (int)Math.Round(placement.Bounds.Top),
-            Math.Max(1, (int)Math.Ceiling(placement.Bounds.Width)),
-            Math.Max(1, (int)Math.Ceiling(placement.Bounds.Height)),
+            (int)Math.Round(bounds.Left),
+            (int)Math.Round(bounds.Top),
+            Math.Max(1, (int)Math.Ceiling(bounds.Width)),
+            Math.Max(1, (int)Math.Ceiling(bounds.Height)),
             SwpNoActivate | SwpShowWindow);
     }
 
@@ -838,6 +870,7 @@ public sealed class RegionCaptureWindow : Window
         if (_contextWindow is null) return;
         var window = _contextWindow;
         _contextWindow = null;
+        _contextAnchor = null;
         window.Close();
         if (reactivateOverlay && IsVisible) Activate();
     }
@@ -866,13 +899,6 @@ public sealed class RegionCaptureWindow : Window
     [
         DrawingColor.Gold.ToArgb(), DrawingColor.LimeGreen.ToArgb(), DrawingColor.DeepSkyBlue.ToArgb(),
         DrawingColor.DeepPink.ToArgb(), DrawingColor.Orange.ToArgb(), DrawingColor.BlueViolet.ToArgb()
-    ];
-
-    private static readonly string[] StampValues =
-    [
-        "❤️", "⭐", "❓", "✅", "❌", "🔥",
-        "👍", "👎", "👏", "🙌", "👀", "💯",
-        "🙂", "😟", "😮", "😍", "😂", "😭"
     ];
 
     private void OnMouseDown(object sender, MouseButtonEventArgs e)
@@ -1289,16 +1315,9 @@ public sealed class RegionCaptureWindow : Window
                 _annotationLayer.Children.Add(badge);
                 break;
             case CaptureAnnotationKind.Stamp:
-                var stamp = new TextBlock
-                {
-                    Text = annotation.Text,
-                    FontFamily = new FontFamily("Segoe UI Emoji"),
-                    FontSize = annotation.Size,
-                    IsHitTestVisible = false
-                };
-                stamp.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
-                Canvas.SetLeft(stamp, annotation.Start.X - stamp.DesiredSize.Width / 2);
-                Canvas.SetTop(stamp, annotation.Start.Y - stamp.DesiredSize.Height / 2);
+                var stamp = EmojiImage(annotation.Text, annotation.Size);
+                Canvas.SetLeft(stamp, annotation.Start.X - annotation.Size / 2);
+                Canvas.SetTop(stamp, annotation.Start.Y - annotation.Size / 2);
                 _annotationLayer.Children.Add(stamp);
                 break;
         }
@@ -1330,7 +1349,7 @@ public sealed class RegionCaptureWindow : Window
         {
             var representsShape = tool == CaptureAnnotationKind.Rectangle &&
                 _tool is CaptureAnnotationKind.Rectangle or CaptureAnnotationKind.Ellipse or
-                    CaptureAnnotationKind.Line or CaptureAnnotationKind.Arrow or CaptureAnnotationKind.Stamp;
+                    CaptureAnnotationKind.Line or CaptureAnnotationKind.Arrow;
             button.IsChecked = tool == _tool || representsShape;
             if (button.Content is Path icon)
             {
@@ -1367,7 +1386,7 @@ public sealed class RegionCaptureWindow : Window
         toolbarTool == _tool ||
         toolbarTool == CaptureAnnotationKind.Rectangle &&
         _tool is CaptureAnnotationKind.Rectangle or CaptureAnnotationKind.Ellipse or
-            CaptureAnnotationKind.Line or CaptureAnnotationKind.Stamp;
+            CaptureAnnotationKind.Line;
 
     private void UpdateHistoryButtons()
     {

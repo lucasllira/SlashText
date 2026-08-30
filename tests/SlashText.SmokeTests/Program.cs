@@ -184,6 +184,13 @@ Require(
     CaptureMotion.Duration(animationsEnabled: false, 160) == TimeSpan.Zero &&
     CaptureMotion.Duration(animationsEnabled: true, 160) == TimeSpan.FromMilliseconds(160),
     "animações respeitam a preferência do Windows");
+Require(
+    NotoEmojiCatalog.Items.Count == 36 &&
+    NotoEmojiCatalog.Items.Select(item => item.Value).Distinct().Count() == 36,
+    "catálogo Noto Emoji contém 36 opções únicas");
+Require(
+    NotoEmojiCatalog.Items.All(NotoEmojiCatalog.HasAsset),
+    "todos os emojis Noto possuem PNG incorporado");
 
 foreach (var anchor in new[]
          {
@@ -205,6 +212,34 @@ foreach (var anchor in new[]
         popover.Bounds.Right <= 1908 && popover.Bounds.Bottom <= 1028,
         "popover contextual permanece dentro da área útil nos quatro cantos");
 }
+
+var captureMenuBelow = AnchoredPopoverPlacementCalculator.Calculate(
+    new System.Windows.Rect(120, 420, 118, 40),
+    new System.Windows.Rect(0, 0, 1920, 1040),
+    new System.Windows.Size(220, 144));
+Require(
+    captureMenuBelow.Side == AnchoredPopoverSide.Below &&
+    captureMenuBelow.Bounds.Left == 120 &&
+    captureMenuBelow.Bounds.Top == 468,
+    "menu Capturar abre abaixo e alinhado à esquerda do botão dividido");
+
+var captureMenuAbove = AnchoredPopoverPlacementCalculator.Calculate(
+    new System.Windows.Rect(1640, 940, 118, 40),
+    new System.Windows.Rect(0, 0, 1920, 1040),
+    new System.Windows.Size(220, 144));
+Require(
+    captureMenuAbove.Side == AnchoredPopoverSide.Above &&
+    captureMenuAbove.Bounds.Left == 1640 &&
+    captureMenuAbove.Bounds.Bottom == 932,
+    "menu Capturar inverte para cima somente quando falta espaço abaixo");
+
+var captureMenuClamped = AnchoredPopoverPlacementCalculator.Calculate(
+    new System.Windows.Rect(1870, 420, 42, 40),
+    new System.Windows.Rect(0, 0, 1920, 1040),
+    new System.Windows.Size(220, 144));
+Require(
+    captureMenuClamped.Bounds.Right == 1908,
+    "menu Capturar permanece inteiro na área útil junto à borda direita");
 
 var root = Path.Combine(Path.GetTempPath(), $"slashtext-smoke-{Guid.NewGuid():N}");
 var snippetsFile = Path.Combine(root, "snippets.md");

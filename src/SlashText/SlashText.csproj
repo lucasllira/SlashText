@@ -31,6 +31,9 @@
   <ItemGroup>
     <Resource Include="Assets\SlashDesk.ico" />
     <Resource Include="Assets\SlashDesk.png" />
+    <EmbeddedResource Include="Assets\NotoEmoji\*.png" />
+    <None Update="Assets\NotoEmoji\LICENSE.txt" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="Assets\NotoEmoji\NOTICE.md" CopyToOutputDirectory="PreserveNewest" />
     <EmbeddedResource Include="..\..\snippets.md"
                       Link="Defaults\snippets.md"
                       LogicalName="SlashText.Defaults.snippets.md" />
