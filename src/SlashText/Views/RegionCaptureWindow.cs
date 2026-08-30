@@ -81,6 +81,7 @@ public sealed class RegionCaptureWindow : Window
     private Grid _toolbarLayout = null!;
     private bool _toolbarPositionPending;
     private Window? _contextWindow;
+    private FrameworkElement? _contextAnchor;
     private MonitorWorkArea _activeMonitor;
     private Rect _toolbarBoundsPixels;
     private Button _undoButton = null!;
@@ -91,6 +92,7 @@ public sealed class RegionCaptureWindow : Window
     private Button _overflowButton = null!;
     private Border _captureSeparator = null!;
     private Border _actionSeparator = null!;
+    private Border _captureSplitButton = null!;
     private bool _compactToolbar;
 
     public DrawingBitmap? EditedBitmap { get; private set; }
@@ -348,12 +350,13 @@ public sealed class RegionCaptureWindow : Window
         menu.Click += (_, _) => ShowCaptureMenu();
         panel.Children.Add(capture);
         panel.Children.Add(menu);
-        return new Border
+        _captureSplitButton = new Border
         {
             CornerRadius = new CornerRadius(8),
             ClipToBounds = true,
             Child = panel
         };
+        return _captureSplitButton;
     }
 
     private static Path ToolbarIcon(string geometryKey) => new()
@@ -364,9 +367,10 @@ public sealed class RegionCaptureWindow : Window
         StrokeStartLineCap = PenLineCap.Round,
         StrokeEndLineCap = PenLineCap.Round,
         StrokeLineJoin = PenLineJoin.Round,
-        Stretch = Stretch.None,
-        Width = 20,
-        Height = 20,
+        Stretch = Stretch.Uniform,
+        Width = 18,
+        Height = 18,
+        Margin = new Thickness(1),
         SnapsToDevicePixels = true,
         UseLayoutRounding = true,
         IsHitTestVisible = false
@@ -389,7 +393,7 @@ public sealed class RegionCaptureWindow : Window
         panel.Children.Add(ContextAction("Concluir conforme configuração", () => Complete(CaptureEditorOutput.Default)));
         panel.Children.Add(ContextAction("Copiar", () => Complete(CaptureEditorOutput.Clipboard)));
         panel.Children.Add(ContextAction("Salvar", () => Complete(CaptureEditorOutput.File)));
-        ShowContextWindow(panel, 220);
+        ShowContextWindow(panel, 220, _captureSplitButton);
     }
 
     private void ShowOverflowMenu()
@@ -744,9 +748,13 @@ public sealed class RegionCaptureWindow : Window
         return grid;
     }
 
-    private void ShowContextWindow(FrameworkElement content, double width)
+    private void ShowContextWindow(
+        FrameworkElement content,
+        double width,
+        FrameworkElement? anchor = null)
     {
         HideContextWindow(reactivateOverlay: false);
+        _contextAnchor = anchor;
         var scaleY = Math.Max(1, _activeMonitor.DpiScaleY);
         var maximumHeightDips = Math.Max(
             180,
@@ -821,21 +829,39 @@ public sealed class RegionCaptureWindow : Window
         var size = new Size(
             Math.Ceiling(_contextWindow.ActualWidth * scaleX),
             Math.Ceiling(_contextWindow.ActualHeight * scaleY));
-        var placement = ToolbarPlacementCalculator.Calculate(
-            _toolbarBoundsPixels,
-            _activeMonitor.WorkAreaPixels,
-            size,
-            size.Width,
-            gap: 8,
-            dpiScale: Math.Max(scaleX, scaleY));
+        Rect bounds;
+        if (_contextAnchor is not null)
+        {
+            var topLeft = _contextAnchor.PointToScreen(new Point(0, 0));
+            var bottomRight = _contextAnchor.PointToScreen(new Point(
+                _contextAnchor.ActualWidth,
+                _contextAnchor.ActualHeight));
+            var anchorBounds = new Rect(topLeft, bottomRight);
+            bounds = AnchoredPopoverPlacementCalculator.Calculate(
+                anchorBounds,
+                _activeMonitor.WorkAreaPixels,
+                size,
+                gap: 8,
+                dpiScale: Math.Max(scaleX, scaleY)).Bounds;
+        }
+        else
+        {
+            bounds = ToolbarPlacementCalculator.Calculate(
+                _toolbarBoundsPixels,
+                _activeMonitor.WorkAreaPixels,
+                size,
+                size.Width,
+                gap: 8,
+                dpiScale: Math.Max(scaleX, scaleY)).Bounds;
+        }
         var handle = new WindowInteropHelper(_contextWindow).Handle;
         _ = SetWindowPos(
             handle,
             new nint(-1),
-            (int)Math.Round(placement.Bounds.Left),
-            (int)Math.Round(placement.Bounds.Top),
-            Math.Max(1, (int)Math.Ceiling(placement.Bounds.Width)),
-            Math.Max(1, (int)Math.Ceiling(placement.Bounds.Height)),
+            (int)Math.Round(bounds.Left),
+            (int)Math.Round(bounds.Top),
+            Math.Max(1, (int)Math.Ceiling(bounds.Width)),
+            Math.Max(1, (int)Math.Ceiling(bounds.Height)),
             SwpNoActivate | SwpShowWindow);
     }
 
@@ -844,6 +870,7 @@ public sealed class RegionCaptureWindow : Window
         if (_contextWindow is null) return;
         var window = _contextWindow;
         _contextWindow = null;
+        _contextAnchor = null;
         window.Close();
         if (reactivateOverlay && IsVisible) Activate();
     }
