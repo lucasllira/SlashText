@@ -163,6 +163,7 @@ public sealed partial class SnippetMarkdownRepository
                 Content = string.Join("\n", lines[(fenceIndex + 1)..closingFenceIndex]).TrimEnd()
             };
 
+            snippet.HasLegacyIncompatibleTrigger = !TriggerRule.TryValidate(snippet.Trigger, out _);
             Validate(snippet, snippets);
             snippets.Add(snippet);
             index = closingFenceIndex;
@@ -200,10 +201,10 @@ public sealed partial class SnippetMarkdownRepository
 
     private static void Validate(Snippet snippet, IEnumerable<Snippet> existing)
     {
-        if (!TriggerPattern().IsMatch(snippet.Trigger))
+        if (!TriggerRule.TryValidate(snippet.Trigger, out var triggerError) &&
+            !snippet.HasLegacyIncompatibleTrigger)
         {
-            throw new InvalidDataException(
-                $"O atalho '{snippet.Trigger}' deve começar com / ou : e usar letras, números, hífen ou sublinhado.");
+            throw new InvalidDataException(triggerError);
         }
 
         if (string.IsNullOrWhiteSpace(snippet.Name))
@@ -211,7 +212,7 @@ public sealed partial class SnippetMarkdownRepository
             throw new InvalidDataException($"O atalho '{snippet.Trigger}' precisa de um nome.");
         }
 
-        if (existing.Any(item => item.Trigger.Equals(snippet.Trigger, StringComparison.OrdinalIgnoreCase)))
+        if (TriggerRule.ConflictsWith(snippet.Trigger, existing.Select(item => item.Trigger)))
         {
             throw new InvalidDataException($"O atalho '{snippet.Trigger}' está duplicado.");
         }
@@ -289,11 +290,8 @@ public sealed partial class SnippetMarkdownRepository
         return longest;
     }
 
-    [GeneratedRegex(@"^[ \t]*##[ \t]+(?<trigger>[/\:][A-Za-zÀ-ÿ0-9_-]+)[ \t]*$")]
+    [GeneratedRegex(@"^[ \t]*##[ \t]+(?<trigger>[/\:]\S+)[ \t]*$")]
     private static partial Regex HeadingPattern();
-
-    [GeneratedRegex(@"^[/\:][A-Za-zÀ-ÿ0-9_-]+$")]
-    private static partial Regex TriggerPattern();
 
     private sealed record SnippetMetadata(
         Guid Id,

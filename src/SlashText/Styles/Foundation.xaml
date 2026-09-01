@@ -19,12 +19,18 @@
     <sys:Double x:Key="FontSize.Title">24</sys:Double>
 
     <sys:Double x:Key="Space.1">4</sys:Double>
+    <sys:Double x:Key="Space.1_5">6</sys:Double>
     <sys:Double x:Key="Space.2">8</sys:Double>
     <sys:Double x:Key="Space.3">12</sys:Double>
     <sys:Double x:Key="Space.4">16</sys:Double>
     <sys:Double x:Key="Space.5">20</sys:Double>
     <sys:Double x:Key="Space.6">24</sys:Double>
     <sys:Double x:Key="Space.8">32</sys:Double>
+
+    <!-- Motion tokens: short, functional transitions only. -->
+    <Duration x:Key="Motion.Fast">0:0:0.10</Duration>
+    <Duration x:Key="Motion.Normal">0:0:0.16</Duration>
+    <QuadraticEase x:Key="Motion.EaseOut" EasingMode="EaseOut"/>
 
     <CornerRadius x:Key="Radius.Small">6</CornerRadius>
     <CornerRadius x:Key="Radius.Control">8</CornerRadius>
@@ -38,15 +44,15 @@
     <Thickness x:Key="Padding.Page">24</Thickness>
 
     <Style x:Key="AppShellHeader" TargetType="Border">
-        <Setter Property="Height" Value="60"/>
+        <Setter Property="Height" Value="66"/>
         <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
         <Setter Property="BorderBrush" Value="{DynamicResource DividerBrush}"/>
         <Setter Property="BorderThickness" Value="0,0,0,1"/>
     </Style>
 
     <Style x:Key="AppNavigationBar" TargetType="Border">
-        <Setter Property="Height" Value="46"/>
-        <Setter Property="Background" Value="{DynamicResource PanelBrush}"/>
+        <Setter Property="Height" Value="52"/>
+        <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
         <Setter Property="BorderBrush" Value="{DynamicResource DividerBrush}"/>
         <Setter Property="BorderThickness" Value="0,0,0,1"/>
     </Style>
@@ -58,7 +64,7 @@
         <Setter Property="Background" Value="Transparent"/>
         <Setter Property="BorderBrush" Value="Transparent"/>
         <Setter Property="BorderThickness" Value="0"/>
-        <Setter Property="Padding" Value="16,11,16,10"/>
+        <Setter Property="Padding" Value="16,14,16,13"/>
         <Setter Property="Margin" Value="1,0"/>
         <Setter Property="Cursor" Value="Hand"/>
         <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
@@ -107,12 +113,9 @@
     </Style>
 
     <Style x:Key="AppWorkspace" TargetType="Border">
-        <Setter Property="Margin" Value="16"/>
-        <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
-        <Setter Property="BorderBrush" Value="{DynamicResource DividerBrush}"/>
-        <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="CornerRadius" Value="{StaticResource Radius.Large}"/>
-        <Setter Property="ClipToBounds" Value="True"/>
+        <Setter Property="Margin" Value="32,20"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="0"/>
     </Style>
 
     <Style x:Key="WorkspacePane" TargetType="Grid">
@@ -122,6 +125,53 @@
     <Style x:Key="WorkspaceSidebar" TargetType="Grid"
            BasedOn="{StaticResource WorkspacePane}">
         <Setter Property="Background" Value="{DynamicResource PanelBrush}"/>
+    </Style>
+
+    <Style x:Key="WorkspaceColumnSplitter" TargetType="GridSplitter">
+        <Setter Property="Width" Value="8"/>
+        <Setter Property="HorizontalAlignment" Value="Center"/>
+        <Setter Property="VerticalAlignment" Value="Stretch"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Cursor" Value="SizeWE"/>
+        <Setter Property="Focusable" Value="True"/>
+        <Setter Property="KeyboardNavigation.IsTabStop" Value="True"/>
+        <Setter Property="ResizeDirection" Value="Columns"/>
+        <Setter Property="ShowsPreview" Value="False"/>
+        <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="GridSplitter">
+                    <Grid Background="{TemplateBinding Background}">
+                        <Border x:Name="Track"
+                                Width="2"
+                                Height="84"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                Background="{DynamicResource DividerBrush}"
+                                CornerRadius="1"/>
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Track" Property="Width" Value="3"/>
+                            <Setter TargetName="Track" Property="Background" Value="{DynamicResource AccentBrush}"/>
+                        </Trigger>
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter Property="Background" Value="{DynamicResource AccentSubtleBrush}"/>
+                            <Setter TargetName="Track" Property="Width" Value="3"/>
+                            <Setter TargetName="Track" Property="Background" Value="{DynamicResource FocusBrush}"/>
+                        </Trigger>
+                        <Trigger Property="Tag" Value="Dragging">
+                            <Setter Property="Background" Value="{DynamicResource AccentSubtleBrush}"/>
+                            <Setter TargetName="Track" Property="Width" Value="3"/>
+                            <Setter TargetName="Track" Property="Background" Value="{DynamicResource AccentBrush}"/>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.45"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
     </Style>
 
     <Style x:Key="PageHeading" TargetType="TextBlock">
@@ -137,6 +187,21 @@
         <Setter Property="FontSize" Value="{StaticResource FontSize.Body}"/>
         <Setter Property="Foreground" Value="{DynamicResource MutedBrush}"/>
         <Setter Property="Margin" Value="0,4,0,0"/>
+        <Setter Property="TextWrapping" Value="Wrap"/>
+    </Style>
+
+    <Style x:Key="FluentSectionHeading" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{StaticResource FontFamily.Display}"/>
+        <Setter Property="FontSize" Value="{StaticResource FontSize.Section}"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Foreground" Value="{DynamicResource InkBrush}"/>
+        <Setter Property="TextOptions.TextFormattingMode" Value="Display"/>
+    </Style>
+
+    <Style x:Key="FluentSupportingText" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{StaticResource FontFamily.Body}"/>
+        <Setter Property="FontSize" Value="{StaticResource FontSize.Caption}"/>
+        <Setter Property="Foreground" Value="{DynamicResource MutedBrush}"/>
         <Setter Property="TextWrapping" Value="Wrap"/>
     </Style>
 
@@ -171,5 +236,35 @@
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="CornerRadius" Value="{StaticResource Radius.Control}"/>
         <Setter Property="Padding" Value="10,6"/>
+    </Style>
+
+    <Style x:Key="TitleBarButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+        <Setter Property="Width" Value="46"/>
+        <Setter Property="Height" Value="34"/>
+        <Setter Property="Padding" Value="0"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Foreground" Value="{DynamicResource InkBrush}"/>
+        <Setter Property="FontFamily" Value="Segoe MDL2 Assets"/>
+        <Setter Property="FontSize" Value="10"/>
+        <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+    </Style>
+
+    <Style x:Key="SidebarSectionTitle" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{StaticResource FontFamily.Body}"/>
+        <Setter Property="FontSize" Value="11"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Foreground" Value="{DynamicResource MutedBrush}"/>
+        <Setter Property="TextOptions.TextFormattingMode" Value="Display"/>
+    </Style>
+
+    <Style x:Key="SidebarItemButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+        <Setter Property="MinHeight" Value="36"/>
+        <Setter Property="Padding" Value="10,7"/>
+        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderBrush" Value="Transparent"/>
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="Margin" Value="0,2,0,0"/>
     </Style>
 </ResourceDictionary>

@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using System.Diagnostics;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Interop;
@@ -29,12 +30,14 @@ public sealed class GlobalCaptureShortcutService : IDisposable
     private const int MouseMiddle = 10;
     private const int MouseX1 = 11;
     private const int MouseX2 = 12;
+    public const uint ModNoRepeat = 0x4000;
     private readonly Dictionary<int, CaptureShortcutAction> _actions = [];
     private readonly HookProcedure _mouseProcedure;
     private HwndSource? _source;
     private IntPtr _window;
     private IntPtr _mouseHook;
     private CaptureSettingsSnapshot[] _mouseShortcuts = [];
+    private readonly DebounceGate _mouseDebounce = new(TimeSpan.FromMilliseconds(350));
 
     public event EventHandler<CaptureShortcutEventArgs>? Triggered;
 
@@ -76,7 +79,7 @@ public sealed class GlobalCaptureShortcutService : IDisposable
                 mouse.Add(new CaptureSettingsSnapshot(action, parsed));
                 continue;
             }
-            if (!RegisterHotKey(_window, id, parsed.Modifiers, parsed.Key))
+            if (!RegisterHotKey(_window, id, ApplyNoRepeat(parsed.Modifiers), parsed.Key))
             {
                 errors.Add($"Atalho em uso: {text}");
                 continue;
@@ -101,6 +104,8 @@ public sealed class GlobalCaptureShortcutService : IDisposable
     }
 
     public static bool IsValid(string value) => TryParse(value, out _);
+
+    public static uint ApplyNoRepeat(uint modifiers) => modifiers | ModNoRepeat;
 
     public static string? FormatKeyboardShortcut(
         Key key,
@@ -233,6 +238,10 @@ public sealed class GlobalCaptureShortcutService : IDisposable
             if (signal == item.Shortcut.MouseSignal &&
                 ModifiersDown(item.Shortcut.Modifiers))
             {
+                if (!_mouseDebounce.TryAccept(Stopwatch.GetTimestamp()))
+                {
+                    return (IntPtr)1;
+                }
                 Application.Current.Dispatcher.BeginInvoke(
                     new Action(() => Triggered?.Invoke(
                         this,

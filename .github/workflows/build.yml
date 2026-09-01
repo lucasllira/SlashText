@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main]
+    branches: [main, agent/slashdesk-shortcuts-v2-splitters, agent/slashdesk-functional-reliability, feat/capture-toolbar-fluent, feat/capture-toolbar-visual-contract, feat/capture-toolbar-visual-integration, feat/fluent-redesign]
   workflow_dispatch:
 
 permissions:
@@ -29,12 +29,21 @@ jobs:
       - name: Build
         run: dotnet build SlashText.sln --configuration Release --no-restore -p:Platform=x64
 
+      - name: UI inventory comparison
+        shell: pwsh
+        run: ./scripts/compare-ui-inventory.ps1
+
       - name: UI integrity smoke
         shell: pwsh
-        run: |
-          ./scripts/compare-ui-inventory.ps1
-          ./scripts/ui-integrity-smoke.ps1
-          ./scripts/release-workflow-smoke.ps1
+        run: ./scripts/ui-integrity-smoke.ps1
+
+      - name: Release workflow smoke
+        shell: pwsh
+        run: ./scripts/release-workflow-smoke.ps1
+
+      - name: Capture toolbar Visual Contract smoke
+        shell: pwsh
+        run: ./scripts/capture-toolbar-visual-contract-smoke.ps1
 
       - name: Smoke tests
         run: dotnet run --project tests/SlashText.SmokeTests/SlashText.SmokeTests.csproj --configuration Release --no-build -p:Platform=x64
@@ -103,17 +112,39 @@ jobs:
           "Portable visible entries after first run: $($visible.Count)"
           "Portable EXE bytes: $bytes"
           "Portable SHA-256: $hash"
+          New-Item package/SlashDeskData -ItemType Directory -Force | Out-Null
+          Copy-Item snippets.md package/SlashDeskData/snippets.md
+          $packageFiles = Get-ChildItem package -Recurse -File |
+            ForEach-Object { $_.FullName.Substring((Resolve-Path package).Path.Length + 1).Replace('\', '/') } |
+            Sort-Object
+          if (($packageFiles -join ',') -ne 'SlashDesk.exe,SlashDeskData/snippets.md') {
+            throw "O candidato deve conter somente SlashDesk.exe e SlashDeskData/snippets.md."
+          }
+
+      - name: Create capture toolbar visual preview package
+        shell: pwsh
+        run: |
+          New-Item preview-package -ItemType Directory -Force | Out-Null
+          Copy-Item publish-portable/SlashDesk.exe preview-package/SlashDesk.exe
+          Set-Content -Path preview-package/Abrir-Preview.cmd -Encoding ascii -Value '@echo off', 'start "" "%~dp0SlashDesk.exe" --capture-toolbar-preview'
 
       - name: Upload installed staging
         uses: actions/upload-artifact@v4
         with:
-          name: SlashDesk-3.0.0-installed-staging-win-x64
+          name: SlashDesk-3.1.0-installed-staging-win-x64
           path: publish-installed/
           if-no-files-found: error
 
       - name: Upload portable test candidate
         uses: actions/upload-artifact@v4
         with:
-          name: SlashDesk-3.0.0-portable-test-candidate-win-x64
+          name: SlashDesk-3.1.0-portable-test-candidate-win-x64
           path: package/
+          if-no-files-found: error
+
+      - name: Upload capture toolbar visual preview
+        uses: actions/upload-artifact@v4
+        with:
+          name: SlashDesk-capture-toolbar-visual-preview-win-x64
+          path: preview-package/
           if-no-files-found: error

@@ -123,8 +123,12 @@ public sealed class CaptureService
             DisplayDeviceName: screen.DeviceName);
     }
 
-    public Bitmap? SelectAndEditRegion(Window? owner, bool includeCursor = false)
+    public Bitmap? SelectAndEditRegion(
+        Window? owner,
+        bool includeCursor,
+        out CaptureEditorOutput requestedOutput)
     {
+        requestedOutput = CaptureEditorOutput.Default;
         var selector = new RegionCaptureWindow(includeCursor);
         if (owner is not null)
         {
@@ -135,6 +139,7 @@ public sealed class CaptureService
             return null;
         }
 
+        requestedOutput = selector.RequestedOutput;
         return selector.EditedBitmap;
     }
 
@@ -291,7 +296,8 @@ public sealed class CaptureService
     public async Task<CaptureRecord?> ProcessEditedRegionAsync(
         Bitmap captured,
         string type,
-        CaptureSettings settings)
+        CaptureSettings settings,
+        CaptureEditorOutput requestedOutput = CaptureEditorOutput.Default)
     {
         return await ProcessBitmapAsync(
             captured,
@@ -299,7 +305,8 @@ public sealed class CaptureService
             settings,
             openEditor: false,
             owner: null,
-            initialTool: CaptureAnnotationKind.Arrow);
+            initialTool: CaptureAnnotationKind.Arrow,
+            requestedOutput: requestedOutput);
     }
 
     public async Task<CaptureRecord?> CaptureScrollingAsync(
@@ -370,11 +377,13 @@ public sealed class CaptureService
         CaptureSettings settings,
         bool openEditor,
         Window? owner,
-        CaptureAnnotationKind initialTool)
+        CaptureAnnotationKind initialTool,
+        CaptureEditorOutput requestedOutput = CaptureEditorOutput.Default)
     {
         Bitmap output = captured;
         var save = settings.SaveAutomatically;
         var copy = settings.CopyToClipboard;
+        ApplyRequestedOutput(requestedOutput, ref save, ref copy);
         try
         {
             if (openEditor)
@@ -441,6 +450,24 @@ public sealed class CaptureService
             {
                 output.Dispose();
             }
+        }
+    }
+
+    private static void ApplyRequestedOutput(
+        CaptureEditorOutput requestedOutput,
+        ref bool save,
+        ref bool copy)
+    {
+        switch (requestedOutput)
+        {
+            case CaptureEditorOutput.Clipboard:
+                save = false;
+                copy = true;
+                break;
+            case CaptureEditorOutput.File:
+                save = true;
+                copy = false;
+                break;
         }
     }
 

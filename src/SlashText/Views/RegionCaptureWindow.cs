@@ -1,16 +1,21 @@
 using System.Runtime.InteropServices;
 using System.Windows;
+using System.Windows.Automation;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
+using System.Windows.Threading;
 using SlashText.Services;
 using DrawingBitmap = System.Drawing.Bitmap;
 using DrawingColor = System.Drawing.Color;
 using DrawingGraphics = System.Drawing.Graphics;
 using DrawingPixelFormat = System.Drawing.Imaging.PixelFormat;
+using Forms = System.Windows.Forms;
 
 namespace SlashText.Views;
 
@@ -44,11 +49,11 @@ public sealed class RegionCaptureWindow : Window
         IsHitTestVisible = false
     };
     private readonly Border _toolbar;
+    private readonly Window _toolbarWindow;
     private readonly Border[] _handles;
     private readonly DrawingBitmap _desktopBitmap;
-    private readonly List<CaptureAnnotation> _annotations = [];
-    private readonly Stack<CaptureAnnotation> _redo = new();
-    private readonly Dictionary<CaptureAnnotationKind, Button> _toolButtons = [];
+    private readonly CaptureAnnotationHistory _annotationHistory = new();
+    private readonly Dictionary<CaptureAnnotationKind, ToggleButton> _toolButtons = [];
     private readonly List<Point> _pencilPoints = [];
     private readonly bool _isDark = ThemeService.IsDark;
     private Point _start;
@@ -57,12 +62,41 @@ public sealed class RegionCaptureWindow : Window
     private bool _dragging;
     private bool _drawing;
     private bool _selectionReady;
-    private CaptureAnnotationKind _tool = CaptureAnnotationKind.Arrow;
+    private readonly CaptureToolSelection _toolSelection =
+        new(CaptureAnnotationKind.Arrow);
+    private CaptureAnnotationKind _tool
+    {
+        get => _toolSelection.Selected;
+        set => _toolSelection.Select(value);
+    }
     private int _color = DrawingColor.Red.ToArgb();
     private float _thickness = 4;
+    private float _opacity = 1;
+    private int? _fillArgb;
+    private int? _outlineArgb = DrawingColor.Red.ToArgb();
+    private float _annotationSize = 32;
+    private bool _textBold = true;
+    private string _selectedStamp = "❤️";
     private int _nextNumber = 1;
+    private Grid _toolbarLayout = null!;
+    private bool _toolbarPositionPending;
+    private Window? _contextWindow;
+    private FrameworkElement? _contextAnchor;
+    private MonitorWorkArea _activeMonitor;
+    private Rect _toolbarBoundsPixels;
+    private Button _undoButton = null!;
+    private Button _redoButton = null!;
+    private Button _eraseButton = null!;
+    private Button _reselectButton = null!;
+    private Button _cancelButton = null!;
+    private Button _overflowButton = null!;
+    private Border _captureSeparator = null!;
+    private Border _actionSeparator = null!;
+    private Border _captureSplitButton = null!;
+    private bool _compactToolbar;
 
     public DrawingBitmap? EditedBitmap { get; private set; }
+    public CaptureEditorOutput RequestedOutput { get; private set; } = CaptureEditorOutput.Default;
 
     public RegionCaptureWindow(bool includeCursor = false)
     {
@@ -142,11 +176,37 @@ public sealed class RegionCaptureWindow : Window
         _canvas.Children.Add(_sizeBadge);
 
         _toolbar = BuildToolbar();
-        _canvas.Children.Add(_toolbar);
+        _toolbarWindow = new Window
+        {
+            Title = "Ferramentas de captura",
+            WindowStyle = WindowStyle.None,
+            ResizeMode = ResizeMode.NoResize,
+            AllowsTransparency = true,
+            Background = Brushes.Transparent,
+            SizeToContent = SizeToContent.Height,
+            ShowInTaskbar = false,
+            ShowActivated = false,
+            Topmost = true,
+            Opacity = 0,
+            Content = _toolbar
+        };
+        _toolbarWindow.DpiChanged += (_, _) => RequestToolbarPosition();
         Content = _canvas;
 
-        Loaded += (_, _) => UpdateShade(default);
-        Closed += (_, _) => _desktopBitmap.Dispose();
+        Loaded += (_, _) =>
+        {
+            _toolbarWindow.Owner = this;
+            UpdateShade(default);
+        };
+        Closed += (_, _) =>
+        {
+            HideContextWindow(reactivateOverlay: false);
+            if (_toolbarWindow.IsVisible)
+            {
+                _toolbarWindow.Close();
+            }
+            _desktopBitmap.Dispose();
+        };
         MouseLeftButtonDown += OnMouseDown;
         MouseMove += OnMouseMove;
         MouseLeftButtonUp += OnMouseUp;
@@ -155,124 +215,58 @@ public sealed class RegionCaptureWindow : Window
 
     private Border BuildToolbar()
     {
-        var root = new Grid();
-        root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-        root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-
+        var root = new Grid
+        {
+            Height = 40,
+            HorizontalAlignment = HorizontalAlignment.Center
+        };
+        _toolbarLayout = root;
         var tools = new StackPanel
         {
             Orientation = Orientation.Horizontal,
-            HorizontalAlignment = HorizontalAlignment.Center
-        };
-        tools.Children.Add(ToolbarButton(
-            "Capturar",
-            "Finalizar usando a regra configurada",
-            primary: true,
-            (_, _) => Complete()));
-        tools.Children.Add(Separator());
-        tools.Children.Add(ToolButton("Seta", "Desenhar seta", CaptureAnnotationKind.Arrow));
-        tools.Children.Add(ToolButton("Marca-texto", "Realçar uma área", CaptureAnnotationKind.Highlighter));
-        tools.Children.Add(ToolButton("Retângulo", "Desenhar retângulo", CaptureAnnotationKind.Rectangle));
-        tools.Children.Add(ToolButton("Elipse", "Desenhar elipse", CaptureAnnotationKind.Ellipse));
-        tools.Children.Add(ToolButton("Lápis", "Desenho livre", CaptureAnnotationKind.Pencil));
-        tools.Children.Add(ToolButton("Texto", "Inserir texto", CaptureAnnotationKind.Text));
-        tools.Children.Add(ToolButton("Número", "Inserir marcador numerado", CaptureAnnotationKind.Number));
-        root.Children.Add(tools);
-
-        var options = new StackPanel
-        {
-            Orientation = Orientation.Horizontal,
             HorizontalAlignment = HorizontalAlignment.Center,
-            Margin = new Thickness(0, 3, 0, 0)
+            VerticalAlignment = VerticalAlignment.Center
         };
-        options.Children.Add(new TextBlock
-        {
-            Text = "Cor",
-            Foreground = Brush(_isDark ? "#F5F8FA" : "#25313D"),
-            VerticalAlignment = VerticalAlignment.Center,
-            Margin = new Thickness(7, 0, 5, 0),
-            FontSize = 12
-        });
-        foreach (var color in new[]
-                 {
-                     DrawingColor.Red,
-                     DrawingColor.Gold,
-                     DrawingColor.DeepSkyBlue,
-                     DrawingColor.LimeGreen,
-                     DrawingColor.White,
-                     DrawingColor.Black
-                 })
-        {
-            var choice = new Button
-            {
-                Width = 24,
-                Height = 24,
-                Margin = new Thickness(3, 9, 3, 9),
-                Padding = new Thickness(0),
-                Background = new SolidColorBrush(
-                    Color.FromArgb(color.A, color.R, color.G, color.B)),
-                BorderBrush = color == DrawingColor.White
-                    ? Brush("#78828C")
-                    : Brush(_isDark ? "#64FFFFFF" : "#94A3AF"),
-                BorderThickness = new Thickness(2),
-                ToolTip = $"Cor {color.Name}",
-                Tag = color.ToArgb(),
-                Cursor = Cursors.Hand
-            };
-            choice.Click += (_, _) => _color = (int)choice.Tag;
-            options.Children.Add(choice);
-        }
-
-        var thickness = new ComboBox
-        {
-            Width = 72,
-            Height = 34,
-            Margin = new Thickness(7, 4, 3, 4),
-            ToolTip = "Espessura",
-            SelectedIndex = 1,
-            Foreground = Brush(_isDark ? "#F5F8FA" : "#17212B"),
-            Background = Brush(_isDark ? "#1E2834" : "#FFFFFF"),
-            BorderBrush = Brush(_isDark ? "#42505E" : "#CBD5DF")
-        };
-        foreach (var value in new[] { 2f, 4f, 8f, 12f })
-        {
-            thickness.Items.Add(new ComboBoxItem
-            {
-                Content = $"{value:0} px",
-                Tag = value,
-                Foreground = Brush(_isDark ? "#F5F8FA" : "#17212B"),
-                Background = Brush(_isDark ? "#1E2834" : "#FFFFFF")
-            });
-        }
-        thickness.SelectionChanged += (_, _) =>
-        {
-            if (thickness.SelectedItem is ComboBoxItem { Tag: float value })
-            {
-                _thickness = value;
-            }
-        };
-        options.Children.Add(thickness);
-        options.Children.Add(Separator());
-        options.Children.Add(ToolbarButton("Desfazer", "Desfazer (Ctrl+Z)", false, (_, _) => Undo()));
-        options.Children.Add(ToolbarButton("Refazer", "Refazer (Ctrl+Y)", false, (_, _) => Redo()));
-        options.Children.Add(ToolbarButton("Refazer seleção", "Selecionar novamente (R)", false, (_, _) => ResetSelection()));
-        options.Children.Add(ToolbarButton("Cancelar", "Cancelar captura (Esc)", false, (_, _) => DialogResult = false));
-        Grid.SetRow(options, 1);
-        root.Children.Add(options);
+        tools.Children.Add(BuildCaptureSplitButton());
+        _captureSeparator = Separator();
+        tools.Children.Add(_captureSeparator);
+        tools.Children.Add(ToolButton("CaptureIconArrow", "Seta", CaptureAnnotationKind.Arrow));
+        tools.Children.Add(ToolButton("CaptureIconHighlighter", "Marca-texto", CaptureAnnotationKind.Highlighter));
+        tools.Children.Add(ToolButton("CaptureIconShapes", "Formas", CaptureAnnotationKind.Rectangle));
+        tools.Children.Add(ToolButton("CaptureIconPencil", "Lápis", CaptureAnnotationKind.Pencil));
+        tools.Children.Add(ToolButton("CaptureIconText", "Texto", CaptureAnnotationKind.Text));
+        tools.Children.Add(ToolButton("CaptureIconNumber", "Número", CaptureAnnotationKind.Number));
+        tools.Children.Add(ToolButton("CaptureIconEmoji", "Emoticons", CaptureAnnotationKind.Stamp));
+        _eraseButton = IconButton("CaptureIconEraser", "Apagar todas as marcações", (_, _) => ClearAllAnnotations());
+        tools.Children.Add(_eraseButton);
+        _actionSeparator = Separator();
+        tools.Children.Add(_actionSeparator);
+        _undoButton = IconButton("CaptureIconUndo", "Desfazer (Ctrl+Z)", (_, _) => Undo());
+        _redoButton = IconButton("CaptureIconRedo", "Refazer (Ctrl+Y)", (_, _) => Redo());
+        tools.Children.Add(_undoButton);
+        tools.Children.Add(_redoButton);
+        _reselectButton = IconButton("CaptureIconReselect", "Refazer seleção (R)", (_, _) => ResetSelection());
+        tools.Children.Add(_reselectButton);
+        _overflowButton = IconButton("CaptureIconMore", "Mais ferramentas", (_, _) => ShowOverflowMenu());
+        _overflowButton.Visibility = Visibility.Collapsed;
+        tools.Children.Add(_overflowButton);
+        _cancelButton = IconButton("CaptureIconClose", "Cancelar captura (Esc)", (_, _) => DialogResult = false);
+        tools.Children.Add(_cancelButton);
+        root.Children.Add(tools);
 
         var toolbar = new Border
         {
             Visibility = Visibility.Collapsed,
-            Background = Brush(_isDark ? "#FA121922" : "#FCF8FAFC"),
-            BorderBrush = Brush(_isDark ? "#6EFFFFFF" : "#C6D1DA"),
+            Background = ResourceBrush("CaptureToolbarSurfaceBrush"),
+            BorderBrush = ResourceBrush("CaptureToolbarBorderBrush"),
             BorderThickness = new Thickness(1),
             CornerRadius = new CornerRadius(11),
-            Padding = new Thickness(7),
+            Padding = new Thickness(6, 4, 6, 4),
             Effect = new System.Windows.Media.Effects.DropShadowEffect
             {
-                BlurRadius = 20,
-                ShadowDepth = 5,
-                Opacity = _isDark ? .32 : .16,
+                BlurRadius = 14,
+                ShadowDepth = 3,
+                Opacity = .28,
                 Color = Colors.Black
             },
             Child = root
@@ -280,67 +274,636 @@ public sealed class RegionCaptureWindow : Window
         return toolbar;
     }
 
-    private Button ToolButton(
-        string text,
+    private ToggleButton ToolButton(
+        string geometryKey,
         string toolTip,
         CaptureAnnotationKind tool)
     {
-        var button = ToolbarButton(text, toolTip, false, (_, _) =>
+        var button = new ToggleButton
         {
+            Style = (Style)FindResource("CaptureToolbarToggleButton"),
+            Content = ToolbarIcon(geometryKey),
+            ToolTip = toolTip
+        };
+        AutomationProperties.SetName(button, toolTip);
+        button.Click += (_, _) =>
+        {
+            var repeated = _tool == tool;
             _tool = tool;
-            Cursor = tool == CaptureAnnotationKind.Text
-                ? Cursors.IBeam
-                : Cursors.Cross;
+            Cursor = tool == CaptureAnnotationKind.Text ? Cursors.IBeam : Cursors.Cross;
             UpdateToolSelection();
-        });
+            if (repeated || tool is CaptureAnnotationKind.Rectangle or
+                    CaptureAnnotationKind.Text or CaptureAnnotationKind.Number or
+                    CaptureAnnotationKind.Stamp)
+            {
+                ShowToolContext(tool);
+            }
+        };
         _toolButtons[tool] = button;
         return button;
     }
 
-    private Button ToolbarButton(
-        string text,
+    private Button IconButton(
+        string geometryKey,
         string toolTip,
-        bool primary,
         RoutedEventHandler click)
     {
         var button = new Button
         {
-            Content = text,
+            Style = (Style)FindResource("CaptureToolbarIconButton"),
+            Content = ToolbarIcon(geometryKey),
             ToolTip = toolTip,
-            MinWidth = primary ? 104 : 58,
-            Height = 38,
-            Margin = new Thickness(2),
-            Padding = primary
-                ? new Thickness(15, 5, 15, 5)
-                : new Thickness(8, 5, 8, 5),
-            Foreground = primary
-                ? Brushes.White
-                : Brush(_isDark ? "#F5F8FA" : "#25313D"),
-            Background = primary
-                ? Brush("#0AA9BB")
-                : Brush(_isDark ? "#18222D" : "#FFFFFF"),
-            BorderBrush = primary
-                ? Brush("#2BC9DA")
-                : Brush(_isDark ? "#42505E" : "#CBD5DF"),
-            BorderThickness = new Thickness(1),
-            FontSize = 12,
-            FontWeight = primary ? FontWeights.SemiBold : FontWeights.Normal,
-            Cursor = Cursors.Hand
         };
+        AutomationProperties.SetName(button, toolTip);
         button.Click += click;
         return button;
     }
 
+    private Border BuildCaptureSplitButton()
+    {
+        var panel = new StackPanel { Orientation = Orientation.Horizontal };
+        var capture = new Button
+        {
+            Content = "Capturar",
+            Style = (Style)FindResource("CaptureToolbarCaptureButton"),
+            ToolTip = "Concluir conforme configuração"
+        };
+        AutomationProperties.SetName(capture, "Capturar conforme configuração");
+        capture.Click += (_, _) => Complete(CaptureEditorOutput.Default);
+        var menu = new Button
+        {
+            Content = new Path
+            {
+                Data = Geometry.Parse("M4,7 L10,13 L16,7"),
+                Stroke = Brush("#061316"),
+                StrokeThickness = 1.6,
+                StrokeStartLineCap = PenLineCap.Round,
+                StrokeEndLineCap = PenLineCap.Round,
+                Stretch = Stretch.None,
+                Width = 20,
+                Height = 20
+            },
+            Style = (Style)FindResource("CaptureToolbarCaptureMenuButton"),
+            ToolTip = "Opções de captura"
+        };
+        AutomationProperties.SetName(menu, "Abrir opções de captura");
+        menu.Click += (_, _) => ShowCaptureMenu();
+        panel.Children.Add(capture);
+        panel.Children.Add(menu);
+        _captureSplitButton = new Border
+        {
+            CornerRadius = new CornerRadius(8),
+            ClipToBounds = true,
+            Child = panel
+        };
+        return _captureSplitButton;
+    }
+
+    private static Path ToolbarIcon(string geometryKey) => new()
+    {
+        Data = (Geometry)Application.Current.FindResource(geometryKey),
+        Stroke = ResourceBrush("CaptureToolbarTextBrush"),
+        StrokeThickness = 1.6,
+        StrokeStartLineCap = PenLineCap.Round,
+        StrokeEndLineCap = PenLineCap.Round,
+        StrokeLineJoin = PenLineJoin.Round,
+        Stretch = Stretch.Uniform,
+        Width = 18,
+        Height = 18,
+        Margin = new Thickness(1),
+        SnapsToDevicePixels = true,
+        UseLayoutRounding = true,
+        IsHitTestVisible = false
+    };
+
+    private static SolidColorBrush ResourceBrush(string key) =>
+        (SolidColorBrush)Application.Current.FindResource(key);
+
     private Border Separator() => new()
     {
         Width = 1,
-        Height = 26,
-        Margin = new Thickness(5, 7, 5, 7),
-        Background = Brush(_isDark ? "#42505E" : "#D5DDE4")
+        Height = 24,
+        Margin = new Thickness(5, 6, 5, 6),
+        Background = ResourceBrush("CaptureToolbarBorderBrush")
     };
+
+    private void ShowCaptureMenu()
+    {
+        var panel = ContextStack(220);
+        panel.Children.Add(ContextAction("Concluir conforme configuração", () => Complete(CaptureEditorOutput.Default)));
+        panel.Children.Add(ContextAction("Copiar", () => Complete(CaptureEditorOutput.Clipboard)));
+        panel.Children.Add(ContextAction("Salvar", () => Complete(CaptureEditorOutput.File)));
+        ShowContextWindow(panel, 220, _captureSplitButton);
+    }
+
+    private void ShowOverflowMenu()
+    {
+        var panel = ContextStack(260);
+        panel.Children.Add(ContextTitle("Ferramentas"));
+        AddOverflowTool(panel, "Seta", CaptureAnnotationKind.Arrow);
+        AddOverflowTool(panel, "Marca-texto", CaptureAnnotationKind.Highlighter);
+        AddOverflowTool(panel, "Formas", CaptureAnnotationKind.Rectangle);
+        AddOverflowTool(panel, "Lápis", CaptureAnnotationKind.Pencil);
+        AddOverflowTool(panel, "Texto", CaptureAnnotationKind.Text);
+        AddOverflowTool(panel, "Número", CaptureAnnotationKind.Number);
+        AddOverflowTool(panel, "Emoticons", CaptureAnnotationKind.Stamp);
+        panel.Children.Add(ContextAction("Apagar todas as marcações", ClearAllAnnotations));
+        panel.Children.Add(ContextAction("Refazer seleção", ResetSelection));
+        ShowContextWindow(panel, 260);
+    }
+
+    private void AddOverflowTool(
+        Panel panel,
+        string label,
+        CaptureAnnotationKind tool)
+    {
+        panel.Children.Add(ContextAction(label, () =>
+        {
+            _tool = tool;
+            Cursor = tool == CaptureAnnotationKind.Text ? Cursors.IBeam : Cursors.Cross;
+            UpdateToolSelection();
+            ShowToolContext(tool);
+        }));
+    }
+
+    private void ShowToolContext(CaptureAnnotationKind tool)
+    {
+        FrameworkElement content = tool switch
+        {
+            CaptureAnnotationKind.Rectangle or CaptureAnnotationKind.Ellipse or
+                CaptureAnnotationKind.Line => BuildShapesContext(),
+            CaptureAnnotationKind.Stamp => BuildStampContext(),
+            _ => BuildStrokeContext(tool)
+        };
+        ShowContextWindow(content, tool == CaptureAnnotationKind.Stamp ? 300 : 340);
+    }
+
+    private FrameworkElement BuildStrokeContext(CaptureAnnotationKind tool)
+    {
+        var panel = ContextStack(320);
+        panel.Children.Add(ContextTitle(tool switch
+        {
+            CaptureAnnotationKind.Highlighter => "Marca-texto",
+            CaptureAnnotationKind.Pencil => "Lápis",
+            CaptureAnnotationKind.Text => "Texto",
+            CaptureAnnotationKind.Number => "Número",
+            _ => "Seta"
+        }));
+        var preview = new Line
+        {
+            X1 = 10,
+            Y1 = 22,
+            X2 = 280,
+            Y2 = 22,
+            Stroke = WpfBrush(_color, _opacity),
+            StrokeThickness = tool == CaptureAnnotationKind.Highlighter ? _thickness * 4 : _thickness,
+            StrokeStartLineCap = PenLineCap.Round,
+            StrokeEndLineCap = PenLineCap.Round
+        };
+        var previewCanvas = new Canvas { Height = 44, Margin = new Thickness(0, 5, 0, 5) };
+        previewCanvas.Children.Add(preview);
+        var colors = tool == CaptureAnnotationKind.Highlighter
+            ? HighlightColors
+            : AnnotationColors;
+        panel.Children.Add(ColorPalette(colors, _color, color =>
+        {
+            _color = color;
+            _outlineArgb = color;
+            preview.Stroke = WpfBrush(color, _opacity);
+        }));
+        panel.Children.Add(LabeledSlider("Opacidade", 10, 100, _opacity * 100, value =>
+        {
+            _opacity = (float)(value / 100d);
+            preview.Stroke = WpfBrush(_color, _opacity);
+        }, "%"));
+        if (tool == CaptureAnnotationKind.Text)
+        {
+            panel.Children.Add(LabeledSlider("Tamanho", 12, 64, _annotationSize, value =>
+                _annotationSize = (float)value, " px"));
+            var bold = new CheckBox
+            {
+                Content = "Negrito",
+                IsChecked = _textBold,
+                Foreground = ResourceBrush("CaptureToolbarTextBrush"),
+                Margin = new Thickness(0, 7, 0, 0)
+            };
+            bold.Checked += (_, _) => _textBold = true;
+            bold.Unchecked += (_, _) => _textBold = false;
+            panel.Children.Add(bold);
+        }
+        else if (tool == CaptureAnnotationKind.Number)
+        {
+            panel.Children.Add(LabeledSlider("Tamanho", 24, 64, _annotationSize, value =>
+                _annotationSize = (float)value, " px"));
+            panel.Children.Add(ContextAction("Reiniciar numeração", () => _nextNumber = 1));
+        }
+        else
+        {
+            panel.Children.Add(LabeledSlider("Espessura", 2, 12, _thickness, value =>
+            {
+                _thickness = (float)value;
+                preview.StrokeThickness = tool == CaptureAnnotationKind.Highlighter
+                    ? _thickness * 4
+                    : _thickness;
+            }, " px"));
+        }
+        panel.Children.Add(previewCanvas);
+        return panel;
+    }
+
+    private FrameworkElement BuildShapesContext()
+    {
+        var panel = ContextStack(360);
+        panel.Children.Add(ContextTitle("Formas"));
+        var row = new WrapPanel { Margin = new Thickness(0, 0, 0, 8) };
+        row.Children.Add(ContextTool("Emoticons", CaptureAnnotationKind.Stamp));
+        row.Children.Add(ContextTool("Retângulo", CaptureAnnotationKind.Rectangle));
+        row.Children.Add(ContextTool("Elipse", CaptureAnnotationKind.Ellipse));
+        row.Children.Add(ContextTool("Linha", CaptureAnnotationKind.Line));
+        row.Children.Add(ContextTool("Seta", CaptureAnnotationKind.Arrow));
+        panel.Children.Add(row);
+        panel.Children.Add(ContextTitle("Preenchimento"));
+        panel.Children.Add(ColorPalette(AnnotationColors, _fillArgb, color =>
+        {
+            _fillArgb = color == 0 ? null : color;
+            if (!_fillArgb.HasValue && !_outlineArgb.HasValue) _outlineArgb = _color;
+        }, allowNone: true));
+        panel.Children.Add(ContextTitle("Contorno"));
+        panel.Children.Add(ColorPalette(AnnotationColors, _outlineArgb, color =>
+        {
+            _outlineArgb = color == 0 ? null : color;
+            if (!_fillArgb.HasValue && !_outlineArgb.HasValue) _fillArgb = _color;
+            _color = _outlineArgb ?? _fillArgb ?? _color;
+        }, allowNone: true));
+        panel.Children.Add(LabeledSlider("Opacidade", 10, 100, _opacity * 100,
+            value => _opacity = (float)(value / 100d), "%"));
+        panel.Children.Add(LabeledSlider("Espessura", 2, 12, _thickness,
+            value => _thickness = (float)value, " px"));
+        return panel;
+    }
+
+    private FrameworkElement BuildStampContext()
+    {
+        var panel = ContextStack(280);
+        panel.Children.Add(ContextTitle("Emoticons e carimbos"));
+        var grid = new UniformGrid { Columns = 6 };
+        foreach (var emoji in NotoEmojiCatalog.Items)
+        {
+            var value = emoji.Value;
+            var button = new Button
+            {
+                Content = EmojiImage(value, 28),
+                Width = 42,
+                Height = 42,
+                Margin = new Thickness(2),
+                Padding = new Thickness(6),
+                Background = value == _selectedStamp
+                    ? ResourceBrush("CaptureToolbarSelectedBrush")
+                    : Brushes.Transparent,
+                Foreground = ResourceBrush("CaptureToolbarTextBrush"),
+                BorderBrush = value == _selectedStamp
+                    ? ResourceBrush("CaptureToolbarAccentBrush")
+                    : Brushes.Transparent,
+                ToolTip = emoji.Name
+            };
+            AutomationProperties.SetName(button, $"Emoticon {emoji.Name}");
+            button.Click += (_, _) =>
+            {
+                _selectedStamp = value;
+                _tool = CaptureAnnotationKind.Stamp;
+                UpdateToolSelection();
+            };
+            grid.Children.Add(button);
+        }
+        panel.Children.Add(grid);
+        panel.Children.Add(LabeledSlider("Tamanho", 24, 64, _annotationSize,
+            value => _annotationSize = (float)value, " px"));
+        return panel;
+    }
+
+    private static Image EmojiImage(string value, double size) => new()
+    {
+        Source = NotoEmojiCatalog.CreateImageSource(value),
+        Width = size,
+        Height = size,
+        Stretch = Stretch.Uniform,
+        SnapsToDevicePixels = true,
+        IsHitTestVisible = false
+    };
+
+    private Button ContextTool(string label, CaptureAnnotationKind tool)
+    {
+        var button = new Button
+        {
+            Content = label,
+            MinWidth = 58,
+            Height = 32,
+            Margin = new Thickness(2),
+            Padding = new Thickness(7, 3, 7, 3),
+            Background = _tool == tool
+                ? ResourceBrush("CaptureToolbarSelectedBrush")
+                : Brushes.Transparent,
+            Foreground = ResourceBrush("CaptureToolbarTextBrush"),
+            BorderBrush = _tool == tool
+                ? ResourceBrush("CaptureToolbarAccentBrush")
+                : ResourceBrush("CaptureToolbarBorderBrush")
+        };
+        AutomationProperties.SetName(button, label);
+        button.Click += (_, _) =>
+        {
+            _tool = tool;
+            UpdateToolSelection();
+            if (tool == CaptureAnnotationKind.Stamp) ShowToolContext(tool);
+        };
+        return button;
+    }
+
+    private static StackPanel ContextStack(double width) => new()
+    {
+        Width = width,
+        Margin = new Thickness(14)
+    };
+
+    private static TextBlock ContextTitle(string text) => new()
+    {
+        Text = text,
+        Foreground = ResourceBrush("CaptureToolbarTextBrush"),
+        FontWeight = FontWeights.SemiBold,
+        FontSize = 13,
+        Margin = new Thickness(0, 4, 0, 7)
+    };
+
+    private Button ContextAction(string label, Action action)
+    {
+        var button = new Button
+        {
+            Content = label,
+            Height = 34,
+            Margin = new Thickness(0, 2, 0, 2),
+            HorizontalContentAlignment = HorizontalAlignment.Left,
+            Background = Brushes.Transparent,
+            Foreground = ResourceBrush("CaptureToolbarTextBrush"),
+            BorderBrush = Brushes.Transparent
+        };
+        AutomationProperties.SetName(button, label);
+        button.Click += (_, _) => action();
+        return button;
+    }
+
+    private FrameworkElement ColorPalette(
+        IReadOnlyList<int> colors,
+        int? selected,
+        Action<int> select,
+        bool allowNone = false)
+    {
+        var palette = new WrapPanel { Margin = new Thickness(0, 0, 0, 6) };
+        if (allowNone)
+        {
+            var none = new Button
+            {
+                Content = "∅",
+                Width = 30,
+                Height = 30,
+                Margin = new Thickness(3),
+                Padding = new Thickness(0),
+                Background = Brushes.Transparent,
+                Foreground = ResourceBrush("CaptureToolbarSecondaryTextBrush"),
+                BorderBrush = !selected.HasValue
+                    ? ResourceBrush("CaptureToolbarAccentBrush")
+                    : ResourceBrush("CaptureToolbarBorderBrush"),
+                ToolTip = "Sem cor"
+            };
+            AutomationProperties.SetName(none, "Sem cor");
+            none.Click += (_, _) => select(0);
+            palette.Children.Add(none);
+        }
+        foreach (var value in colors)
+        {
+            var color = DrawingColor.FromArgb(value);
+            var choice = new Button
+            {
+                Width = 30,
+                Height = 30,
+                Margin = new Thickness(3),
+                Padding = new Thickness(3),
+                Background = new SolidColorBrush(Color.FromArgb(color.A, color.R, color.G, color.B)),
+                BorderBrush = selected == value
+                    ? ResourceBrush("CaptureToolbarAccentBrush")
+                    : ResourceBrush("CaptureToolbarBorderBrush"),
+                BorderThickness = new Thickness(selected == value ? 3 : 1),
+                ToolTip = $"Selecionar cor {color.Name}"
+            };
+            AutomationProperties.SetName(choice, $"Cor {color.Name}");
+            choice.Click += (_, _) => select(value);
+            palette.Children.Add(choice);
+        }
+        return palette;
+    }
+
+    private FrameworkElement LabeledSlider(
+        string label,
+        double minimum,
+        double maximum,
+        double current,
+        Action<double> changed,
+        string suffix)
+    {
+        var grid = new Grid { Margin = new Thickness(0, 5, 0, 5) };
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(84) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition());
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(52) });
+        grid.Children.Add(new TextBlock
+        {
+            Text = label,
+            Foreground = ResourceBrush("CaptureToolbarTextBrush"),
+            VerticalAlignment = VerticalAlignment.Center
+        });
+        var slider = new Slider
+        {
+            Minimum = minimum,
+            Maximum = maximum,
+            Value = current,
+            TickFrequency = 1,
+            IsSnapToTickEnabled = true,
+            Margin = new Thickness(5, 0, 8, 0),
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        Grid.SetColumn(slider, 1);
+        grid.Children.Add(slider);
+        var value = new TextBlock
+        {
+            Text = $"{current:0}{suffix}",
+            Foreground = ResourceBrush("CaptureToolbarSecondaryTextBrush"),
+            VerticalAlignment = VerticalAlignment.Center,
+            HorizontalAlignment = HorizontalAlignment.Right
+        };
+        Grid.SetColumn(value, 2);
+        grid.Children.Add(value);
+        slider.ValueChanged += (_, _) =>
+        {
+            value.Text = $"{slider.Value:0}{suffix}";
+            changed(slider.Value);
+        };
+        AutomationProperties.SetName(slider, label);
+        return grid;
+    }
+
+    private void ShowContextWindow(
+        FrameworkElement content,
+        double width,
+        FrameworkElement? anchor = null)
+    {
+        HideContextWindow(reactivateOverlay: false);
+        _contextAnchor = anchor;
+        var scaleY = Math.Max(1, _activeMonitor.DpiScaleY);
+        var maximumHeightDips = Math.Max(
+            180,
+            (_activeMonitor.WorkAreaPixels.Height / scaleY) - 24);
+        var scroller = new ScrollViewer
+        {
+            Content = content,
+            VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+            HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
+            MaxHeight = maximumHeightDips
+        };
+        var border = new Border
+        {
+            Background = ResourceBrush("CaptureToolbarElevatedBrush"),
+            BorderBrush = ResourceBrush("CaptureToolbarBorderBrush"),
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(10),
+            Child = scroller,
+            Effect = new System.Windows.Media.Effects.DropShadowEffect
+            {
+                BlurRadius = 14,
+                ShadowDepth = 3,
+                Opacity = .3
+            }
+        };
+        _contextWindow = new Window
+        {
+            Title = "Opções da ferramenta",
+            WindowStyle = WindowStyle.None,
+            ResizeMode = ResizeMode.NoResize,
+            AllowsTransparency = true,
+            Background = Brushes.Transparent,
+            SizeToContent = SizeToContent.WidthAndHeight,
+            ShowInTaskbar = false,
+            ShowActivated = false,
+            Topmost = true,
+            Owner = _toolbarWindow,
+            Width = width,
+            MaxHeight = maximumHeightDips,
+            Opacity = SystemParameters.ClientAreaAnimation ? 0 : 1,
+            Content = border
+        };
+        _contextWindow.PreviewKeyDown += (_, args) =>
+        {
+            if (args.Key == Key.Escape)
+            {
+                HideContextWindow();
+                args.Handled = true;
+            }
+        };
+        _contextWindow.Deactivated += (_, _) => HideContextWindow();
+        _contextWindow.Show();
+        _contextWindow.UpdateLayout();
+        PositionContextWindow();
+        var animationDuration = CaptureMotion.Duration(
+            SystemParameters.ClientAreaAnimation,
+            160);
+        if (animationDuration > TimeSpan.Zero)
+        {
+            _contextWindow.BeginAnimation(OpacityProperty, new DoubleAnimation(
+                0,
+                1,
+                animationDuration));
+        }
+    }
+
+    private void PositionContextWindow()
+    {
+        if (_contextWindow is null) return;
+        var scaleX = Math.Max(1, _activeMonitor.DpiScaleX);
+        var scaleY = Math.Max(1, _activeMonitor.DpiScaleY);
+        var size = new Size(
+            Math.Ceiling(_contextWindow.ActualWidth * scaleX),
+            Math.Ceiling(_contextWindow.ActualHeight * scaleY));
+        Rect bounds;
+        if (_contextAnchor is not null)
+        {
+            var topLeft = _contextAnchor.PointToScreen(new Point(0, 0));
+            var bottomRight = _contextAnchor.PointToScreen(new Point(
+                _contextAnchor.ActualWidth,
+                _contextAnchor.ActualHeight));
+            var anchorBounds = new Rect(topLeft, bottomRight);
+            bounds = AnchoredPopoverPlacementCalculator.Calculate(
+                anchorBounds,
+                _activeMonitor.WorkAreaPixels,
+                size,
+                gap: 8,
+                dpiScale: Math.Max(scaleX, scaleY)).Bounds;
+        }
+        else
+        {
+            bounds = ToolbarPlacementCalculator.Calculate(
+                _toolbarBoundsPixels,
+                _activeMonitor.WorkAreaPixels,
+                size,
+                size.Width,
+                gap: 8,
+                dpiScale: Math.Max(scaleX, scaleY)).Bounds;
+        }
+        var handle = new WindowInteropHelper(_contextWindow).Handle;
+        _ = SetWindowPos(
+            handle,
+            new nint(-1),
+            (int)Math.Round(bounds.Left),
+            (int)Math.Round(bounds.Top),
+            Math.Max(1, (int)Math.Ceiling(bounds.Width)),
+            Math.Max(1, (int)Math.Ceiling(bounds.Height)),
+            SwpNoActivate | SwpShowWindow);
+    }
+
+    private void HideContextWindow(bool reactivateOverlay = true)
+    {
+        if (_contextWindow is null) return;
+        var window = _contextWindow;
+        _contextWindow = null;
+        _contextAnchor = null;
+        window.Close();
+        if (reactivateOverlay && IsVisible) Activate();
+    }
+
+    private static SolidColorBrush WpfBrush(int argb, float opacity)
+    {
+        var color = DrawingColor.FromArgb(argb);
+        return new SolidColorBrush(Color.FromArgb(
+            (byte)Math.Round(color.A * Math.Clamp(opacity, 0, 1)),
+            color.R,
+            color.G,
+            color.B));
+    }
+
+    private static readonly int[] AnnotationColors =
+    [
+        DrawingColor.Black.ToArgb(), DrawingColor.White.ToArgb(), DrawingColor.Gray.ToArgb(),
+        DrawingColor.Red.ToArgb(), DrawingColor.OrangeRed.ToArgb(), DrawingColor.Gold.ToArgb(),
+        DrawingColor.LimeGreen.ToArgb(), DrawingColor.DeepSkyBlue.ToArgb(), DrawingColor.RoyalBlue.ToArgb(),
+        DrawingColor.BlueViolet.ToArgb(), DrawingColor.DeepPink.ToArgb(), DrawingColor.Pink.ToArgb(),
+        DrawingColor.LightGray.ToArgb(), DrawingColor.DarkGray.ToArgb(), DrawingColor.LightGreen.ToArgb(),
+        DrawingColor.LightSkyBlue.ToArgb(), DrawingColor.Plum.ToArgb(), DrawingColor.Bisque.ToArgb()
+    ];
+
+    private static readonly int[] HighlightColors =
+    [
+        DrawingColor.Gold.ToArgb(), DrawingColor.LimeGreen.ToArgb(), DrawingColor.DeepSkyBlue.ToArgb(),
+        DrawingColor.DeepPink.ToArgb(), DrawingColor.Orange.ToArgb(), DrawingColor.BlueViolet.ToArgb()
+    ];
 
     private void OnMouseDown(object sender, MouseButtonEventArgs e)
     {
+        HideContextWindow(reactivateOverlay: false);
         if (e.Handled ||
             e.ChangedButton != MouseButton.Left ||
             IsToolbarSource(e.OriginalSource as DependencyObject))
@@ -362,7 +925,7 @@ public sealed class RegionCaptureWindow : Window
 
         _start = point;
         _dragging = true;
-        _toolbar.Visibility = Visibility.Collapsed;
+        _toolbarWindow.Hide();
         SetHandlesVisibility(Visibility.Collapsed);
         _selection.Visibility = Visibility.Visible;
         _sizeBadge.Visibility = Visibility.Visible;
@@ -440,9 +1003,9 @@ public sealed class RegionCaptureWindow : Window
         PositionAnnotationLayer();
         SetHandlesVisibility(Visibility.Visible);
         PositionHandles();
-        PositionToolbar();
-        UpdateToolSelection();
         _toolbar.Visibility = Visibility.Visible;
+        RequestToolbarPosition();
+        UpdateToolSelection();
         Cursor = Cursors.Cross;
         e.Handled = true;
     }
@@ -464,7 +1027,26 @@ public sealed class RegionCaptureWindow : Window
                 End = local,
                 Text = (_nextNumber++).ToString(),
                 Argb = _color,
-                Thickness = _thickness
+                OutlineArgb = _outlineArgb ?? _color,
+                Thickness = _thickness,
+                Opacity = _opacity,
+                Size = _annotationSize
+            });
+            return;
+        }
+        if (_tool == CaptureAnnotationKind.Stamp)
+        {
+            var half = _annotationSize / 2d;
+            var contained = new Point(
+                Math.Clamp(local.X, half, Math.Max(half, _localSelection.Width - half)),
+                Math.Clamp(local.Y, half, Math.Max(half, _localSelection.Height - half)));
+            Add(new CaptureAnnotation
+            {
+                Kind = CaptureAnnotationKind.Stamp,
+                Start = contained,
+                End = contained,
+                Text = _selectedStamp,
+                Size = _annotationSize
             });
             return;
         }
@@ -490,7 +1072,13 @@ public sealed class RegionCaptureWindow : Window
             End = end,
             Points = [.. _pencilPoints],
             Argb = _color,
-            Thickness = _thickness
+            OutlineArgb = _outlineArgb ?? _color,
+            FillArgb = _fillArgb,
+            Thickness = _thickness,
+            Opacity = _tool == CaptureAnnotationKind.Highlighter
+                ? Math.Min(_opacity, .38f)
+                : _opacity,
+            Size = _annotationSize
         });
     }
 
@@ -510,7 +1098,13 @@ public sealed class RegionCaptureWindow : Window
             End = end,
             Points = [.. _pencilPoints],
             Argb = _color,
-            Thickness = _thickness
+            OutlineArgb = _outlineArgb ?? _color,
+            FillArgb = _fillArgb,
+            Thickness = _thickness,
+            Opacity = _tool == CaptureAnnotationKind.Highlighter
+                ? Math.Min(_opacity, .38f)
+                : _opacity,
+            Size = _annotationSize
         });
     }
 
@@ -566,44 +1160,44 @@ public sealed class RegionCaptureWindow : Window
                 End = point,
                 Text = input.Text.Trim(),
                 Argb = _color,
-                Thickness = _thickness
+                OutlineArgb = _outlineArgb ?? _color,
+                Thickness = _thickness,
+                Opacity = _opacity,
+                Size = _annotationSize,
+                Bold = _textBold
             });
         }
     }
 
     private void Add(CaptureAnnotation annotation)
     {
-        _annotations.Add(annotation);
-        _redo.Clear();
+        _annotationHistory.Add(annotation);
         Rebuild();
+        UpdateHistoryButtons();
     }
 
     private void Undo()
     {
-        if (_annotations.Count == 0)
-        {
-            return;
-        }
-        var last = _annotations[^1];
-        _annotations.RemoveAt(_annotations.Count - 1);
-        _redo.Push(last);
-        Rebuild();
+        if (_annotationHistory.Undo()) Rebuild();
+        UpdateHistoryButtons();
     }
 
     private void Redo()
     {
-        if (_redo.Count == 0)
-        {
-            return;
-        }
-        _annotations.Add(_redo.Pop());
-        Rebuild();
+        if (_annotationHistory.Redo()) Rebuild();
+        UpdateHistoryButtons();
+    }
+
+    private void ClearAllAnnotations()
+    {
+        if (_annotationHistory.ClearAll()) Rebuild();
+        UpdateHistoryButtons();
     }
 
     private void Rebuild(CaptureAnnotation? pending = null)
     {
         _annotationLayer.Children.Clear();
-        foreach (var annotation in _annotations)
+        foreach (var annotation in _annotationHistory.Items)
         {
             AddVisual(annotation);
         }
@@ -615,21 +1209,23 @@ public sealed class RegionCaptureWindow : Window
 
     private void AddVisual(CaptureAnnotation annotation)
     {
-        var color = DrawingColor.FromArgb(annotation.Argb);
+        var color = DrawingColor.FromArgb(annotation.OutlineArgb ?? annotation.Argb);
         var brush = new SolidColorBrush(
             Color.FromArgb(color.A, color.R, color.G, color.B));
+        brush.Opacity = Math.Clamp(annotation.Opacity, 0, 1);
         var thickness = annotation.Kind == CaptureAnnotationKind.Highlighter
             ? annotation.Thickness * 4
             : annotation.Thickness;
         if (annotation.Kind == CaptureAnnotationKind.Highlighter)
         {
-            brush.Opacity = .38;
+            brush.Opacity = annotation.Opacity >= .99 ? .38 : annotation.Opacity;
         }
 
         switch (annotation.Kind)
         {
             case CaptureAnnotationKind.Arrow:
             case CaptureAnnotationKind.Highlighter:
+            case CaptureAnnotationKind.Line:
                 _annotationLayer.Children.Add(new Line
                 {
                     X1 = annotation.Start.X,
@@ -652,7 +1248,18 @@ public sealed class RegionCaptureWindow : Window
                 var shape = annotation.Kind == CaptureAnnotationKind.Rectangle
                     ? (Shape)new Rectangle()
                     : new Ellipse();
-                shape.Stroke = brush;
+                shape.Stroke = annotation.OutlineArgb.HasValue || !annotation.FillArgb.HasValue
+                    ? brush
+                    : Brushes.Transparent;
+                if (annotation.FillArgb is int fillArgb)
+                {
+                    var fillColor = DrawingColor.FromArgb(fillArgb);
+                    shape.Fill = new SolidColorBrush(Color.FromArgb(
+                        (byte)Math.Round(fillColor.A * Math.Clamp(annotation.Opacity, 0, 1)),
+                        fillColor.R,
+                        fillColor.G,
+                        fillColor.B));
+                }
                 shape.StrokeThickness = thickness;
                 shape.Width = Math.Abs(annotation.End.X - annotation.Start.X);
                 shape.Height = Math.Abs(annotation.End.Y - annotation.Start.Y);
@@ -678,8 +1285,8 @@ public sealed class RegionCaptureWindow : Window
                 {
                     Text = annotation.Text,
                     Foreground = brush,
-                    FontSize = 17,
-                    FontWeight = FontWeights.Bold,
+                    FontSize = annotation.Size,
+                    FontWeight = annotation.Bold ? FontWeights.Bold : FontWeights.Normal,
                     IsHitTestVisible = false
                 };
                 Canvas.SetLeft(text, annotation.Start.X);
@@ -689,9 +1296,9 @@ public sealed class RegionCaptureWindow : Window
             case CaptureAnnotationKind.Number:
                 var badge = new Border
                 {
-                    Width = 30,
-                    Height = 30,
-                    CornerRadius = new CornerRadius(15),
+                    Width = annotation.Size,
+                    Height = annotation.Size,
+                    CornerRadius = new CornerRadius(annotation.Size / 2),
                     Background = brush,
                     IsHitTestVisible = false,
                     Child = new TextBlock
@@ -703,9 +1310,15 @@ public sealed class RegionCaptureWindow : Window
                         VerticalAlignment = VerticalAlignment.Center
                     }
                 };
-                Canvas.SetLeft(badge, annotation.Start.X - 15);
-                Canvas.SetTop(badge, annotation.Start.Y - 15);
+                Canvas.SetLeft(badge, annotation.Start.X - annotation.Size / 2);
+                Canvas.SetTop(badge, annotation.Start.Y - annotation.Size / 2);
                 _annotationLayer.Children.Add(badge);
+                break;
+            case CaptureAnnotationKind.Stamp:
+                var stamp = EmojiImage(annotation.Text, annotation.Size);
+                Canvas.SetLeft(stamp, annotation.Start.X - annotation.Size / 2);
+                Canvas.SetTop(stamp, annotation.Start.Y - annotation.Size / 2);
+                _annotationLayer.Children.Add(stamp);
                 break;
         }
     }
@@ -734,22 +1347,65 @@ public sealed class RegionCaptureWindow : Window
     {
         foreach (var (tool, button) in _toolButtons)
         {
-            var selected = tool == _tool;
-            button.Background = Brush(selected
-                ? _isDark ? "#0D5C68" : "#DDF6F8"
-                : _isDark ? "#18222D" : "#FFFFFF");
-            button.BorderBrush = Brush(selected
-                ? "#2BC9DA"
-                : _isDark ? "#42505E" : "#CBD5DF");
-            button.Foreground = Brush(
-                _isDark ? "#F5F8FA" : selected ? "#075A66" : "#25313D");
+            var representsShape = tool == CaptureAnnotationKind.Rectangle &&
+                _tool is CaptureAnnotationKind.Rectangle or CaptureAnnotationKind.Ellipse or
+                    CaptureAnnotationKind.Line or CaptureAnnotationKind.Arrow;
+            button.IsChecked = tool == _tool || representsShape;
+            if (button.Content is Path icon)
+            {
+                icon.Stroke = button.IsChecked == true
+                    ? ResourceBrush("CaptureToolbarAccentBrush")
+                    : ResourceBrush("CaptureToolbarTextBrush");
+            }
         }
+        if (_compactToolbar)
+        {
+            ApplyToolbarDensity(compact: true);
+            RequestToolbarPosition();
+        }
+        UpdateHistoryButtons();
+    }
+
+    private void ApplyToolbarDensity(bool compact)
+    {
+        _compactToolbar = compact;
+        foreach (var (tool, button) in _toolButtons)
+        {
+            button.Visibility = !compact || RepresentsActiveTool(tool)
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+        }
+        _eraseButton.Visibility = compact ? Visibility.Collapsed : Visibility.Visible;
+        _reselectButton.Visibility = compact ? Visibility.Collapsed : Visibility.Visible;
+        _captureSeparator.Visibility = compact ? Visibility.Collapsed : Visibility.Visible;
+        _actionSeparator.Visibility = compact ? Visibility.Collapsed : Visibility.Visible;
+        _overflowButton.Visibility = compact ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private bool RepresentsActiveTool(CaptureAnnotationKind toolbarTool) =>
+        toolbarTool == _tool ||
+        toolbarTool == CaptureAnnotationKind.Rectangle &&
+        _tool is CaptureAnnotationKind.Rectangle or CaptureAnnotationKind.Ellipse or
+            CaptureAnnotationKind.Line;
+
+    private void UpdateHistoryButtons()
+    {
+        if (_undoButton is null || _redoButton is null || _eraseButton is null) return;
+        _undoButton.IsEnabled = _annotationHistory.CanUndo;
+        _redoButton.IsEnabled = _annotationHistory.CanRedo;
+        _eraseButton.IsEnabled = _annotationHistory.Items.Count > 0;
     }
 
     private void OnPreviewKeyDown(object sender, KeyEventArgs e)
     {
         if (e.Key == Key.Escape)
         {
+            if (_contextWindow is not null)
+            {
+                HideContextWindow();
+                e.Handled = true;
+                return;
+            }
             DialogResult = false;
             e.Handled = true;
         }
@@ -757,7 +1413,7 @@ public sealed class RegionCaptureWindow : Window
                  _selectionReady &&
                  e.OriginalSource is not TextBox)
         {
-            Complete();
+            Complete(CaptureEditorOutput.Default);
             e.Handled = true;
         }
         else if (e.Key == Key.R &&
@@ -781,18 +1437,21 @@ public sealed class RegionCaptureWindow : Window
         }
     }
 
-    private void Complete()
+    private void Complete(CaptureEditorOutput requestedOutput)
     {
         if (!_selectionReady)
         {
             return;
         }
 
+        _toolbarWindow.Hide();
+        HideContextWindow();
+        RequestedOutput = requestedOutput;
         using var crop = CropFrozenSelection();
         EditedBitmap?.Dispose();
         EditedBitmap = CaptureAnnotationRenderer.Render(
             crop,
-            _annotations,
+            _annotationHistory.Items,
             _localSelection.Width,
             _localSelection.Height);
         DialogResult = true;
@@ -833,10 +1492,11 @@ public sealed class RegionCaptureWindow : Window
         _annotationLayer.Visibility = Visibility.Collapsed;
         _annotationLayer.Children.Clear();
         _sizeBadge.Visibility = Visibility.Collapsed;
-        _toolbar.Visibility = Visibility.Collapsed;
+        _toolbarWindow.Hide();
         SetHandlesVisibility(Visibility.Collapsed);
-        _annotations.Clear();
-        _redo.Clear();
+        _annotationHistory.Reset();
+        HideContextWindow();
+        UpdateHistoryButtons();
         _nextNumber = 1;
         Cursor = Cursors.Cross;
         UpdateShade(default);
@@ -933,23 +1593,116 @@ public sealed class RegionCaptureWindow : Window
         }
     }
 
-    private void PositionToolbar()
+    private void RequestToolbarPosition()
     {
-        _toolbar.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
-        var desired = _toolbar.DesiredSize;
-        var width = ActualWidth > 0 ? ActualWidth : Width;
-        var height = ActualHeight > 0 ? ActualHeight : Height;
-        var left = Math.Clamp(
-            _localSelection.Left + ((_localSelection.Width - desired.Width) / 2),
-            12,
-            Math.Max(12, width - desired.Width - 12));
-        var below = _localSelection.Bottom + 14;
-        var top = below + desired.Height <= height - 12
-            ? below
-            : Math.Max(12, _localSelection.Top - desired.Height - 14);
-        Canvas.SetLeft(_toolbar, left);
-        Canvas.SetTop(_toolbar, top);
+        if (!_selectionReady || _toolbarPositionPending)
+        {
+            return;
+        }
+        _toolbarPositionPending = true;
+        _ = Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() =>
+        {
+            _toolbarPositionPending = false;
+            PositionToolbarAfterLayout();
+        }));
     }
+
+    private void PositionToolbarAfterLayout()
+    {
+        if (!_selectionReady)
+        {
+            return;
+        }
+
+        var selectionPixels = SelectionInPhysicalPixels();
+        var monitor = MonitorWorkAreaProvider.FromSelection(selectionPixels);
+        _activeMonitor = monitor;
+        var marginPixels = Math.Max(1, 12 * monitor.DpiScaleX);
+        var maximumWidthPixels = Math.Max(1, monitor.WorkAreaPixels.Width - (marginPixels * 2));
+        var maximumWidthDips = maximumWidthPixels / monitor.DpiScaleX;
+
+        // A faixa normal mede cerca de 640 DIPs. Em áreas menores, comandos
+        // secundários migram para um overflow explícito; nunca são cortados.
+        ApplyToolbarDensity(
+            compact: CaptureToolbarLayoutPolicy.ShouldUseCompactMode(maximumWidthDips));
+
+        _toolbar.Width = double.NaN;
+        _toolbar.MaxWidth = double.PositiveInfinity;
+        _toolbarLayout.Width = double.NaN;
+        _toolbar.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+        var naturalDips = _toolbar.DesiredSize;
+
+        var finalWidthDips = Math.Min(naturalDips.Width, maximumWidthDips);
+        _toolbar.Width = finalWidthDips;
+        _toolbar.MaxWidth = finalWidthDips;
+        _toolbarLayout.Width = Math.Max(1, finalWidthDips -
+            _toolbar.Padding.Left - _toolbar.Padding.Right -
+            _toolbar.BorderThickness.Left - _toolbar.BorderThickness.Right);
+        _toolbarWindow.Width = finalWidthDips;
+        _toolbarWindow.Opacity = 0;
+        if (!_toolbarWindow.IsVisible)
+        {
+            _toolbarWindow.Show();
+        }
+        _toolbarWindow.UpdateLayout();
+
+        var finalDips = new Size(
+            Math.Max(1, _toolbar.ActualWidth),
+            Math.Max(1, _toolbar.ActualHeight));
+        var finalPixels = new Size(
+            Math.Ceiling(finalDips.Width * monitor.DpiScaleX),
+            Math.Ceiling(finalDips.Height * monitor.DpiScaleY));
+        var placement = ToolbarPlacementCalculator.Calculate(
+            selectionPixels,
+            monitor.WorkAreaPixels,
+            finalPixels,
+            naturalDips.Width * monitor.DpiScaleX,
+            dpiScale: Math.Max(monitor.DpiScaleX, monitor.DpiScaleY));
+        _toolbarBoundsPixels = placement.Bounds;
+
+        var handle = new WindowInteropHelper(_toolbarWindow).Handle;
+        _ = SetWindowPos(
+            handle,
+            new nint(-1),
+            (int)Math.Round(placement.Bounds.Left),
+            (int)Math.Round(placement.Bounds.Top),
+            Math.Max(1, (int)Math.Ceiling(placement.Bounds.Width)),
+            Math.Max(1, (int)Math.Ceiling(placement.Bounds.Height)),
+            SwpNoActivate | SwpShowWindow);
+        _toolbarWindow.Opacity = 1;
+
+        SafeDiagnosticLog.Write("capture.toolbar-positioned", new Dictionary<string, object?>
+        {
+            ["selectionPixels"] = RectDescription(selectionPixels),
+            ["workAreaPixels"] = RectDescription(monitor.WorkAreaPixels),
+            ["dpiScaleX"] = monitor.DpiScaleX,
+            ["dpiScaleY"] = monitor.DpiScaleY,
+            ["naturalWidthDips"] = naturalDips.Width,
+            ["finalWidthDips"] = finalDips.Width,
+            ["finalHeightDips"] = finalDips.Height,
+            ["finalBoundsPixels"] = RectDescription(placement.Bounds),
+            ["placement"] = placement.Side.ToString(),
+            ["layoutMode"] = placement.Mode.ToString(),
+            ["expectedRows"] = placement.ExpectedRows
+        });
+    }
+
+    private Rect SelectionInPhysicalPixels()
+    {
+        var virtualScreen = Forms.SystemInformation.VirtualScreen;
+        var canvasWidth = Math.Max(1, _canvas.ActualWidth);
+        var canvasHeight = Math.Max(1, _canvas.ActualHeight);
+        var scaleX = virtualScreen.Width / canvasWidth;
+        var scaleY = virtualScreen.Height / canvasHeight;
+        return new Rect(
+            virtualScreen.Left + (_localSelection.Left * scaleX),
+            virtualScreen.Top + (_localSelection.Top * scaleY),
+            _localSelection.Width * scaleX,
+            _localSelection.Height * scaleY);
+    }
+
+    private static string RectDescription(Rect rectangle) =>
+        $"{rectangle.Left:0},{rectangle.Top:0},{rectangle.Width:0},{rectangle.Height:0}";
 
     private void SetHandlesVisibility(Visibility visibility)
     {
@@ -1043,4 +1796,18 @@ public sealed class RegionCaptureWindow : Window
     [DllImport("gdi32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool DeleteObject(IntPtr handle);
+
+    private const uint SwpNoActivate = 0x0010;
+    private const uint SwpShowWindow = 0x0040;
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool SetWindowPos(
+        nint window,
+        nint insertAfter,
+        int x,
+        int y,
+        int width,
+        int height,
+        uint flags);
 }

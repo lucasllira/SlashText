@@ -1,5 +1,6 @@
 using System.Drawing;
 using System.Drawing.Drawing2D;
+using System.Drawing.Imaging;
 
 namespace SlashText.Services;
 
@@ -9,9 +10,11 @@ public enum CaptureAnnotationKind
     Highlighter,
     Rectangle,
     Ellipse,
+    Line,
     Pencil,
     Text,
     Number,
+    Stamp,
     Blur,
     Pixelate
 }
@@ -23,8 +26,19 @@ public sealed class CaptureAnnotation
     public System.Windows.Point End { get; init; }
     public List<System.Windows.Point> Points { get; init; } = [];
     public int Argb { get; init; } = Color.Red.ToArgb();
+    public int? OutlineArgb { get; init; } = Color.Red.ToArgb();
+    public int? FillArgb { get; init; }
     public float Thickness { get; init; } = 4;
+    public float Opacity { get; init; } = 1;
+    public float Size { get; init; } = 32;
+    public bool Bold { get; init; } = true;
+    public string Alignment { get; init; } = "Left";
     public string Text { get; init; } = string.Empty;
+
+    public bool HasVisibleShapeStyle =>
+        FillArgb.HasValue || OutlineArgb.HasValue ||
+        Kind is not CaptureAnnotationKind.Rectangle and
+            not CaptureAnnotationKind.Ellipse;
 }
 
 public static class CaptureAnnotationRenderer
@@ -109,10 +123,13 @@ public static class CaptureAnnotationRenderer
         var thickness = Math.Max(
             1f,
             annotation.Thickness * (float)((scaleX + scaleY) / 2d));
-        var color = Color.FromArgb(annotation.Argb);
+        var color = WithOpacity(
+            Color.FromArgb(annotation.OutlineArgb ?? annotation.Argb),
+            annotation.Kind == CaptureAnnotationKind.Highlighter && annotation.Opacity >= .99f
+                ? .35f
+                : annotation.Opacity);
         if (annotation.Kind == CaptureAnnotationKind.Highlighter)
         {
-            color = Color.FromArgb(90, color.R, color.G, color.B);
             thickness *= 4;
         }
 
@@ -131,11 +148,14 @@ public static class CaptureAnnotationRenderer
             case CaptureAnnotationKind.Highlighter:
                 graphics.DrawLine(pen, start, end);
                 break;
+            case CaptureAnnotationKind.Line:
+                graphics.DrawLine(pen, start, end);
+                break;
             case CaptureAnnotationKind.Rectangle:
-                graphics.DrawRectangle(pen, Normalize(start, end));
+                DrawShape(graphics, annotation, Normalize(start, end), ellipse: false, pen);
                 break;
             case CaptureAnnotationKind.Ellipse:
-                graphics.DrawEllipse(pen, Normalize(start, end));
+                DrawShape(graphics, annotation, Normalize(start, end), ellipse: true, pen);
                 break;
             case CaptureAnnotationKind.Pencil:
                 var points = annotation.Points
@@ -149,8 +169,8 @@ public static class CaptureAnnotationRenderer
             case CaptureAnnotationKind.Text:
                 using (var font = new Font(
                            "Segoe UI",
-                           Math.Max(11f, 17f * (float)scaleY),
-                           FontStyle.Bold,
+                           Math.Max(11f, annotation.Size * (float)scaleY),
+                           annotation.Bold ? FontStyle.Bold : FontStyle.Regular,
                            GraphicsUnit.Pixel))
                 using (var brush = new SolidBrush(color))
                 {
@@ -158,10 +178,61 @@ public static class CaptureAnnotationRenderer
                 }
                 break;
             case CaptureAnnotationKind.Number:
-                DrawNumber(graphics, annotation.Text, color, start, thickness);
+                DrawNumber(graphics, annotation.Text, color, start,
+                    Math.Max(thickness, annotation.Size * (float)((scaleX + scaleY) / 16d)));
+                break;
+            case CaptureAnnotationKind.Stamp:
+                DrawStamp(graphics, annotation, start, scaleX, scaleY);
                 break;
         }
     }
+
+    private static void DrawShape(
+        Graphics graphics,
+        CaptureAnnotation annotation,
+        RectangleF bounds,
+        bool ellipse,
+        Pen outline)
+    {
+        if (annotation.FillArgb is int fillArgb)
+        {
+            using var fill = new SolidBrush(WithOpacity(Color.FromArgb(fillArgb), annotation.Opacity));
+            if (ellipse) graphics.FillEllipse(fill, bounds);
+            else graphics.FillRectangle(fill, bounds);
+        }
+        if (annotation.OutlineArgb.HasValue)
+        {
+            if (ellipse) graphics.DrawEllipse(outline, bounds);
+            else graphics.DrawRectangle(outline, bounds);
+        }
+    }
+
+    private static void DrawStamp(
+        Graphics graphics,
+        CaptureAnnotation annotation,
+        PointF center,
+        double scaleX,
+        double scaleY)
+    {
+        var pixels = Math.Max(12, (int)Math.Ceiling(
+            annotation.Size * ((scaleX + scaleY) / 2d)));
+        using var stamp = NotoEmojiCatalog.CreateBitmap(annotation.Text);
+        var destination = new RectangleF(
+            (float)(center.X - pixels / 2d),
+            (float)(center.Y - pixels / 2d),
+            pixels,
+            pixels);
+        graphics.InterpolationMode = InterpolationMode.HighQualityBicubic;
+        graphics.PixelOffsetMode = PixelOffsetMode.HighQuality;
+        graphics.DrawImage(stamp, destination);
+    }
+
+    private static Color WithOpacity(Color color, float opacity) =>
+        Color.FromArgb(
+            (int)Math.Round(color.A * Math.Clamp(opacity, 0, 1)),
+            color.R,
+            color.G,
+            color.B);
 
     private static void DrawArrowHead(
         Graphics graphics,

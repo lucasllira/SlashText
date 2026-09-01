@@ -13,9 +13,9 @@
     <ApplicationIcon>Assets\SlashDesk.ico</ApplicationIcon>
     <AssemblyName>SlashDesk</AssemblyName>
     <RootNamespace>SlashText</RootNamespace>
-    <Version>3.0.0</Version>
-    <AssemblyVersion>3.0.0.0</AssemblyVersion>
-    <FileVersion>3.0.0.0</FileVersion>
+    <Version>3.1.0</Version>
+    <AssemblyVersion>3.1.0.0</AssemblyVersion>
+    <FileVersion>3.1.0.0</FileVersion>
     <DebugType>embedded</DebugType>
     <SlashDeskDistribution Condition="'$(SlashDeskDistribution)' == ''">Installed</SlashDeskDistribution>
   </PropertyGroup>
@@ -31,6 +31,9 @@
   <ItemGroup>
     <Resource Include="Assets\SlashDesk.ico" />
     <Resource Include="Assets\SlashDesk.png" />
+    <EmbeddedResource Include="Assets\NotoEmoji\*.png" />
+    <None Update="Assets\NotoEmoji\LICENSE.txt" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="Assets\NotoEmoji\NOTICE.md" CopyToOutputDirectory="PreserveNewest" />
     <EmbeddedResource Include="..\..\snippets.md"
                       Link="Defaults\snippets.md"
                       LogicalName="SlashText.Defaults.snippets.md" />

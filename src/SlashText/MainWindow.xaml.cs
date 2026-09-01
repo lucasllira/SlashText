@@ -5,6 +5,7 @@ using System.IO;
 using System.Reflection;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
@@ -35,6 +36,8 @@ public partial class MainWindow : Window
     private readonly GlobalCaptureShortcutService _captureShortcuts = new();
     private readonly UpdateService _updateService = new();
     private readonly PortableUpdateService _portableUpdateService = new();
+    private readonly SingleFlightGate _expansionRequestGate = new();
+    private readonly SingleFlightGate _captureGate = new();
     private readonly JsonFileStore<AppSettings> _settingsStore = new(AppPaths.SettingsFile);
     private readonly ObservableCollection<Snippet> _snippets = [];
     private readonly SuggestionWindow _suggestionWindow = new();
@@ -43,6 +46,8 @@ public partial class MainWindow : Window
     private Forms.NotifyIcon? _trayIcon;
     private AppSettings _settings = new();
     private Snippet? _selected;
+    private string? _selectedCategory;
+    private bool _showMostUsed;
     private bool _exitRequested;
     private bool _servicesDisposed;
     private bool _initialized;
@@ -56,6 +61,14 @@ public partial class MainWindow : Window
     private string? _lastReleaseUrl;
     private int _updateOfferActive;
     private CancellationTokenSource? _activeUpdateCancellation;
+    private int _shortcutResponsiveBand = -1;
+
+    private const double ShortcutLeftMinimum = 220;
+    private const double ShortcutLeftMaximum = 460;
+    private const double ShortcutRightMinimum = 240;
+    private const double ShortcutRightMaximum = 480;
+    private const double ShortcutSplitterStep = 16;
+    private const double ShortcutDividerSpace = 32;
 
     public MainWindow()
     {
@@ -69,6 +82,7 @@ public partial class MainWindow : Window
         Activated += MainWindow_OnActivated;
         _keyboardHook.ExpansionRequested += KeyboardHook_OnExpansionRequested;
         _keyboardHook.SuggestionsChanged += KeyboardHook_OnSuggestionsChanged;
+        _suggestionWindow.SnippetChosen += SuggestionWindow_OnSnippetChosen;
         _quickAccentService.Changed += QuickAccentService_OnChanged;
         _quickAccentService.CharacterInserted += QuickAccentService_OnCharacterInserted;
         _captureShortcuts.Triggered += CaptureShortcuts_OnTriggered;
@@ -230,6 +244,7 @@ public partial class MainWindow : Window
         }
 
         MonitorStatusText.Text = "Monitoramento ativo";
+        ShellStatusText.Text = "Monitoramento ativo";
     }
 
     private void QuickAccentService_OnChanged(object? sender, QuickAccentChangedEventArgs e)
@@ -272,9 +287,15 @@ public partial class MainWindow : Window
                 return;
             }
 
-            _suggestionWindow.UpdateSuggestions(e.Snippets, e.ScreenPosition);
+            _suggestionWindow.UpdateSuggestions(
+                e.Snippets,
+                e.ScreenPosition,
+                e.SelectedIndex);
         }));
     }
+
+    private void SuggestionWindow_OnSnippetChosen(Snippet snippet) =>
+        _keyboardHook.ConfirmSuggestion(snippet, SuggestionConfirmation.Click);
 
     private void KeyboardHook_OnExpansionRequested(
         object? sender,
@@ -282,8 +303,22 @@ public partial class MainWindow : Window
     {
         Dispatcher.BeginInvoke(new Action(async () =>
         {
+            using var expansionLease = _expansionRequestGate.TryEnter();
+            if (expansionLease is null)
+            {
+                SafeDiagnosticLog.Write("expansion.ignored_busy");
+                StatusText.Text = "Outra expansão ainda está em andamento";
+                return;
+            }
             try
             {
+                SafeDiagnosticLog.Write("expansion.started", new Dictionary<string, object?>
+                {
+                    ["targetHandleValid"] = e.TargetWindow != IntPtr.Zero,
+                    ["typedCharacterCount"] = e.TypedCharacterCount,
+                    ["confirmation"] = e.Confirmation.ToString()
+                });
+                _keyboardHook.ResetBuffer(BufferResetReason.ExpansionStarted);
                 _suggestionWindow.Hide();
                 IReadOnlyDictionary<string, string> values =
                     new Dictionary<string, string>();
@@ -294,6 +329,7 @@ public partial class MainWindow : Window
                     var form = VariableInputWindow.ShowForTarget(fields, e.TargetWindow);
                     if (form.DialogResult != true)
                     {
+                        _keyboardHook.ResetBuffer(BufferResetReason.SuggestionCancelled);
                         StatusText.Text = "Expansão cancelada";
                         return;
                     }
@@ -304,19 +340,38 @@ public partial class MainWindow : Window
                 var inserted = await _expansionService.ExpandAsync(
                     e.Snippet,
                     values,
-                    e.TargetWindow);
+                    e.TargetWindow,
+                    e.TypedCharacterCount,
+                    CancellationToken.None);
                 await _usageService.RecordAsync(e.Snippet, inserted);
                 RefreshStatistics();
                 StatusText.Text = $"{e.Snippet.Trigger} inserido";
+                SafeDiagnosticLog.Write("expansion.completed", new Dictionary<string, object?>
+                {
+                    ["insertedCharacterCount"] = inserted
+                });
+            }
+            catch (ExpansionBusyException)
+            {
+                StatusText.Text = "Outra expansão ainda está em andamento";
             }
             catch (Exception exception)
             {
+                SafeDiagnosticLog.Write("expansion.failed", new Dictionary<string, object?>
+                {
+                    ["exceptionType"] = exception.GetType().Name,
+                    ["reason"] = exception is OperationCanceledException ? "target_changed" : "operation_failed"
+                });
                 StatusText.Text = $"Falha ao inserir {e.Snippet.Trigger}";
                 MessageBox.Show(
                     exception.Message,
                     "Não foi possível inserir o texto",
                     MessageBoxButton.OK,
                     MessageBoxImage.Warning);
+            }
+            finally
+            {
+                _keyboardHook.ResetBuffer(BufferResetReason.ExpansionFinished);
             }
         }));
     }
@@ -326,41 +381,111 @@ public partial class MainWindow : Window
 
     private void RefreshNavigation()
     {
-        if (CategoriesPanel is null)
+        if (CategoriesPanel is null || SnippetListPanel is null)
         {
             return;
         }
 
         var query = SearchBox.Text.Trim();
-        var filtered = string.IsNullOrWhiteSpace(query)
-            ? _snippets
-            : _snippets.Where(item =>
+        IEnumerable<Snippet> filtered = _snippets;
+        if (!string.IsNullOrWhiteSpace(query))
+        {
+            filtered = filtered.Where(item =>
                 item.Name.Contains(query, StringComparison.CurrentCultureIgnoreCase) ||
                 item.Trigger.Contains(query, StringComparison.OrdinalIgnoreCase) ||
-                item.Category.Contains(query, StringComparison.CurrentCultureIgnoreCase));
-
-        CategoriesPanel.Children.Clear();
-        foreach (var group in filtered
-                     .GroupBy(item => item.Category)
-                     .OrderBy(item => item.Key, StringComparer.CurrentCultureIgnoreCase))
-        {
-            var list = new StackPanel();
-            foreach (var snippet in group.OrderBy(item => item.Trigger))
-            {
-                list.Children.Add(CreateSnippetButton(snippet));
-            }
-
-            CategoriesPanel.Children.Add(new Expander
-            {
-                Header = $"{group.Key}  ·  {group.Count()}",
-                IsExpanded = true,
-                Margin = new Thickness(0, 0, 0, 8),
-                FontWeight = FontWeights.SemiBold,
-                Content = list
-            });
+                item.Category.Contains(query, StringComparison.CurrentCultureIgnoreCase) ||
+                item.Content.Contains(query, StringComparison.CurrentCultureIgnoreCase));
         }
 
+        if (!string.IsNullOrWhiteSpace(_selectedCategory))
+        {
+            filtered = filtered.Where(item =>
+                item.Category.Equals(_selectedCategory, StringComparison.CurrentCultureIgnoreCase));
+        }
+
+        if (_showMostUsed)
+        {
+            filtered = filtered
+                .Select(item => new { Snippet = item, Usage = _usageService.For(item.Id)?.Count ?? 0 })
+                .Where(item => item.Usage > 0)
+                .OrderByDescending(item => item.Usage)
+                .ThenBy(item => item.Snippet.Trigger, StringComparer.CurrentCultureIgnoreCase)
+                .Select(item => item.Snippet);
+        }
+        else
+        {
+            filtered = filtered.OrderBy(item => item.Trigger, StringComparer.CurrentCultureIgnoreCase);
+        }
+
+        var visible = filtered.ToList();
+
+        CategoriesPanel.Children.Clear();
+        CategoriesPanel.Children.Add(CreateCategoryButton(null, "Todos", _snippets.Count));
+        foreach (var group in _snippets
+                     .GroupBy(item => string.IsNullOrWhiteSpace(item.Category) ? "Geral" : item.Category)
+                     .OrderBy(item => item.Key, StringComparer.CurrentCultureIgnoreCase))
+        {
+            CategoriesPanel.Children.Add(CreateCategoryButton(group.Key, group.Key, group.Count()));
+        }
+
+        SnippetListPanel.Children.Clear();
+        if (visible.Count == 0)
+        {
+            SnippetListPanel.Children.Add(new TextBlock
+            {
+                Text = "Nenhum atalho corresponde aos filtros.",
+                Margin = new Thickness(10, 14, 10, 0),
+                TextWrapping = TextWrapping.Wrap,
+                Foreground = (Brush)FindResource("MutedBrush"),
+                FontSize = 12
+            });
+        }
+        else
+        {
+            foreach (var snippet in visible)
+            {
+                SnippetListPanel.Children.Add(CreateSnippetButton(snippet));
+            }
+        }
+
+        SnippetCountText.Text = $"{visible.Count}/{_snippets.Count}";
+        ShellCollectionStatusText.Text = $"{_snippets.Count} atalhos · {CategoriesPanel.Children.Count - 1} categorias";
         RefreshMostUsed();
+    }
+
+    private Button CreateCategoryButton(string? category, string label, int count)
+    {
+        var selected = string.Equals(category, _selectedCategory, StringComparison.CurrentCultureIgnoreCase);
+        var content = new Grid();
+        content.Children.Add(new TextBlock
+        {
+            Text = label,
+            FontWeight = selected ? FontWeights.SemiBold : FontWeights.Normal,
+            TextTrimming = TextTrimming.CharacterEllipsis
+        });
+        content.Children.Add(new TextBlock
+        {
+            Text = count.ToString(),
+            HorizontalAlignment = HorizontalAlignment.Right,
+            Foreground = (Brush)FindResource("MutedBrush")
+        });
+
+        var button = new Button
+        {
+            Style = (Style)FindResource("SidebarItemButton"),
+            Tag = category,
+            Background = selected ? (Brush)FindResource("SelectedBrush") : Brushes.Transparent,
+            BorderBrush = selected ? (Brush)FindResource("AccentBorderBrush") : Brushes.Transparent,
+            Foreground = selected ? (Brush)FindResource("AccentStrongBrush") : (Brush)FindResource("InkBrush"),
+            Content = content,
+            ToolTip = $"{label} · {count} atalhos"
+        };
+        button.Click += (_, _) =>
+        {
+            _selectedCategory = category;
+            RefreshNavigation();
+        };
+        return button;
     }
 
     private Button CreateSnippetButton(Snippet snippet)
@@ -368,7 +493,8 @@ public partial class MainWindow : Window
         var selected = ReferenceEquals(snippet, _selected);
         var button = new Button
         {
-            HorizontalContentAlignment = HorizontalAlignment.Left,
+            Style = (Style)FindResource("SidebarItemButton"),
+            HorizontalContentAlignment = HorizontalAlignment.Stretch,
             Background = selected
                 ? (Brush)FindResource("SelectedBrush")
                 : Brushes.Transparent,
@@ -376,8 +502,8 @@ public partial class MainWindow : Window
                 ? (Brush)FindResource("AccentBrush")
                 : Brushes.Transparent,
             BorderThickness = new Thickness(1),
-            Padding = new Thickness(10, 8, 10, 8),
-            Margin = new Thickness(0, 3, 0, 0),
+            Padding = new Thickness(10, 7, 10, 7),
+            Margin = new Thickness(0, 2, 0, 0),
             Tag = snippet,
             Content = new StackPanel
             {
@@ -387,6 +513,8 @@ public partial class MainWindow : Window
                     {
                         Text = snippet.Trigger,
                         TextTrimming = TextTrimming.CharacterEllipsis,
+                        ToolTip = snippet.Trigger,
+                        FontFamily = (FontFamily)FindResource("FontFamily.Mono"),
                         FontWeight = FontWeights.SemiBold,
                         Foreground = selected
                             ? (Brush)FindResource("AccentBrush")
@@ -394,14 +522,16 @@ public partial class MainWindow : Window
                     },
                     new TextBlock
                     {
-                        Text = snippet.Name,
+                        Text = $"{snippet.Name} · {snippet.Category}",
                         TextTrimming = TextTrimming.CharacterEllipsis,
+                        ToolTip = $"{snippet.Name} · {snippet.Category}",
                         FontSize = 11,
                         Margin = new Thickness(0, 2, 0, 0),
                         Foreground = (Brush)FindResource("MutedBrush")
                     }
                 }
-            }
+            },
+            ToolTip = $"{snippet.Name}\n{snippet.Trigger}\nCategoria: {snippet.Category}"
         };
         button.Click += (_, _) => SelectSnippet((Snippet)button.Tag);
         return button;
@@ -409,32 +539,28 @@ public partial class MainWindow : Window
 
     private void RefreshMostUsed()
     {
-        MostUsedPanel.Children.Clear();
-        var ranked = _snippets
-            .Select(item => new { Snippet = item, Usage = _usageService.For(item.Id) })
-            .Where(item => item.Usage?.Count > 0)
-            .OrderByDescending(item => item.Usage!.Count)
-            .Take(3)
-            .ToList();
+        ApplyDisplayFilterState(DisplayAllButton, !_showMostUsed);
+        ApplyDisplayFilterState(DisplayMostUsedButton, _showMostUsed);
+    }
 
-        if (ranked.Count == 0)
-        {
-            MostUsedPanel.Children.Add(new TextBlock
-            {
-                Text = "Os atalhos usados aparecerão aqui.",
-                TextWrapping = TextWrapping.Wrap,
-                Foreground = (Brush)FindResource("MutedBrush"),
-                FontSize = 12
-            });
-            return;
-        }
+    private void DisplayAll_OnClick(object sender, RoutedEventArgs e)
+    {
+        _showMostUsed = false;
+        RefreshNavigation();
+    }
 
-        foreach (var item in ranked)
-        {
-            var button = CreateSnippetButton(item.Snippet);
-            button.Content = $"{item.Snippet.Trigger}  ·  {item.Usage!.Count}x";
-            MostUsedPanel.Children.Add(button);
-        }
+    private void DisplayMostUsed_OnClick(object sender, RoutedEventArgs e)
+    {
+        _showMostUsed = true;
+        RefreshNavigation();
+    }
+
+    private void ApplyDisplayFilterState(Button button, bool selected)
+    {
+        button.Background = selected ? (Brush)FindResource("SelectedBrush") : (Brush)FindResource("SurfaceBrush");
+        button.BorderBrush = selected ? (Brush)FindResource("AccentBorderBrush") : (Brush)FindResource("DividerBrush");
+        button.Foreground = selected ? (Brush)FindResource("AccentStrongBrush") : (Brush)FindResource("InkBrush");
+        button.FontWeight = selected ? FontWeights.SemiBold : FontWeights.Normal;
     }
 
     private void SelectSnippet(Snippet snippet)
@@ -445,7 +571,9 @@ public partial class MainWindow : Window
         CategoryBox.Text = snippet.Category;
         FormatBox.SelectedIndex = snippet.Format == SnippetFormat.Markdown ? 1 : 0;
         RichTextMarkdownConverter.Load(ContentEditor, snippet.Content, snippet.Format);
-        StatusText.Text = snippet.Enabled ? "Atalho ativo" : "Atalho pausado";
+        StatusText.Text = snippet.HasLegacyIncompatibleTrigger
+            ? "Atalho legado preservado, mas incompatível com o monitor atual; corrija o gatilho para reativá-lo"
+            : snippet.Enabled ? "Atalho ativo" : "Atalho pausado";
         RefreshNavigation();
         UpdatePreview();
     }
@@ -482,6 +610,17 @@ public partial class MainWindow : Window
             Enabled = previous?.Enabled ?? true,
             ConfirmKeys = previous?.ConfirmKeys.ToList() ?? ["Enter", "Tab", "Space"]
         };
+
+        if (!TriggerRule.TryValidate(candidate.Trigger, out var triggerError))
+        {
+            MessageBox.Show(
+                triggerError,
+                "Atalho incompatível",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+            TriggerBox.Focus();
+            return;
+        }
 
         var nextState = _snippets
             .Where(item => !ReferenceEquals(item, previous))
@@ -812,8 +951,22 @@ public partial class MainWindow : Window
         }
     }
 
-    private void ContentEditor_OnTextChanged(object sender, TextChangedEventArgs e) =>
+    private void ContentEditor_OnTextChanged(object sender, TextChangedEventArgs e)
+    {
+        if (StatusText is not null)
+        {
+            StatusText.Text = "Alterações não salvas";
+        }
         UpdatePreview();
+    }
+
+    private void EditorField_OnTextChanged(object sender, TextChangedEventArgs e)
+    {
+        if (StatusText is not null)
+        {
+            StatusText.Text = "Alterações não salvas";
+        }
+    }
 
     private void UpdatePreview()
     {
@@ -900,6 +1053,24 @@ public partial class MainWindow : Window
                 : (Brush)FindResource("MutedBrush");
         }
 
+        (ShellPageTitle.Text, ShellPageDescription.Text) = ReferenceEquals(view, ShortcutsView)
+            ? ("Atalhos", "Crie, organize e edite seus textos prontos.")
+            : ReferenceEquals(view, QuickAccentView)
+                ? ("Acento Rápido", "Digite caracteres especiais sem interromper seu fluxo.")
+                : ReferenceEquals(view, CaptureView)
+                    ? ("Captura", "Capture, edite e grave sua tela localmente.")
+                    : ReferenceEquals(view, StatisticsView)
+                        ? ("Estatísticas", "Acompanhe o uso real dos recursos do SlashDesk.")
+                        : ReferenceEquals(view, SettingsView)
+                            ? ("Configurações", "Personalize o comportamento do SlashDesk.")
+                            : ("Sobre", "Versão, privacidade, suporte e atualizações.");
+        ShortcutHeaderActions.Visibility = ReferenceEquals(view, ShortcutsView)
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+        ShellCollectionStatusText.Visibility = ReferenceEquals(view, ShortcutsView)
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+
         if (ReferenceEquals(view, QuickAccentView))
         {
             UpdateQuickAccentPreviewSelection();
@@ -910,6 +1081,34 @@ public partial class MainWindow : Window
             _quickAccentPreviewTimer.Stop();
         }
     }
+
+    private void TitleBar_OnMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ClickCount == 2)
+        {
+            ToggleMaximizedState();
+            return;
+        }
+
+        if (e.ButtonState == MouseButtonState.Pressed)
+        {
+            DragMove();
+        }
+    }
+
+    private void MinimizeWindow_OnClick(object sender, RoutedEventArgs e) =>
+        WindowState = WindowState.Minimized;
+
+    private void MaximizeWindow_OnClick(object sender, RoutedEventArgs e) =>
+        ToggleMaximizedState();
+
+    private void CloseWindow_OnClick(object sender, RoutedEventArgs e) =>
+        Close();
+
+    private void ToggleMaximizedState() =>
+        WindowState = WindowState == WindowState.Maximized
+            ? WindowState.Normal
+            : WindowState.Maximized;
 
     private void RefreshStatistics()
     {
@@ -1702,6 +1901,13 @@ public partial class MainWindow : Window
 
     private async void CaptureScrolling_OnClick(object sender, RoutedEventArgs e)
     {
+        using var captureLease = _captureGate.TryEnter();
+        if (captureLease is null)
+        {
+            SafeDiagnosticLog.Write("capture.ignored_busy");
+            StatusText.Text = "Já existe uma captura em andamento";
+            return;
+        }
         var target = _captureService.WindowUnderCursorTarget();
         if (target is null)
         {
@@ -1743,11 +1949,27 @@ public partial class MainWindow : Window
         CaptureShortcutAction action,
         bool invokedByShortcut)
     {
+        using var captureLease = _captureGate.TryEnter();
+        if (captureLease is null)
+        {
+            StatusText.Text = "Já existe uma captura em andamento";
+            return;
+        }
+
+        var wasVisible = IsVisible;
+        var shouldHide = _settings.Capture.HideSlashDeskDuringCapture && wasVisible;
         try
         {
+            SafeDiagnosticLog.Write("capture.started", new Dictionary<string, object?>
+            {
+                ["action"] = action.ToString(),
+                ["invokedByShortcut"] = invokedByShortcut,
+                ["windowWasVisible"] = wasVisible
+            });
             await WaitForCaptureDelayAsync();
             System.Drawing.Rectangle? bounds = null;
             System.Drawing.Bitmap? editedRegion = null;
+            var requestedRegionOutput = CaptureEditorOutput.Default;
             var type = action switch
             {
                 CaptureShortcutAction.ActiveMonitor => "monitor",
@@ -1759,12 +1981,11 @@ public partial class MainWindow : Window
             {
                 bounds = _captureService.ActiveMonitorBounds();
             }
+            else if (action == CaptureShortcutAction.Window)
+            {
+                bounds = _captureService.WindowUnderCursorBounds();
+            }
 
-            var wasVisible = IsVisible;
-            var shouldHide =
-                _settings.Capture.HideSlashDeskDuringCapture &&
-                wasVisible &&
-                !invokedByShortcut;
             if (shouldHide)
             {
                 Hide();
@@ -1775,13 +1996,9 @@ public partial class MainWindow : Window
             {
                 editedRegion = _captureService.SelectAndEditRegion(
                     null,
-                    _settings.Capture.IncludeCursor);
+                    _settings.Capture.IncludeCursor,
+                    out requestedRegionOutput);
             }
-            else if (action == CaptureShortcutAction.Window)
-            {
-                bounds = _captureService.WindowUnderCursorBounds();
-            }
-
             CaptureRecord? result = null;
             if (editedRegion is not null)
             {
@@ -1790,7 +2007,8 @@ public partial class MainWindow : Window
                     result = await _captureService.ProcessEditedRegionAsync(
                         editedRegion,
                         type,
-                        _settings.Capture);
+                        _settings.Capture,
+                        requestedRegionOutput);
                 }
             }
             else if (bounds is not null)
@@ -1822,15 +2040,43 @@ public partial class MainWindow : Window
             {
                 ShowFromTray();
             }
+            SafeDiagnosticLog.Write("capture.completed", new Dictionary<string, object?>
+            {
+                ["action"] = action.ToString(),
+                ["resultCreated"] = result is not null
+            });
         }
         catch (Exception exception)
         {
-            ShowFromTray();
-            MessageBox.Show(
-                exception.Message,
-                "Não foi possível capturar",
-                MessageBoxButton.OK,
-                MessageBoxImage.Warning);
+            SafeDiagnosticLog.Write("capture.failed", new Dictionary<string, object?>
+            {
+                ["action"] = action.ToString(),
+                ["exceptionType"] = exception.GetType().Name
+            });
+            if (wasVisible)
+            {
+                ShowFromTray();
+                MessageBox.Show(
+                    exception.Message,
+                    "Não foi possível capturar",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+            }
+            else
+            {
+                _trayIcon?.ShowBalloonTip(
+                    2500,
+                    "Não foi possível capturar",
+                    exception.Message,
+                    Forms.ToolTipIcon.Warning);
+            }
+        }
+        finally
+        {
+            if (shouldHide && wasVisible && !IsVisible)
+            {
+                ShowFromTray();
+            }
         }
     }
 
@@ -2494,53 +2740,139 @@ public partial class MainWindow : Window
             return;
         }
 
-        var compact = width < 1080;
-        if (compact)
+        var band = width <= 1050 ? 0 : width < 1180 ? 1 : 2;
+        var bandChanged = band != _shortcutResponsiveBand;
+        _shortcutResponsiveBand = band;
+
+        var horizontalMargin = band < 2 ? 20d : 32d;
+        WorkspaceHost.Margin = new Thickness(horizontalMargin, band == 0 ? 12 : 20,
+            horizontalMargin, band == 0 ? 12 : 20);
+        ShortcutSecondaryRow.Height = new GridLength(0);
+        ShortcutLeftDividerColumn.Width = new GridLength(16);
+        ShortcutRightDividerColumn.Width = new GridLength(16);
+
+        Grid.SetRow(ShortcutSidebarPanel, 0);
+        Grid.SetColumn(ShortcutSidebarPanel, 0);
+        Grid.SetColumnSpan(ShortcutSidebarPanel, 1);
+        Grid.SetRow(ShortcutEditorPanel, 0);
+        Grid.SetColumn(ShortcutEditorPanel, 2);
+        Grid.SetColumnSpan(ShortcutEditorPanel, 1);
+        Grid.SetRow(ShortcutVariablesPanel, 0);
+        Grid.SetColumn(ShortcutVariablesPanel, 4);
+        Grid.SetColumnSpan(ShortcutVariablesPanel, 1);
+
+        ShortcutLeftDivider.Visibility = Visibility.Visible;
+        ShortcutRightDivider.Visibility = Visibility.Visible;
+        NormalizeShortcutColumns(width, bandChanged);
+    }
+
+    private void NormalizeShortcutColumns(double windowWidth, bool restoreDefaults = false)
+    {
+        var band = _shortcutResponsiveBand < 0
+            ? windowWidth <= 1050 ? 0 : windowWidth < 1180 ? 1 : 2
+            : _shortcutResponsiveBand;
+        var margin = band < 2 ? 20d : 32d;
+        var editorMinimum = band == 0 ? 420d : band == 1 ? 440d : 520d;
+        var available = Math.Max(0, windowWidth - (margin * 2));
+        var sideSpace = Math.Max(
+            ShortcutLeftMinimum + ShortcutRightMinimum,
+            available - ShortcutDividerSpace - editorMinimum);
+
+        ShortcutEditorColumn.MinWidth = editorMinimum;
+        ShortcutLeftColumn.MinWidth = ShortcutLeftMinimum;
+        ShortcutRightColumn.MinWidth = ShortcutRightMinimum;
+        ShortcutLeftColumn.MaxWidth = Math.Max(
+            ShortcutLeftMinimum,
+            Math.Min(ShortcutLeftMaximum, sideSpace - ShortcutRightMinimum));
+        ShortcutRightColumn.MaxWidth = Math.Max(
+            ShortcutRightMinimum,
+            Math.Min(ShortcutRightMaximum, sideSpace - ShortcutLeftMinimum));
+
+        var defaultLeft = band == 0 ? 240d : band == 1 ? 260d : 280d;
+        var defaultRight = band == 0 ? 240d : band == 1 ? 280d : 384d;
+        var left = restoreDefaults ? defaultLeft : ShortcutLeftColumn.ActualWidth;
+        var right = restoreDefaults ? defaultRight : ShortcutRightColumn.ActualWidth;
+        if (left <= 0) left = defaultLeft;
+        if (right <= 0) right = defaultRight;
+
+        left = Math.Clamp(left, ShortcutLeftMinimum, ShortcutLeftColumn.MaxWidth);
+        right = Math.Clamp(right, ShortcutRightMinimum, ShortcutRightColumn.MaxWidth);
+        var overflow = Math.Max(0, left + right - sideSpace);
+        if (overflow > 0)
         {
-            ShortcutSecondaryRow.Height = new GridLength(250);
-            ShortcutLeftColumn.Width = new GridLength(250);
-            ShortcutLeftDividerColumn.Width = GridLength.Auto;
-            ShortcutRightDividerColumn.Width = GridLength.Auto;
-            ShortcutRightColumn.Width = new GridLength(250);
+            var rightReduction = Math.Min(overflow, right - ShortcutRightMinimum);
+            right -= rightReduction;
+            overflow -= rightReduction;
+            left -= Math.Min(overflow, left - ShortcutLeftMinimum);
+        }
 
-            Grid.SetRow(ShortcutEditorPanel, 0);
-            Grid.SetColumn(ShortcutEditorPanel, 0);
-            Grid.SetColumnSpan(ShortcutEditorPanel, 5);
+        ShortcutLeftColumn.Width = new GridLength(left);
+        ShortcutRightColumn.Width = new GridLength(right);
+        ShortcutLeftColumn.MaxWidth = Math.Max(
+            ShortcutLeftMinimum,
+            Math.Min(ShortcutLeftMaximum, sideSpace - right));
+        ShortcutRightColumn.MaxWidth = Math.Max(
+            ShortcutRightMinimum,
+            Math.Min(ShortcutRightMaximum, sideSpace - left));
+    }
 
-            Grid.SetRow(ShortcutSidebarPanel, 1);
-            Grid.SetColumn(ShortcutSidebarPanel, 0);
-            Grid.SetColumnSpan(ShortcutSidebarPanel, 2);
+    private void ShortcutSplitter_OnPreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Home)
+        {
+            RestoreShortcutSplitter((GridSplitter)sender);
+            e.Handled = true;
+            return;
+        }
+        if (e.Key is not (Key.Left or Key.Right))
+        {
+            return;
+        }
 
-            Grid.SetRow(ShortcutVariablesPanel, 1);
-            Grid.SetColumn(ShortcutVariablesPanel, 2);
-            Grid.SetColumnSpan(ShortcutVariablesPanel, 3);
-
-            ShortcutLeftDivider.Visibility = Visibility.Collapsed;
-            ShortcutRightDivider.Visibility = Visibility.Collapsed;
+        var direction = e.Key == Key.Right ? 1d : -1d;
+        if (ReferenceEquals(sender, ShortcutLeftDivider))
+        {
+            ShortcutLeftColumn.Width = new GridLength(
+                Math.Clamp(ShortcutLeftColumn.ActualWidth + (direction * ShortcutSplitterStep),
+                    ShortcutLeftMinimum, ShortcutLeftColumn.MaxWidth));
         }
         else
         {
-            ShortcutSecondaryRow.Height = new GridLength(0);
-            ShortcutLeftColumn.Width = new GridLength(260);
-            ShortcutLeftDividerColumn.Width = new GridLength(1);
-            ShortcutRightDividerColumn.Width = new GridLength(1);
-            ShortcutRightColumn.Width = new GridLength(260);
-
-            Grid.SetRow(ShortcutSidebarPanel, 0);
-            Grid.SetColumn(ShortcutSidebarPanel, 0);
-            Grid.SetColumnSpan(ShortcutSidebarPanel, 1);
-
-            Grid.SetRow(ShortcutEditorPanel, 0);
-            Grid.SetColumn(ShortcutEditorPanel, 2);
-            Grid.SetColumnSpan(ShortcutEditorPanel, 1);
-
-            Grid.SetRow(ShortcutVariablesPanel, 0);
-            Grid.SetColumn(ShortcutVariablesPanel, 4);
-            Grid.SetColumnSpan(ShortcutVariablesPanel, 1);
-
-            ShortcutLeftDivider.Visibility = Visibility.Visible;
-            ShortcutRightDivider.Visibility = Visibility.Visible;
+            ShortcutRightColumn.Width = new GridLength(
+                Math.Clamp(ShortcutRightColumn.ActualWidth - (direction * ShortcutSplitterStep),
+                    ShortcutRightMinimum, ShortcutRightColumn.MaxWidth));
         }
+        NormalizeShortcutColumns(ActualWidth);
+        e.Handled = true;
+    }
+
+    private void ShortcutSplitter_OnMouseDoubleClick(object sender, MouseButtonEventArgs e)
+    {
+        RestoreShortcutSplitter((GridSplitter)sender);
+        e.Handled = true;
+    }
+
+    private void RestoreShortcutSplitter(GridSplitter splitter)
+    {
+        var band = _shortcutResponsiveBand;
+        if (ReferenceEquals(splitter, ShortcutLeftDivider))
+        {
+            ShortcutLeftColumn.Width = new GridLength(band == 0 ? 240 : band == 1 ? 260 : 280);
+        }
+        else
+        {
+            ShortcutRightColumn.Width = new GridLength(band == 0 ? 240 : band == 1 ? 280 : 384);
+        }
+        NormalizeShortcutColumns(ActualWidth);
+    }
+
+    private void ShortcutSplitter_OnDragStarted(object sender, DragStartedEventArgs e) =>
+        ((GridSplitter)sender).Tag = "Dragging";
+
+    private void ShortcutSplitter_OnDragCompleted(object sender, DragCompletedEventArgs e)
+    {
+        ((GridSplitter)sender).Tag = null;
+        NormalizeShortcutColumns(ActualWidth);
     }
 
     private void MainWindow_OnStateChanged(object? sender, EventArgs e)

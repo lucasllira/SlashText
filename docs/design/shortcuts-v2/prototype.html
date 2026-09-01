@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>SlashDesk Atalhos V2 — Handoff</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="review-stage" data-theme="light">
+    <section class="app-window" aria-label="Protótipo SlashDesk Atalhos V2">
+      <div class="titlebar">
+        <div class="titlebar-brand"><span class="app-mark">S</span><span>SlashDesk</span></div>
+        <div class="window-controls" aria-hidden="true"><span>―</span><span>□</span><span class="window-close">×</span></div>
+      </div>
+
+      <header class="header">
+        <div><h1>Atalhos</h1><p>Crie, organize e use seus textos em qualquer aplicativo.</p></div>
+        <div class="header-actions">
+          <span class="status"><i></i> Ativo</span>
+          <button class="icon-button" id="themeToggle" aria-label="Alternar tema">☾</button>
+          <button class="secondary-button">⇩ Importar</button>
+          <button class="primary-button">＋ Novo atalho</button>
+        </div>
+      </header>
+
+      <nav class="topnav" aria-label="Navegação principal" id="topnav"></nav>
+
+      <div class="workspace">
+        <aside class="sidebar panel">
+          <label class="search"><span>⌕</span><input id="searchInput" placeholder="Buscar nome, conteúdo ou /atalho"><kbd>Ctrl K</kbd></label>
+          <section class="side-section categories-section">
+            <div class="section-heading"><h2>Categorias</h2><button aria-label="Adicionar categoria">＋</button></div>
+            <div class="category-grid" id="categoryGrid"></div>
+          </section>
+          <section class="side-section filter-section">
+            <h2>Exibição</h2>
+            <div class="segmented" id="displayFilter"><button class="selected" data-filter="Todos">Todos</button><button data-filter="Mais utilizados">★ Mais utilizados</button></div>
+          </section>
+          <section class="side-section snippet-section">
+            <div class="section-heading"><h2>Atalhos</h2><span id="snippetCount">6 de 24</span></div>
+            <div class="snippet-list" id="snippetList"></div>
+          </section>
+        </aside>
+
+        <div class="column-resizer" data-resizer="sidebar" role="separator" aria-label="Redimensionar lista de atalhos" aria-orientation="vertical" aria-valuemin="220" aria-valuemax="460" aria-valuenow="280" tabindex="0"><span></span></div>
+
+        <section class="editor panel">
+          <div class="editor-heading"><div><span class="eyebrow">EDITANDO ATALHO</span><h2 id="editorTitle"></h2></div><span class="unsaved"><i></i> Alterações não salvas</span></div>
+          <div class="form-grid">
+            <label><span>Nome do atalho</span><input id="nameInput" readonly></label>
+            <label><span>Gatilho</span><div class="trigger-input"><b>/</b><input id="triggerInput" readonly></div></label>
+            <label><span>Categoria</span><select id="categorySelect"></select></label>
+            <label><span>Aplicativos</span><select><option>Todos os aplicativos</option></select></label>
+          </div>
+          <div class="content-field">
+            <div class="field-label"><span>Conteúdo</span><small>324 caracteres</small></div>
+            <div class="toolbar" aria-label="Formatação"><button><b>B</b></button><button><i>I</i></button><button><u>U</u></button><span></span><button>↗ Link</button><button>⇥ Campo Tab</button><button>{} Variável</button></div>
+            <textarea id="bodyInput" readonly></textarea>
+          </div>
+          <div class="preview-card"><div class="field-label"><span>Preview do resultado</span><small><i></i> Atualizado</small></div><p id="previewText"></p></div>
+          <footer class="editor-actions"><button class="danger-button">♲ Excluir</button><div><button class="ghost-button">Cancelar</button><button class="primary-button">✓ Salvar alterações</button></div></footer>
+        </section>
+
+        <div class="column-resizer" data-resizer="variables" role="separator" aria-label="Redimensionar painel de variáveis" aria-orientation="vertical" aria-valuemin="240" aria-valuemax="480" aria-valuenow="384" tabindex="0"><span></span></div>
+
+        <aside class="variables panel">
+          <div class="variables-heading"><div><span class="eyebrow">CONTEÚDO DINÂMICO</span><h2>Variáveis</h2></div><button aria-label="Ajuda">?</button></div>
+          <p class="variables-intro">Clique para inserir uma variável na posição atual do cursor.</p>
+          <div class="variable-list" id="variableList"></div>
+          <div class="quick-help"><strong>◇ Ajuda rápida</strong><p>Variáveis são substituídas automaticamente quando o atalho é expandido. Campos personalizados são solicitados antes da inserção.</p><a href="design-spec.md">Ver todas as variáveis →</a></div>
+          <div class="local-card"><div class="local-status"><span>▰ Armazenamento local</span><b><i></i> Protegido</b></div><p>Seus atalhos permanecem neste dispositivo.</p><code>SlashDeskData\snippets.md</code></div>
+        </aside>
+      </div>
+
+      <footer class="statusbar"><span><i></i> Expansão ativa</span><span>24 atalhos · 5 categorias</span><span>Dados salvos localmente</span><strong>v2.9.1</strong></footer>
+    </section>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>

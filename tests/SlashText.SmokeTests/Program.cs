@@ -51,6 +51,196 @@ var fields = engine.GetFillableFields("Olá {{nome}}, chamado {{chamado|INC000}}
 Require(fields.Count == 2, "campos únicos");
 Require(fields[1].DefaultValue == "INC000", "valor padrão");
 
+Require(TriggerRule.TryValidate("/teste", out _), "regra única aceita prefixo barra");
+Require(TriggerRule.TryValidate(":ação_2-rapida", out _), "regra única aceita letras Unicode, números, hífen e sublinhado");
+Require(!TriggerRule.TryValidate("teste", out _), "regra única rejeita gatilho sem prefixo");
+Require(!TriggerRule.TryValidate("/inválido!", out _), "regra única rejeita caractere impossível para o monitor");
+var maximumTrigger = "/" + new string('a', TriggerRule.MaximumLength - 1);
+Require(TriggerRule.TryValidate(maximumTrigger, out _), "gatilho no tamanho máximo");
+Require(!TriggerRule.TryValidate(maximumTrigger + "a", out _), "gatilho acima do tamanho máximo");
+Require(TriggerRule.ConflictsWith("/TESTE", ["/teste"]), "conflito ignora maiúsculas e minúsculas");
+Require(TriggerRule.IsPrefixOfAnother("/at", ["/atendimento"]), "gatilhos com prefixos semelhantes");
+
+var bufferState = new KeyboardBufferState();
+bufferState.Append('/', new IntPtr(10), new IntPtr(11));
+bufferState.Append('a', new IntPtr(10), new IntPtr(11));
+bufferState.Append('t', new IntPtr(10), new IntPtr(11));
+Require(bufferState.Text == "/at", "buffer mantém sugestão parcial");
+Require(bufferState.TargetChanged(new IntPtr(12), new IntPtr(11)), "troca de janela detectada no buffer");
+bufferState.Clear(BufferResetReason.MouseClick);
+Require(!bufferState.HasValue && bufferState.LastResetReason == BufferResetReason.MouseClick, "clique limpa buffer");
+bufferState.Append(':', new IntPtr(20), new IntPtr(21));
+bufferState.Append('x', new IntPtr(20), new IntPtr(21));
+Require(bufferState.TargetChanged(new IntPtr(20), new IntPtr(22)), "troca de controle focado limpa buffer");
+
+var planOneTab = ExpansionPlan.Create("Primeiro campo" + TemplateEngine.TabMarker + "Segundo campo");
+Require(planOneTab.Count == 2 && planOneTab[0].SendTabAfter && !planOneTab[1].SendTabAfter, "sequência com um Tab");
+var planManyTabs = ExpansionPlan.Create(
+    "Campo 1" + TemplateEngine.TabMarker + "Campo 2" + TemplateEngine.TabMarker + "Campo 3");
+Require(planManyTabs.Count == 3 && planManyTabs.Count(step => step.SendTabAfter) == 2, "sequência com vários Tabs");
+Require(Enum.IsDefined(SuggestionConfirmation.Enter) &&
+        Enum.IsDefined(SuggestionConfirmation.Tab) &&
+        Enum.IsDefined(SuggestionConfirmation.Space) &&
+        Enum.IsDefined(SuggestionConfirmation.Click), "formas de confirmação da sugestão");
+
+var expansionGate = new SingleFlightGate();
+using (var firstExpansion = expansionGate.TryEnter())
+{
+    Require(firstExpansion is not null && expansionGate.IsActive, "primeira expansão entra no single-flight");
+    Require(expansionGate.TryEnter() is null, "segunda expansão simultânea é ignorada");
+}
+using var afterExpansion = expansionGate.TryEnter();
+Require(!expansionGate.IsActive || afterExpansion is not null, "trava de expansão liberada");
+var captureGate = new SingleFlightGate();
+try
+{
+    using var captureLease = captureGate.TryEnter();
+    Require(captureGate.TryEnter() is null, "apenas uma captura simultânea");
+    throw new InvalidOperationException("falha simulada");
+}
+catch (InvalidOperationException)
+{
+    // A liberação ocorre pelo finally implícito de using.
+}
+Require(!captureGate.IsActive, "trava de captura liberada após exceção");
+
+var debounce = new DebounceGate(TimeSpan.FromMilliseconds(300));
+Require(debounce.TryAccept(1_000_000), "primeiro evento do debounce");
+Require(!debounce.TryAccept(1_000_001), "evento repetido é bloqueado pelo debounce");
+Require(
+    (GlobalCaptureShortcutService.ApplyNoRepeat(2) & GlobalCaptureShortcutService.ModNoRepeat) != 0,
+    "MOD_NOREPEAT aplicado a hotkeys");
+
+var toolbarScenarios = new[]
+{
+    (Name: "primário 100% taskbar inferior", Work: new System.Windows.Rect(0, 0, 1920, 1040), Dpi: 1d),
+    (Name: "primário 125%", Work: new System.Windows.Rect(0, 0, 2560, 1392), Dpi: 1.25d),
+    (Name: "primário 150%", Work: new System.Windows.Rect(0, 0, 2560, 1400), Dpi: 1.5d),
+    (Name: "secundário à esquerda DPI diferente", Work: new System.Windows.Rect(-1920, 0, 1920, 1040), Dpi: 1.25d),
+    (Name: "secundário acima", Work: new System.Windows.Rect(0, -1080, 1920, 1080), Dpi: 1.5d),
+    (Name: "taskbar lateral", Work: new System.Windows.Rect(80, 0, 1840, 1080), Dpi: 1d)
+};
+foreach (var scenario in toolbarScenarios)
+{
+    var margin = 12 * scenario.Dpi;
+    var selections = new[]
+    {
+        new System.Windows.Rect(scenario.Work.Left, scenario.Work.Top, 80, 60),
+        new System.Windows.Rect(scenario.Work.Right - 80, scenario.Work.Top, 80, 60),
+        new System.Windows.Rect(scenario.Work.Left, scenario.Work.Bottom - 80, 80, 80),
+        new System.Windows.Rect(scenario.Work.Right - 80, scenario.Work.Bottom - 80, 80, 80),
+        new System.Windows.Rect(scenario.Work.Left + 10, scenario.Work.Top + 10, 24, 24),
+        new System.Windows.Rect(
+            scenario.Work.Left + 4,
+            scenario.Work.Top + 4,
+            scenario.Work.Width - 8,
+            scenario.Work.Height - 8)
+    };
+    foreach (var selection in selections)
+    {
+        var availableWidth = scenario.Work.Width - (margin * 2);
+        var naturalWidth = 900 * scenario.Dpi;
+        var finalWidth = Math.Min(naturalWidth, availableWidth);
+        var rows = Math.Max(1, (int)Math.Ceiling(naturalWidth / availableWidth));
+        var finalHeight = (72 + ((rows - 1) * 48)) * scenario.Dpi;
+        var placement = ToolbarPlacementCalculator.Calculate(
+            selection,
+            scenario.Work,
+            new System.Windows.Size(finalWidth, finalHeight),
+            naturalWidth,
+            dpiScale: scenario.Dpi);
+        Require(
+            placement.Bounds.Left >= scenario.Work.Left + margin - .01 &&
+            placement.Bounds.Top >= scenario.Work.Top + margin - .01 &&
+            placement.Bounds.Right <= scenario.Work.Right - margin + .01 &&
+            placement.Bounds.Bottom <= scenario.Work.Bottom - margin + .01,
+            $"retângulo completo da barra permanece na área útil: {scenario.Name}");
+    }
+}
+var narrowPlacement = ToolbarPlacementCalculator.Calculate(
+    new System.Windows.Rect(430, 350, 48, 48),
+    new System.Windows.Rect(0, 0, 480, 440),
+    new System.Windows.Size(456, 184),
+    naturalWidth: 900);
+Require(
+    narrowPlacement.Bounds.Width == 456 &&
+    narrowPlacement.Mode == ToolbarLayoutMode.Compact &&
+    narrowPlacement.ExpectedRows == 2 &&
+    narrowPlacement.Side is ToolbarPlacementSide.Above or ToolbarPlacementSide.InsideBottom,
+    "barra larga no canto inferior direito usa modo compacto e posição vertical segura");
+
+var toolSelection = new CaptureToolSelection(CaptureAnnotationKind.Arrow);
+Require(toolSelection.IsSelected(CaptureAnnotationKind.Arrow), "ferramenta inicial selecionada");
+toolSelection.Select(CaptureAnnotationKind.Pencil);
+Require(
+    toolSelection.IsSelected(CaptureAnnotationKind.Pencil) &&
+    !toolSelection.IsSelected(CaptureAnnotationKind.Arrow),
+    "somente uma ferramenta de desenho permanece selecionada");
+Require(
+    CaptureToolbarLayoutPolicy.ShouldUseCompactMode(540) &&
+    !CaptureToolbarLayoutPolicy.ShouldUseCompactMode(680),
+    "barra alterna entre modo compacto e normal sem corte");
+Require(
+    CaptureMotion.Duration(animationsEnabled: false, 160) == TimeSpan.Zero &&
+    CaptureMotion.Duration(animationsEnabled: true, 160) == TimeSpan.FromMilliseconds(160),
+    "animações respeitam a preferência do Windows");
+Require(
+    NotoEmojiCatalog.Items.Count == 36 &&
+    NotoEmojiCatalog.Items.Select(item => item.Value).Distinct().Count() == 36,
+    "catálogo Noto Emoji contém 36 opções únicas");
+Require(
+    NotoEmojiCatalog.Items.All(NotoEmojiCatalog.HasAsset),
+    "todos os emojis Noto possuem PNG incorporado");
+
+foreach (var anchor in new[]
+         {
+             new System.Windows.Rect(0, 0, 36, 36),
+             new System.Windows.Rect(1884, 0, 36, 36),
+             new System.Windows.Rect(0, 1004, 36, 36),
+             new System.Windows.Rect(1884, 1004, 36, 36)
+         })
+{
+    var popover = ToolbarPlacementCalculator.Calculate(
+        anchor,
+        new System.Windows.Rect(0, 0, 1920, 1040),
+        new System.Windows.Size(340, 420),
+        naturalWidth: 340,
+        gap: 8,
+        dpiScale: 1);
+    Require(
+        popover.Bounds.Left >= 12 && popover.Bounds.Top >= 12 &&
+        popover.Bounds.Right <= 1908 && popover.Bounds.Bottom <= 1028,
+        "popover contextual permanece dentro da área útil nos quatro cantos");
+}
+
+var captureMenuBelow = AnchoredPopoverPlacementCalculator.Calculate(
+    new System.Windows.Rect(120, 420, 118, 40),
+    new System.Windows.Rect(0, 0, 1920, 1040),
+    new System.Windows.Size(220, 144));
+Require(
+    captureMenuBelow.Side == AnchoredPopoverSide.Below &&
+    captureMenuBelow.Bounds.Left == 120 &&
+    captureMenuBelow.Bounds.Top == 468,
+    "menu Capturar abre abaixo e alinhado à esquerda do botão dividido");
+
+var captureMenuAbove = AnchoredPopoverPlacementCalculator.Calculate(
+    new System.Windows.Rect(1640, 940, 118, 40),
+    new System.Windows.Rect(0, 0, 1920, 1040),
+    new System.Windows.Size(220, 144));
+Require(
+    captureMenuAbove.Side == AnchoredPopoverSide.Above &&
+    captureMenuAbove.Bounds.Left == 1640 &&
+    captureMenuAbove.Bounds.Bottom == 932,
+    "menu Capturar inverte para cima somente quando falta espaço abaixo");
+
+var captureMenuClamped = AnchoredPopoverPlacementCalculator.Calculate(
+    new System.Windows.Rect(1870, 420, 42, 40),
+    new System.Windows.Rect(0, 0, 1920, 1040),
+    new System.Windows.Size(220, 144));
+Require(
+    captureMenuClamped.Bounds.Right == 1908,
+    "menu Capturar permanece inteiro na área útil junto à borda direita");
+
 var root = Path.Combine(Path.GetTempPath(), $"slashtext-smoke-{Guid.NewGuid():N}");
 var snippetsFile = Path.Combine(root, "snippets.md");
 var backups = Path.Combine(root, "backups");
@@ -84,6 +274,20 @@ try
     await repository.SaveAsync([snippet, colonSnippet]);
     loaded = await repository.LoadAsync();
     Require(loaded.Any(item => item.Trigger == ":teste"), "gatilho com dois pontos");
+
+    var legacySnippet = new Snippet
+    {
+        Name = "Legado preservado",
+        Trigger = "/legado.incompatível",
+        Category = "Geral",
+        Content = "Preservar sem ativar",
+        HasLegacyIncompatibleTrigger = true
+    };
+    await repository.SaveAsync([snippet, colonSnippet, legacySnippet]);
+    loaded = await repository.LoadAsync();
+    Require(
+        loaded.Any(item => item.Trigger == legacySnippet.Trigger && item.HasLegacyIncompatibleTrigger),
+        "gatilho legado incompatível é preservado e sinalizado");
 
     var textBlazeFile = Path.Combine(root, "textblaze.json");
     await File.WriteAllTextAsync(
@@ -806,6 +1010,33 @@ try
             },
             new CaptureAnnotation
             {
+                Kind = CaptureAnnotationKind.Line,
+                Start = new System.Windows.Point(5, 80),
+                End = new System.Windows.Point(110, 10),
+                OutlineArgb = System.Drawing.Color.Cyan.ToArgb(),
+                Opacity = .7f,
+                Thickness = 8
+            },
+            new CaptureAnnotation
+            {
+                Kind = CaptureAnnotationKind.Rectangle,
+                Start = new System.Windows.Point(15, 15),
+                End = new System.Windows.Point(80, 65),
+                FillArgb = System.Drawing.Color.Orange.ToArgb(),
+                OutlineArgb = null,
+                Opacity = .6f
+            },
+            new CaptureAnnotation
+            {
+                Kind = CaptureAnnotationKind.Ellipse,
+                Start = new System.Windows.Point(20, 15),
+                End = new System.Windows.Point(85, 70),
+                FillArgb = null,
+                OutlineArgb = System.Drawing.Color.Blue.ToArgb(),
+                Thickness = 12
+            },
+            new CaptureAnnotation
+            {
                 Kind = CaptureAnnotationKind.Pencil,
                 Points =
                 [
@@ -839,7 +1070,71 @@ try
                 HasChangedPixel(renderedCapture),
                 $"renderiza ferramenta {annotation.Kind}");
         }
+
+        var invisible = new CaptureAnnotation
+        {
+            Kind = CaptureAnnotationKind.Rectangle,
+            FillArgb = null,
+            OutlineArgb = null
+        };
+        Require(!invisible.HasVisibleShapeStyle, "bloqueia forma totalmente invisível");
+
+        System.Drawing.Bitmap? renderedStamp = null;
+        Exception? stampFailure = null;
+        var stampThread = new Thread(() =>
+        {
+            try
+            {
+                renderedStamp = CaptureAnnotationRenderer.Render(
+                    source,
+                    [new CaptureAnnotation
+                    {
+                        Kind = CaptureAnnotationKind.Stamp,
+                        Start = new System.Windows.Point(60, 45),
+                        Text = "❤️",
+                        Size = 48
+                    }],
+                    120,
+                    90);
+            }
+            catch (Exception exception)
+            {
+                stampFailure = exception;
+            }
+        });
+        stampThread.SetApartmentState(ApartmentState.STA);
+        stampThread.Start();
+        stampThread.Join();
+        if (stampFailure is not null)
+        {
+            throw new InvalidOperationException("Renderização do emoticon falhou.", stampFailure);
+        }
+        using (renderedStamp)
+        {
+            Require(renderedStamp is not null && HasChangedPixel(renderedStamp),
+                "emoticon colorido é renderizado no bitmap final");
+        }
     }
+
+    var annotationHistory = new CaptureAnnotationHistory();
+    var stampAnnotation = new CaptureAnnotation
+    {
+        Kind = CaptureAnnotationKind.Stamp,
+        Text = "⭐",
+        Size = 32
+    };
+    annotationHistory.Add(stampAnnotation);
+    Require(annotationHistory.Items.Count == 1 && annotationHistory.CanUndo,
+        "emoticon entra no histórico de desfazer");
+    annotationHistory.Undo();
+    Require(annotationHistory.Items.Count == 0 && annotationHistory.CanRedo,
+        "desfaz emoticon");
+    annotationHistory.Redo();
+    Require(annotationHistory.Items.Count == 1, "refaz emoticon");
+    annotationHistory.ClearAll();
+    Require(annotationHistory.Items.Count == 0, "limpa todas as marcações");
+    annotationHistory.Undo();
+    Require(annotationHistory.Items.Count == 1, "limpeza de marcações pode ser desfeita");
 
     var updateTests = Path.Combine(root, "updates");
     Directory.CreateDirectory(updateTests);

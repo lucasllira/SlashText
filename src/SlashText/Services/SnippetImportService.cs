@@ -84,7 +84,7 @@ public sealed partial class SnippetImportService
                     continue;
                 }
 
-                if (!SupportedTriggerPattern().IsMatch(trigger))
+                if (!TriggerRule.TryValidate(trigger, out _))
                 {
                     warnings.Add($"O atalho '{trigger}' foi ignorado porque usa caracteres incompatíveis.");
                     continue;
@@ -210,7 +210,7 @@ public sealed partial class SnippetImportService
             foreach (var rawTrigger in triggers)
             {
                 var trigger = NormalizeTrigger(rawTrigger);
-                if (!SupportedTriggerPattern().IsMatch(trigger))
+                if (!TriggerRule.TryValidate(trigger, out _))
                 {
                     warnings.Add($"O atalho '{trigger}' foi ignorado porque usa caracteres incompatíveis.");
                     continue;
@@ -329,9 +329,6 @@ public sealed partial class SnippetImportService
             .Select(Unquote)
             .Where(item => !string.IsNullOrWhiteSpace(item))
             .ToList();
-
-    [GeneratedRegex(@"^[/:][\p{L}\p{N}_-]+$", RegexOptions.CultureInvariant)]
-    private static partial Regex SupportedTriggerPattern();
 
     [GeneratedRegex(@"\{key:\s*tab\s*\}", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
     private static partial Regex TextBlazeTabPattern();

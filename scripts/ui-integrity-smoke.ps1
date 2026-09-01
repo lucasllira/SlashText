@@ -99,15 +99,75 @@ foreach ($resource in @(
 }
 
 foreach ($shellElement in @(
-    '<RowDefinition Height="60"/>',
-    '<RowDefinition Height="46"/>',
+    '<RowDefinition Height="34"/>',
+    '<RowDefinition Height="66"/>',
+    '<RowDefinition Height="52"/>',
     'Style="{StaticResource AppShellHeader}"',
     'Style="{StaticResource AppNavigationBar}"',
-    'Produtividade local para Windows',
+    'Crie, organize e edite seus textos prontos.',
     'Style="{StaticResource AppNavigationButton}"'
 )) {
     if (-not $xaml.Contains($shellElement)) {
         throw "Shell visual novo ausente: $shellElement"
+    }
+}
+
+$namedControls = [regex]::Matches($xaml, 'x:Name="([A-Za-z_][A-Za-z0-9_]*)"') |
+    ForEach-Object { $_.Groups[1].Value } |
+    Sort-Object -Unique
+if ($namedControls.Count -lt 129) {
+    throw "Inventário de controles regrediu: $($namedControls.Count), mínimo 129"
+}
+if ($handlers.Count -lt 56) {
+    throw "Inventário de handlers regrediu: $($handlers.Count), mínimo 56"
+}
+
+foreach ($shortcutStructure in @(
+    'x:Name="SearchBox"',
+    'x:Name="CategoriesPanel"',
+    'x:Name="MostUsedPanel"',
+    'x:Name="SnippetListPanel"',
+    'x:Name="SnippetCountText"',
+    'x:Name="ShortcutEditorPanel"',
+    'x:Name="ShortcutVariablesPanel"'
+)) {
+    if (-not $xaml.Contains($shortcutStructure)) {
+        throw "Estrutura independente de Atalhos ausente: $shortcutStructure"
+    }
+}
+
+foreach ($shortcutBehavior in @(
+    'item.Content.Contains(query',
+    '_selectedCategory',
+    '_showMostUsed',
+    'DisplayAll_OnClick',
+    'DisplayMostUsed_OnClick'
+)) {
+    if (-not $code.Contains($shortcutBehavior)) {
+        throw "Comportamento do piloto de Atalhos ausente: $shortcutBehavior"
+    }
+}
+
+foreach ($splitterRequirement in @(
+    'Style="{StaticResource WorkspaceColumnSplitter}"',
+    'ResizeBehavior="PreviousAndNext"',
+    'Property="ShowsPreview" Value="False"',
+    'ShortcutSplitter_OnPreviewKeyDown',
+    'ShortcutSplitter_OnMouseDoubleClick',
+    'ShortcutSplitter_OnDragStarted',
+    'ShortcutSplitter_OnDragCompleted',
+    'ShortcutLeftMinimum = 220',
+    'ShortcutLeftMaximum = 460',
+    'ShortcutRightMinimum = 240',
+    'ShortcutRightMaximum = 480',
+    'ShortcutSplitterStep = 16',
+    'ShortcutEditorColumn.MinWidth = editorMinimum'
+)) {
+    if (-not ($xaml.Contains($splitterRequirement) -or
+              $code.Contains($splitterRequirement) -or
+              $resources.Contains($splitterRequirement) -or
+              $foundation.Contains($splitterRequirement))) {
+        throw "Divisor responsivo de Atalhos ausente: $splitterRequirement"
     }
 }
 
@@ -141,16 +201,38 @@ foreach ($component in @(
     'WorkspaceSidebar',
     'PageHeading',
     'FieldLabel',
-    'SubtlePanel'
+    'SubtlePanel',
+    'FluentSectionHeading',
+    'FluentSupportingText'
 )) {
     if (-not $foundation.Contains("x:Key=`"$component`"")) {
         throw "Componente do design system ausente: $component"
     }
 }
 
+foreach ($component in @(
+    'ToggleSwitch',
+    'FluentSettingsRow',
+    'FluentActionCard'
+)) {
+    if (-not $components.Contains("x:Key=`"$component`"")) {
+        throw "Componente Fluent ausente: $component"
+    }
+}
+
+if (([regex]::Matches($xaml, 'x:Name="CheckUpdatesCheckBox"')).Count -ne 1) {
+    throw 'A preferência de atualização automática deve aparecer uma única vez.'
+}
+
+foreach ($trueBlackToken in @('#000000', '#0B0B0B', '#050505')) {
+    if (-not $theme.Contains($trueBlackToken)) {
+        throw "Token do tema preto ausente: $trueBlackToken"
+    }
+}
+
 foreach ($referenceStyle in @(
     'Style="{StaticResource WorkspaceSidebar}"',
-    'Style="{StaticResource PageHeading}"',
+    'Style="{StaticResource SidebarSectionTitle}"',
     'Style="{StaticResource FieldLabel}"',
     'Style="{StaticResource SubtlePanel}"'
 )) {
@@ -175,12 +257,12 @@ foreach ($guideSection in @(
 }
 
 foreach ($versionElement in @(
-    '<Version>3.0.0</Version>',
-    '<AssemblyVersion>3.0.0.0</AssemblyVersion>',
-    '<FileVersion>3.0.0.0</FileVersion>'
+    '<Version>3.1.0</Version>',
+    '<AssemblyVersion>3.1.0.0</AssemblyVersion>',
+    '<FileVersion>3.1.0.0</FileVersion>'
 )) {
     if (-not $project.Contains($versionElement)) {
-        throw "Versão 3.0.0 inconsistente: $versionElement"
+        throw "Versão 3.1.0 inconsistente: $versionElement"
     }
 }
 
@@ -360,8 +442,8 @@ foreach ($captureElement in @(
     'CaptureVirtualDesktopBitmap()',
     'UpdateShade(',
     'PositionHandles()',
-    'PositionToolbar()',
-    'Selecionar novamente',
+    'RequestToolbarPosition()',
+    'Refazer seleção',
     'EditedBitmap',
     'AddInlineTextEditor(',
     'Undo()',
@@ -369,6 +451,18 @@ foreach ($captureElement in @(
 )) {
     if (-not $region.Contains($captureElement)) {
         throw "Seleção de região sem o elemento Snipping Tool: $captureElement"
+    }
+}
+
+foreach ($toolbarElement in @(
+    'MonitorWorkAreaProvider.FromSelection',
+    'SelectionInPhysicalPixels()',
+    '_toolbarLayout.Width',
+    'SetWindowPos(',
+    'capture.toolbar-positioned'
+)) {
+    if (-not $region.Contains($toolbarElement)) {
+        throw "Barra de marcações sem contenção per-monitor: $toolbarElement"
     }
 }
 
@@ -409,18 +503,13 @@ foreach ($label in @(
 foreach ($themeElement in @(
     'ThemeService.IsDark',
     '_isDark ? "#F2121922" : "#F8FFFFFF"',
-    '_isDark ? "#FA121922" : "#FCF8FAFC"',
-    '_isDark ? "#F5F8FA" : "#25313D"',
-    '_isDark ? "#1E2834" : "#FFFFFF"'
+    'CaptureToolbarSurfaceBrush',
+    'CaptureToolbarElevatedBrush',
+    'CaptureToolbarAccentBrush'
 )) {
     if (-not $region.Contains($themeElement)) {
         throw "Overlay de região sem variante clara/escura: $themeElement"
     }
-}
-
-if ($region.Contains(
-        'Background = new SolidColorBrush(Color.FromArgb(250, 18, 25, 34))')) {
-    throw 'A barra de captura ainda força o tema escuro.'
 }
 
 if (-not $region.Contains('_annotationLayer.MouseLeftButtonDown += OnAnnotationMouseDown') -or
