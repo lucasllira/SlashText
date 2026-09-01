@@ -257,12 +257,12 @@ foreach ($guideSection in @(
 }
 
 foreach ($versionElement in @(
-    '<Version>3.0.0</Version>',
-    '<AssemblyVersion>3.0.0.0</AssemblyVersion>',
-    '<FileVersion>3.0.0.0</FileVersion>'
+    '<Version>3.1.0</Version>',
+    '<AssemblyVersion>3.1.0.0</AssemblyVersion>',
+    '<FileVersion>3.1.0.0</FileVersion>'
 )) {
     if (-not $project.Contains($versionElement)) {
-        throw "Versão 3.0.0 inconsistente: $versionElement"
+        throw "Versão 3.1.0 inconsistente: $versionElement"
     }
 }
 
