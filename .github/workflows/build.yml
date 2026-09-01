@@ -131,14 +131,14 @@ jobs:
       - name: Upload installed staging
         uses: actions/upload-artifact@v4
         with:
-          name: SlashDesk-3.0.0-installed-staging-win-x64
+          name: SlashDesk-3.1.0-installed-staging-win-x64
           path: publish-installed/
           if-no-files-found: error
 
       - name: Upload portable test candidate
         uses: actions/upload-artifact@v4
         with:
-          name: SlashDesk-3.0.0-portable-test-candidate-win-x64
+          name: SlashDesk-3.1.0-portable-test-candidate-win-x64
           path: package/
           if-no-files-found: error
 
