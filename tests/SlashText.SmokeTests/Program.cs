@@ -1165,12 +1165,22 @@ try
         "versão superior volta a ser oferecida");
 
     await updateService.RemindLaterAsync("3.1.0");
-    var deferred = await updateService.CheckAsync(force: true);
+    var cachedDeferred = await updateService.CheckAsync();
+    Require(cachedDeferred.Status == UpdateCheckStatus.Cached && !cachedDeferred.UpdateAvailable,
+        "cache automático respeita lembrar depois");
+    now += UpdateService.AutomaticCheckInterval + TimeSpan.FromMinutes(1);
+    var deferred = await updateService.CheckAsync();
     Require(deferred.Status == UpdateCheckStatus.Deferred && !deferred.UpdateAvailable,
-        "lembrar depois adia somente a versão atual");
+        "verificação automática adia somente a versão atual");
+    var manualAfterDeferral = await updateService.CheckAsync(force: true);
+    Require(
+        manualAfterDeferral.Status == UpdateCheckStatus.UpdateAvailable &&
+        manualAfterDeferral.UpdateAvailable &&
+        manualAfterDeferral.LatestVersion == "3.1.0",
+        "busca manual volta a oferecer versão adiada");
     now += UpdateService.RemindLaterInterval + TimeSpan.FromMinutes(1);
-    var afterDeferral = await updateService.CheckAsync(force: true);
-    Require(afterDeferral.UpdateAvailable, "lembrar depois volta a oferecer");
+    var afterDeferral = await updateService.CheckAsync();
+    Require(afterDeferral.UpdateAvailable, "lembrar depois volta a oferecer automaticamente");
 
     var cacheHandler = new FakeUpdateHttpHandler(ReleaseJson("3.0.0"));
     var cacheService = new UpdateService(
