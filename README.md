@@ -176,17 +176,9 @@ Na atualização portátil:
 
 A pasta `SlashDeskData` não é incluída no pacote e não é substituída pelo atualizador. A atualização real da 3.0.0 para a 3.1.0 foi validada preservando atalhos, categorias, configurações e histórico.
 
-### Limitação conhecida da 3.1.0
+### Lembrar depois
 
-Ao selecionar **Lembrar depois**, a versão oferecida é adiada por 24 horas. Atualmente, a busca manual também respeita esse período e não força a nova oferta.
-
-É seguro aguardar 24 horas. Se for necessário limpar somente esse adiamento, feche o SlashDesk e remova apenas:
-
-~~~text
-SlashDeskData/update-state.json
-~~~
-
-Não é necessário apagar `snippets.md`, `settings.json`, histórico, estatísticas nem o restante de `SlashDeskData`. Esse comportamento será ajustado em uma próxima versão.
+Ao selecionar **Lembrar depois**, as verificações automáticas aguardam 24 horas antes de oferecer novamente a mesma versão. A partir da 3.1.1, o botão **Buscar atualizações** permite retomar a oferta manualmente durante esse período, sem remover `update-state.json` nem qualquer outro arquivo de `SlashDeskData`.
 
 ## Privacidade
 
@@ -285,7 +277,6 @@ Veja as [notas completas da versão 3.1.0](https://github.com/lucasllira/SlashTe
 
 ## Próximos passos
 
-- corrigir a busca manual após **Lembrar depois**;
 - migrar as demais telas para o contrato visual completo do Visual Lab;
 - refinar animações, acessibilidade e responsividade sem remover funções existentes.
 
