@@ -108,7 +108,8 @@ public sealed class UpdateService
                         $"A versão {release.Version} está ignorada neste dispositivo.", release.PageUrl,
                         release.Notes, release.PortableAsset.Size, release), cancellationToken);
                 }
-                if (string.Equals(state.DeferredVersion, release.Version, StringComparison.OrdinalIgnoreCase) &&
+                if (!force &&
+                    string.Equals(state.DeferredVersion, release.Version, StringComparison.OrdinalIgnoreCase) &&
                     state.DeferredUntilUtc > now)
                 {
                     return await SaveResultAsync(state, new UpdateCheckResult(
