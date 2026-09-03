@@ -193,10 +193,6 @@ public sealed class KeyboardHookService : IDisposable
                     selectedSuggestionIndex = _selectedSuggestionIndex;
                 }
             }
-            else if (IsModifierKey(virtualKey))
-            {
-                // Shift/AltGr podem fazer parte de "/" ou ":" em layouts diferentes.
-            }
             else if (TryMapTriggerCharacter(virtualKey, key.ScanCode, out var character))
             {
                 _bufferState.Append(character, targetWindow, focusWindow);
@@ -336,10 +332,6 @@ public sealed class KeyboardHookService : IDisposable
         return TriggerRule.IsSupportedPrefix(character) ||
                TriggerRule.IsSupportedCharacter(character);
     }
-
-    private static bool IsModifierKey(int virtualKey) =>
-        virtualKey is 0x10 or 0x11 or 0x12 or
-            0xA0 or 0xA1 or 0xA2 or 0xA3 or 0xA4 or 0xA5;
 
     private static bool HasNavigationModifier() =>
         (GetAsyncKeyState(0x11) & 0x8000) != 0 ||
