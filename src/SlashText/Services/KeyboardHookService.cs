@@ -324,6 +324,7 @@ public sealed class KeyboardHookService : IDisposable
             ToUnicodeNoStateChange,
             layout);
 
+        character = default;
         return count > 0 &&
                buffer.Length > 0 &&
                TryNormalizeTranslatedCharacter(buffer[0], out character);
