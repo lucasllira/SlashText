@@ -55,6 +55,50 @@ Require(TriggerRule.TryValidate("/teste", out _), "regra única aceita prefixo b
 Require(TriggerRule.TryValidate(":ação_2-rapida", out _), "regra única aceita letras Unicode, números, hífen e sublinhado");
 Require(!TriggerRule.TryValidate("teste", out _), "regra única rejeita gatilho sem prefixo");
 Require(!TriggerRule.TryValidate("/inválido!", out _), "regra única rejeita caractere impossível para o monitor");
+Require(
+    !KeyboardHookService.TryNormalizeTranslatedCharacter('?', out _),
+    "interrogação não é interpretada como prefixo de atalho");
+Require(
+    KeyboardHookService.TryNormalizeTranslatedCharacter('/', out var slashPrefix) &&
+    slashPrefix == '/',
+    "barra continua sendo aceita como prefixo");
+Require(
+    KeyboardHookService.TryNormalizeTranslatedCharacter(':', out var colonPrefix) &&
+    colonPrefix == ':',
+    "dois-pontos continua sendo aceito como prefixo");
+Require(
+    KeyboardHookService.TryNormalizeTranslatedCharacter('A', out var normalizedLetter) &&
+    normalizedLetter == 'a',
+    "letras traduzidas continuam normalizadas");
+
+var modifierState = new KeyboardModifierState();
+modifierState.Update(0xA0, isDown: true);
+var shiftKeyboardState = new byte[256];
+modifierState.ApplyTo(shiftKeyboardState);
+Require(
+    (shiftKeyboardState[0x10] & 0x80) != 0 &&
+    (shiftKeyboardState[0xA0] & 0x80) != 0 &&
+    (shiftKeyboardState[0xA1] & 0x80) == 0,
+    "Shift esquerdo observado pelo hook é aplicado à tradução");
+modifierState.Update(0xA0, isDown: false);
+modifierState.Update(0xA2, isDown: true);
+modifierState.Update(0xA5, isDown: true);
+var altGrKeyboardState = new byte[256];
+modifierState.ApplyTo(altGrKeyboardState);
+Require(
+    (altGrKeyboardState[0x11] & 0x80) != 0 &&
+    (altGrKeyboardState[0x12] & 0x80) != 0 &&
+    (altGrKeyboardState[0xA2] & 0x80) != 0 &&
+    (altGrKeyboardState[0xA5] & 0x80) != 0,
+    "AltGr mantém Control e Alt direito no estado traduzido");
+modifierState.Update(0xA2, isDown: false);
+modifierState.Update(0xA5, isDown: false);
+var releasedKeyboardState = new byte[256];
+modifierState.ApplyTo(releasedKeyboardState);
+Require(
+    releasedKeyboardState.All(value => value == 0),
+    "soltar modificadores limpa o estado acompanhado pelo hook");
+
 var maximumTrigger = "/" + new string('a', TriggerRule.MaximumLength - 1);
 Require(TriggerRule.TryValidate(maximumTrigger, out _), "gatilho no tamanho máximo");
 Require(!TriggerRule.TryValidate(maximumTrigger + "a", out _), "gatilho acima do tamanho máximo");
