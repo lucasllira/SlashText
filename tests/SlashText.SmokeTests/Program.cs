@@ -479,6 +479,7 @@ try
         captureDefaults.Recording.GifFps == 10 &&
         captureDefaults.Recording.GifQuality == 128 &&
         captureDefaults.HistoryRetentionDays == 90 &&
+        captureDefaults.ScrollingShortcut == "Ctrl+Shift+WheelDown" &&
         !captureDefaults.OpenEditorForMonitorAndWindow,
         "padrões seguros de gravação, histórico e captura direta");
     Require(
@@ -1059,8 +1060,10 @@ try
         GlobalCaptureShortcutService.IsValid("Ctrl+Shift+PrintScreen"),
         "atalho de captura pelo teclado");
     Require(
-        GlobalCaptureShortcutService.IsValid("Ctrl+Shift+WheelUp"),
-        "atalho de captura pela roda do mouse");
+        GlobalCaptureShortcutService.IsValid("Ctrl+Shift+WheelUp") &&
+        GlobalCaptureShortcutService.IsValid("Ctrl+Shift+WheelDown") &&
+        Enum.IsDefined(CaptureShortcutAction.Scrolling),
+        "atalhos de janela e captura longa pela roda do mouse");
     Require(
         !GlobalCaptureShortcutService.IsValid("WheelUp"),
         "roda do mouse exige modificador");
@@ -1082,8 +1085,13 @@ try
             120,
             System.Windows.Input.ModifierKeys.Control |
             System.Windows.Input.ModifierKeys.Shift) ==
-            "Ctrl+Shift+WheelUp",
-        "grava combinação com roda do mouse");
+            "Ctrl+Shift+WheelUp" &&
+        GlobalCaptureShortcutService.FormatWheelShortcut(
+            -120,
+            System.Windows.Input.ModifierKeys.Control |
+            System.Windows.Input.ModifierKeys.Shift) ==
+            "Ctrl+Shift+WheelDown",
+        "grava combinações de janela e captura longa pela roda do mouse");
     Require(
         GlobalCaptureShortcutService.FormatMouseShortcut(
             System.Windows.Input.MouseButton.XButton1,
