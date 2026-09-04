@@ -1139,6 +1139,9 @@
                                                   Content="Salvar automaticamente" Margin="0,5"/>
                                         <CheckBox x:Name="CaptureCursorCheckBox" Style="{StaticResource ToggleSwitch}"
                                                   Content="Incluir cursor na imagem" Margin="0,5"/>
+                                        <CheckBox x:Name="CaptureHideSlashDeskCheckBox" Style="{StaticResource ToggleSwitch}"
+                                                  Content="Ocultar SlashDesk durante a captura" Margin="0,5"
+                                                  ToolTip="Desative para permitir que a janela do SlashDesk apareça na imagem"/>
                                         <CheckBox x:Name="CaptureEditorCheckBox" Style="{StaticResource ToggleSwitch}"
                                                   Content="Abrir editor para monitor e janela" Margin="0,5"/>
                                         <Grid Margin="0,10,0,0">
