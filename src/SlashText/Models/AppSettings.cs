@@ -36,7 +36,7 @@ public sealed class CaptureSettings
     public int JpegQuality { get; set; } = 90;
     public bool CopyToClipboard { get; set; } = true;
     public bool SaveAutomatically { get; set; } = true;
-    public bool HideSlashDeskDuringCapture { get; set; } = true;
+    public bool HideSlashDeskDuringCapture { get; set; }
     public bool ShouldHideSlashDesk(bool windowIsVisible) =>
         HideSlashDeskDuringCapture && windowIsVisible;
     public int DelaySeconds { get; set; }
