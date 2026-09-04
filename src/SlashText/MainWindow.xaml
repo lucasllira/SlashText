@@ -298,7 +298,7 @@
                                     <StackPanel Grid.Column="2">
                                         <TextBlock Text="Comando" Style="{StaticResource FieldLabel}"/>
                                         <TextBox x:Name="TriggerBox" TextChanged="EditorField_OnTextChanged"
-                                                 ToolTip="Use /atalho ou :atalho"/>
+                                                 ToolTip="Use /atalho"/>
                                     </StackPanel>
                                 </Grid>
 
