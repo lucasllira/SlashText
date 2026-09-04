@@ -546,6 +546,56 @@ try
             secondScrollingFrame,
             fallbackDelta: 100) == 75,
         "rolagem mede o deslocamento real e evita duplicação");
+    using var browserFrameBefore = new System.Drawing.Bitmap(240, 160);
+    using var browserFrameAfter = new System.Drawing.Bitmap(240, 160);
+    using (var beforeGraphics = System.Drawing.Graphics.FromImage(browserFrameBefore))
+    using (var afterGraphics = System.Drawing.Graphics.FromImage(browserFrameAfter))
+    {
+        beforeGraphics.Clear(System.Drawing.Color.FromArgb(13, 17, 23));
+        afterGraphics.Clear(System.Drawing.Color.FromArgb(13, 17, 23));
+        using var chromeBrush = new System.Drawing.SolidBrush(
+            System.Drawing.Color.FromArgb(32, 36, 42));
+        beforeGraphics.FillRectangle(chromeBrush, 0, 0, 240, 28);
+        afterGraphics.FillRectangle(chromeBrush, 0, 0, 240, 28);
+        using var chromeLine = new System.Drawing.Pen(
+            System.Drawing.Color.FromArgb(110, 118, 129));
+        beforeGraphics.DrawLine(chromeLine, 8, 14, 232, 14);
+        afterGraphics.DrawLine(chromeLine, 8, 14, 232, 14);
+    }
+    for (var y = 28; y < 160; y++)
+    {
+        for (var x = 40; x < 200; x++)
+        {
+            var beforeDocumentY = y - 28;
+            var afterDocumentY = beforeDocumentY + 75;
+            browserFrameBefore.SetPixel(
+                x,
+                y,
+                System.Drawing.Color.FromArgb(
+                    (x * 11 + beforeDocumentY * 19) % 256,
+                    (x * 23 + beforeDocumentY * 7) % 256,
+                    (x * 5 + beforeDocumentY * 29) % 256));
+            browserFrameAfter.SetPixel(
+                x,
+                y,
+                System.Drawing.Color.FromArgb(
+                    (x * 11 + afterDocumentY * 19) % 256,
+                    (x * 23 + afterDocumentY * 7) % 256,
+                    (x * 5 + afterDocumentY * 29) % 256));
+        }
+    }
+    Require(
+        !CaptureService.AreFramesVisuallyEquivalent(
+            browserFrameBefore,
+            browserFrameAfter),
+        "rolagem não confunde barras e fundos estáticos com fim da página");
+    Require(
+        CaptureService.EstimateVerticalScrollDelta(
+            browserFrameBefore,
+            browserFrameAfter,
+            fallbackDelta: 133) == 75,
+        "rolagem mede conteúdo mesmo com barra fixa do navegador");
+
     Require(
         RecordingPresetCatalog.GifFps.Select(item => item.Value).SequenceEqual([10, 20, 30]) &&
         RecordingPresetCatalog.GifQuality.Select(item => item.Value).SequenceEqual([32, 64, 128, 256]) &&
