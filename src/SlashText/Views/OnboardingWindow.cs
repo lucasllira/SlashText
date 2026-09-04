@@ -60,7 +60,7 @@ public sealed class OnboardingWindow : Window
 
         var features = new UniformGrid { Rows = 2, Columns = 2 };
         Grid.SetRow(features, 2);
-        features.Children.Add(Card("01", "Atalhos de texto", "Digite /atalho ou :atalho e confirme para inserir textos reutilizáveis."));
+        features.Children.Add(Card("01", "Atalhos de texto", "Digite /atalho e confirme para inserir textos reutilizáveis."));
         features.Children.Add(Card("02", "Acento Rápido", "Segure a tecla configurada após uma letra para escolher o caractere."));
         features.Children.Add(Card("03", "Captura local", "Capture monitor, região ou janela e marque a imagem antes de salvar."));
         features.Children.Add(Card(
