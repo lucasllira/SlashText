@@ -478,8 +478,9 @@ try
         captureDefaults.Recording.VideoFps == 30 &&
         captureDefaults.Recording.GifFps == 10 &&
         captureDefaults.Recording.GifQuality == 128 &&
-        captureDefaults.HistoryRetentionDays == 90,
-        "padrões seguros de gravação e histórico");
+        captureDefaults.HistoryRetentionDays == 90 &&
+        !captureDefaults.OpenEditorForMonitorAndWindow,
+        "padrões seguros de gravação, histórico e captura direta");
     Require(
         !captureDefaults.HideSlashDeskDuringCapture &&
         !captureDefaults.ShouldHideSlashDesk(windowIsVisible: true) &&
@@ -497,6 +498,16 @@ try
         reloadedHiddenSlashDesk.Capture.ShouldHideSlashDesk(windowIsVisible: true) &&
         !reloadedHiddenSlashDesk.Capture.ShouldHideSlashDesk(windowIsVisible: false),
         "preferência para ocultar o SlashDesk persiste no JSON");
+    var editorCaptureSettings = new AppSettings();
+    editorCaptureSettings.Capture.OpenEditorForMonitorAndWindow = true;
+    var editorCaptureJson =
+        System.Text.Json.JsonSerializer.Serialize(editorCaptureSettings);
+    var reloadedEditorCapture =
+        System.Text.Json.JsonSerializer.Deserialize<AppSettings>(editorCaptureJson);
+    Require(
+        reloadedEditorCapture is not null &&
+        reloadedEditorCapture.Capture.OpenEditorForMonitorAndWindow,
+        "preferência existente pelo modo editor persiste no JSON");
     Require(
         RecordingPresetCatalog.GifFps.Select(item => item.Value).SequenceEqual([10, 20, 30]) &&
         RecordingPresetCatalog.GifQuality.Select(item => item.Value).SequenceEqual([32, 64, 128, 256]) &&
