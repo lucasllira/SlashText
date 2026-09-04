@@ -2068,7 +2068,10 @@ public partial class MainWindow : Window
     private void CaptureWindow_OnClick(object sender, RoutedEventArgs e) =>
         _ = RunCaptureAsync(CaptureShortcutAction.Window, invokedByShortcut: false);
 
-    private async void CaptureScrolling_OnClick(object sender, RoutedEventArgs e)
+    private void CaptureScrolling_OnClick(object sender, RoutedEventArgs e) =>
+        _ = RunScrollingCaptureAsync(invokedByShortcut: false);
+
+    private async Task RunScrollingCaptureAsync(bool invokedByShortcut)
     {
         using var captureLease = _captureGate.TryEnter();
         if (captureLease is null)
@@ -2078,25 +2081,63 @@ public partial class MainWindow : Window
             return;
         }
 
-        var target = _captureService.WindowUnderCursorTarget();
-        if (target is null)
-        {
-            MessageBox.Show(
-                "Posicione o cursor sobre a janela que será capturada.",
-                "Captura com rolagem",
-                MessageBoxButton.OK,
-                MessageBoxImage.Information);
-            return;
-        }
-
         var wasVisible = IsVisible;
-        var shouldHide = _settings.Capture.ShouldHideSlashDesk(wasVisible);
         try
         {
-            if (shouldHide)
+            SafeDiagnosticLog.Write("capture.started", new Dictionary<string, object?>
             {
-                Hide();
-                await Task.Delay(180);
+                ["action"] = CaptureShortcutAction.Scrolling.ToString(),
+                ["invokedByShortcut"] = invokedByShortcut,
+                ["windowWasVisible"] = wasVisible
+            });
+
+            if (invokedByShortcut)
+            {
+                await WaitForCaptureDelayAsync();
+                if (_settings.Capture.ShouldHideSlashDesk(wasVisible))
+                {
+                    Hide();
+                    await Task.Delay(180);
+                }
+            }
+            else
+            {
+                if (wasVisible)
+                {
+                    Hide();
+                }
+                var selectionDelaySeconds = Math.Max(
+                    3,
+                    _settings.Capture.DelaySeconds);
+                ShowTrayBalloon(
+                    Math.Min(selectionDelaySeconds * 1000, 10000),
+                    $"Captura longa em {selectionDelaySeconds}s",
+                    "Posicione o cursor sobre a página que será capturada.",
+                    Forms.ToolTipIcon.Info);
+                await Task.Delay(TimeSpan.FromSeconds(selectionDelaySeconds));
+            }
+
+            var target = _captureService.WindowUnderCursorTarget();
+            if (target is null)
+            {
+                if (wasVisible)
+                {
+                    ShowFromTray();
+                    MessageBox.Show(
+                        "Posicione o cursor sobre a janela que será capturada.",
+                        "Captura longa",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Information);
+                }
+                else
+                {
+                    ShowTrayBalloon(
+                        2500,
+                        "Captura longa não iniciada",
+                        "Não foi possível identificar a janela sob o cursor.",
+                        Forms.ToolTipIcon.Warning);
+                }
+                return;
             }
 
             var result = await _captureService.CaptureScrollingAsync(
@@ -2104,7 +2145,7 @@ public partial class MainWindow : Window
                 target.Bounds,
                 _settings.Capture,
                 openEditor: _settings.Capture.OpenEditorForMonitorAndWindow,
-                owner: shouldHide ? null : this);
+                owner: IsVisible ? this : null);
             if (wasVisible)
             {
                 ShowFromTray();
@@ -2112,27 +2153,38 @@ public partial class MainWindow : Window
             if (result is not null)
             {
                 StatusText.Text = string.IsNullOrWhiteSpace(result.FilePath)
-                    ? "Captura com rolagem copiada"
-                    : $"Captura com rolagem salva: {Path.GetFileName(result.FilePath)}";
+                    ? "Captura longa copiada"
+                    : $"Captura longa salva: {Path.GetFileName(result.FilePath)}";
                 RefreshCaptureHistory();
                 ShowTrayBalloon(
                     3500,
-                    "Captura com rolagem concluída",
+                    "Captura longa concluída",
                     string.IsNullOrWhiteSpace(result.FilePath)
                         ? "Imagem copiada para o clipboard."
                         : "Clique para abrir a imagem.",
                     Forms.ToolTipIcon.Info,
                     result.FilePath);
             }
+
+            SafeDiagnosticLog.Write("capture.completed", new Dictionary<string, object?>
+            {
+                ["action"] = CaptureShortcutAction.Scrolling.ToString(),
+                ["resultCreated"] = result is not null
+            });
         }
         catch (Exception exception)
         {
+            SafeDiagnosticLog.Write("capture.failed", new Dictionary<string, object?>
+            {
+                ["action"] = CaptureShortcutAction.Scrolling.ToString(),
+                ["exceptionType"] = exception.GetType().Name
+            });
             if (wasVisible)
             {
                 ShowFromTray();
                 MessageBox.Show(
                     exception.Message,
-                    "Captura com rolagem",
+                    "Captura longa",
                     MessageBoxButton.OK,
                     MessageBoxImage.Warning);
             }
@@ -2140,14 +2192,14 @@ public partial class MainWindow : Window
             {
                 ShowTrayBalloon(
                     2500,
-                    "Não foi possível capturar com rolagem",
+                    "Não foi possível fazer a captura longa",
                     exception.Message,
                     Forms.ToolTipIcon.Warning);
             }
         }
         finally
         {
-            if (shouldHide && wasVisible && !IsVisible)
+            if (wasVisible && !IsVisible)
             {
                 ShowFromTray();
             }
