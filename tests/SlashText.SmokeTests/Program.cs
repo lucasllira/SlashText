@@ -481,19 +481,22 @@ try
         captureDefaults.HistoryRetentionDays == 90,
         "padrões seguros de gravação e histórico");
     Require(
-        captureDefaults.HideSlashDeskDuringCapture &&
-        captureDefaults.ShouldHideSlashDesk(windowIsVisible: true) &&
+        !captureDefaults.HideSlashDeskDuringCapture &&
+        !captureDefaults.ShouldHideSlashDesk(windowIsVisible: true) &&
         !captureDefaults.ShouldHideSlashDesk(windowIsVisible: false),
-        "padrão oculta somente a janela visível do SlashDesk");
-    var selfCaptureSettings = new AppSettings();
-    selfCaptureSettings.Capture.HideSlashDeskDuringCapture = false;
-    var selfCaptureJson = System.Text.Json.JsonSerializer.Serialize(selfCaptureSettings);
-    var reloadedSelfCapture = System.Text.Json.JsonSerializer.Deserialize<AppSettings>(selfCaptureJson);
+        "padrão permite capturar a própria janela do SlashDesk");
+    var hiddenSlashDeskSettings = new AppSettings();
+    hiddenSlashDeskSettings.Capture.HideSlashDeskDuringCapture = true;
+    var hiddenSlashDeskJson =
+        System.Text.Json.JsonSerializer.Serialize(hiddenSlashDeskSettings);
+    var reloadedHiddenSlashDesk =
+        System.Text.Json.JsonSerializer.Deserialize<AppSettings>(hiddenSlashDeskJson);
     Require(
-        reloadedSelfCapture is not null &&
-        !reloadedSelfCapture.Capture.HideSlashDeskDuringCapture &&
-        !reloadedSelfCapture.Capture.ShouldHideSlashDesk(windowIsVisible: true),
-        "preferência para capturar o próprio SlashDesk persiste no JSON");
+        reloadedHiddenSlashDesk is not null &&
+        reloadedHiddenSlashDesk.Capture.HideSlashDeskDuringCapture &&
+        reloadedHiddenSlashDesk.Capture.ShouldHideSlashDesk(windowIsVisible: true) &&
+        !reloadedHiddenSlashDesk.Capture.ShouldHideSlashDesk(windowIsVisible: false),
+        "preferência para ocultar o SlashDesk persiste no JSON");
     Require(
         RecordingPresetCatalog.GifFps.Select(item => item.Value).SequenceEqual([10, 20, 30]) &&
         RecordingPresetCatalog.GifQuality.Select(item => item.Value).SequenceEqual([32, 64, 128, 256]) &&
