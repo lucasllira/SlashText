@@ -508,6 +508,43 @@ try
         reloadedEditorCapture is not null &&
         reloadedEditorCapture.Capture.OpenEditorForMonitorAndWindow,
         "preferência existente pelo modo editor persiste no JSON");
+    using var scrollingDocument = new System.Drawing.Bitmap(96, 280);
+    for (var y = 0; y < scrollingDocument.Height; y++)
+    {
+        for (var x = 0; x < scrollingDocument.Width; x++)
+        {
+            scrollingDocument.SetPixel(
+                x,
+                y,
+                System.Drawing.Color.FromArgb(
+                    (x * 17 + y * 31) % 256,
+                    (x * 29 + y * 13) % 256,
+                    (x * 7 + y * 43) % 256));
+        }
+    }
+    using var firstScrollingFrame = scrollingDocument.Clone(
+        new System.Drawing.Rectangle(0, 0, 96, 120),
+        scrollingDocument.PixelFormat);
+    using var repeatedScrollingFrame = new System.Drawing.Bitmap(firstScrollingFrame);
+    using var secondScrollingFrame = scrollingDocument.Clone(
+        new System.Drawing.Rectangle(0, 75, 96, 120),
+        scrollingDocument.PixelFormat);
+    Require(
+        CaptureService.AreFramesVisuallyEquivalent(
+            firstScrollingFrame,
+            repeatedScrollingFrame),
+        "rolagem detecta o fim quando o quadro não muda");
+    Require(
+        !CaptureService.AreFramesVisuallyEquivalent(
+            firstScrollingFrame,
+            secondScrollingFrame),
+        "rolagem continua quando há novo conteúdo");
+    Require(
+        CaptureService.EstimateVerticalScrollDelta(
+            firstScrollingFrame,
+            secondScrollingFrame,
+            fallbackDelta: 100) == 75,
+        "rolagem mede o deslocamento real e evita duplicação");
     Require(
         RecordingPresetCatalog.GifFps.Select(item => item.Value).SequenceEqual([10, 20, 30]) &&
         RecordingPresetCatalog.GifQuality.Select(item => item.Value).SequenceEqual([32, 64, 128, 256]) &&
