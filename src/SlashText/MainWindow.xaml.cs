@@ -1765,6 +1765,7 @@ public partial class MainWindow : Window
         CaptureClipboardCheckBox.IsChecked = capture.CopyToClipboard;
         CaptureAutoSaveCheckBox.IsChecked = capture.SaveAutomatically;
         CaptureCursorCheckBox.IsChecked = capture.IncludeCursor;
+        CaptureHideSlashDeskCheckBox.IsChecked = capture.HideSlashDeskDuringCapture;
         CaptureEditorCheckBox.IsChecked = capture.OpenEditorForMonitorAndWindow;
         SelectComboByTag(CaptureDelayBox, capture.DelaySeconds.ToString());
         SelectComboByTag(CaptureRetentionBox, capture.HistoryRetentionDays.ToString());
@@ -1849,7 +1850,7 @@ public partial class MainWindow : Window
             JpegQuality = quality,
             CopyToClipboard = CaptureClipboardCheckBox.IsChecked == true,
             SaveAutomatically = CaptureAutoSaveCheckBox.IsChecked == true,
-            HideSlashDeskDuringCapture = true,
+            HideSlashDeskDuringCapture = CaptureHideSlashDeskCheckBox.IsChecked == true,
             IncludeCursor = CaptureCursorCheckBox.IsChecked == true,
             OpenEditorForMonitorAndWindow = CaptureEditorCheckBox.IsChecked == true,
             DelaySeconds = ParseSelectedInt(CaptureDelayBox, 0),
@@ -1957,7 +1958,7 @@ public partial class MainWindow : Window
         }
 
         var wasVisible = IsVisible;
-        var shouldHide = _settings.Capture.HideSlashDeskDuringCapture && wasVisible;
+        var shouldHide = _settings.Capture.ShouldHideSlashDesk(wasVisible);
         try
         {
             SafeDiagnosticLog.Write("capture.started", new Dictionary<string, object?>
