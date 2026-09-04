@@ -73,7 +73,9 @@ public sealed partial class SnippetImportService
 
             foreach (var item in items.EnumerateArray())
             {
-                var trigger = NormalizeTrigger(ReadString(item, "shortcut"));
+                var trigger = NormalizeTrigger(
+                    ReadString(item, "shortcut"),
+                    out var convertedColonPrefix);
                 var name = ReadString(item, "name");
                 var text = ReadString(item, "text");
                 if (string.IsNullOrWhiteSpace(trigger) ||
@@ -88,6 +90,11 @@ public sealed partial class SnippetImportService
                 {
                     warnings.Add($"O atalho '{trigger}' foi ignorado porque usa caracteres incompatíveis.");
                     continue;
+                }
+
+                if (convertedColonPrefix)
+                {
+                    warnings.Add($"{trigger}: prefixo ':' convertido para '/'.");
                 }
 
                 var converted = ConvertTextBlazeVariables(text, out var unsupported);
@@ -209,11 +216,16 @@ public sealed partial class SnippetImportService
 
             foreach (var rawTrigger in triggers)
             {
-                var trigger = NormalizeTrigger(rawTrigger);
+                var trigger = NormalizeTrigger(rawTrigger, out var convertedColonPrefix);
                 if (!TriggerRule.TryValidate(trigger, out _))
                 {
                     warnings.Add($"O atalho '{trigger}' foi ignorado porque usa caracteres incompatíveis.");
                     continue;
+                }
+
+                if (convertedColonPrefix)
+                {
+                    warnings.Add($"{trigger}: prefixo ':' convertido para '/'.");
                 }
 
                 snippets.Add(new Snippet
@@ -295,15 +307,21 @@ public sealed partial class SnippetImportService
             ? value.GetString()
             : null;
 
-    private static string NormalizeTrigger(string? trigger)
+    private static string NormalizeTrigger(string? trigger, out bool convertedColonPrefix)
     {
         var normalized = (trigger ?? string.Empty).Trim();
+        convertedColonPrefix = normalized.StartsWith(':');
         if (normalized.Length == 0)
         {
             return normalized;
         }
 
-        return normalized[0] is '/' or ':' ? normalized : "/" + normalized;
+        return normalized[0] switch
+        {
+            '/' => normalized,
+            ':' => "/" + normalized[1..],
+            _ => "/" + normalized
+        };
     }
 
     private static int LeadingWhitespace(string value) =>
