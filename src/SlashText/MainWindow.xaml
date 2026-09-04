@@ -1105,7 +1105,17 @@
                                         </Grid>
                                         <TextBlock Text="Destino" Margin="0,14,0,0"
                                                    Foreground="{DynamicResource MutedBrush}"/>
-                                        <TextBox x:Name="CaptureDirectoryBox" Margin="0,5,0,0"/>
+                                        <Grid Margin="0,5,0,0">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="8"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBox x:Name="CaptureDirectoryBox"/>
+                                            <Button Grid.Column="2"
+                                                    Content="Escolher pasta"
+                                                    Click="BrowseCaptureDestination_OnClick"/>
+                                        </Grid>
                                         <TextBlock Text="Variáveis: {year}, {month}, {month-name} e {day}"
                                                    Margin="0,5,0,10" FontSize="12"
                                                    Foreground="{DynamicResource MutedBrush}"/>
@@ -1139,6 +1149,9 @@
                                                   Content="Salvar automaticamente" Margin="0,5"/>
                                         <CheckBox x:Name="CaptureCursorCheckBox" Style="{StaticResource ToggleSwitch}"
                                                   Content="Incluir cursor na imagem" Margin="0,5"/>
+                                        <CheckBox x:Name="CaptureHideSlashDeskCheckBox" Style="{StaticResource ToggleSwitch}"
+                                                  Content="Ocultar SlashDesk durante a captura" Margin="0,5"
+                                                  ToolTip="Desative para permitir que a janela do SlashDesk apareça na imagem"/>
                                         <CheckBox x:Name="CaptureEditorCheckBox" Style="{StaticResource ToggleSwitch}"
                                                   Content="Abrir editor para monitor e janela" Margin="0,5"/>
                                         <Grid Margin="0,10,0,0">

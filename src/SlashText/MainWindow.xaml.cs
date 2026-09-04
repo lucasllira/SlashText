@@ -44,6 +44,7 @@ public partial class MainWindow : Window
     private readonly QuickAccentWindow _quickAccentWindow = new();
 
     private Forms.NotifyIcon? _trayIcon;
+    private string? _pendingCaptureNotificationPath;
     private AppSettings _settings = new();
     private Snippet? _selected;
     private string? _selectedCategory;
@@ -221,6 +222,43 @@ public partial class MainWindow : Window
             Visible = true
         };
         _trayIcon.DoubleClick += (_, _) => Dispatcher.Invoke(ShowFromTray);
+        _trayIcon.BalloonTipClicked += (_, _) =>
+            Dispatcher.Invoke(OpenPendingCaptureNotification);
+    }
+
+    private void ShowTrayBalloon(
+        int timeout,
+        string title,
+        string text,
+        Forms.ToolTipIcon icon,
+        string? openFilePath = null)
+    {
+        _pendingCaptureNotificationPath =
+            string.IsNullOrWhiteSpace(openFilePath) ? null : openFilePath;
+        _trayIcon?.ShowBalloonTip(timeout, title, text, icon);
+    }
+
+    private void OpenPendingCaptureNotification()
+    {
+        var path = _pendingCaptureNotificationPath;
+        _pendingCaptureNotificationPath = null;
+        if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
+        {
+            return;
+        }
+
+        try
+        {
+            Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
+        }
+        catch (Exception exception)
+        {
+            MessageBox.Show(
+                exception.Message,
+                "Não foi possível abrir a captura",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+        }
     }
 
     private static void ApplyTrayTheme(Forms.ContextMenuStrip menu)
@@ -1765,6 +1803,7 @@ public partial class MainWindow : Window
         CaptureClipboardCheckBox.IsChecked = capture.CopyToClipboard;
         CaptureAutoSaveCheckBox.IsChecked = capture.SaveAutomatically;
         CaptureCursorCheckBox.IsChecked = capture.IncludeCursor;
+        CaptureHideSlashDeskCheckBox.IsChecked = capture.HideSlashDeskDuringCapture;
         CaptureEditorCheckBox.IsChecked = capture.OpenEditorForMonitorAndWindow;
         SelectComboByTag(CaptureDelayBox, capture.DelaySeconds.ToString());
         SelectComboByTag(CaptureRetentionBox, capture.HistoryRetentionDays.ToString());
@@ -1778,6 +1817,28 @@ public partial class MainWindow : Window
         SelectComboByTag(CaptureHistoryFilterBox, "all");
         CaptureQualityBox.IsEnabled =
             capture.ImageFormat.Equals("JPEG", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private void BrowseCaptureDestination_OnClick(object sender, RoutedEventArgs e)
+    {
+        var expandedTemplate =
+            Environment.ExpandEnvironmentVariables(CaptureDirectoryBox.Text.Trim());
+        var currentDirectory = CaptureService.ResolveDirectoryTemplate(
+            expandedTemplate,
+            DateTimeOffset.Now);
+        using var dialog = new Forms.FolderBrowserDialog
+        {
+            Description = "Selecione a pasta onde as capturas serão salvas.",
+            UseDescriptionForTitle = true,
+            ShowNewFolderButton = true,
+            SelectedPath = Directory.Exists(currentDirectory)
+                ? currentDirectory
+                : Environment.GetFolderPath(Environment.SpecialFolder.MyPictures)
+        };
+        if (dialog.ShowDialog() == Forms.DialogResult.OK)
+        {
+            CaptureDirectoryBox.Text = dialog.SelectedPath;
+        }
     }
 
     private async void SaveCaptureSettings_OnClick(object sender, RoutedEventArgs e)
@@ -1849,7 +1910,7 @@ public partial class MainWindow : Window
             JpegQuality = quality,
             CopyToClipboard = CaptureClipboardCheckBox.IsChecked == true,
             SaveAutomatically = CaptureAutoSaveCheckBox.IsChecked == true,
-            HideSlashDeskDuringCapture = true,
+            HideSlashDeskDuringCapture = CaptureHideSlashDeskCheckBox.IsChecked == true,
             IncludeCursor = CaptureCursorCheckBox.IsChecked == true,
             OpenEditorForMonitorAndWindow = CaptureEditorCheckBox.IsChecked == true,
             DelaySeconds = ParseSelectedInt(CaptureDelayBox, 0),
@@ -1957,7 +2018,7 @@ public partial class MainWindow : Window
         }
 
         var wasVisible = IsVisible;
-        var shouldHide = _settings.Capture.HideSlashDeskDuringCapture && wasVisible;
+        var shouldHide = _settings.Capture.ShouldHideSlashDesk(wasVisible);
         try
         {
             SafeDiagnosticLog.Write("capture.started", new Dictionary<string, object?>
@@ -2027,13 +2088,14 @@ public partial class MainWindow : Window
                     ? $"Captura de {type} copiada"
                     : $"Captura salva: {Path.GetFileName(result.FilePath)}";
                 RefreshCaptureHistory();
-                _trayIcon?.ShowBalloonTip(
-                    1500,
+                ShowTrayBalloon(
+                    3500,
                     "Captura concluída",
                     string.IsNullOrWhiteSpace(result.FilePath)
                         ? "Imagem copiada para o clipboard."
-                        : result.FilePath,
-                    Forms.ToolTipIcon.Info);
+                        : "Clique para abrir a imagem.",
+                    Forms.ToolTipIcon.Info,
+                    result.FilePath);
             }
 
             if (shouldHide)
@@ -2064,7 +2126,7 @@ public partial class MainWindow : Window
             }
             else
             {
-                _trayIcon?.ShowBalloonTip(
+                ShowTrayBalloon(
                     2500,
                     "Não foi possível capturar",
                     exception.Message,
@@ -2581,7 +2643,7 @@ public partial class MainWindow : Window
             if (result.UpdateAvailable && result.Release is not null)
             {
                 StatusText.Text = result.Message;
-                _trayIcon?.ShowBalloonTip(
+                ShowTrayBalloon(
                     2500,
                     "Atualização disponível",
                     result.Message,
@@ -2898,7 +2960,7 @@ public partial class MainWindow : Window
         {
             e.Cancel = true;
             Hide();
-            _trayIcon?.ShowBalloonTip(
+            ShowTrayBalloon(
                 1800,
                 "SlashDesk continua ativo",
                 "Use o ícone da bandeja para abrir ou sair.",
