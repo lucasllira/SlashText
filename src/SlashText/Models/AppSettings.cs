@@ -26,6 +26,7 @@ public sealed class CaptureSettings
     public string ActiveMonitorShortcut { get; set; } = "Ctrl+Shift+PrintScreen";
     public string RegionShortcut { get; set; } = "Ctrl+Alt+PrintScreen";
     public string WindowShortcut { get; set; } = "Ctrl+Shift+WheelUp";
+    public string ScrollingShortcut { get; set; } = "Ctrl+Shift+WheelDown";
     public string OutputDirectoryTemplate { get; set; } =
         Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.MyPictures),
