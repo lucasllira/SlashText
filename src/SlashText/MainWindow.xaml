@@ -1153,7 +1153,7 @@
                                                   Content="Ocultar SlashDesk durante a captura" Margin="0,5"
                                                   ToolTip="Desative para permitir que a janela do SlashDesk apareça na imagem"/>
                                         <StackPanel Margin="0,10,0,0">
-                                            <TextBlock Text="Após capturar monitor ou janela"
+                                            <TextBlock Text="Após capturar monitor, janela ou rolagem"
                                                        Foreground="{DynamicResource MutedBrush}"/>
                                             <ComboBox x:Name="CaptureEditorCheckBox" Margin="0,5,0,0">
                                                 <ComboBoxItem Content="Direta — copiar e salvar automaticamente"
@@ -1165,7 +1165,7 @@
                                                        FontSize="12"
                                                        TextWrapping="Wrap"
                                                        Foreground="{DynamicResource MutedBrush}"
-                                                       Text="Direta aplica as opções acima imediatamente. Editor permite ajustar a imagem e só copia ou salva ao concluir."/>
+                                                       Text="Direta aplica as opções acima imediatamente. Editor permite ajustar a imagem, inclusive a captura com rolagem, e só copia ou salva ao concluir."/>
                                         </StackPanel>
                                         <Grid Margin="0,10,0,0">
                                             <Grid.ColumnDefinitions>
