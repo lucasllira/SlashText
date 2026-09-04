@@ -204,15 +204,98 @@ public partial class MainWindow : Window
         menu.Font = new System.Drawing.Font("Segoe UI", 9.5f);
         menu.ShowImageMargin = false;
         menu.Padding = new Forms.Padding(4);
-        ApplyTrayTheme(menu);
-        menu.Items.Add("Abrir SlashDesk", null, (_, _) => Dispatcher.Invoke(ShowFromTray));
-        menu.Items.Add("Novo atalho", null, (_, _) => Dispatcher.Invoke(() =>
-        {
-            ShowFromTray();
-            BeginNewSnippet();
-        }));
+
+        var capturesMenu = new Forms.ToolStripMenuItem("Capturas");
+        capturesMenu.DropDownItems.Add(
+            "Monitor",
+            null,
+            (_, _) => Dispatcher.BeginInvoke(new Action(() =>
+                _ = RunCaptureAsync(
+                    CaptureShortcutAction.ActiveMonitor,
+                    invokedByShortcut: true))));
+        capturesMenu.DropDownItems.Add(
+            "Região",
+            null,
+            (_, _) => Dispatcher.BeginInvoke(new Action(() =>
+                _ = RunCaptureAsync(
+                    CaptureShortcutAction.Region,
+                    invokedByShortcut: true))));
+        capturesMenu.DropDownItems.Add(
+            "Janela",
+            null,
+            (_, _) => Dispatcher.BeginInvoke(new Action(() =>
+                _ = RunCaptureAsync(
+                    CaptureShortcutAction.Window,
+                    invokedByShortcut: true))));
+        capturesMenu.DropDownItems.Add(
+            "Captura longa",
+            null,
+            (_, _) => Dispatcher.BeginInvoke(new Action(() =>
+                _ = RunScrollingCaptureAsync(invokedByShortcut: false))));
+
+        var recordingsMenu = new Forms.ToolStripMenuItem("Gravações");
+        recordingsMenu.DropDownItems.Add(
+            "Vídeo MP4",
+            null,
+            (_, _) => Dispatcher.BeginInvoke(new Action(() =>
+                StartMp4Recording_OnClick(this, new RoutedEventArgs()))));
+        recordingsMenu.DropDownItems.Add(
+            "GIF animado",
+            null,
+            (_, _) => Dispatcher.BeginInvoke(new Action(() =>
+                StartGifRecording_OnClick(this, new RoutedEventArgs()))));
+
+        var shortcutsMenu = new Forms.ToolStripMenuItem("Atalhos");
+        shortcutsMenu.DropDownItems.Add(
+            "Novo atalho",
+            null,
+            (_, _) => Dispatcher.Invoke(() =>
+            {
+                ShowFromTray();
+                BeginNewSnippet();
+            }));
+        shortcutsMenu.DropDownItems.Add(
+            "Gerenciar atalhos",
+            null,
+            (_, _) => Dispatcher.Invoke(() =>
+            {
+                ShowFromTray();
+                ShowView(ShortcutsView, ShortcutsTabButton);
+            }));
+
+        var applicationMenu = new Forms.ToolStripMenuItem("Aplicativo");
+        applicationMenu.DropDownItems.Add(
+            "Abrir SlashDesk",
+            null,
+            (_, _) => Dispatcher.Invoke(ShowFromTray));
+        applicationMenu.DropDownItems.Add(
+            "Configurações",
+            null,
+            (_, _) => Dispatcher.Invoke(() =>
+            {
+                ShowFromTray();
+                ShowView(SettingsView, SettingsTabButton);
+            }));
+        applicationMenu.DropDownItems.Add(
+            "Sobre",
+            null,
+            (_, _) => Dispatcher.Invoke(() =>
+            {
+                ShowFromTray();
+                ShowView(AboutView, AboutTabButton);
+            }));
+        applicationMenu.DropDownItems.Add(new Forms.ToolStripSeparator());
+        applicationMenu.DropDownItems.Add(
+            "Sair",
+            null,
+            (_, _) => Dispatcher.Invoke(RequestExit));
+
+        menu.Items.Add(capturesMenu);
+        menu.Items.Add(recordingsMenu);
+        menu.Items.Add(shortcutsMenu);
         menu.Items.Add(new Forms.ToolStripSeparator());
-        menu.Items.Add("Sair", null, (_, _) => Dispatcher.Invoke(RequestExit));
+        menu.Items.Add(applicationMenu);
+        ApplyTrayTheme(menu);
 
         _trayIcon = new Forms.NotifyIcon
         {
