@@ -1805,7 +1805,7 @@ public partial class MainWindow : Window
         CaptureCursorCheckBox.IsChecked = capture.IncludeCursor;
         CaptureHideSlashDeskCheckBox.IsChecked = capture.HideSlashDeskDuringCapture;
         SelectComboByTag(
-            CaptureModeBox,
+            CaptureEditorCheckBox,
             capture.OpenEditorForMonitorAndWindow ? "Editor" : "Direct");
         SelectComboByTag(CaptureDelayBox, capture.DelaySeconds.ToString());
         SelectComboByTag(CaptureRetentionBox, capture.HistoryRetentionDays.ToString());
@@ -1886,7 +1886,7 @@ public partial class MainWindow : Window
             error = "Informe a pasta e o modelo de nome do arquivo.";
             return false;
         }
-        var openEditor = SelectedTag(CaptureModeBox, "Direct")
+        var openEditor = SelectedTag(CaptureEditorCheckBox, "Direct")
             .Equals("Editor", StringComparison.OrdinalIgnoreCase);
         var copyToClipboard = CaptureClipboardCheckBox.IsChecked == true;
         var saveAutomatically = CaptureAutoSaveCheckBox.IsChecked == true;
