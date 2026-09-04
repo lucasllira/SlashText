@@ -481,6 +481,20 @@ try
         captureDefaults.HistoryRetentionDays == 90,
         "padrões seguros de gravação e histórico");
     Require(
+        captureDefaults.HideSlashDeskDuringCapture &&
+        captureDefaults.ShouldHideSlashDesk(windowIsVisible: true) &&
+        !captureDefaults.ShouldHideSlashDesk(windowIsVisible: false),
+        "padrão oculta somente a janela visível do SlashDesk");
+    var selfCaptureSettings = new AppSettings();
+    selfCaptureSettings.Capture.HideSlashDeskDuringCapture = false;
+    var selfCaptureJson = System.Text.Json.JsonSerializer.Serialize(selfCaptureSettings);
+    var reloadedSelfCapture = System.Text.Json.JsonSerializer.Deserialize<AppSettings>(selfCaptureJson);
+    Require(
+        reloadedSelfCapture is not null &&
+        !reloadedSelfCapture.Capture.HideSlashDeskDuringCapture &&
+        !reloadedSelfCapture.Capture.ShouldHideSlashDesk(windowIsVisible: true),
+        "preferência para capturar o próprio SlashDesk persiste no JSON");
+    Require(
         RecordingPresetCatalog.GifFps.Select(item => item.Value).SequenceEqual([10, 20, 30]) &&
         RecordingPresetCatalog.GifQuality.Select(item => item.Value).SequenceEqual([32, 64, 128, 256]) &&
         RecordingPresetCatalog.Mp4Quality.Select(item => item.Value)
