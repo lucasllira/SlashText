@@ -869,7 +869,7 @@
                                                 Click="CaptureRegion_OnClick"/>
                                     </StackPanel>
                                 </Border>
-                                <Border Style="{StaticResource SettingsCard}">
+                                <Border Style="{StaticResource MetricCard}">
                                     <StackPanel>
                                         <StackPanel Orientation="Horizontal">
                                             <Path Data="{StaticResource Icon.Window}" Style="{StaticResource StandaloneIcon}" Margin="0,0,8,0"/>
@@ -884,9 +884,23 @@
                                         <Button Content="Capturar janela"
                                                 Style="{StaticResource PrimaryButton}"
                                                 Click="CaptureWindow_OnClick"/>
-                                        <Button Content="Captura com rolagem"
-                                                Margin="0,8,0,0"
-                                                ToolTip="Captura vertical experimental da janela sob o cursor"
+                                    </StackPanel>
+                                </Border>
+                                <Border Style="{StaticResource MetricCard}">
+                                    <StackPanel>
+                                        <StackPanel Orientation="Horizontal">
+                                            <Path Data="{StaticResource Icon.Scroll}" Style="{StaticResource StandaloneIcon}" Margin="0,0,8,0"/>
+                                            <TextBlock Text="Captura longa" FontSize="16" FontWeight="SemiBold"/>
+                                        </StackPanel>
+                                        <TextBlock Text="Capture páginas inteiras enquanto elas rolam."
+                                                   Margin="0,5,0,0"
+                                                   TextWrapping="Wrap"
+                                                   Foreground="{DynamicResource MutedBrush}"/>
+                                        <views:ShortcutRecorderBox x:Name="CaptureScrollingShortcutBox"
+                                                                   Margin="0,10,0,10"/>
+                                        <Button Content="Iniciar captura longa"
+                                                Style="{StaticResource PrimaryButton}"
+                                                ToolTip="Você terá ao menos 3 segundos para posicionar o cursor sobre a página"
                                                 Click="CaptureScrolling_OnClick"/>
                                     </StackPanel>
                                 </Border>
@@ -901,19 +915,6 @@
                                                    Foreground="{DynamicResource MutedBrush}"/>
                                         <Button Content="Iniciar GIF" Margin="0,10,0,0"
                                                 Click="StartGifRecording_OnClick"/>
-                                    </StackPanel>
-                                </Border>
-                                <Border Style="{StaticResource SettingsCard}">
-                                    <StackPanel>
-                                        <StackPanel Orientation="Horizontal">
-                                            <Path Data="{StaticResource Icon.Record}" Style="{StaticResource StandaloneIcon}" Margin="0,0,8,0"/>
-                                            <TextBlock Text="Gravar vídeo" FontSize="16" FontWeight="SemiBold"/>
-                                        </StackPanel>
-                                        <TextBlock Text="MP4 H.264 com pausa e retomada."
-                                                   Margin="0,5,0,0" TextWrapping="Wrap"
-                                                   Foreground="{DynamicResource MutedBrush}"/>
-                                        <Button Content="Iniciar MP4" Style="{StaticResource PrimaryButton}"
-                                                Margin="0,10,0,0" Click="StartMp4Recording_OnClick"/>
                                     </StackPanel>
                                 </Border>
                             </UniformGrid>
