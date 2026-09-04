@@ -1982,6 +1982,7 @@ public partial class MainWindow : Window
             StatusText.Text = "Já existe uma captura em andamento";
             return;
         }
+
         var target = _captureService.WindowUnderCursorTarget();
         if (target is null)
         {
@@ -1992,30 +1993,69 @@ public partial class MainWindow : Window
                 MessageBoxImage.Information);
             return;
         }
+
+        var wasVisible = IsVisible;
+        var shouldHide = _settings.Capture.ShouldHideSlashDesk(wasVisible);
         try
         {
-            Hide();
-            await Task.Delay(180);
+            if (shouldHide)
+            {
+                Hide();
+                await Task.Delay(180);
+            }
+
             var result = await _captureService.CaptureScrollingAsync(
                 target.WindowHandle,
                 target.Bounds,
                 _settings.Capture,
-                owner: null);
-            ShowFromTray();
+                openEditor: _settings.Capture.OpenEditorForMonitorAndWindow,
+                owner: shouldHide ? null : this);
+            if (wasVisible)
+            {
+                ShowFromTray();
+            }
             if (result is not null)
             {
-                StatusText.Text = $"Captura com rolagem salva: {Path.GetFileName(result.FilePath)}";
+                StatusText.Text = string.IsNullOrWhiteSpace(result.FilePath)
+                    ? "Captura com rolagem copiada"
+                    : $"Captura com rolagem salva: {Path.GetFileName(result.FilePath)}";
                 RefreshCaptureHistory();
+                ShowTrayBalloon(
+                    3500,
+                    "Captura com rolagem concluída",
+                    string.IsNullOrWhiteSpace(result.FilePath)
+                        ? "Imagem copiada para o clipboard."
+                        : "Clique para abrir a imagem.",
+                    Forms.ToolTipIcon.Info,
+                    result.FilePath);
             }
         }
         catch (Exception exception)
         {
-            ShowFromTray();
-            MessageBox.Show(
-                exception.Message,
-                "Captura com rolagem",
-                MessageBoxButton.OK,
-                MessageBoxImage.Warning);
+            if (wasVisible)
+            {
+                ShowFromTray();
+                MessageBox.Show(
+                    exception.Message,
+                    "Captura com rolagem",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+            }
+            else
+            {
+                ShowTrayBalloon(
+                    2500,
+                    "Não foi possível capturar com rolagem",
+                    exception.Message,
+                    Forms.ToolTipIcon.Warning);
+            }
+        }
+        finally
+        {
+            if (shouldHide && wasVisible && !IsVisible)
+            {
+                ShowFromTray();
+            }
         }
     }
 
