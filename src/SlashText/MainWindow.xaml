@@ -1155,7 +1155,7 @@
                                         <StackPanel Margin="0,10,0,0">
                                             <TextBlock Text="Após capturar monitor ou janela"
                                                        Foreground="{DynamicResource MutedBrush}"/>
-                                            <ComboBox x:Name="CaptureModeBox" Margin="0,5,0,0">
+                                            <ComboBox x:Name="CaptureEditorCheckBox" Margin="0,5,0,0">
                                                 <ComboBoxItem Content="Direta — copiar e salvar automaticamente"
                                                               Tag="Direct"/>
                                                 <ComboBoxItem Content="Editor — revisar antes de concluir"
