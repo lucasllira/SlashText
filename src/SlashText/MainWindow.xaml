@@ -1432,7 +1432,7 @@
                                                   Content="Iniciar com o Windows"
                                                   Click="Settings_OnClick"/>
                                         <CheckBox x:Name="ShowSuggestionsCheckBox" Style="{StaticResource ToggleSwitch}"
-                                                  Content="Mostrar sugestões ao digitar / ou :"
+                                                  Content="Mostrar sugestões ao digitar /"
                                                   Click="Settings_OnClick"/>
                                     </StackPanel>
                                 </Border>
