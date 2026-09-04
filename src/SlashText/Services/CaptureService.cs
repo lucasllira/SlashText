@@ -313,52 +313,83 @@ public sealed class CaptureService
         IntPtr window,
         Rectangle bounds,
         CaptureSettings settings,
+        bool openEditor,
         Window? owner)
     {
         if (window == IntPtr.Zero || bounds.Width <= 0 || bounds.Height <= 0)
         {
             return null;
         }
+
+        const int maximumFrames = 40;
+        const int maximumOutputHeight = 30000;
+        var fallbackDelta = bounds.Height - Math.Max(1, bounds.Height / 6);
         SetForegroundWindow(window);
         await Task.Delay(250);
         var frames = new List<Bitmap>();
+        var scrollDeltas = new List<int>();
         try
         {
-            const int frameCount = 5;
-            for (var index = 0; index < frameCount; index++)
+            frames.Add(CaptureBitmap(bounds, settings.IncludeCursor));
+            var stitchedHeight = bounds.Height;
+            while (frames.Count < maximumFrames &&
+                   stitchedHeight < maximumOutputHeight)
             {
-                frames.Add(CaptureBitmap(bounds, settings.IncludeCursor && index == 0));
-                if (index < frameCount - 1)
+                KeybdEvent(VirtualKeyPageDown, 0, 0, UIntPtr.Zero);
+                KeybdEvent(VirtualKeyPageDown, 0, KeyEventKeyUp, UIntPtr.Zero);
+                await Task.Delay(450);
+
+                var next = CaptureBitmap(bounds);
+                if (AreFramesVisuallyEquivalent(frames[^1], next))
                 {
-                    KeybdEvent(VirtualKeyPageDown, 0, 0, UIntPtr.Zero);
-                    KeybdEvent(VirtualKeyPageDown, 0, KeyEventKeyUp, UIntPtr.Zero);
-                    await Task.Delay(450);
+                    next.Dispose();
+                    break;
                 }
+
+                var delta = EstimateVerticalScrollDelta(
+                    frames[^1],
+                    next,
+                    fallbackDelta);
+                if (stitchedHeight + delta > maximumOutputHeight)
+                {
+                    next.Dispose();
+                    break;
+                }
+
+                frames.Add(next);
+                scrollDeltas.Add(delta);
+                stitchedHeight += delta;
             }
 
-            var overlap = Math.Max(1, bounds.Height / 6);
-            var contentHeight = bounds.Height - overlap;
             using var stitched = new Bitmap(
                 bounds.Width,
-                bounds.Height + contentHeight * (frames.Count - 1),
+                stitchedHeight,
                 PixelFormat.Format32bppArgb);
             using (var graphics = Graphics.FromImage(stitched))
             {
                 graphics.DrawImageUnscaled(frames[0], 0, 0);
+                var outputY = bounds.Height;
                 for (var index = 1; index < frames.Count; index++)
                 {
+                    var delta = scrollDeltas[index - 1];
                     graphics.DrawImage(
                         frames[index],
-                        new Rectangle(0, bounds.Height + contentHeight * (index - 1), bounds.Width, contentHeight),
-                        new Rectangle(0, overlap, bounds.Width, contentHeight),
+                        new Rectangle(0, outputY, bounds.Width, delta),
+                        new Rectangle(
+                            0,
+                            bounds.Height - delta,
+                            bounds.Width,
+                            delta),
                         GraphicsUnit.Pixel);
+                    outputY += delta;
                 }
             }
+
             return await ProcessBitmapAsync(
                 stitched,
                 "rolagem",
                 settings,
-                openEditor: true,
+                openEditor,
                 owner,
                 CaptureAnnotationKind.Arrow);
         }
@@ -370,6 +401,135 @@ public sealed class CaptureService
             }
         }
     }
+
+    public static bool AreFramesVisuallyEquivalent(Bitmap first, Bitmap second)
+    {
+        if (first.Width != second.Width || first.Height != second.Height)
+        {
+            return false;
+        }
+
+        const int horizontalSamples = 20;
+        const int verticalSamples = 24;
+        var changed = 0;
+        var totalDifference = 0d;
+        var total = 0;
+        for (var row = 0; row < verticalSamples; row++)
+        {
+            var y = Math.Min(
+                first.Height - 1,
+                (row * first.Height + first.Height / 2) / verticalSamples);
+            for (var column = 0; column < horizontalSamples; column++)
+            {
+                var x = Math.Min(
+                    first.Width - 1,
+                    (column * first.Width + first.Width / 2) / horizontalSamples);
+                var difference = PixelDifference(
+                    first.GetPixel(x, y),
+                    second.GetPixel(x, y));
+                totalDifference += difference;
+                if (difference > 24)
+                {
+                    changed++;
+                }
+                total++;
+            }
+        }
+
+        return changed <= total / 10 && totalDifference / total <= 8;
+    }
+
+    public static int EstimateVerticalScrollDelta(
+        Bitmap previous,
+        Bitmap current,
+        int fallbackDelta)
+    {
+        var height = Math.Min(previous.Height, current.Height);
+        var width = Math.Min(previous.Width, current.Width);
+        var fallback = Math.Clamp(fallbackDelta, 1, Math.Max(1, height));
+        if (width < 8 || height < 32 ||
+            previous.Width != current.Width ||
+            previous.Height != current.Height)
+        {
+            return fallback;
+        }
+
+        var minimumOverlap = Math.Max(24, height / 30);
+        var maximumDelta = height - minimumOverlap;
+        var coarseStep = Math.Max(1, height / 180);
+        var bestDelta = fallback;
+        var bestScore = double.MaxValue;
+
+        for (var delta = 1; delta <= maximumDelta; delta += coarseStep)
+        {
+            var score = VerticalScrollMatchScore(previous, current, delta);
+            if (score < bestScore)
+            {
+                bestScore = score;
+                bestDelta = delta;
+            }
+        }
+
+        var refineStart = Math.Max(1, bestDelta - coarseStep);
+        var refineEnd = Math.Min(maximumDelta, bestDelta + coarseStep);
+        for (var delta = refineStart; delta <= refineEnd; delta++)
+        {
+            var score = VerticalScrollMatchScore(previous, current, delta);
+            if (score < bestScore)
+            {
+                bestScore = score;
+                bestDelta = delta;
+            }
+        }
+
+        return bestScore <= 18 ? bestDelta : fallback;
+    }
+
+    private static double VerticalScrollMatchScore(
+        Bitmap previous,
+        Bitmap current,
+        int delta)
+    {
+        const int horizontalSamples = 12;
+        const int verticalSamples = 18;
+        var overlap = previous.Height - delta;
+        var topSkip = Math.Min(
+            Math.Max(8, previous.Height / 12),
+            Math.Max(0, overlap / 2));
+        var usableHeight = overlap - topSkip;
+        if (usableHeight < 8)
+        {
+            return double.MaxValue;
+        }
+
+        var score = 0d;
+        var samples = 0;
+        for (var row = 0; row < verticalSamples; row++)
+        {
+            var currentY = topSkip +
+                Math.Min(usableHeight - 1, row * usableHeight / verticalSamples);
+            var previousY = currentY + delta;
+            for (var column = 0; column < horizontalSamples; column++)
+            {
+                var x = Math.Min(
+                    previous.Width - 1,
+                    previous.Width / 10 +
+                    column * Math.Max(1, previous.Width * 8 / 10) /
+                    horizontalSamples);
+                score += PixelDifference(
+                    previous.GetPixel(x, previousY),
+                    current.GetPixel(x, currentY));
+                samples++;
+            }
+        }
+
+        return samples == 0 ? double.MaxValue : score / samples;
+    }
+
+    private static double PixelDifference(Color first, Color second) =>
+        (Math.Abs(first.R - second.R) +
+         Math.Abs(first.G - second.G) +
+         Math.Abs(first.B - second.B)) / 3d;
 
     private async Task<CaptureRecord?> ProcessBitmapAsync(
         Bitmap captured,
