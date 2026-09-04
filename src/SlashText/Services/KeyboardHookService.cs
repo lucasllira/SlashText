@@ -12,7 +12,9 @@ public sealed class KeyboardHookService : IDisposable
     private const int WhKeyboardLl = 13;
     private const int WhMouseLl = 14;
     private const int WmKeyDown = 0x0100;
+    private const int WmKeyUp = 0x0101;
     private const int WmSysKeyDown = 0x0104;
+    private const int WmSysKeyUp = 0x0105;
     private const uint LlkhfInjected = 0x00000010;
     private const int WmLButtonDown = 0x0201;
     private const int WmRButtonDown = 0x0204;
@@ -27,6 +29,7 @@ public sealed class KeyboardHookService : IDisposable
     private readonly LowLevelKeyboardProc _hookCallback;
     private readonly LowLevelMouseProc _mouseCallback;
     private readonly KeyboardBufferState _bufferState = new();
+    private readonly KeyboardModifierState _modifierState = new();
     private List<MonitoredSnippet> _snippets = [];
     private IntPtr _hookHandle;
     private IntPtr _mouseHookHandle;
@@ -91,14 +94,31 @@ public sealed class KeyboardHookService : IDisposable
 
     private IntPtr HookCallback(int code, IntPtr message, IntPtr data)
     {
-        if (code < 0 ||
-            (message.ToInt32() != WmKeyDown && message.ToInt32() != WmSysKeyDown))
+        var messageValue = message.ToInt32();
+        var isKeyDown = messageValue is WmKeyDown or WmSysKeyDown;
+        var isKeyUp = messageValue is WmKeyUp or WmSysKeyUp;
+        if (code < 0 || (!isKeyDown && !isKeyUp))
         {
             return CallNextHookEx(_hookHandle, code, message, data);
         }
 
         var key = Marshal.PtrToStructure<KeyboardData>(data);
-        if ((key.Flags & LlkhfInjected) != 0 || IsOwnWindowInForeground())
+        if ((key.Flags & LlkhfInjected) != 0)
+        {
+            return CallNextHookEx(_hookHandle, code, message, data);
+        }
+
+        var virtualKey = (int)key.VirtualKeyCode;
+        if (KeyboardModifierState.IsModifierKey(virtualKey))
+        {
+            lock (_sync)
+            {
+                _modifierState.Update(virtualKey, isKeyDown);
+            }
+            return CallNextHookEx(_hookHandle, code, message, data);
+        }
+
+        if (!isKeyDown || IsOwnWindowInForeground())
         {
             return CallNextHookEx(_hookHandle, code, message, data);
         }
@@ -122,7 +142,6 @@ public sealed class KeyboardHookService : IDisposable
                     : BufferResetReason.FocusChanged);
             }
 
-            var virtualKey = (int)key.VirtualKeyCode;
             var confirmation = ConfirmationName(virtualKey);
 
             if (_currentSuggestions.Count > 0 && virtualKey is 0x26 or 0x28)
@@ -174,11 +193,7 @@ public sealed class KeyboardHookService : IDisposable
                     selectedSuggestionIndex = _selectedSuggestionIndex;
                 }
             }
-            else if (IsModifierKey(virtualKey))
-            {
-                // Shift/AltGr podem fazer parte de "/" ou ":" em layouts diferentes.
-            }
-            else if (TryMapTriggerCharacter(virtualKey, out var character))
+            else if (TryMapTriggerCharacter(virtualKey, key.ScanCode, out var character))
             {
                 _bufferState.Append(character, targetWindow, focusWindow);
 
@@ -266,7 +281,7 @@ public sealed class KeyboardHookService : IDisposable
             _ => SuggestionConfirmation.Automatic
         };
 
-    internal static bool TryMapTriggerCharacter(int virtualKey, out char character)
+    private bool TryMapTriggerCharacter(int virtualKey, uint eventScanCode, out char character)
     {
         if (virtualKey == 0x6F)
         {
@@ -281,14 +296,21 @@ public sealed class KeyboardHookService : IDisposable
             return false;
         }
 
+        // GetKeyboardState pode estar um evento atrás dentro do hook global.
+        // Combina seu snapshot (incluindo Caps Lock e teclas mortas) com os
+        // modificadores físicos observados diretamente pelo hook.
+        _modifierState.ApplyTo(keyboardState);
         keyboardState[virtualKey] |= 0x80;
+
         var foreground = GetForegroundWindow();
         var threadId = foreground == IntPtr.Zero
             ? 0
             : GetWindowThreadProcessId(foreground, out _);
         var layout = GetKeyboardLayout(threadId);
         var buffer = new StringBuilder(8);
-        var scanCode = MapVirtualKeyEx((uint)virtualKey, 0, layout);
+        var scanCode = eventScanCode != 0
+            ? eventScanCode
+            : MapVirtualKeyEx((uint)virtualKey, 0, layout);
         var count = ToUnicodeEx(
             (uint)virtualKey,
             scanCode,
@@ -298,20 +320,18 @@ public sealed class KeyboardHookService : IDisposable
             ToUnicodeNoStateChange,
             layout);
 
-        if (count <= 0 || buffer.Length == 0)
-        {
-            character = default;
-            return false;
-        }
+        character = default;
+        return count > 0 &&
+               buffer.Length > 0 &&
+               TryNormalizeTranslatedCharacter(buffer[0], out character);
+    }
 
-        character = char.ToLowerInvariant(buffer[0]);
+    internal static bool TryNormalizeTranslatedCharacter(char translated, out char character)
+    {
+        character = char.ToLowerInvariant(translated);
         return TriggerRule.IsSupportedPrefix(character) ||
                TriggerRule.IsSupportedCharacter(character);
     }
-
-    private static bool IsModifierKey(int virtualKey) =>
-        virtualKey is 0x10 or 0x11 or 0x12 or
-            0xA0 or 0xA1 or 0xA2 or 0xA3 or 0xA4 or 0xA5;
 
     private static bool HasNavigationModifier() =>
         (GetAsyncKeyState(0x11) & 0x8000) != 0 ||
@@ -538,6 +558,72 @@ public sealed class KeyboardHookService : IDisposable
         int bufferSize,
         uint flags,
         IntPtr keyboardLayout);
+}
+
+internal sealed class KeyboardModifierState
+{
+    private const int VkShift = 0x10;
+    private const int VkControl = 0x11;
+    private const int VkMenu = 0x12;
+    private const int VkLeftShift = 0xA0;
+    private const int VkRightShift = 0xA1;
+    private const int VkLeftControl = 0xA2;
+    private const int VkRightControl = 0xA3;
+    private const int VkLeftMenu = 0xA4;
+    private const int VkRightMenu = 0xA5;
+
+    private readonly HashSet<int> _pressed = [];
+
+    internal static bool IsModifierKey(int virtualKey) =>
+        virtualKey is VkShift or VkControl or VkMenu or
+            VkLeftShift or VkRightShift or
+            VkLeftControl or VkRightControl or
+            VkLeftMenu or VkRightMenu;
+
+    internal void Update(int virtualKey, bool isDown)
+    {
+        if (!IsModifierKey(virtualKey))
+        {
+            return;
+        }
+
+        if (isDown)
+        {
+            _pressed.Add(virtualKey);
+        }
+        else
+        {
+            _pressed.Remove(virtualKey);
+        }
+    }
+
+    internal void ApplyTo(byte[] keyboardState)
+    {
+        ArgumentNullException.ThrowIfNull(keyboardState);
+        if (keyboardState.Length < 256)
+        {
+            throw new ArgumentException("O estado do teclado precisa ter 256 posições.", nameof(keyboardState));
+        }
+
+        foreach (var virtualKey in _pressed)
+        {
+            keyboardState[virtualKey] |= 0x80;
+        }
+
+        ApplyAggregate(keyboardState, VkShift, VkLeftShift, VkRightShift);
+        ApplyAggregate(keyboardState, VkControl, VkLeftControl, VkRightControl);
+        ApplyAggregate(keyboardState, VkMenu, VkLeftMenu, VkRightMenu);
+    }
+
+    private void ApplyAggregate(byte[] keyboardState, int aggregate, int left, int right)
+    {
+        if (_pressed.Contains(aggregate) ||
+            _pressed.Contains(left) ||
+            _pressed.Contains(right))
+        {
+            keyboardState[aggregate] |= 0x80;
+        }
+    }
 }
 
 public enum SuggestionConfirmation

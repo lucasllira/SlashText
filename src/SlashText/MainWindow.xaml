@@ -298,7 +298,7 @@
                                     <StackPanel Grid.Column="2">
                                         <TextBlock Text="Comando" Style="{StaticResource FieldLabel}"/>
                                         <TextBox x:Name="TriggerBox" TextChanged="EditorField_OnTextChanged"
-                                                 ToolTip="Use /atalho ou :atalho"/>
+                                                 ToolTip="Use /atalho"/>
                                     </StackPanel>
                                 </Grid>
 
@@ -1432,7 +1432,7 @@
                                                   Content="Iniciar com o Windows"
                                                   Click="Settings_OnClick"/>
                                         <CheckBox x:Name="ShowSuggestionsCheckBox" Style="{StaticResource ToggleSwitch}"
-                                                  Content="Mostrar sugestões ao digitar / ou :"
+                                                  Content="Mostrar sugestões ao digitar /"
                                                   Click="Settings_OnClick"/>
                                     </StackPanel>
                                 </Border>

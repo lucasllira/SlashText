@@ -41,7 +41,7 @@ A versão estável atual é a **3.1.0**.
 
 | Área | O que oferece |
 |---|---|
-| **Atalhos de texto** | Expansões iniciadas por `/` ou `:`, conteúdo formatado, variáveis, categorias, sugestões e estatísticas |
+| **Atalhos de texto** | Expansões iniciadas por `/`, conteúdo formatado, variáveis, categorias, sugestões e estatísticas |
 | **Acento Rápido** | Seleção de caracteres por tecla, conjuntos configuráveis, suporte a Caps Lock, Shift e layouts diferentes |
 | **Captura** | Monitor, janela, região e rolagem experimental, com editor, atalhos globais, histórico e salvamento configurável |
 | **Gravação** | GIF e MP4 locais, seleção de alvo, presets, cursor, pausa, retomada, prévia e histórico |
@@ -49,7 +49,7 @@ A versão estável atual é a **3.1.0**.
 
 ### Atalhos de texto
 
-- gatilhos com `/` ou `:` em Outlook, Teams, navegadores e outros aplicativos;
+- gatilhos com `/` em Outlook, Teams, navegadores e outros aplicativos;
 - texto simples ou formatado com fonte, tamanho, cores, marca-texto, listas, alinhamento, tabelas, imagens e hyperlinks;
 - variáveis preenchíveis, datas automáticas, cálculos de data e navegação com `{{tab}}`;
 - busca, categorias, filtros, favoritos por uso e sugestões flutuantes;

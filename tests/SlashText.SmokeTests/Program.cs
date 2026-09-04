@@ -52,9 +52,53 @@ Require(fields.Count == 2, "campos únicos");
 Require(fields[1].DefaultValue == "INC000", "valor padrão");
 
 Require(TriggerRule.TryValidate("/teste", out _), "regra única aceita prefixo barra");
-Require(TriggerRule.TryValidate(":ação_2-rapida", out _), "regra única aceita letras Unicode, números, hífen e sublinhado");
+Require(TriggerRule.TryValidate("/ação_2-rapida", out _), "regra única aceita letras Unicode, números, hífen e sublinhado");
+Require(!TriggerRule.TryValidate(":ação_2-rapida", out _), "regra única rejeita prefixo dois-pontos");
 Require(!TriggerRule.TryValidate("teste", out _), "regra única rejeita gatilho sem prefixo");
 Require(!TriggerRule.TryValidate("/inválido!", out _), "regra única rejeita caractere impossível para o monitor");
+Require(
+    !KeyboardHookService.TryNormalizeTranslatedCharacter('?', out _),
+    "interrogação não é interpretada como prefixo de atalho");
+Require(
+    KeyboardHookService.TryNormalizeTranslatedCharacter('/', out var slashPrefix) &&
+    slashPrefix == '/',
+    "barra continua sendo aceita como prefixo");
+Require(
+    !KeyboardHookService.TryNormalizeTranslatedCharacter(':', out _),
+    "dois-pontos não é interpretado como prefixo de atalho");
+Require(
+    KeyboardHookService.TryNormalizeTranslatedCharacter('A', out var normalizedLetter) &&
+    normalizedLetter == 'a',
+    "letras traduzidas continuam normalizadas");
+
+var modifierState = new KeyboardModifierState();
+modifierState.Update(0xA0, isDown: true);
+var shiftKeyboardState = new byte[256];
+modifierState.ApplyTo(shiftKeyboardState);
+Require(
+    (shiftKeyboardState[0x10] & 0x80) != 0 &&
+    (shiftKeyboardState[0xA0] & 0x80) != 0 &&
+    (shiftKeyboardState[0xA1] & 0x80) == 0,
+    "Shift esquerdo observado pelo hook é aplicado à tradução");
+modifierState.Update(0xA0, isDown: false);
+modifierState.Update(0xA2, isDown: true);
+modifierState.Update(0xA5, isDown: true);
+var altGrKeyboardState = new byte[256];
+modifierState.ApplyTo(altGrKeyboardState);
+Require(
+    (altGrKeyboardState[0x11] & 0x80) != 0 &&
+    (altGrKeyboardState[0x12] & 0x80) != 0 &&
+    (altGrKeyboardState[0xA2] & 0x80) != 0 &&
+    (altGrKeyboardState[0xA5] & 0x80) != 0,
+    "AltGr mantém Control e Alt direito no estado traduzido");
+modifierState.Update(0xA2, isDown: false);
+modifierState.Update(0xA5, isDown: false);
+var releasedKeyboardState = new byte[256];
+modifierState.ApplyTo(releasedKeyboardState);
+Require(
+    releasedKeyboardState.All(value => value == 0),
+    "soltar modificadores limpa o estado acompanhado pelo hook");
+
 var maximumTrigger = "/" + new string('a', TriggerRule.MaximumLength - 1);
 Require(TriggerRule.TryValidate(maximumTrigger, out _), "gatilho no tamanho máximo");
 Require(!TriggerRule.TryValidate(maximumTrigger + "a", out _), "gatilho acima do tamanho máximo");
@@ -70,6 +114,8 @@ Require(bufferState.TargetChanged(new IntPtr(12), new IntPtr(11)), "troca de jan
 bufferState.Clear(BufferResetReason.MouseClick);
 Require(!bufferState.HasValue && bufferState.LastResetReason == BufferResetReason.MouseClick, "clique limpa buffer");
 bufferState.Append(':', new IntPtr(20), new IntPtr(21));
+Require(!bufferState.HasValue, "dois-pontos não inicia o buffer");
+bufferState.Append('/', new IntPtr(20), new IntPtr(21));
 bufferState.Append('x', new IntPtr(20), new IntPtr(21));
 Require(bufferState.TargetChanged(new IntPtr(20), new IntPtr(22)), "troca de controle focado limpa buffer");
 
@@ -266,14 +312,19 @@ try
 
     var colonSnippet = new Snippet
     {
-        Name = "Dois pontos",
+        Name = "Dois pontos legado",
         Trigger = ":teste",
         Category = "Geral",
-        Content = "Compatível"
+        Content = "Preservado sem ativar",
+        HasLegacyIncompatibleTrigger = true
     };
     await repository.SaveAsync([snippet, colonSnippet]);
     loaded = await repository.LoadAsync();
-    Require(loaded.Any(item => item.Trigger == ":teste"), "gatilho com dois pontos");
+    Require(
+        loaded.Any(item =>
+            item.Trigger == ":teste" &&
+            item.HasLegacyIncompatibleTrigger),
+        "gatilho antigo com dois-pontos é preservado como legado incompatível");
 
     var legacySnippet = new Snippet
     {
@@ -332,15 +383,24 @@ try
               Como posso ajudar?
           - triggers: [":obg", ":thanks"]
             replace: "Obrigado!"
+          - trigger: "/ola"
+            replace: "Entrada duplicada"
         """);
     var espansoImport = await importService.ImportAsync(
         espansoFile,
         SnippetImportSource.Espanso);
     Require(
         espansoImport.Snippets.Count == 3 &&
-        espansoImport.Snippets.Any(item => item.Trigger == ":ola") &&
-        espansoImport.Snippets.Any(item => item.Trigger == ":thanks"),
-        "importa trigger, triggers e blocos do Espanso");
+        espansoImport.Snippets.Any(item => item.Trigger == "/ola") &&
+        espansoImport.Snippets.Any(item => item.Trigger == "/obg") &&
+        espansoImport.Snippets.Any(item => item.Trigger == "/thanks"),
+        "importa Espanso convertendo todos os prefixos para barra");
+    Require(
+        espansoImport.Warnings.Count(item =>
+            item.Contains("prefixo ':' convertido", StringComparison.Ordinal)) == 3 &&
+        espansoImport.Warnings.Any(item =>
+            item.Contains("duplicado", StringComparison.OrdinalIgnoreCase)),
+        "importação informa conversões e conflito após normalizar prefixos");
 
     var usageFile = Path.Combine(root, "usage.json");
     var settingsFile = Path.Combine(root, "settings.json");
