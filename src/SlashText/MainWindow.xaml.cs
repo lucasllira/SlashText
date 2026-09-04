@@ -1879,6 +1879,7 @@ public partial class MainWindow : Window
         CaptureMonitorShortcutBox.Text = capture.ActiveMonitorShortcut;
         CaptureRegionShortcutBox.Text = capture.RegionShortcut;
         CaptureWindowShortcutBox.Text = capture.WindowShortcut;
+        CaptureScrollingShortcutBox.Text = capture.ScrollingShortcut;
         CaptureDirectoryBox.Text = capture.OutputDirectoryTemplate;
         CaptureFileNameBox.Text = capture.FileNameTemplate;
         SelectComboByTag(CaptureFormatBox, capture.ImageFormat);
@@ -1950,7 +1951,8 @@ public partial class MainWindow : Window
         {
             CaptureMonitorShortcutBox.Text.Trim(),
             CaptureRegionShortcutBox.Text.Trim(),
-            CaptureWindowShortcutBox.Text.Trim()
+            CaptureWindowShortcutBox.Text.Trim(),
+            CaptureScrollingShortcutBox.Text.Trim()
         };
         if (shortcuts.Any(item => !GlobalCaptureShortcutService.IsValid(item)))
         {
@@ -2000,6 +2002,7 @@ public partial class MainWindow : Window
             ActiveMonitorShortcut = shortcuts[0],
             RegionShortcut = shortcuts[1],
             WindowShortcut = shortcuts[2],
+            ScrollingShortcut = shortcuts[3],
             OutputDirectoryTemplate = CaptureDirectoryBox.Text.Trim(),
             FileNameTemplate = CaptureFileNameBox.Text.Trim(),
             ImageFormat = SelectedTag(CaptureFormatBox, "PNG"),
@@ -2033,7 +2036,8 @@ public partial class MainWindow : Window
             this,
             capture.ActiveMonitorShortcut,
             capture.RegionShortcut,
-            capture.WindowShortcut);
+            capture.WindowShortcut,
+            capture.ScrollingShortcut);
         CaptureShortcutStatusText.Text = errors.Count == 0
             ? "● Atalhos ativos"
             : string.Join(Environment.NewLine, errors);
@@ -2044,8 +2048,16 @@ public partial class MainWindow : Window
 
     private void CaptureShortcuts_OnTriggered(
         object? sender,
-        CaptureShortcutEventArgs e) =>
+        CaptureShortcutEventArgs e)
+    {
+        if (e.Action == CaptureShortcutAction.Scrolling)
+        {
+            _ = RunScrollingCaptureAsync(invokedByShortcut: true);
+            return;
+        }
+
         _ = RunCaptureAsync(e.Action, invokedByShortcut: true);
+    }
 
     private void CaptureActiveMonitor_OnClick(object sender, RoutedEventArgs e) =>
         _ = RunCaptureAsync(CaptureShortcutAction.ActiveMonitor, invokedByShortcut: false);
