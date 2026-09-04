@@ -1804,7 +1804,9 @@ public partial class MainWindow : Window
         CaptureAutoSaveCheckBox.IsChecked = capture.SaveAutomatically;
         CaptureCursorCheckBox.IsChecked = capture.IncludeCursor;
         CaptureHideSlashDeskCheckBox.IsChecked = capture.HideSlashDeskDuringCapture;
-        CaptureEditorCheckBox.IsChecked = capture.OpenEditorForMonitorAndWindow;
+        SelectComboByTag(
+            CaptureModeBox,
+            capture.OpenEditorForMonitorAndWindow ? "Editor" : "Direct");
         SelectComboByTag(CaptureDelayBox, capture.DelaySeconds.ToString());
         SelectComboByTag(CaptureRetentionBox, capture.HistoryRetentionDays.ToString());
         SelectComboByTag(RecordingTargetBox, "Monitor");
@@ -1884,6 +1886,17 @@ public partial class MainWindow : Window
             error = "Informe a pasta e o modelo de nome do arquivo.";
             return false;
         }
+        var openEditor = SelectedTag(CaptureModeBox, "Direct")
+            .Equals("Editor", StringComparison.OrdinalIgnoreCase);
+        var copyToClipboard = CaptureClipboardCheckBox.IsChecked == true;
+        var saveAutomatically = CaptureAutoSaveCheckBox.IsChecked == true;
+        if (!openEditor && !copyToClipboard && !saveAutomatically)
+        {
+            error = "No modo Captura direta, ative Copiar após capturar, " +
+                    "Salvar automaticamente ou ambas as opções.";
+            return false;
+        }
+
         var gifFps = ParseSelectedInt(GifFpsBox, 10);
         var gifQuality = ParseSelectedInt(GifQualityBox, 128);
         if (!RecordingPresetCatalog.GifFps.Any(item => item.Value == gifFps) ||
@@ -1908,11 +1921,11 @@ public partial class MainWindow : Window
             FileNameTemplate = CaptureFileNameBox.Text.Trim(),
             ImageFormat = SelectedTag(CaptureFormatBox, "PNG"),
             JpegQuality = quality,
-            CopyToClipboard = CaptureClipboardCheckBox.IsChecked == true,
-            SaveAutomatically = CaptureAutoSaveCheckBox.IsChecked == true,
+            CopyToClipboard = copyToClipboard,
+            SaveAutomatically = saveAutomatically,
             HideSlashDeskDuringCapture = CaptureHideSlashDeskCheckBox.IsChecked == true,
             IncludeCursor = CaptureCursorCheckBox.IsChecked == true,
-            OpenEditorForMonitorAndWindow = CaptureEditorCheckBox.IsChecked == true,
+            OpenEditorForMonitorAndWindow = openEditor,
             DelaySeconds = ParseSelectedInt(CaptureDelayBox, 0),
             HistoryRetentionDays = ParseSelectedInt(CaptureRetentionBox, 90),
             Recording = new RecordingSettings
