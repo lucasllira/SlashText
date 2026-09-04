@@ -1152,8 +1152,21 @@
                                         <CheckBox x:Name="CaptureHideSlashDeskCheckBox" Style="{StaticResource ToggleSwitch}"
                                                   Content="Ocultar SlashDesk durante a captura" Margin="0,5"
                                                   ToolTip="Desative para permitir que a janela do SlashDesk apareça na imagem"/>
-                                        <CheckBox x:Name="CaptureEditorCheckBox" Style="{StaticResource ToggleSwitch}"
-                                                  Content="Abrir editor para monitor e janela" Margin="0,5"/>
+                                        <StackPanel Margin="0,10,0,0">
+                                            <TextBlock Text="Após capturar monitor ou janela"
+                                                       Foreground="{DynamicResource MutedBrush}"/>
+                                            <ComboBox x:Name="CaptureModeBox" Margin="0,5,0,0">
+                                                <ComboBoxItem Content="Direta — copiar e salvar automaticamente"
+                                                              Tag="Direct"/>
+                                                <ComboBoxItem Content="Editor — revisar antes de concluir"
+                                                              Tag="Editor"/>
+                                            </ComboBox>
+                                            <TextBlock Margin="0,5,0,0"
+                                                       FontSize="12"
+                                                       TextWrapping="Wrap"
+                                                       Foreground="{DynamicResource MutedBrush}"
+                                                       Text="Direta aplica as opções acima imediatamente. Editor permite ajustar a imagem e só copia ou salva ao concluir."/>
+                                        </StackPanel>
                                         <Grid Margin="0,10,0,0">
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="*"/>
