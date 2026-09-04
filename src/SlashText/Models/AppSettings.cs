@@ -37,6 +37,8 @@ public sealed class CaptureSettings
     public bool CopyToClipboard { get; set; } = true;
     public bool SaveAutomatically { get; set; } = true;
     public bool HideSlashDeskDuringCapture { get; set; } = true;
+    public bool ShouldHideSlashDesk(bool windowIsVisible) =>
+        HideSlashDeskDuringCapture && windowIsVisible;
     public int DelaySeconds { get; set; }
     public bool IncludeCursor { get; set; }
     public bool OpenEditorForMonitorAndWindow { get; set; } = true;
