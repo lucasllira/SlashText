@@ -927,7 +927,10 @@ public sealed class CaptureService
     [DllImport("user32.dll")]
     private static extern bool SetForegroundWindow(IntPtr window);
 
-    [DllImport("user32.dll")]\n    private static extern short GetAsyncKeyState(int virtualKey);\n\n    [DllImport("user32.dll", EntryPoint = "keybd_event")]
+    [DllImport("user32.dll")]
+    private static extern short GetAsyncKeyState(int virtualKey);
+
+    [DllImport("user32.dll", EntryPoint = "keybd_event")]
     private static extern void KeybdEvent(
         byte virtualKey,
         byte scanCode,
@@ -991,7 +994,12 @@ public sealed class CaptureService
     }
 
     private const int CursorShowing = 1;
-    private const byte VirtualKeyPageDown = 0x22;\n    private const int VirtualKeyShift = 0x10;\n    private const int VirtualKeyControl = 0x11;\n    private const int VirtualKeyMenu = 0x12;\n    private const int VirtualKeyLeftWindows = 0x5B;\n    private const int VirtualKeyRightWindows = 0x5C;
+    private const byte VirtualKeyPageDown = 0x22;
+    private const int VirtualKeyShift = 0x10;
+    private const int VirtualKeyControl = 0x11;
+    private const int VirtualKeyMenu = 0x12;
+    private const int VirtualKeyLeftWindows = 0x5B;
+    private const int VirtualKeyRightWindows = 0x5C;
     private const uint KeyEventKeyUp = 0x0002;
 
     [StructLayout(LayoutKind.Sequential)]
