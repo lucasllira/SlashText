@@ -41,7 +41,7 @@ public sealed class CaptureSettings
         HideSlashDeskDuringCapture && windowIsVisible;
     public int DelaySeconds { get; set; }
     public bool IncludeCursor { get; set; }
-    public bool OpenEditorForMonitorAndWindow { get; set; } = true;
+    public bool OpenEditorForMonitorAndWindow { get; set; }
     public int HistoryRetentionDays { get; set; } = 90;
     public RecordingSettings Recording { get; set; } = new();
 }
