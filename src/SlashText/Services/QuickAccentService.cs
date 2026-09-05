@@ -181,6 +181,18 @@ public sealed class QuickAccentService : IDisposable
     public static bool ShouldUseUppercase(bool shiftDown, bool capsLockOn) =>
         shiftDown ^ capsLockOn;
 
+    internal static bool ShouldHandleInput(
+        bool enabled,
+        bool ownProcessInForeground,
+        bool excludedApp)
+    {
+        // O processo próprio é permitido: campos editáveis do SlashDesk também
+        // devem receber o Acento Rápido. A expansão de snippets possui seu
+        // próprio bloqueio para janelas do aplicativo.
+        _ = ownProcessInForeground;
+        return enabled && !excludedApp;
+    }
+
     public void Start()
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
@@ -212,7 +224,10 @@ public sealed class QuickAccentService : IDisposable
             return CallNextHookEx(_hook, code, message, data);
         }
 
-        if (!Enabled || IsOwnProcessInForeground() || IsExcludedApp())
+        if (!ShouldHandleInput(
+                Enabled,
+                IsOwnProcessInForeground(),
+                IsExcludedApp()))
         {
             ResetPendingState();
             return CallNextHookEx(_hook, code, message, data);
@@ -361,12 +376,13 @@ public sealed class QuickAccentService : IDisposable
                 return;
             }
 
-            if (!Enabled ||
+            if (!ShouldHandleInput(
+                    Enabled,
+                    IsOwnProcessInForeground(),
+                    IsExcludedApp()) ||
                 !IsKeyDown(_baseKey.Value) ||
                 !IsKeyDown(ActivationVirtualKey()) ||
-                GetForegroundWindow() != _pendingWindow ||
-                IsOwnProcessInForeground() ||
-                IsExcludedApp())
+                GetForegroundWindow() != _pendingWindow)
             {
                 ResetLocked();
                 changed = CurrentChangedEvent(visible: false);

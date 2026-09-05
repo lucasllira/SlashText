@@ -32,6 +32,22 @@ Require(
 Require(
     !QuickAccentService.ShouldUseUppercase(shiftDown: true, capsLockOn: true),
     "Shift inverte Caps Lock");
+Require(
+    QuickAccentService.ShouldHandleInput(
+        enabled: true,
+        ownProcessInForeground: true,
+        excludedApp: false),
+    "Acento Rápido funciona em campos editáveis do próprio SlashDesk");
+Require(
+    !QuickAccentService.ShouldHandleInput(
+        enabled: true,
+        ownProcessInForeground: false,
+        excludedApp: true) &&
+    !QuickAccentService.ShouldHandleInput(
+        enabled: false,
+        ownProcessInForeground: true,
+        excludedApp: false),
+    "Acento Rápido respeita estado inativo e aplicativos excluídos");
 var translationFlags = typeof(KeyboardHookService).GetField(
     "ToUnicodeNoStateChange",
     BindingFlags.NonPublic | BindingFlags.Static);
