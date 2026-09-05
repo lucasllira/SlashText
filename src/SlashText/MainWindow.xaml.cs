@@ -53,6 +53,7 @@ public partial class MainWindow : Window
     private bool _exitRequested;
     private bool _servicesDisposed;
     private bool _initialized;
+    private bool _snippetStorageAvailable = true;
     private bool _updatingQuickAccentSets;
     private readonly DispatcherTimer _quickAccentPreviewTimer =
         new() { Interval = TimeSpan.FromMilliseconds(900) };
@@ -106,9 +107,18 @@ public partial class MainWindow : Window
         {
             return;
         }
+
+        var startup = new StartupModuleCoordinator();
         try
         {
-            _settings = await _settingsStore.LoadAsync();
+            var settingsLoaded = await startup.RunAsync(
+                "Configurações",
+                async () => _settings = await _settingsStore.LoadAsync());
+            if (!settingsLoaded)
+            {
+                _settings = new AppSettings();
+            }
+
             _settings.Capture ??= new CaptureSettings();
             _settings.Capture.Recording ??= new RecordingSettings();
             RecordingPresetCatalog.Normalize(_settings.Capture.Recording);
@@ -117,43 +127,80 @@ public partial class MainWindow : Window
             {
                 ApplyTrayTheme(startupTrayMenu);
             }
-            await _usageService.LoadAsync();
+
+            await startup.RunAsync(
+                "Estatísticas",
+                _usageService.LoadAsync);
+
             CloseToTrayCheckBox.IsChecked = _settings.CloseToTray;
             StartWithWindowsCheckBox.IsChecked = _settings.StartWithWindows;
             ShowSuggestionsCheckBox.IsChecked = _settings.ShowSuggestions;
             CheckUpdatesCheckBox.IsChecked = _settings.CheckUpdatesOnStartup;
-            AboutVersionText.Text = $"Versão {ProductVersion()} · Licença MIT · código aberto";
-            SettingsVersionText.Text = $"Versão atual: {ProductVersion()}";
-            UpdateChannelText.Text = $"Canal: estável · modo {AppPaths.Mode.ToString().ToLowerInvariant()}";
+            AboutVersionText.Text =
+                $"Versão {ProductVersion()} · Licença MIT · código aberto";
+            SettingsVersionText.Text =
+                $"Versão atual: {ProductVersion()}";
+            UpdateChannelText.Text =
+                $"Canal: estável · modo {AppPaths.Mode.ToString().ToLowerInvariant()}";
             BackupLocationText.Text =
                 $"Backups em {AppPaths.BackupsDirectory}. Nenhum arquivo é enviado para a nuvem.";
-            await RefreshUpdateStatusAsync();
+
+            await startup.RunAsync(
+                "Estado de atualização",
+                RefreshUpdateStatusAsync);
+
             SelectComboByTag(ThemeBox, _settings.Theme);
-            QuickAccentEnabledCheckBox.IsChecked = _settings.QuickAccentEnabled;
-            SelectComboByTag(QuickAccentActivationBox, _settings.QuickAccentActivationKey);
-            SelectComboByTag(QuickAccentPositionBox, _settings.QuickAccentToolbarPosition);
-            QuickAccentUnicodeCheckBox.IsChecked = _settings.QuickAccentShowUnicode;
-            QuickAccentSortCheckBox.IsChecked = _settings.QuickAccentSortByUsage;
-            QuickAccentDelayBox.Text = _settings.QuickAccentInputDelayMs.ToString();
+            QuickAccentEnabledCheckBox.IsChecked =
+                _settings.QuickAccentEnabled;
+            SelectComboByTag(
+                QuickAccentActivationBox,
+                _settings.QuickAccentActivationKey);
+            SelectComboByTag(
+                QuickAccentPositionBox,
+                _settings.QuickAccentToolbarPosition);
+            QuickAccentUnicodeCheckBox.IsChecked =
+                _settings.QuickAccentShowUnicode;
+            QuickAccentSortCheckBox.IsChecked =
+                _settings.QuickAccentSortByUsage;
+            QuickAccentDelayBox.Text =
+                _settings.QuickAccentInputDelayMs.ToString();
             QuickAccentDelaySlider.Value = Math.Clamp(
                 _settings.QuickAccentInputDelayMs,
                 (int)QuickAccentDelaySlider.Minimum,
                 (int)QuickAccentDelaySlider.Maximum);
-            QuickAccentExcludedAppsBox.Text = _settings.QuickAccentExcludedApps;
-            ApplyQuickAccentCharacterSetSelection(_settings.QuickAccentCharacterSets);
+            QuickAccentExcludedAppsBox.Text =
+                _settings.QuickAccentExcludedApps;
+            ApplyQuickAccentCharacterSetSelection(
+                _settings.QuickAccentCharacterSets);
             ApplyQuickAccentSettings();
-            await _captureService.LoadAsync();
-            await _captureService.CleanOlderThanAsync(
-                _settings.Capture.HistoryRetentionDays,
-                deleteFiles: false);
+
+            await startup.RunAsync(
+                "Histórico de captura",
+                async () =>
+                {
+                    await _captureService.LoadAsync();
+                    await _captureService.CleanOlderThanAsync(
+                        _settings.Capture.HistoryRetentionDays,
+                        deleteFiles: false);
+                });
             LoadCaptureSettings();
             _initialized = true;
 
-            var loaded = await _repository.LoadAsync();
+            IReadOnlyList<Snippet> loaded = [];
+            _snippetStorageAvailable = await startup.RunAsync(
+                "Atalhos",
+                async () => loaded = await _repository.LoadAsync());
             ReplaceList(loaded);
-            _backupService.CreateDailySnapshot();
-            StartMonitoring();
-            _quickAccentService.Start();
+
+            startup.Run(
+                "Backup diário",
+                _backupService.CreateDailySnapshot);
+            startup.Run(
+                "Monitor de atalhos",
+                StartMonitoring);
+            startup.Run(
+                "Acento Rápido",
+                _quickAccentService.Start);
 
             if (_snippets.Count > 0)
             {
@@ -166,28 +213,93 @@ public partial class MainWindow : Window
 
             RefreshStatistics();
             ShowView(ShortcutsView, ShortcutsTabButton);
-            StatusText.Text = $"{_snippets.Count} atalho(s) carregado(s)";
-            ConfigureCaptureShortcuts();
+            StatusText.Text =
+                $"{_snippets.Count} atalho(s) carregado(s)";
+            startup.Run(
+                "Atalhos globais de captura",
+                ConfigureCaptureShortcuts);
             RefreshCaptureHistory();
 
             if (!_settings.OnboardingCompleted)
             {
-                var onboarding = new OnboardingWindow { Owner = this };
-                onboarding.ShowDialog();
-                _settings.OnboardingCompleted = true;
-                await _settingsStore.SaveAsync(_settings);
+                await startup.RunAsync(
+                    "Onboarding",
+                    async () =>
+                    {
+                        var onboarding =
+                            new OnboardingWindow { Owner = this };
+                        onboarding.ShowDialog();
+                        _settings.OnboardingCompleted = true;
+                        await _settingsStore.SaveAsync(_settings);
+                    });
             }
+
             StartUpdateMonitor();
+            ShowStartupWarnings(startup);
         }
         catch (Exception exception)
         {
+            AppDiagnosticLog.Write(
+                "startup.shell.failed",
+                ("exceptionType", exception.GetType().FullName),
+                ("hresult", $"0x{exception.HResult:X8}"));
             MessageBox.Show(
-                $"Não foi possível iniciar o SlashDesk.\n\n{exception.Message}",
+                "O SlashDesk encontrou uma falha inesperada ao preparar a interface. " +
+                "Nenhum dado foi apagado. Consulte a pasta Logs para o diagnóstico.",
                 "SlashDesk",
                 MessageBoxButton.OK,
                 MessageBoxImage.Warning);
             BeginNewSnippet();
         }
+    }
+
+    private void ShowStartupWarnings(
+        StartupModuleCoordinator startup)
+    {
+        if (startup.Failures.Count == 0)
+        {
+            return;
+        }
+
+        var modules = string.Join(
+            Environment.NewLine,
+            startup.Failures
+                .Select(failure => $"• {failure.Module}")
+                .Distinct(StringComparer.CurrentCultureIgnoreCase));
+        var protectedStorage = _snippetStorageAvailable
+            ? string.Empty
+            : Environment.NewLine + Environment.NewLine +
+              "O arquivo snippets.md não será alterado enquanto estiver indisponível. " +
+              "Use Restaurar ZIP na área de backups para recuperar os atalhos.";
+
+        StatusText.Text =
+            $"SlashDesk iniciado em modo reduzido · {startup.Failures.Count} módulo(s) indisponível(is)";
+        MessageBox.Show(
+            "O SlashDesk iniciou, mas alguns módulos não puderam ser carregados:" +
+            Environment.NewLine + Environment.NewLine +
+            modules +
+            protectedStorage +
+            Environment.NewLine + Environment.NewLine +
+            "Os demais recursos continuam disponíveis. Consulte a pasta Logs para detalhes técnicos.",
+            "SlashDesk iniciado em modo reduzido",
+            MessageBoxButton.OK,
+            MessageBoxImage.Warning);
+    }
+
+    private bool EnsureSnippetStorageAvailable()
+    {
+        if (_snippetStorageAvailable)
+        {
+            return true;
+        }
+
+        MessageBox.Show(
+            "O arquivo snippets.md não pôde ser carregado e está protegido contra alterações. " +
+            "Restaure um backup válido antes de salvar, excluir ou importar atalhos.",
+            "Atalhos em modo protegido",
+            MessageBoxButton.OK,
+            MessageBoxImage.Warning);
+        return false;
     }
 
     private void InitializeTray()
@@ -757,6 +869,11 @@ public partial class MainWindow : Window
 
     private async void SaveSnippet_OnClick(object sender, RoutedEventArgs e)
     {
+        if (!EnsureSnippetStorageAvailable())
+        {
+            return;
+        }
+
         var previous = _selected;
         var format = FormatBox.SelectedIndex == 1 ? SnippetFormat.Markdown : SnippetFormat.Plain;
         var candidate = new Snippet
@@ -817,6 +934,11 @@ public partial class MainWindow : Window
 
     private async void DeleteSnippet_OnClick(object sender, RoutedEventArgs e)
     {
+        if (!EnsureSnippetStorageAvailable())
+        {
+            return;
+        }
+
         if (_selected is null)
         {
             return;
@@ -1418,6 +1540,11 @@ public partial class MainWindow : Window
 
     private async void ImportSnippets_OnClick(object sender, RoutedEventArgs e)
     {
+        if (!EnsureSnippetStorageAvailable())
+        {
+            return;
+        }
+
         var source = ImportSourceBox.SelectedItem is ComboBoxItem { Tag: string sourceTag } &&
                      Enum.TryParse<SnippetImportSource>(sourceTag, out var parsed)
             ? parsed
@@ -1554,7 +1681,9 @@ public partial class MainWindow : Window
             _backupService.RestoreSnapshot(picker.FileName);
             _settings = await _settingsStore.LoadAsync();
             ThemeService.Apply(_settings.Theme);
-            ReplaceList(await _repository.LoadAsync());
+            var restoredSnippets = await _repository.LoadAsync();
+            ReplaceList(restoredSnippets);
+            _snippetStorageAvailable = true;
             _keyboardHook.UpdateSnippets(_snippets);
             await _usageService.LoadAsync();
             RefreshStatistics();

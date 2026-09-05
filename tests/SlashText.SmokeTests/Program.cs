@@ -48,6 +48,35 @@ Require(
         ownProcessInForeground: true,
         excludedApp: false),
     "Acento Rápido respeita estado inativo e aplicativos excluídos");
+var startupCoordinator = new StartupModuleCoordinator();
+var healthyModuleStarted = false;
+Require(
+    !await startupCoordinator.RunAsync(
+        "Histórico de captura",
+        () => Task.FromException(
+            new IOException("C:\\Users\\Pessoa\\dado-privado.json"))) &&
+    await startupCoordinator.RunAsync(
+        "Atalhos",
+        () =>
+        {
+            healthyModuleStarted = true;
+            return Task.CompletedTask;
+        }) &&
+    healthyModuleStarted,
+    "falha em módulo opcional não impede iniciar módulo saudável");
+Require(
+    startupCoordinator.Failures.Count == 1 &&
+    startupCoordinator.Failures[0].Module == "Histórico de captura" &&
+    startupCoordinator.Failures[0].ExceptionType ==
+        typeof(IOException).FullName &&
+    typeof(StartupModuleFailure).GetProperty("Message") is null,
+    "diagnóstico de inicialização não armazena conteúdo ou mensagem privada");
+Require(
+    typeof(SlashText.MainWindow).GetMethod(
+        "EnsureSnippetStorageAvailable",
+        BindingFlags.NonPublic | BindingFlags.Instance) is not null,
+    "falha dos atalhos ativa barreira contra sobrescrita");
+
 var translationFlags = typeof(KeyboardHookService).GetField(
     "ToUnicodeNoStateChange",
     BindingFlags.NonPublic | BindingFlags.Static);
