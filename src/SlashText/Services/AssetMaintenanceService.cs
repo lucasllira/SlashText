@@ -17,6 +17,8 @@ public sealed record AssetMaintenanceReport(
     public bool CanDelete => UnsafeReferenceCount == 0;
 }
 
+public sealed record AssetCleanupResult(string BackupPath, int DeletedCount);
+
 public sealed partial class AssetMaintenanceService
 {
     private readonly string _assetsDirectory;
@@ -85,7 +87,22 @@ public sealed partial class AssetMaintenanceService
         return new AssetMaintenanceReport(orphans, referenced.Count, unsafeReferences);
     }
 
-    public int DeleteOrphans(AssetMaintenanceReport report)
+    public AssetCleanupResult DeleteOrphansAfterBackup(
+        AssetMaintenanceReport report,
+        Func<string> createBackup)
+    {
+        ArgumentNullException.ThrowIfNull(createBackup);
+        if (!report.CanDelete)
+        {
+            throw new InvalidOperationException(
+                "A limpeza foi bloqueada porque existem referências locais de imagem inválidas.");
+        }
+
+        var backupPath = createBackup();
+        return new AssetCleanupResult(backupPath, DeleteOrphans(report));
+    }
+
+    private int DeleteOrphans(AssetMaintenanceReport report)
     {
         if (!report.CanDelete)
         {
