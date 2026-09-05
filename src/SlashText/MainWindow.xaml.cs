@@ -109,6 +109,10 @@ public partial class MainWindow : Window
             _settings.Capture.Recording ??= new RecordingSettings();
             RecordingPresetCatalog.Normalize(_settings.Capture.Recording);
             ThemeService.Apply(_settings.Theme);
+            if (_trayIcon?.ContextMenuStrip is { } startupTrayMenu)
+            {
+                ApplyTrayTheme(startupTrayMenu);
+            }
             await _usageService.LoadAsync();
             CloseToTrayCheckBox.IsChecked = _settings.CloseToTray;
             StartWithWindowsCheckBox.IsChecked = _settings.StartWithWindows;
@@ -346,14 +350,48 @@ public partial class MainWindow : Window
 
     private static void ApplyTrayTheme(Forms.ContextMenuStrip menu)
     {
-        menu.BackColor = ThemeService.IsDark
+        var background = ThemeService.IsDark
             ? DrawingColor.FromArgb(15, 26, 35)
             : DrawingColor.FromArgb(252, 253, 252);
-        menu.ForeColor = ThemeService.IsDark
+        var foreground = ThemeService.IsDark
             ? DrawingColor.FromArgb(243, 246, 248)
             : DrawingColor.FromArgb(21, 33, 43);
-        menu.Renderer = new Forms.ToolStripProfessionalRenderer(
+        var renderer = new Forms.ToolStripProfessionalRenderer(
             new TrayColorTable(ThemeService.IsDark));
+        menu.BackColor = background;
+        menu.ForeColor = foreground;
+        menu.Renderer = renderer;
+        ApplyTrayItemsTheme(
+            menu.Items,
+            background,
+            foreground,
+            renderer);
+    }
+
+    private static void ApplyTrayItemsTheme(
+        Forms.ToolStripItemCollection items,
+        DrawingColor background,
+        DrawingColor foreground,
+        Forms.ToolStripRenderer renderer)
+    {
+        foreach (Forms.ToolStripItem item in items)
+        {
+            item.BackColor = background;
+            item.ForeColor = foreground;
+            if (item is not Forms.ToolStripMenuItem menuItem)
+            {
+                continue;
+            }
+
+            menuItem.DropDown.BackColor = background;
+            menuItem.DropDown.ForeColor = foreground;
+            menuItem.DropDown.Renderer = renderer;
+            ApplyTrayItemsTheme(
+                menuItem.DropDownItems,
+                background,
+                foreground,
+                renderer);
+        }
     }
 
     private void StartMonitoring()
