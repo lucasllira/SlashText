@@ -111,6 +111,8 @@ public sealed class QuickAccentService : IDisposable
 
     private readonly LowLevelKeyboardProc _callback;
     private readonly Dictionary<char, long> _usage = [];
+    private readonly object _stateSync = new();
+    private readonly QuickAccentDelayController _delayController = new();
     private string[] _characterSets = ["PortugueseBrazil"];
     private IntPtr _hook;
     private int? _baseKey;
@@ -119,6 +121,8 @@ public sealed class QuickAccentService : IDisposable
     private int _selected;
     private bool _active;
     private bool _activationDown;
+    private bool _activationSuppressed;
+    private IntPtr _pendingWindow;
     private bool _disposed;
 
     public QuickAccentService() => _callback = HookCallback;
@@ -138,21 +142,26 @@ public sealed class QuickAccentService : IDisposable
         var selected = new HashSet<string>(
             characterSets ?? [],
             StringComparer.OrdinalIgnoreCase);
-        _characterSets = CharacterSetOrder
+        var resolved = CharacterSetOrder
             .Where(selected.Contains)
             .ToArray();
-        if (_characterSets.Length == 0)
+        lock (_stateSync)
         {
-            _characterSets = ["PortugueseBrazil"];
+            _characterSets = resolved.Length == 0
+                ? ["PortugueseBrazil"]
+                : resolved;
         }
     }
 
     public void SetUsage(IReadOnlyDictionary<char, long> usage)
     {
-        _usage.Clear();
-        foreach (var item in usage)
+        lock (_stateSync)
         {
-            _usage[item.Key] = item.Value;
+            _usage.Clear();
+            foreach (var item in usage)
+            {
+                _usage[item.Key] = item.Value;
+            }
         }
     }
 
@@ -198,112 +207,242 @@ public sealed class QuickAccentService : IDisposable
         }
 
         var keyboard = Marshal.PtrToStructure<KeyboardData>(data);
-        if ((keyboard.Flags & LlkhfInjected) != 0 ||
-            !Enabled ||
-            IsOwnProcessInForeground() ||
-            IsExcludedApp())
+        if ((keyboard.Flags & LlkhfInjected) != 0)
         {
+            return CallNextHookEx(_hook, code, message, data);
+        }
+
+        if (!Enabled || IsOwnProcessInForeground() || IsExcludedApp())
+        {
+            ResetPendingState();
             return CallNextHookEx(_hook, code, message, data);
         }
 
         var key = (int)keyboard.VirtualKeyCode;
         var isDown = message.ToInt32() is WmKeyDown or WmSysKeyDown;
         var isUp = message.ToInt32() is WmKeyUp or WmSysKeyUp;
+        var suppress = false;
+        var replayActivation = false;
+        QuickAccentChangedEventArgs? changed = null;
+        QuickAccentCharacterInsertedEventArgs? inserted = null;
 
-        if (isDown && ChoicesFor(key).Length > 0 && _baseKey is null)
+        lock (_stateSync)
         {
-            _baseKey = key;
-            _basePressedAt = Environment.TickCount64;
+            if (isDown && ChoicesFor(key).Length > 0 && _baseKey is null)
+            {
+                _baseKey = key;
+                _basePressedAt = Environment.TickCount64;
+            }
+
+            if (isDown && _baseKey is not null &&
+                key == ActivationVirtualKey())
+            {
+                suppress = true;
+                if (!_activationDown)
+                {
+                    _activationDown = true;
+                    if (_active)
+                    {
+                        _selected = (_selected + 1) % _choices.Length;
+                        changed = CurrentChangedEvent(visible: true);
+                    }
+                    else
+                    {
+                        var remaining = RemainingDelayMilliseconds(
+                            _basePressedAt,
+                            Environment.TickCount64,
+                            InputDelayMs);
+                        if (remaining == 0)
+                        {
+                            ActivateLocked();
+                            changed = CurrentChangedEvent(visible: true);
+                        }
+                        else
+                        {
+                            _activationSuppressed = true;
+                            _pendingWindow = GetForegroundWindow();
+                            _delayController.Schedule(
+                                remaining,
+                                TryActivatePending);
+                        }
+                    }
+                }
+            }
+            else if (isUp && key == ActivationVirtualKey())
+            {
+                _activationDown = false;
+                if (_active)
+                {
+                    suppress = true;
+                }
+                else if (_activationSuppressed)
+                {
+                    suppress = true;
+                    replayActivation = true;
+                    ResetLocked();
+                    changed = CurrentChangedEvent(visible: false);
+                }
+            }
+            else if (_active && isDown && key is 0x25 or 0x27)
+            {
+                _selected = key == 0x25
+                    ? (_selected - 1 + _choices.Length) % _choices.Length
+                    : (_selected + 1) % _choices.Length;
+                changed = CurrentChangedEvent(visible: true);
+                suppress = true;
+            }
+            else if (_active && isDown && key == 0x1B)
+            {
+                ResetLocked();
+                changed = CurrentChangedEvent(visible: false);
+                suppress = true;
+            }
+
+            if (isUp && _baseKey == key)
+            {
+                if (_active && _choices.Length > 0)
+                {
+                    var selectedCharacter = _choices[_selected];
+                    if (ReplaceBaseCharacter(selectedCharacter))
+                    {
+                        _usage[selectedCharacter] =
+                            _usage.GetValueOrDefault(selectedCharacter) + 1;
+                        inserted =
+                            new QuickAccentCharacterInsertedEventArgs(
+                                selectedCharacter);
+                    }
+                }
+                else if (_activationSuppressed)
+                {
+                    replayActivation = true;
+                }
+
+                ResetLocked();
+                changed = CurrentChangedEvent(visible: false);
+            }
         }
 
-        if (isDown && _baseKey is not null && key == ActivationVirtualKey())
+        if (replayActivation)
         {
-            if (_activationDown)
+            SendVirtualKeyStroke(ActivationVirtualKey());
+        }
+        if (changed is not null)
+        {
+            Changed?.Invoke(this, changed);
+        }
+        if (inserted is not null)
+        {
+            CharacterInserted?.Invoke(this, inserted);
+        }
+
+        return suppress
+            ? new IntPtr(1)
+            : CallNextHookEx(_hook, code, message, data);
+    }
+
+    internal static int RemainingDelayMilliseconds(
+        long pressedAt,
+        long now,
+        int configuredDelay)
+    {
+        var delay = Math.Clamp(configuredDelay, 0, 2000);
+        var elapsed = Math.Max(0, now - pressedAt);
+        return (int)Math.Max(0, delay - elapsed);
+    }
+
+    private void TryActivatePending()
+    {
+        QuickAccentChangedEventArgs? changed = null;
+        lock (_stateSync)
+        {
+            if (_baseKey is null || !_activationDown ||
+                !_activationSuppressed || _active)
             {
-                return new IntPtr(1);
+                return;
             }
 
-            if (Environment.TickCount64 - _basePressedAt < Math.Clamp(InputDelayMs, 0, 2000))
+            if (!Enabled ||
+                !IsKeyDown(_baseKey.Value) ||
+                !IsKeyDown(ActivationVirtualKey()) ||
+                GetForegroundWindow() != _pendingWindow ||
+                IsOwnProcessInForeground() ||
+                IsExcludedApp())
             {
-                return CallNextHookEx(_hook, code, message, data);
-            }
-
-            _activationDown = true;
-            if (!_active)
-            {
-                _choices = MatchCase(
-                    ChoicesFor(_baseKey.Value),
-                    ShouldUseUppercase(
-                        IsKeyDown(VkShift),
-                        IsKeyToggled(VkCapital)));
-                if (SortByUsage)
-                {
-                    _choices = new string(_choices
-                        .OrderByDescending(character => _usage.GetValueOrDefault(character))
-                        .ToArray());
-                }
-                _selected = 0;
-                _active = true;
+                ResetLocked();
+                changed = CurrentChangedEvent(visible: false);
             }
             else
             {
-                _selected = (_selected + 1) % _choices.Length;
-            }
-
-            Changed?.Invoke(this, new QuickAccentChangedEventArgs(_choices, _selected, true));
-            return new IntPtr(1);
-        }
-
-        if (isUp && key == ActivationVirtualKey())
-        {
-            _activationDown = false;
-            if (_active)
-            {
-                return new IntPtr(1);
+                ActivateLocked();
+                changed = CurrentChangedEvent(visible: true);
             }
         }
 
-        if (_active && isDown && key is 0x25 or 0x27)
+        if (changed is not null)
         {
-            _selected = key == 0x25
-                ? (_selected - 1 + _choices.Length) % _choices.Length
-                : (_selected + 1) % _choices.Length;
-            Changed?.Invoke(this, new QuickAccentChangedEventArgs(_choices, _selected, true));
-            return new IntPtr(1);
+            Changed?.Invoke(this, changed);
         }
-
-        if (_active && isDown && key == 0x1B)
-        {
-            Reset();
-            return new IntPtr(1);
-        }
-
-        if (isUp && _baseKey == key)
-        {
-            if (_active && _choices.Length > 0)
-            {
-                var selectedCharacter = _choices[_selected];
-                if (ReplaceBaseCharacter(selectedCharacter))
-                {
-                    _usage[selectedCharacter] = _usage.GetValueOrDefault(selectedCharacter) + 1;
-                    CharacterInserted?.Invoke(
-                        this,
-                        new QuickAccentCharacterInsertedEventArgs(selectedCharacter));
-                }
-            }
-            Reset();
-        }
-
-        return CallNextHookEx(_hook, code, message, data);
     }
 
-    private void Reset()
+    private void ActivateLocked()
     {
+        _delayController.Cancel();
+        _activationSuppressed = false;
+        _pendingWindow = IntPtr.Zero;
+        _choices = MatchCase(
+            ChoicesFor(_baseKey!.Value),
+            ShouldUseUppercase(
+                IsKeyDown(VkShift),
+                IsKeyToggled(VkCapital)));
+        if (SortByUsage)
+        {
+            _choices = new string(_choices
+                .OrderByDescending(character =>
+                    _usage.GetValueOrDefault(character))
+                .ToArray());
+        }
+        _selected = 0;
+        _active = _choices.Length > 0;
+    }
+
+    private QuickAccentChangedEventArgs CurrentChangedEvent(bool visible) =>
+        new(_choices, _selected, visible && _active);
+
+    private void ResetPendingState()
+    {
+        QuickAccentChangedEventArgs? changed = null;
+        lock (_stateSync)
+        {
+            if (_baseKey is null && !_active && !_activationSuppressed)
+            {
+                return;
+            }
+            ResetLocked();
+            changed = CurrentChangedEvent(visible: false);
+        }
+        Changed?.Invoke(this, changed);
+    }
+
+    private void ResetLocked()
+    {
+        _delayController.Cancel();
         _baseKey = null;
         _active = false;
         _activationDown = false;
+        _activationSuppressed = false;
+        _pendingWindow = IntPtr.Zero;
         _choices = string.Empty;
-        Changed?.Invoke(this, new QuickAccentChangedEventArgs(string.Empty, 0, false));
+        _selected = 0;
+    }
+
+    private static void SendVirtualKeyStroke(int virtualKey)
+    {
+        var inputs = new[]
+        {
+            KeyInput((ushort)virtualKey, 0, false),
+            KeyInput((ushort)virtualKey, 0, true)
+        };
+        _ = SendInput((uint)inputs.Length, inputs, Marshal.SizeOf<Input>());
     }
 
     private int ActivationVirtualKey() => ActivationKey switch
@@ -409,6 +548,7 @@ public sealed class QuickAccentService : IDisposable
         {
             return;
         }
+        _delayController.Dispose();
         if (_hook != IntPtr.Zero)
         {
             _ = UnhookWindowsHookEx(_hook);
@@ -498,6 +638,72 @@ public sealed class QuickAccentService : IDisposable
 
     [DllImport("user32.dll")]
     private static extern uint GetWindowThreadProcessId(IntPtr window, out uint processId);
+}
+
+internal sealed class QuickAccentDelayController : IDisposable
+{
+    private readonly object _sync = new();
+    private Timer? _timer;
+    private long _generation;
+    private bool _disposed;
+
+    public void Schedule(int delayMilliseconds, Action callback)
+    {
+        ArgumentNullException.ThrowIfNull(callback);
+        long generation;
+        lock (_sync)
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            CancelLocked();
+            generation = _generation;
+            _timer = new Timer(
+                _ =>
+                {
+                    lock (_sync)
+                    {
+                        if (_disposed || generation != _generation)
+                        {
+                            return;
+                        }
+                        _timer?.Dispose();
+                        _timer = null;
+                        _generation++;
+                    }
+                    callback();
+                },
+                null,
+                Math.Max(0, delayMilliseconds),
+                Timeout.Infinite);
+        }
+    }
+
+    public void Cancel()
+    {
+        lock (_sync)
+        {
+            CancelLocked();
+        }
+    }
+
+    private void CancelLocked()
+    {
+        _generation++;
+        _timer?.Dispose();
+        _timer = null;
+    }
+
+    public void Dispose()
+    {
+        lock (_sync)
+        {
+            if (_disposed)
+            {
+                return;
+            }
+            CancelLocked();
+            _disposed = true;
+        }
+    }
 }
 
 public sealed class QuickAccentChangedEventArgs(
