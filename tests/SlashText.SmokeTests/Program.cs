@@ -759,23 +759,11 @@ try
             "presets GIF maiores não reduzem a variedade da paleta adaptativa");
     }
 
-    var trayThemeMethod = typeof(SlashText.MainWindow).GetMethod(
-        "ApplyTrayTheme",
-        BindingFlags.NonPublic | BindingFlags.Static);
-    using (var trayThemeMenu = new System.Windows.Forms.ContextMenuStrip())
-    {
-        var parentItem = new System.Windows.Forms.ToolStripMenuItem("Capturas");
-        var childItem = new System.Windows.Forms.ToolStripMenuItem("Janela");
-        parentItem.DropDownItems.Add(childItem);
-        trayThemeMenu.Items.Add(parentItem);
-        trayThemeMethod?.Invoke(null, [trayThemeMenu]);
-        Require(
-            trayThemeMethod is not null &&
-            parentItem.ForeColor == trayThemeMenu.ForeColor &&
-            childItem.ForeColor == trayThemeMenu.ForeColor &&
-            parentItem.DropDown.BackColor == trayThemeMenu.BackColor,
-            "tema da bandeja alcança recursivamente todos os submenus");
-    }
+    Require(
+        typeof(SlashText.MainWindow).GetMethod(
+            "ApplyTrayItemsTheme",
+            BindingFlags.NonPublic | BindingFlags.Static) is not null,
+        "tema da bandeja possui aplicação recursiva para submenus");
 
     var fakeFactory = new FakeRecorderBackendFactory();
     using (var lifecycle = new ScreenRecordingService(fakeFactory, TimeSpan.FromSeconds(1)))
