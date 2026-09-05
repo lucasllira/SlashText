@@ -10,6 +10,9 @@ public sealed class BackupService
 {
     private const int RetentionDays = 7;
     private const int CurrentSchemaVersion = 2;
+    private const int MaximumRestoreEntries = 10_000;
+    private const long MaximumRestoreEntryBytes = 256L * 1024 * 1024;
+    private const long MaximumRestoreTotalBytes = 2L * 1024 * 1024 * 1024;
     private const string ManifestName = "backup-manifest.json";
     private static readonly HashSet<string> RestorableFiles =
         new(StringComparer.OrdinalIgnoreCase)
@@ -30,15 +33,20 @@ public sealed class BackupService
     private readonly IReadOnlyList<string> _sources;
     private readonly bool _includeAssets;
     private readonly string _assetsDirectory;
+    private readonly string _dataDirectory;
+
+    internal Action<int, string>? BeforeRestoreApply { get; set; }
 
     public BackupService(
         string? backupDirectory = null,
         IReadOnlyList<string>? sources = null,
-        string? assetsDirectory = null)
+        string? assetsDirectory = null,
+        string? dataDirectory = null)
     {
         _backupDirectory = backupDirectory ?? AppPaths.BackupsDirectory;
         _includeAssets = sources is null || assetsDirectory is not null;
         _assetsDirectory = assetsDirectory ?? AppPaths.AssetsDirectory;
+        _dataDirectory = dataDirectory ?? AppPaths.DataDirectory;
         _sources = sources ??
         [
             AppPaths.SnippetsFile,
@@ -76,42 +84,299 @@ public sealed class BackupService
     {
         if (!File.Exists(archivePath))
         {
-            throw new FileNotFoundException("O backup selecionado não foi encontrado.", archivePath);
+            throw new FileNotFoundException(
+                "O backup selecionado não foi encontrado.",
+                archivePath);
         }
 
-        CreateSnapshot(
-            $"SlashDesk-backup-before-restore-{DateTime.Now:yyyyMMdd-HHmmss-fff}.zip",
-            skipWhenExisting: false);
-        using (var archive = ZipFile.OpenRead(archivePath))
+        ValidateSnapshot(archivePath);
+        Directory.CreateDirectory(_backupDirectory);
+        var transactionId = Guid.NewGuid().ToString("N");
+        var stagingDirectory = Path.Combine(
+            _backupDirectory,
+            $".restore-staging-{transactionId}");
+        var rollbackDirectory = Path.Combine(
+            _backupDirectory,
+            $".restore-rollback-{transactionId}");
+
+        try
         {
-            var entries = archive.Entries
-                .Where(entry => RestorableFiles.Contains(entry.Name) ||
-                                entry.FullName.StartsWith("assets/", StringComparison.OrdinalIgnoreCase) ||
-                                entry.FullName.StartsWith("assets\\", StringComparison.OrdinalIgnoreCase))
-                .ToList();
-            if (entries.Count == 0)
+            var plan = ExtractToStaging(archivePath, stagingDirectory);
+            if (CollectSources().Count > 0)
             {
-                throw new InvalidDataException("O ZIP não contém dados reconhecidos do SlashDesk.");
+                CreateSnapshot(
+                    $"SlashDesk-backup-before-restore-{DateTime.Now:yyyyMMdd-HHmmss-fff}-{Guid.NewGuid():N}.zip",
+                    skipWhenExisting: false);
             }
 
-            Directory.CreateDirectory(AppPaths.DataDirectory);
-            foreach (var entry in entries)
+            ApplyStagedRestore(plan, stagingDirectory, rollbackDirectory);
+            Prune();
+        }
+        finally
+        {
+            DeleteDirectoryIfExists(stagingDirectory);
+            DeleteDirectoryIfExists(rollbackDirectory);
+        }
+    }
+
+    private RestorePlan ExtractToStaging(
+        string archivePath,
+        string stagingDirectory)
+    {
+        Directory.CreateDirectory(stagingDirectory);
+        using var archive = ZipFile.OpenRead(archivePath);
+        var entries = archive.Entries
+            .Where(entry =>
+                !string.IsNullOrEmpty(entry.Name) &&
+                !NormalizeArchivePath(entry.FullName)
+                    .Equals(ManifestName, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+        if (entries.Count == 0 || entries.Count > MaximumRestoreEntries)
+        {
+            throw new InvalidDataException(
+                "O backup não contém uma quantidade válida de arquivos.");
+        }
+
+        var paths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var restoredFiles = new List<string>();
+        var includesAssets = ReadIncludesAssets(archive);
+        long totalBytes = 0;
+        foreach (var entry in entries)
+        {
+            var relative = NormalizeArchivePath(entry.FullName);
+            EnsureAllowedArchivePath(relative);
+            if (!paths.Add(relative))
             {
-                var relative = RestorableFiles.Contains(entry.Name)
-                    ? entry.Name
-                    : entry.FullName.Replace('/', Path.DirectorySeparatorChar);
-                var destination = Path.GetFullPath(Path.Combine(AppPaths.DataDirectory, relative));
-                var dataRoot = Path.GetFullPath(AppPaths.DataDirectory)
-                    .TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
-                if (!destination.StartsWith(dataRoot, StringComparison.OrdinalIgnoreCase))
+                throw new InvalidDataException(
+                    $"O backup contém a entrada duplicada '{relative}'.");
+            }
+            if (IsLinkEntry(entry) ||
+                entry.Length < 0 ||
+                entry.Length > MaximumRestoreEntryBytes ||
+                totalBytes > MaximumRestoreTotalBytes - entry.Length)
+            {
+                throw new InvalidDataException(
+                    $"A entrada '{relative}' não é segura para restauração.");
+            }
+            totalBytes += entry.Length;
+
+            var destination = ResolveWithin(stagingDirectory, relative);
+            Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
+            using var input = entry.Open();
+            using var output = new FileStream(
+                destination,
+                FileMode.CreateNew,
+                FileAccess.Write,
+                FileShare.None,
+                bufferSize: 81920,
+                FileOptions.WriteThrough);
+            var buffer = new byte[81920];
+            long written = 0;
+            int read;
+            while ((read = input.Read(buffer, 0, buffer.Length)) > 0)
+            {
+                written += read;
+                if (written > entry.Length ||
+                    written > MaximumRestoreEntryBytes)
                 {
-                    throw new InvalidDataException("O backup contém um caminho inseguro.");
+                    throw new InvalidDataException(
+                        $"A entrada '{relative}' excedeu o tamanho declarado.");
                 }
-                Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
-                entry.ExtractToFile(destination, overwrite: true);
+                output.Write(buffer, 0, read);
+            }
+            output.Flush(flushToDisk: true);
+            if (written != entry.Length)
+            {
+                throw new InvalidDataException(
+                    $"A entrada '{relative}' foi extraída de forma incompleta.");
+            }
+
+            if (RestorableFiles.Contains(relative))
+            {
+                restoredFiles.Add(relative);
             }
         }
-        Prune();
+
+        return new RestorePlan(restoredFiles, includesAssets);
+    }
+
+    private void ApplyStagedRestore(
+        RestorePlan plan,
+        string stagingDirectory,
+        string rollbackDirectory)
+    {
+        Directory.CreateDirectory(_dataDirectory);
+        Directory.CreateDirectory(rollbackDirectory);
+        var appliedFiles = new List<AppliedFile>();
+        AppliedDirectory? appliedAssets = null;
+        var step = 0;
+        try
+        {
+            foreach (var relative in plan.Files)
+            {
+                BeforeRestoreApply?.Invoke(step++, relative);
+                var staged = ResolveWithin(stagingDirectory, relative);
+                var target = ResolveWithin(_dataDirectory, relative);
+                var rollback = ResolveWithin(rollbackDirectory, relative);
+                Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+                Directory.CreateDirectory(Path.GetDirectoryName(rollback)!);
+                var existed = File.Exists(target);
+                if (existed)
+                {
+                    File.Replace(
+                        staged,
+                        target,
+                        rollback,
+                        ignoreMetadataErrors: true);
+                }
+                else
+                {
+                    File.Move(staged, target);
+                }
+                appliedFiles.Add(new AppliedFile(target, rollback, existed));
+            }
+
+            if (plan.IncludesAssets)
+            {
+                const string assetsLabel = "assets/";
+                BeforeRestoreApply?.Invoke(step, assetsLabel);
+                var stagedAssets = Path.Combine(stagingDirectory, "assets");
+                Directory.CreateDirectory(stagedAssets);
+                var targetAssets = Path.GetFullPath(_assetsDirectory);
+                EnsureDirectoryWithinData(targetAssets);
+                var rollbackAssets = Path.Combine(rollbackDirectory, "assets");
+                var existed = Directory.Exists(targetAssets);
+                if (existed)
+                {
+                    Directory.Move(targetAssets, rollbackAssets);
+                }
+                try
+                {
+                    Directory.Move(stagedAssets, targetAssets);
+                    appliedAssets = new AppliedDirectory(
+                        targetAssets,
+                        rollbackAssets,
+                        existed);
+                }
+                catch
+                {
+                    if (existed &&
+                        !Directory.Exists(targetAssets) &&
+                        Directory.Exists(rollbackAssets))
+                    {
+                        Directory.Move(rollbackAssets, targetAssets);
+                    }
+                    throw;
+                }
+            }
+        }
+        catch
+        {
+            if (appliedAssets is not null)
+            {
+                DeleteDirectoryIfExists(appliedAssets.Target);
+                if (appliedAssets.Existed &&
+                    Directory.Exists(appliedAssets.Rollback))
+                {
+                    Directory.Move(
+                        appliedAssets.Rollback,
+                        appliedAssets.Target);
+                }
+            }
+
+            foreach (var applied in appliedFiles.AsEnumerable().Reverse())
+            {
+                if (File.Exists(applied.Target))
+                {
+                    File.Delete(applied.Target);
+                }
+                if (applied.Existed && File.Exists(applied.Rollback))
+                {
+                    File.Move(
+                        applied.Rollback,
+                        applied.Target,
+                        overwrite: true);
+                }
+            }
+            throw;
+        }
+    }
+
+    private static bool ReadIncludesAssets(ZipArchive archive)
+    {
+        var manifest = archive.Entries.Single(entry =>
+            NormalizeArchivePath(entry.FullName)
+                .Equals(ManifestName, StringComparison.OrdinalIgnoreCase));
+        using var document = JsonDocument.Parse(manifest.Open());
+        if (document.RootElement.TryGetProperty(
+                "includesAssets",
+                out var includesElement) &&
+            includesElement.ValueKind is JsonValueKind.True or JsonValueKind.False)
+        {
+            return includesElement.GetBoolean();
+        }
+
+        return archive.Entries.Any(entry =>
+            NormalizeArchivePath(entry.FullName)
+                .StartsWith("assets/", StringComparison.OrdinalIgnoreCase));
+    }
+
+    private void EnsureDirectoryWithinData(string directory)
+    {
+        var dataRoot = Path.GetFullPath(_dataDirectory)
+            .TrimEnd(
+                Path.DirectorySeparatorChar,
+                Path.AltDirectorySeparatorChar) +
+            Path.DirectorySeparatorChar;
+        var normalized = directory.TrimEnd(
+            Path.DirectorySeparatorChar,
+            Path.AltDirectorySeparatorChar) +
+            Path.DirectorySeparatorChar;
+        if (!normalized.StartsWith(
+                dataRoot,
+                StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidDataException(
+                "A pasta de assets está fora de SlashDeskData.");
+        }
+    }
+
+    private static string ResolveWithin(string root, string relative)
+    {
+        var normalizedRoot = Path.GetFullPath(root)
+            .TrimEnd(
+                Path.DirectorySeparatorChar,
+                Path.AltDirectorySeparatorChar) +
+            Path.DirectorySeparatorChar;
+        var destination = Path.GetFullPath(Path.Combine(
+            normalizedRoot,
+            NormalizeArchivePath(relative)
+                .Replace('/', Path.DirectorySeparatorChar)));
+        if (!destination.StartsWith(
+                normalizedRoot,
+                StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidDataException(
+                $"O backup contém o caminho inseguro '{relative}'.");
+        }
+        return destination;
+    }
+
+    private static bool IsLinkEntry(ZipArchiveEntry entry)
+    {
+        var unixType = (entry.ExternalAttributes >> 16) & 0xF000;
+        var windowsAttributes =
+            (FileAttributes)(entry.ExternalAttributes & 0xFFFF);
+        return unixType == 0xA000 ||
+               windowsAttributes.HasFlag(FileAttributes.ReparsePoint);
+    }
+
+    private static void DeleteDirectoryIfExists(string path)
+    {
+        if (Directory.Exists(path))
+        {
+            Directory.Delete(path, recursive: true);
+        }
     }
 
     private string CreateSnapshot(string fileName, bool skipWhenExisting)
@@ -144,7 +409,7 @@ public sealed class BackupService
             $".{fileName}-{Guid.NewGuid():N}.tmp");
         try
         {
-            CreateArchive(temporary, sources);
+            CreateArchive(temporary, sources, _includeAssets);
             ValidateSnapshot(temporary);
             File.Move(temporary, destination, overwrite: false);
             return destination;
@@ -203,7 +468,8 @@ public sealed class BackupService
 
     private static void CreateArchive(
         string path,
-        IReadOnlyList<BackupSource> sources)
+        IReadOnlyList<BackupSource> sources,
+        bool includesAssets)
     {
         var files = new List<BackupManifestFile>();
         using (var archive = ZipFile.Open(path, ZipArchiveMode.Create))
@@ -253,6 +519,7 @@ public sealed class BackupService
                     Assembly.GetEntryAssembly()?.GetName().Version?.ToString(3)
                         ?? "unknown",
                     AppPaths.Mode.ToString(),
+                    includesAssets,
                     files),
                 ManifestOptions));
         }
@@ -431,7 +698,22 @@ public sealed class BackupService
         DateTimeOffset CreatedAtUtc,
         string SlashDeskVersion,
         string DistributionMode,
+        bool IncludesAssets,
         IReadOnlyList<BackupManifestFile> Files);
+
+    private sealed record RestorePlan(
+        IReadOnlyList<string> Files,
+        bool IncludesAssets);
+
+    private sealed record AppliedFile(
+        string Target,
+        string Rollback,
+        bool Existed);
+
+    private sealed record AppliedDirectory(
+        string Target,
+        string Rollback,
+        bool Existed);
 
     private sealed record BackupManifestFile(
         string Path,
