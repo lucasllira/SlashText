@@ -74,23 +74,11 @@ public sealed partial class SnippetMarkdownRepository
 
         }
 
-        var temporaryFile = Path.Combine(directory, $".snippets-{Guid.NewGuid():N}.tmp");
-        try
-        {
-            await File.WriteAllTextAsync(
-                temporaryFile,
-                markdown,
-                new UTF8Encoding(false),
-                cancellationToken);
-            File.Move(temporaryFile, _filePath, true);
-        }
-        finally
-        {
-            if (File.Exists(temporaryFile))
-            {
-                File.Delete(temporaryFile);
-            }
-        }
+        await AtomicFilePersistence.WriteTextAsync(
+            _filePath,
+            markdown,
+            new UTF8Encoding(false),
+            cancellationToken);
     }
 
     private static List<Snippet> Parse(string markdown)
