@@ -1404,6 +1404,66 @@ try
     annotationHistory.Undo();
     Require(annotationHistory.Items.Count == 1, "limpeza de marcações pode ser desfeita");
 
+    var atomicStorageRoot = Path.Combine(root, "atomic-storage");
+    Directory.CreateDirectory(atomicStorageRoot);
+    var concurrentJsonPath = Path.Combine(atomicStorageRoot, "concurrent.json");
+    var concurrentStore = new JsonFileStore<AppSettings>(concurrentJsonPath);
+    await Task.WhenAll(Enumerable.Range(0, 24).Select(index =>
+        concurrentStore.SaveAsync(new AppSettings { Theme = $"Theme-{index}" })));
+    var concurrentSettings = await concurrentStore.LoadAsync();
+    Require(
+        concurrentSettings.Theme.StartsWith("Theme-", StringComparison.Ordinal) &&
+        Directory.GetFiles(atomicStorageRoot, ".concurrent.json-*.tmp").Length == 0,
+        "gravações JSON concorrentes produzem um arquivo completo sem temporários");
+
+    var preservedPath = Path.Combine(atomicStorageRoot, "preserved.txt");
+    await File.WriteAllTextAsync(preservedPath, "último conteúdo válido");
+    await RequireThrowsAsync<IOException>(
+        () => AtomicFilePersistence.WriteAsync(
+            preservedPath,
+            async (stream, token) =>
+            {
+                await stream.WriteAsync("conteúdo incompleto"u8.ToArray(), token);
+                throw new IOException("falha simulada antes da substituição");
+            }),
+        "falha antes da substituição é propagada");
+    Require(
+        await File.ReadAllTextAsync(preservedPath) == "último conteúdo válido",
+        "falha de gravação preserva o arquivo válido anterior");
+
+    using (var cancelledWrite = new CancellationTokenSource())
+    {
+        cancelledWrite.Cancel();
+        await RequireThrowsAsync<OperationCanceledException>(
+            () => AtomicFilePersistence.WriteTextAsync(
+                preservedPath,
+                "não deve substituir",
+                System.Text.Encoding.UTF8,
+                cancelledWrite.Token),
+            "gravação cancelada é interrompida");
+    }
+    Require(
+        await File.ReadAllTextAsync(preservedPath) == "último conteúdo válido",
+        "cancelamento preserva o arquivo válido anterior");
+
+    var corruptJsonPath = Path.Combine(atomicStorageRoot, "settings.json");
+    const string corruptJson = "{\"theme\": \"Dark\", conteúdo inválido";
+    await File.WriteAllTextAsync(corruptJsonPath, corruptJson);
+    var corruptStore = new JsonFileStore<AppSettings>(corruptJsonPath);
+    var fallbackSettings = await corruptStore.LoadAsync();
+    var preservedCorruptFiles = Directory.GetFiles(
+        atomicStorageRoot,
+        "settings.json.corrupt-*.bak");
+    Require(
+        fallbackSettings.Theme == new AppSettings().Theme &&
+        preservedCorruptFiles.Length == 1 &&
+        await File.ReadAllTextAsync(preservedCorruptFiles[0]) == corruptJson,
+        "JSON inválido é preservado e retorna configuração padrão");
+    _ = await corruptStore.LoadAsync();
+    Require(
+        Directory.GetFiles(atomicStorageRoot, "settings.json.corrupt-*.bak").Length == 1,
+        "preservação de JSON corrompido é idempotente");
+
     var updateTests = Path.Combine(root, "updates");
     Directory.CreateDirectory(updateTests);
     var now = new DateTimeOffset(2026, 8, 6, 12, 0, 0, TimeSpan.Zero);

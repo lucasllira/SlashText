@@ -34,31 +34,34 @@ public sealed class JsonFileStore<T> where T : new()
         }
         catch (JsonException)
         {
+            try
+            {
+                var preserved = await CorruptFilePreserver.PreserveAsync(
+                    _path,
+                    CancellationToken.None);
+                AppDiagnosticLog.Write(
+                    "storage.json.corrupt_preserved",
+                    ("file", Path.GetFileName(_path)),
+                    ("preserved", !string.IsNullOrWhiteSpace(preserved)));
+            }
+            catch (Exception exception)
+            {
+                AppDiagnosticLog.Write(
+                    "storage.json.corrupt_preserve_failed",
+                    ("file", Path.GetFileName(_path)),
+                    ("exceptionType", exception.GetType().Name));
+            }
+
             return new T();
         }
     }
 
     public async Task SaveAsync(T value, CancellationToken cancellationToken = default)
     {
-        var directory = Path.GetDirectoryName(_path) ?? AppPaths.BaseDirectory;
-        Directory.CreateDirectory(directory);
-        var temporary = Path.Combine(directory, $".{Path.GetFileName(_path)}-{Guid.NewGuid():N}.tmp");
-
-        try
-        {
-            await using (var stream = File.Create(temporary))
-            {
-                await JsonSerializer.SerializeAsync(stream, value, Options, cancellationToken);
-            }
-
-            File.Move(temporary, _path, true);
-        }
-        finally
-        {
-            if (File.Exists(temporary))
-            {
-                File.Delete(temporary);
-            }
-        }
+        await AtomicFilePersistence.WriteAsync(
+            _path,
+            (stream, token) =>
+                JsonSerializer.SerializeAsync(stream, value, Options, token),
+            cancellationToken);
     }
 }
