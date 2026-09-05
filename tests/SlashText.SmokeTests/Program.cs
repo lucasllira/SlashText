@@ -497,12 +497,105 @@ try
             archive.Entries.Select(item => item.Name).Order()
                 .SequenceEqual(["backup-manifest.json", "settings.json", "snippets.md", "usage.json"]),
             "backup contém manifesto, atalhos, preferências e estatísticas");
+        var manifestEntry = archive.GetEntry("backup-manifest.json");
+        Require(manifestEntry is not null, "backup contém manifesto único");
+        using var manifest = System.Text.Json.JsonDocument.Parse(manifestEntry!.Open());
+        var manifestFiles = manifest.RootElement.GetProperty("files")
+            .EnumerateArray()
+            .ToList();
+        Require(
+            manifest.RootElement.GetProperty("schemaVersion").GetInt32() == 2 &&
+            manifestFiles.Count == 3 &&
+            manifestFiles.All(item =>
+                item.GetProperty("size").GetInt64() >= 0 &&
+                item.GetProperty("sha256").GetString()?.Length == 64),
+            "manifesto v2 registra tamanho e SHA-256 de cada arquivo");
     }
     BackupService.ValidateSnapshot(backupFiles[0]);
     var manualBackup = backupService.CreateManualSnapshot();
     Require(
         File.Exists(manualBackup) && backupService.ListSnapshots().Count == 2,
         "backup manual e listagem de cópias");
+
+    var assetSource = Path.Combine(root, "backup-assets");
+    var nestedAssetDirectory = Path.Combine(assetSource, "imagens", "nested");
+    Directory.CreateDirectory(nestedAssetDirectory);
+    var nestedAsset = Path.Combine(nestedAssetDirectory, "logo.png");
+    await File.WriteAllBytesAsync(nestedAsset, [1, 2, 3, 4, 5, 6]);
+    var assetBackups = Path.Combine(root, "asset-backups");
+    var assetBackupService = new BackupService(
+        assetBackups,
+        [snippetsFile],
+        assetSource);
+    var assetBackup = assetBackupService.CreateManualSnapshot();
+    using (var archive = ZipFile.OpenRead(assetBackup))
+    {
+        var assetEntry = archive.GetEntry("assets/imagens/nested/logo.png");
+        var manifestEntry = archive.GetEntry("backup-manifest.json");
+        Require(
+            assetEntry is not null && manifestEntry is not null,
+            "asset aninhado e manifesto são incluídos");
+        using var manifest = System.Text.Json.JsonDocument.Parse(manifestEntry!.Open());
+        var recordedAsset = manifest.RootElement.GetProperty("files")
+            .EnumerateArray()
+            .Single(item =>
+                item.GetProperty("path").GetString() ==
+                "assets/imagens/nested/logo.png");
+        var expectedAssetHash = Convert.ToHexString(
+                System.Security.Cryptography.SHA256.HashData(
+                    await File.ReadAllBytesAsync(nestedAsset)))
+            .ToLowerInvariant();
+        Require(
+            recordedAsset.GetProperty("size").GetInt64() == 6 &&
+            recordedAsset.GetProperty("sha256").GetString() == expectedAssetHash,
+            "manifesto registra tamanho e hash dos bytes arquivados do asset");
+    }
+    BackupService.ValidateSnapshot(assetBackup);
+    Require(
+        Directory.GetFiles(assetBackups, "*.tmp").Length == 0,
+        "backup validado é publicado sem temporários residuais");
+
+    var tamperedBackup = Path.Combine(root, "tampered-backup.zip");
+    File.Copy(manualBackup, tamperedBackup);
+    using (var archive = ZipFile.Open(tamperedBackup, ZipArchiveMode.Update))
+    {
+        var entry = archive.GetEntry("settings.json")
+            ?? throw new InvalidOperationException("settings ausente no teste");
+        entry.Delete();
+        var changed = archive.CreateEntry("settings.json");
+        using var writer = new StreamWriter(changed.Open());
+        writer.Write("{\"theme\":\"adulterado\"}");
+    }
+    RequireThrows<InvalidDataException>(
+        () => BackupService.ValidateSnapshot(tamperedBackup),
+        "adulteração de backup é detectada por tamanho ou hash");
+
+    var duplicateBackup = Path.Combine(root, "duplicate-backup.zip");
+    File.Copy(manualBackup, duplicateBackup);
+    using (var archive = ZipFile.Open(duplicateBackup, ZipArchiveMode.Update))
+    {
+        var duplicateEntry = archive.CreateEntry("settings.json");
+        using var writer = new StreamWriter(duplicateEntry.Open());
+        writer.Write("{}");
+    }
+    RequireThrows<InvalidDataException>(
+        () => BackupService.ValidateSnapshot(duplicateBackup),
+        "entrada duplicada no ZIP é rejeitada");
+
+    var legacyBackup = Path.Combine(root, "legacy-schema-1.zip");
+    using (var archive = ZipFile.Open(legacyBackup, ZipArchiveMode.Create))
+    {
+        var snippetsEntry = archive.CreateEntry("snippets.md");
+        using (var writer = new StreamWriter(snippetsEntry.Open()))
+        {
+            writer.Write("# backup legado");
+        }
+        var manifestEntry = archive.CreateEntry("backup-manifest.json");
+        using var manifestWriter = new StreamWriter(manifestEntry.Open());
+        manifestWriter.Write(
+            "{\"schemaVersion\":1,\"files\":[\"snippets.md\"]}");
+    }
+    BackupService.ValidateSnapshot(legacyBackup);
 
     var code = "Antes\n```powershell\nGet-Date\n```\nDepois";
     Require(
