@@ -759,7 +759,7 @@ try
             "presets GIF maiores não reduzem a variedade da paleta adaptativa");
     }
 
-    var trayThemeMethod = typeof(MainWindow).GetMethod(
+    var trayThemeMethod = typeof(SlashText.MainWindow).GetMethod(
         "ApplyTrayTheme",
         BindingFlags.NonPublic | BindingFlags.Static);
     using (var trayThemeMenu = new System.Windows.Forms.ContextMenuStrip())
