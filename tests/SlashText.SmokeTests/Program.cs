@@ -597,6 +597,147 @@ try
     }
     BackupService.ValidateSnapshot(legacyBackup);
 
+    var restorePackageData = Path.Combine(root, "restore-package-data");
+    var restorePackageAssets = Path.Combine(restorePackageData, "assets");
+    Directory.CreateDirectory(restorePackageAssets);
+    var packageSnippets = Path.Combine(restorePackageData, "snippets.md");
+    var packageSettings = Path.Combine(restorePackageData, "settings.json");
+    await File.WriteAllTextAsync(packageSnippets, "atalhos restaurados");
+    await File.WriteAllTextAsync(packageSettings, "{\"theme\":\"Light\"}");
+    await File.WriteAllTextAsync(
+        Path.Combine(restorePackageAssets, "novo.png"),
+        "asset restaurado");
+    var restorePackages = Path.Combine(root, "restore-packages");
+    var restorePackageService = new BackupService(
+        restorePackages,
+        [packageSnippets, packageSettings],
+        restorePackageAssets,
+        restorePackageData);
+    var restorePackage = restorePackageService.CreateManualSnapshot();
+
+    var activeRestoreData = Path.Combine(root, "active-restore-data");
+    var activeRestoreAssets = Path.Combine(activeRestoreData, "assets");
+    Directory.CreateDirectory(activeRestoreAssets);
+    var activeSnippets = Path.Combine(activeRestoreData, "snippets.md");
+    var activeSettings = Path.Combine(activeRestoreData, "settings.json");
+    await File.WriteAllTextAsync(activeSnippets, "atalhos atuais");
+    await File.WriteAllTextAsync(activeSettings, "{\"theme\":\"Dark\"}");
+    await File.WriteAllTextAsync(
+        Path.Combine(activeRestoreAssets, "antigo.png"),
+        "asset atual");
+    var restoreSafetyBackups = Path.Combine(
+        activeRestoreData,
+        "Backups");
+    var restoreService = new BackupService(
+        restoreSafetyBackups,
+        [activeSnippets, activeSettings],
+        activeRestoreAssets,
+        activeRestoreData);
+    restoreService.RestoreSnapshot(restorePackage);
+    Require(
+        await File.ReadAllTextAsync(activeSnippets) ==
+            "atalhos restaurados" &&
+        await File.ReadAllTextAsync(activeSettings) ==
+            "{\"theme\":\"Light\"}" &&
+        File.Exists(Path.Combine(activeRestoreAssets, "novo.png")) &&
+        !File.Exists(Path.Combine(activeRestoreAssets, "antigo.png")) &&
+        Directory.GetFiles(
+            restoreSafetyBackups,
+            "SlashDesk-backup-before-restore-*.zip").Length == 1,
+        "restauração aplica arquivos e substitui assets após criar backup de segurança");
+    Require(
+        Directory.GetDirectories(
+            restoreSafetyBackups,
+            ".restore-*").Length == 0,
+        "restauração concluída remove staging e rollback");
+
+    await File.WriteAllTextAsync(activeSnippets, "atalhos antes da falha");
+    await File.WriteAllTextAsync(activeSettings, "{\"theme\":\"Safe\"}");
+    Directory.Delete(activeRestoreAssets, recursive: true);
+    Directory.CreateDirectory(activeRestoreAssets);
+    await File.WriteAllTextAsync(
+        Path.Combine(activeRestoreAssets, "seguro.png"),
+        "asset antes da falha");
+    restoreService.BeforeRestoreApply = (step, _) =>
+    {
+        if (step == 1)
+        {
+            throw new IOException("falha simulada durante aplicação");
+        }
+    };
+    RequireThrows<IOException>(
+        () => restoreService.RestoreSnapshot(restorePackage),
+        "falha intermediária da restauração é propagada");
+    restoreService.BeforeRestoreApply = null;
+    Require(
+        await File.ReadAllTextAsync(activeSnippets) ==
+            "atalhos antes da falha" &&
+        await File.ReadAllTextAsync(activeSettings) ==
+            "{\"theme\":\"Safe\"}" &&
+        File.Exists(Path.Combine(activeRestoreAssets, "seguro.png")) &&
+        !File.Exists(Path.Combine(activeRestoreAssets, "novo.png")),
+        "rollback restaura integralmente arquivos e assets anteriores");
+
+    var traversalBackup = Path.Combine(root, "restore-traversal.zip");
+    using (var archive = ZipFile.Open(
+               traversalBackup,
+               ZipArchiveMode.Create))
+    {
+        var manifestEntry = archive.CreateEntry("backup-manifest.json");
+        using (var writer = new StreamWriter(manifestEntry.Open()))
+        {
+            writer.Write(
+                "{\"schemaVersion\":1,\"files\":[\"snippets.md\"]}");
+        }
+        var snippetsEntry = archive.CreateEntry("snippets.md");
+        using (var writer = new StreamWriter(snippetsEntry.Open()))
+        {
+            writer.Write("não deve ser aplicado");
+        }
+        var traversalEntry = archive.CreateEntry("../escape.txt");
+        using var traversalWriter = new StreamWriter(traversalEntry.Open());
+        traversalWriter.Write("inseguro");
+    }
+    RequireThrows<InvalidDataException>(
+        () => restoreService.RestoreSnapshot(traversalBackup),
+        "path traversal é bloqueado antes de alterar dados ativos");
+    Require(
+        await File.ReadAllTextAsync(activeSnippets) ==
+            "atalhos antes da falha" &&
+        !File.Exists(Path.Combine(root, "escape.txt")),
+        "backup inseguro não modifica dados nem escreve fora do staging");
+
+    var symlinkBackup = Path.Combine(root, "restore-symlink.zip");
+    using (var archive = ZipFile.Open(
+               symlinkBackup,
+               ZipArchiveMode.Create))
+    {
+        var manifestEntry = archive.CreateEntry("backup-manifest.json");
+        using (var writer = new StreamWriter(manifestEntry.Open()))
+        {
+            writer.Write(
+                "{\"schemaVersion\":1,\"files\":[\"snippets.md\"]}");
+        }
+        var snippetsEntry = archive.CreateEntry("snippets.md");
+        using (var writer = new StreamWriter(snippetsEntry.Open()))
+        {
+            writer.Write("não deve ser aplicado");
+        }
+        var linkEntry = archive.CreateEntry("assets/link");
+        linkEntry.ExternalAttributes = 0xA000 << 16;
+        using var linkWriter = new StreamWriter(linkEntry.Open());
+        linkWriter.Write("destino");
+    }
+    RequireThrows<InvalidDataException>(
+        () => restoreService.RestoreSnapshot(symlinkBackup),
+        "links simbólicos no ZIP são rejeitados");
+
+    restoreService.RestoreSnapshot(legacyBackup);
+    Require(
+        await File.ReadAllTextAsync(activeSnippets) ==
+            "# backup legado",
+        "backup schema 1 continua restaurável");
+
     var code = "Antes\n```powershell\nGet-Date\n```\nDepois";
     Require(
         RichTextMarkdownConverter.ToHtml(code).Contains("<pre", StringComparison.Ordinal),
