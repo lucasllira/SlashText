@@ -105,7 +105,7 @@ public sealed class BackupService
             if (CollectSources().Count > 0)
             {
                 CreateSnapshot(
-                    $"SlashDesk-backup-before-restore-{DateTime.Now:yyyyMMdd-HHmmss-fff}.zip",
+                    $"SlashDesk-backup-before-restore-{DateTime.Now:yyyyMMdd-HHmmss-fff}-{Guid.NewGuid():N}.zip",
                     skipWhenExisting: false);
             }
 
