@@ -713,17 +713,68 @@ try
             $"preset MP4 {preset.Name} aplica os valores descritos");
     }
 
-    using (var paletteBitmap = new System.Drawing.Bitmap(8, 8))
+    using (var paletteBitmap = new System.Drawing.Bitmap(48, 48))
     {
+        using (var graphics = System.Drawing.Graphics.FromImage(paletteBitmap))
+        using (var background = new System.Drawing.SolidBrush(
+                   System.Drawing.Color.FromArgb(15, 26, 35)))
+        {
+            graphics.FillRectangle(background, 0, 0, 48, 36);
+        }
+        for (var y = 36; y < paletteBitmap.Height; y++)
+        {
+            for (var x = 0; x < paletteBitmap.Width; x++)
+            {
+                paletteBitmap.SetPixel(
+                    x,
+                    y,
+                    System.Drawing.Color.FromArgb(
+                        (x * 17 + y * 5) % 256,
+                        (x * 7 + y * 19) % 256,
+                        (x * 23 + y * 11) % 256));
+            }
+        }
+
         var paletteSource = GifRecordingService.ToBitmapSource(paletteBitmap);
+        var paletteSizes = new List<int>();
         foreach (var preset in RecordingPresetCatalog.GifQuality)
         {
             var quantized = GifRecordingService.Quantize(paletteSource, preset.Value);
+            var colors = quantized.Palette?.Colors ?? [];
+            paletteSizes.Add(colors.Count);
             Require(
-                quantized.Palette?.Colors.Count == preset.Value &&
+                quantized.Format == System.Windows.Media.PixelFormats.Indexed8 &&
+                colors.Count is > 0 &&
+                colors.Count <= preset.Value &&
+                colors.Any(color =>
+                    Math.Abs(color.R - 15) +
+                    Math.Abs(color.G - 26) +
+                    Math.Abs(color.B - 35) <= 12) &&
                 preset.Description.Contains(preset.Value.ToString(), StringComparison.Ordinal),
-                $"preset GIF {preset.Name} aplica a paleta descrita");
+                $"preset GIF {preset.Name} usa paleta adaptativa limitada às cores descritas");
         }
+        Require(
+            paletteSizes.Zip(paletteSizes.Skip(1), (before, after) => after >= before)
+                .All(increases => increases),
+            "presets GIF maiores não reduzem a variedade da paleta adaptativa");
+    }
+
+    var trayThemeMethod = typeof(MainWindow).GetMethod(
+        "ApplyTrayTheme",
+        BindingFlags.NonPublic | BindingFlags.Static);
+    using (var trayThemeMenu = new System.Windows.Forms.ContextMenuStrip())
+    {
+        var parentItem = new System.Windows.Forms.ToolStripMenuItem("Capturas");
+        var childItem = new System.Windows.Forms.ToolStripMenuItem("Janela");
+        parentItem.DropDownItems.Add(childItem);
+        trayThemeMenu.Items.Add(parentItem);
+        trayThemeMethod?.Invoke(null, [trayThemeMenu]);
+        Require(
+            trayThemeMethod is not null &&
+            parentItem.ForeColor == trayThemeMenu.ForeColor &&
+            childItem.ForeColor == trayThemeMenu.ForeColor &&
+            parentItem.DropDown.BackColor == trayThemeMenu.BackColor,
+            "tema da bandeja alcança recursivamente todos os submenus");
     }
 
     var fakeFactory = new FakeRecorderBackendFactory();
