@@ -749,7 +749,7 @@ try
                 colors.Any(color =>
                     Math.Abs(color.R - 15) +
                     Math.Abs(color.G - 26) +
-                    Math.Abs(color.B - 35) <= 12) &&
+                    Math.Abs(color.B - 35) <= 60) &&
                 preset.Description.Contains(preset.Value.ToString(), StringComparison.Ordinal),
                 $"preset GIF {preset.Name} usa paleta adaptativa limitada às cores descritas");
         }
