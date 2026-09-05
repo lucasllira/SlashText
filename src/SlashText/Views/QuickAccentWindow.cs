@@ -16,6 +16,8 @@ public sealed class QuickAccentWindow : Window
         AllowsTransparency = true;
         Background = Brushes.Transparent;
         ShowInTaskbar = false;
+        ShowActivated = false;
+        Focusable = false;
         Topmost = true;
         SizeToContent = SizeToContent.WidthAndHeight;
         IsHitTestVisible = false;
