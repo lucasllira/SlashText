@@ -36,6 +36,7 @@ public partial class MainWindow : Window
     private readonly GlobalCaptureShortcutService _captureShortcuts = new();
     private readonly UpdateService _updateService = new();
     private readonly PortableUpdateService _portableUpdateService = new();
+    private readonly UpdateNotificationGate _updateNotificationGate = new();
     private readonly SingleFlightGate _expansionRequestGate = new();
     private readonly SingleFlightGate _captureGate = new();
     private readonly JsonFileStore<AppSettings> _settingsStore = new(AppPaths.SettingsFile);
@@ -62,6 +63,8 @@ public partial class MainWindow : Window
     private string? _lastReleaseUrl;
     private int _updateOfferActive;
     private CancellationTokenSource? _activeUpdateCancellation;
+    private CancellationTokenSource? _updateMonitorCancellation;
+    private Task? _updateMonitorTask;
     private int _shortcutResponsiveBand = -1;
 
     private const double ShortcutLeftMinimum = 220;
@@ -70,6 +73,7 @@ public partial class MainWindow : Window
     private const double ShortcutRightMaximum = 480;
     private const double ShortcutSplitterStep = 16;
     private const double ShortcutDividerSpace = 32;
+    private static readonly TimeSpan UpdateMonitorInterval = TimeSpan.FromMinutes(30);
 
     public MainWindow()
     {
@@ -173,10 +177,7 @@ public partial class MainWindow : Window
                 _settings.OnboardingCompleted = true;
                 await _settingsStore.SaveAsync(_settings);
             }
-            if (_settings.CheckUpdatesOnStartup)
-            {
-                _ = CheckUpdatesSilentlyAsync();
-            }
+            StartUpdateMonitor();
         }
         catch (Exception exception)
         {
@@ -1370,6 +1371,7 @@ public partial class MainWindow : Window
     private async void Settings_OnClick(object sender, RoutedEventArgs e)
     {
         var previousStart = _settings.StartWithWindows;
+        var previousUpdateMonitoring = _settings.CheckUpdatesOnStartup;
         _settings.CloseToTray = CloseToTrayCheckBox.IsChecked == true;
         _settings.StartWithWindows = StartWithWindowsCheckBox.IsChecked == true;
         _settings.ShowSuggestions = ShowSuggestionsCheckBox.IsChecked == true;
@@ -1383,6 +1385,18 @@ public partial class MainWindow : Window
             }
             await _settingsStore.SaveAsync(_settings);
 
+            if (previousUpdateMonitoring != _settings.CheckUpdatesOnStartup)
+            {
+                if (_settings.CheckUpdatesOnStartup)
+                {
+                    StartUpdateMonitor();
+                }
+                else
+                {
+                    StopUpdateMonitor();
+                }
+            }
+
             if (!_settings.ShowSuggestions)
             {
                 _suggestionWindow.Hide();
@@ -1391,7 +1405,9 @@ public partial class MainWindow : Window
         catch (Exception exception)
         {
             _settings.StartWithWindows = previousStart;
+            _settings.CheckUpdatesOnStartup = previousUpdateMonitoring;
             StartWithWindowsCheckBox.IsChecked = previousStart;
+            CheckUpdatesCheckBox.IsChecked = previousUpdateMonitoring;
             MessageBox.Show(
                 exception.Message,
                 "Não foi possível salvar a configuração",
@@ -2844,6 +2860,7 @@ public partial class MainWindow : Window
             UpdateUpdateDisplay(await _updateService.LoadStateAsync());
             if (result.UpdateAvailable && result.Release is not null)
             {
+                _updateNotificationGate.Mark(result.Release.Version);
                 await OfferUpdateAsync(result);
             }
             else
@@ -2872,13 +2889,63 @@ public partial class MainWindow : Window
         }
     }
 
-    private async Task CheckUpdatesSilentlyAsync()
+    private void StartUpdateMonitor()
+    {
+        StopUpdateMonitor();
+        if (!_settings.CheckUpdatesOnStartup || _servicesDisposed)
+        {
+            return;
+        }
+
+        var cancellation = new CancellationTokenSource();
+        _updateMonitorCancellation = cancellation;
+        _updateMonitorTask = MonitorUpdatesAsync(cancellation);
+    }
+
+    private void StopUpdateMonitor()
+    {
+        Interlocked.Exchange(ref _updateMonitorCancellation, null)?.Cancel();
+        _updateMonitorTask = null;
+    }
+
+    private async Task MonitorUpdatesAsync(CancellationTokenSource cancellation)
     {
         try
         {
-            var result = await _updateService.CheckAsync();
-            UpdateUpdateDisplay(await _updateService.LoadStateAsync());
-            if (result.UpdateAvailable && result.Release is not null)
+            await CheckUpdatesSilentlyAsync(cancellation.Token);
+            using var timer = new PeriodicTimer(UpdateMonitorInterval);
+            while (await timer.WaitForNextTickAsync(cancellation.Token))
+            {
+                await CheckUpdatesSilentlyAsync(cancellation.Token);
+            }
+        }
+        catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
+        {
+            // Encerramento normal ao desativar a opção ou sair do aplicativo.
+        }
+        catch (Exception exception)
+        {
+            SafeDiagnosticLog.Write("update.monitor.failed", new Dictionary<string, object?>
+            {
+                ["exceptionType"] = exception.GetType().Name
+            });
+        }
+        finally
+        {
+            Interlocked.CompareExchange(ref _updateMonitorCancellation, null, cancellation);
+            cancellation.Dispose();
+        }
+    }
+
+    private async Task CheckUpdatesSilentlyAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await _updateService.CheckAsync(cancellationToken: cancellationToken);
+            UpdateUpdateDisplay(await _updateService.LoadStateAsync(cancellationToken));
+            if (result.UpdateAvailable &&
+                result.Release is not null &&
+                _updateNotificationGate.TryMark(result.Release.Version))
             {
                 StatusText.Text = result.Message;
                 ShowTrayBalloon(
@@ -2889,9 +2956,13 @@ public partial class MainWindow : Window
                 await OfferUpdateAsync(result);
             }
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
         catch
         {
-            // A inicialização nunca é bloqueada por uma consulta opcional.
+            // Falhas de rede permanecem silenciosas no monitor automático.
         }
     }
 
@@ -3237,6 +3308,7 @@ public partial class MainWindow : Window
         }
 
         _servicesDisposed = true;
+        StopUpdateMonitor();
         Activated -= MainWindow_OnActivated;
         _keyboardHook.ExpansionRequested -= KeyboardHook_OnExpansionRequested;
         _keyboardHook.SuggestionsChanged -= KeyboardHook_OnSuggestionsChanged;
