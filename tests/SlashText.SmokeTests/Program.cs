@@ -1499,6 +1499,17 @@ try
     Require((await timeoutService.CheckAsync(force: true)).Status == UpdateCheckStatus.Offline,
         "timeout de atualização é tratado");
 
+    var notificationGate = new UpdateNotificationGate();
+    Require(
+        !notificationGate.TryMark(null) &&
+        notificationGate.TryMark("3.2.0") &&
+        !notificationGate.TryMark("3.2.0") &&
+        notificationGate.TryMark("3.3.0"),
+        "monitor notifica uma única vez por versão durante a sessão");
+    notificationGate.Mark("3.4.0");
+    Require(!notificationGate.TryMark("3.4.0"),
+        "busca manual impede repetição automática da mesma versão");
+
     var transactionRoot = Path.Combine(root, "update-transaction");
     Directory.CreateDirectory(transactionRoot);
     var transactionData = Path.Combine(transactionRoot, "SlashDeskData");
