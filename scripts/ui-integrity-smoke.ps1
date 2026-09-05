@@ -578,6 +578,7 @@ foreach ($backupFeature in @(
 foreach ($handler in @(
     'ImportSnippets_OnClick',
     'CreateBackup_OnClick',
+    'AnalyzeAssets_OnClick',
     'RestoreBackup_OnClick',
     'OpenBackupFolder_OnClick'
 )) {
