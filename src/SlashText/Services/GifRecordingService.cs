@@ -357,38 +357,16 @@ public sealed class GifRecordingService
 
     internal static BitmapSource Quantize(BitmapSource source, int colorCount)
     {
+        colorCount = RecordingPresetCatalog.NormalizeGifQuality(colorCount);
+        var palette = new BitmapPalette(source, colorCount);
         var converted = new FormatConvertedBitmap(
             source,
             PixelFormats.Indexed8,
-            BuildPalette(colorCount),
+            palette,
             0);
+        converted.Freeze();
         return converted;
     }
-
-    private static BitmapPalette BuildPalette(int colorCount)
-    {
-        var (redLevels, greenLevels, blueLevels) = colorCount switch
-        {
-            32 => (4, 4, 2),
-            64 => (4, 4, 4),
-            256 => (8, 8, 4),
-            _ => (8, 4, 4)
-        };
-        var colors = new List<System.Windows.Media.Color>(colorCount);
-        for (var red = 0; red < redLevels; red++)
-        for (var green = 0; green < greenLevels; green++)
-        for (var blue = 0; blue < blueLevels; blue++)
-        {
-            colors.Add(System.Windows.Media.Color.FromRgb(
-                Level(red, redLevels),
-                Level(green, greenLevels),
-                Level(blue, blueLevels)));
-        }
-        return new BitmapPalette(colors);
-    }
-
-    private static byte Level(int index, int levels) =>
-        (byte)Math.Round(index * 255d / (levels - 1));
 
     private static int DelayBetween(TimeSpan start, TimeSpan end) =>
         Math.Max(2, (int)Math.Round(Math.Max(0, (end - start).TotalMilliseconds) / 10d));
