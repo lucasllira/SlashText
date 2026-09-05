@@ -359,13 +359,11 @@ public sealed class GifRecordingService
     {
         colorCount = RecordingPresetCatalog.NormalizeGifQuality(colorCount);
         var palette = new BitmapPalette(source, colorCount);
-        var converted = new FormatConvertedBitmap(
+        return new FormatConvertedBitmap(
             source,
             PixelFormats.Indexed8,
             palette,
             0);
-        converted.Freeze();
-        return converted;
     }
 
     private static int DelayBetween(TimeSpan start, TimeSpan end) =>
