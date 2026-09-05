@@ -38,6 +38,52 @@ var translationFlags = typeof(KeyboardHookService).GetField(
 Require(
     translationFlags?.GetRawConstantValue() is uint flags && flags == 0x04,
     "leitura do teclado não altera o estado de acentos mortos em layouts ABNT");
+Require(
+    QuickAccentService.RemainingDelayMilliseconds(1_000, 1_000, 0) == 0 &&
+    QuickAccentService.RemainingDelayMilliseconds(1_000, 1_000, 100) == 100 &&
+    QuickAccentService.RemainingDelayMilliseconds(1_000, 1_080, 100) == 20 &&
+    QuickAccentService.RemainingDelayMilliseconds(1_000, 1_250, 200) == 0,
+    "atrasos de 0, 100 e 200 ms usam tempo monotônico real");
+
+using (var quickAccentDelay = new QuickAccentDelayController())
+{
+    var activation = new TaskCompletionSource(
+        TaskCreationOptions.RunContinuationsAsynchronously);
+    var activationClock = Stopwatch.StartNew();
+    quickAccentDelay.Schedule(60, () => activation.TrySetResult());
+    await Task.Delay(15);
+    Require(!activation.Task.IsCompleted, "Acento Rápido não abre antes do atraso");
+    await activation.Task.WaitAsync(TimeSpan.FromSeconds(2));
+    Require(
+        activationClock.Elapsed >= TimeSpan.FromMilliseconds(35),
+        "Acento Rápido abre após o temporizador independente");
+
+    var cancelledCount = 0;
+    quickAccentDelay.Schedule(80, () => Interlocked.Increment(ref cancelledCount));
+    quickAccentDelay.Cancel();
+    await Task.Delay(120);
+    Require(cancelledCount == 0, "soltar a combinação cancela a abertura pendente");
+
+    var deduplicatedCount = 0;
+    var latestActivation = new TaskCompletionSource(
+        TaskCreationOptions.RunContinuationsAsynchronously);
+    quickAccentDelay.Schedule(
+        80,
+        () => Interlocked.Increment(ref deduplicatedCount));
+    quickAccentDelay.Schedule(
+        20,
+        () =>
+        {
+            Interlocked.Increment(ref deduplicatedCount);
+            latestActivation.TrySetResult();
+        });
+    await latestActivation.Task.WaitAsync(TimeSpan.FromSeconds(2));
+    await Task.Delay(100);
+    Require(
+        deduplicatedCount == 1,
+        "reagendamento não produz abertura dupla");
+}
+
 var portugueseCharacters = QuickAccentService.PreviewCharacters(["PortugueseBrazil"]);
 Require(
     portugueseCharacters.Contains('ã') && !portugueseCharacters.Contains('ä'),
