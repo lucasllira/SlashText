@@ -357,38 +357,159 @@ public sealed class GifRecordingService
 
     internal static BitmapSource Quantize(BitmapSource source, int colorCount)
     {
-        var converted = new FormatConvertedBitmap(
+        colorCount = RecordingPresetCatalog.NormalizeGifQuality(colorCount);
+        return new FormatConvertedBitmap(
             source,
             PixelFormats.Indexed8,
-            BuildPalette(colorCount),
+            BuildAdaptivePalette(source, colorCount),
             0);
-        return converted;
     }
 
-    private static BitmapPalette BuildPalette(int colorCount)
+    private static BitmapPalette BuildAdaptivePalette(
+        BitmapSource source,
+        int colorCount)
     {
-        var (redLevels, greenLevels, blueLevels) = colorCount switch
+        var pixels = new byte[source.PixelWidth * source.PixelHeight * 4];
+        var stride = source.PixelWidth * 4;
+        var bgra = source.Format == PixelFormats.Bgra32
+            ? source
+            : new FormatConvertedBitmap(
+                source,
+                PixelFormats.Bgra32,
+                null,
+                0);
+        bgra.CopyPixels(pixels, stride, 0);
+
+        const int maximumSamples = 65_536;
+        var pixelCount = source.PixelWidth * source.PixelHeight;
+        var sampleStep = Math.Max(
+            1,
+            (int)Math.Ceiling(Math.Sqrt(pixelCount / (double)maximumSamples)));
+        var histogram = new Dictionary<int, PaletteAccumulator>();
+        for (var y = 0; y < source.PixelHeight; y += sampleStep)
         {
-            32 => (4, 4, 2),
-            64 => (4, 4, 4),
-            256 => (8, 8, 4),
-            _ => (8, 4, 4)
-        };
-        var colors = new List<System.Windows.Media.Color>(colorCount);
-        for (var red = 0; red < redLevels; red++)
-        for (var green = 0; green < greenLevels; green++)
-        for (var blue = 0; blue < blueLevels; blue++)
-        {
-            colors.Add(System.Windows.Media.Color.FromRgb(
-                Level(red, redLevels),
-                Level(green, greenLevels),
-                Level(blue, blueLevels)));
+            var row = y * stride;
+            for (var x = 0; x < source.PixelWidth; x += sampleStep)
+            {
+                var offset = row + x * 4;
+                var blue = pixels[offset];
+                var green = pixels[offset + 1];
+                var red = pixels[offset + 2];
+                var key = ((red >> 3) << 10) |
+                          ((green >> 3) << 5) |
+                          (blue >> 3);
+                if (!histogram.TryGetValue(key, out var accumulator))
+                {
+                    accumulator = new PaletteAccumulator();
+                    histogram.Add(key, accumulator);
+                }
+                accumulator.Add(red, green, blue);
+            }
         }
-        return new BitmapPalette(colors);
+
+        var candidates = histogram.Values
+            .OrderByDescending(item => item.Count)
+            .Take(Math.Max(512, colorCount * 8))
+            .Select(item => item.ToCandidate())
+            .ToList();
+        if (candidates.Count == 0)
+        {
+            return new BitmapPalette(
+                [System.Windows.Media.Color.FromRgb(0, 0, 0)]);
+        }
+
+        var selected = new List<PaletteCandidate>(
+            Math.Min(colorCount, candidates.Count))
+        {
+            candidates[0]
+        };
+        candidates.RemoveAt(0);
+        foreach (var candidate in candidates)
+        {
+            candidate.MinimumDistanceSquared =
+                ColorDistanceSquared(candidate, selected[0]);
+        }
+
+        while (selected.Count < colorCount && candidates.Count > 0)
+        {
+            var bestIndex = 0;
+            var bestScore = double.MinValue;
+            for (var index = 0; index < candidates.Count; index++)
+            {
+                var candidate = candidates[index];
+                var score = Math.Log2(candidate.Count + 1d) *
+                            (candidate.MinimumDistanceSquared + 64d);
+                if (score > bestScore)
+                {
+                    bestScore = score;
+                    bestIndex = index;
+                }
+            }
+
+            var chosen = candidates[bestIndex];
+            candidates.RemoveAt(bestIndex);
+            selected.Add(chosen);
+            foreach (var candidate in candidates)
+            {
+                candidate.MinimumDistanceSquared = Math.Min(
+                    candidate.MinimumDistanceSquared,
+                    ColorDistanceSquared(candidate, chosen));
+            }
+        }
+
+        return new BitmapPalette(
+            selected.Select(item =>
+                System.Windows.Media.Color.FromRgb(
+                    item.Red,
+                    item.Green,
+                    item.Blue)).ToList());
     }
 
-    private static byte Level(int index, int levels) =>
-        (byte)Math.Round(index * 255d / (levels - 1));
+    private static int ColorDistanceSquared(
+        PaletteCandidate first,
+        PaletteCandidate second)
+    {
+        var red = first.Red - second.Red;
+        var green = first.Green - second.Green;
+        var blue = first.Blue - second.Blue;
+        return red * red + green * green + blue * blue;
+    }
+
+    private sealed class PaletteAccumulator
+    {
+        private long _red;
+        private long _green;
+        private long _blue;
+
+        public int Count { get; private set; }
+
+        public void Add(byte red, byte green, byte blue)
+        {
+            Count++;
+            _red += red;
+            _green += green;
+            _blue += blue;
+        }
+
+        public PaletteCandidate ToCandidate() => new(
+            Count,
+            (byte)(_red / Count),
+            (byte)(_green / Count),
+            (byte)(_blue / Count));
+    }
+
+    private sealed class PaletteCandidate(
+        int count,
+        byte red,
+        byte green,
+        byte blue)
+    {
+        public int Count { get; } = count;
+        public byte Red { get; } = red;
+        public byte Green { get; } = green;
+        public byte Blue { get; } = blue;
+        public int MinimumDistanceSquared { get; set; } = int.MaxValue;
+    }
 
     private static int DelayBetween(TimeSpan start, TimeSpan end) =>
         Math.Max(2, (int)Math.Round(Math.Max(0, (end - start).TotalMilliseconds) / 10d));

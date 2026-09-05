@@ -10,7 +10,8 @@ public enum CaptureShortcutAction
 {
     ActiveMonitor,
     Region,
-    Window
+    Window,
+    Scrolling
 }
 
 public sealed class CaptureShortcutEventArgs(CaptureShortcutAction action) : EventArgs
@@ -50,7 +51,8 @@ public sealed class GlobalCaptureShortcutService : IDisposable
         Window owner,
         string activeMonitor,
         string region,
-        string window)
+        string window,
+        string scrolling)
     {
         DisposeRegistrations();
         _window = new WindowInteropHelper(owner).EnsureHandle();
@@ -62,7 +64,8 @@ public sealed class GlobalCaptureShortcutService : IDisposable
         {
             (CaptureShortcutAction.ActiveMonitor, activeMonitor),
             (CaptureShortcutAction.Region, region),
-            (CaptureShortcutAction.Window, window)
+            (CaptureShortcutAction.Window, window),
+            (CaptureShortcutAction.Scrolling, scrolling)
         };
         var mouse = new List<CaptureSettingsSnapshot>();
         var id = 4100;

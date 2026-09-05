@@ -61,8 +61,18 @@ foreach ($handler in $handlers) {
 }
 
 $recorderCount = ([regex]::Matches($xaml, '<views:ShortcutRecorderBox')).Count
-if ($recorderCount -ne 3) {
-    throw "Esperados 3 gravadores de atalho; encontrados: $recorderCount"
+if ($recorderCount -ne 4) {
+    throw "Esperados 4 gravadores de atalho; encontrados: $recorderCount"
+}
+foreach ($captureRecorder in @(
+    'CaptureMonitorShortcutBox',
+    'CaptureRegionShortcutBox',
+    'CaptureWindowShortcutBox',
+    'CaptureScrollingShortcutBox'
+)) {
+    if (-not $xaml.Contains(('x:Name="{0}"' -f $captureRecorder))) {
+        throw "Gravador de atalho de captura ausente: $captureRecorder"
+    }
 }
 
 foreach ($tool in @(

@@ -14,6 +14,7 @@
     <Geometry x:Key="Icon.Region">M4,9 L4,4 L9,4 M15,4 L20,4 L20,9 M20,15 L20,20 L15,20 M9,20 L4,20 L4,15</Geometry>
     <Geometry x:Key="Icon.Window">M3,5 L21,5 L21,19 L3,19 Z M3,9 L21,9</Geometry>
     <Geometry x:Key="Icon.Record">M12,3 A9,9 0 1 0 12,21 A9,9 0 1 0 12,3 M12,8 A4,4 0 1 0 12,16 A4,4 0 1 0 12,8</Geometry>
+    <Geometry x:Key="Icon.Scroll">M12,3 L12,21 M8,7 L12,3 L16,7 M8,17 L12,21 L16,17 M5,9 L19,9 M5,15 L19,15</Geometry>
     <Geometry x:Key="Icon.Folder">M3,6 L10,6 L12,8 L21,8 L21,19 L3,19 Z</Geometry>
     <Geometry x:Key="Icon.Save">M4,3 L18,3 L21,6 L21,21 L3,21 L3,3 Z M7,3 L7,9 L17,9 L17,3 M7,14 L17,14 L17,21 L7,21 Z</Geometry>
     <Geometry x:Key="Icon.Delete">M4,7 L20,7 M9,7 L9,4 L15,4 L15,7 M6,7 L7,21 L17,21 L18,7 M10,11 L10,17 M14,11 L14,17</Geometry>

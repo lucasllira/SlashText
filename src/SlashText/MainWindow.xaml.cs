@@ -109,6 +109,10 @@ public partial class MainWindow : Window
             _settings.Capture.Recording ??= new RecordingSettings();
             RecordingPresetCatalog.Normalize(_settings.Capture.Recording);
             ThemeService.Apply(_settings.Theme);
+            if (_trayIcon?.ContextMenuStrip is { } startupTrayMenu)
+            {
+                ApplyTrayTheme(startupTrayMenu);
+            }
             await _usageService.LoadAsync();
             CloseToTrayCheckBox.IsChecked = _settings.CloseToTray;
             StartWithWindowsCheckBox.IsChecked = _settings.StartWithWindows;
@@ -204,15 +208,98 @@ public partial class MainWindow : Window
         menu.Font = new System.Drawing.Font("Segoe UI", 9.5f);
         menu.ShowImageMargin = false;
         menu.Padding = new Forms.Padding(4);
-        ApplyTrayTheme(menu);
-        menu.Items.Add("Abrir SlashDesk", null, (_, _) => Dispatcher.Invoke(ShowFromTray));
-        menu.Items.Add("Novo atalho", null, (_, _) => Dispatcher.Invoke(() =>
-        {
-            ShowFromTray();
-            BeginNewSnippet();
-        }));
+
+        var capturesMenu = new Forms.ToolStripMenuItem("Capturas");
+        capturesMenu.DropDownItems.Add(
+            "Monitor",
+            null,
+            (_, _) => Dispatcher.BeginInvoke(new Action(() =>
+                _ = RunCaptureAsync(
+                    CaptureShortcutAction.ActiveMonitor,
+                    invokedByShortcut: true))));
+        capturesMenu.DropDownItems.Add(
+            "Região",
+            null,
+            (_, _) => Dispatcher.BeginInvoke(new Action(() =>
+                _ = RunCaptureAsync(
+                    CaptureShortcutAction.Region,
+                    invokedByShortcut: true))));
+        capturesMenu.DropDownItems.Add(
+            "Janela",
+            null,
+            (_, _) => Dispatcher.BeginInvoke(new Action(() =>
+                _ = RunCaptureAsync(
+                    CaptureShortcutAction.Window,
+                    invokedByShortcut: true))));
+        capturesMenu.DropDownItems.Add(
+            "Captura longa",
+            null,
+            (_, _) => Dispatcher.BeginInvoke(new Action(() =>
+                _ = RunScrollingCaptureAsync(invokedByShortcut: false))));
+
+        var recordingsMenu = new Forms.ToolStripMenuItem("Gravações");
+        recordingsMenu.DropDownItems.Add(
+            "Vídeo MP4",
+            null,
+            (_, _) => Dispatcher.BeginInvoke(new Action(() =>
+                StartMp4Recording_OnClick(this, new RoutedEventArgs()))));
+        recordingsMenu.DropDownItems.Add(
+            "GIF animado",
+            null,
+            (_, _) => Dispatcher.BeginInvoke(new Action(() =>
+                StartGifRecording_OnClick(this, new RoutedEventArgs()))));
+
+        var shortcutsMenu = new Forms.ToolStripMenuItem("Atalhos");
+        shortcutsMenu.DropDownItems.Add(
+            "Novo atalho",
+            null,
+            (_, _) => Dispatcher.Invoke(() =>
+            {
+                ShowFromTray();
+                BeginNewSnippet();
+            }));
+        shortcutsMenu.DropDownItems.Add(
+            "Gerenciar atalhos",
+            null,
+            (_, _) => Dispatcher.Invoke(() =>
+            {
+                ShowFromTray();
+                ShowView(ShortcutsView, ShortcutsTabButton);
+            }));
+
+        var applicationMenu = new Forms.ToolStripMenuItem("Aplicativo");
+        applicationMenu.DropDownItems.Add(
+            "Abrir SlashDesk",
+            null,
+            (_, _) => Dispatcher.Invoke(ShowFromTray));
+        applicationMenu.DropDownItems.Add(
+            "Configurações",
+            null,
+            (_, _) => Dispatcher.Invoke(() =>
+            {
+                ShowFromTray();
+                ShowView(SettingsView, SettingsTabButton);
+            }));
+        applicationMenu.DropDownItems.Add(
+            "Sobre",
+            null,
+            (_, _) => Dispatcher.Invoke(() =>
+            {
+                ShowFromTray();
+                ShowView(AboutView, AboutTabButton);
+            }));
+        applicationMenu.DropDownItems.Add(new Forms.ToolStripSeparator());
+        applicationMenu.DropDownItems.Add(
+            "Sair",
+            null,
+            (_, _) => Dispatcher.Invoke(RequestExit));
+
+        menu.Items.Add(capturesMenu);
+        menu.Items.Add(recordingsMenu);
+        menu.Items.Add(shortcutsMenu);
         menu.Items.Add(new Forms.ToolStripSeparator());
-        menu.Items.Add("Sair", null, (_, _) => Dispatcher.Invoke(RequestExit));
+        menu.Items.Add(applicationMenu);
+        ApplyTrayTheme(menu);
 
         _trayIcon = new Forms.NotifyIcon
         {
@@ -263,14 +350,48 @@ public partial class MainWindow : Window
 
     private static void ApplyTrayTheme(Forms.ContextMenuStrip menu)
     {
-        menu.BackColor = ThemeService.IsDark
+        var background = ThemeService.IsDark
             ? DrawingColor.FromArgb(15, 26, 35)
             : DrawingColor.FromArgb(252, 253, 252);
-        menu.ForeColor = ThemeService.IsDark
+        var foreground = ThemeService.IsDark
             ? DrawingColor.FromArgb(243, 246, 248)
             : DrawingColor.FromArgb(21, 33, 43);
-        menu.Renderer = new Forms.ToolStripProfessionalRenderer(
+        var renderer = new Forms.ToolStripProfessionalRenderer(
             new TrayColorTable(ThemeService.IsDark));
+        menu.BackColor = background;
+        menu.ForeColor = foreground;
+        menu.Renderer = renderer;
+        ApplyTrayItemsTheme(
+            menu.Items,
+            background,
+            foreground,
+            renderer);
+    }
+
+    private static void ApplyTrayItemsTheme(
+        Forms.ToolStripItemCollection items,
+        DrawingColor background,
+        DrawingColor foreground,
+        Forms.ToolStripRenderer renderer)
+    {
+        foreach (Forms.ToolStripItem item in items)
+        {
+            item.BackColor = background;
+            item.ForeColor = foreground;
+            if (item is not Forms.ToolStripMenuItem menuItem)
+            {
+                continue;
+            }
+
+            menuItem.DropDown.BackColor = background;
+            menuItem.DropDown.ForeColor = foreground;
+            menuItem.DropDown.Renderer = renderer;
+            ApplyTrayItemsTheme(
+                menuItem.DropDownItems,
+                background,
+                foreground,
+                renderer);
+        }
     }
 
     private void StartMonitoring()
@@ -1796,6 +1917,7 @@ public partial class MainWindow : Window
         CaptureMonitorShortcutBox.Text = capture.ActiveMonitorShortcut;
         CaptureRegionShortcutBox.Text = capture.RegionShortcut;
         CaptureWindowShortcutBox.Text = capture.WindowShortcut;
+        CaptureScrollingShortcutBox.Text = capture.ScrollingShortcut;
         CaptureDirectoryBox.Text = capture.OutputDirectoryTemplate;
         CaptureFileNameBox.Text = capture.FileNameTemplate;
         SelectComboByTag(CaptureFormatBox, capture.ImageFormat);
@@ -1804,7 +1926,9 @@ public partial class MainWindow : Window
         CaptureAutoSaveCheckBox.IsChecked = capture.SaveAutomatically;
         CaptureCursorCheckBox.IsChecked = capture.IncludeCursor;
         CaptureHideSlashDeskCheckBox.IsChecked = capture.HideSlashDeskDuringCapture;
-        CaptureEditorCheckBox.IsChecked = capture.OpenEditorForMonitorAndWindow;
+        SelectComboByTag(
+            CaptureEditorCheckBox,
+            capture.OpenEditorForMonitorAndWindow ? "Editor" : "Direct");
         SelectComboByTag(CaptureDelayBox, capture.DelaySeconds.ToString());
         SelectComboByTag(CaptureRetentionBox, capture.HistoryRetentionDays.ToString());
         SelectComboByTag(RecordingTargetBox, "Monitor");
@@ -1865,7 +1989,8 @@ public partial class MainWindow : Window
         {
             CaptureMonitorShortcutBox.Text.Trim(),
             CaptureRegionShortcutBox.Text.Trim(),
-            CaptureWindowShortcutBox.Text.Trim()
+            CaptureWindowShortcutBox.Text.Trim(),
+            CaptureScrollingShortcutBox.Text.Trim()
         };
         if (shortcuts.Any(item => !GlobalCaptureShortcutService.IsValid(item)))
         {
@@ -1884,6 +2009,17 @@ public partial class MainWindow : Window
             error = "Informe a pasta e o modelo de nome do arquivo.";
             return false;
         }
+        var openEditor = SelectedTag(CaptureEditorCheckBox, "Direct")
+            .Equals("Editor", StringComparison.OrdinalIgnoreCase);
+        var copyToClipboard = CaptureClipboardCheckBox.IsChecked == true;
+        var saveAutomatically = CaptureAutoSaveCheckBox.IsChecked == true;
+        if (!openEditor && !copyToClipboard && !saveAutomatically)
+        {
+            error = "No modo Captura direta, ative Copiar após capturar, " +
+                    "Salvar automaticamente ou ambas as opções.";
+            return false;
+        }
+
         var gifFps = ParseSelectedInt(GifFpsBox, 10);
         var gifQuality = ParseSelectedInt(GifQualityBox, 128);
         if (!RecordingPresetCatalog.GifFps.Any(item => item.Value == gifFps) ||
@@ -1904,15 +2040,16 @@ public partial class MainWindow : Window
             ActiveMonitorShortcut = shortcuts[0],
             RegionShortcut = shortcuts[1],
             WindowShortcut = shortcuts[2],
+            ScrollingShortcut = shortcuts[3],
             OutputDirectoryTemplate = CaptureDirectoryBox.Text.Trim(),
             FileNameTemplate = CaptureFileNameBox.Text.Trim(),
             ImageFormat = SelectedTag(CaptureFormatBox, "PNG"),
             JpegQuality = quality,
-            CopyToClipboard = CaptureClipboardCheckBox.IsChecked == true,
-            SaveAutomatically = CaptureAutoSaveCheckBox.IsChecked == true,
+            CopyToClipboard = copyToClipboard,
+            SaveAutomatically = saveAutomatically,
             HideSlashDeskDuringCapture = CaptureHideSlashDeskCheckBox.IsChecked == true,
             IncludeCursor = CaptureCursorCheckBox.IsChecked == true,
-            OpenEditorForMonitorAndWindow = CaptureEditorCheckBox.IsChecked == true,
+            OpenEditorForMonitorAndWindow = openEditor,
             DelaySeconds = ParseSelectedInt(CaptureDelayBox, 0),
             HistoryRetentionDays = ParseSelectedInt(CaptureRetentionBox, 90),
             Recording = new RecordingSettings
@@ -1937,7 +2074,8 @@ public partial class MainWindow : Window
             this,
             capture.ActiveMonitorShortcut,
             capture.RegionShortcut,
-            capture.WindowShortcut);
+            capture.WindowShortcut,
+            capture.ScrollingShortcut);
         CaptureShortcutStatusText.Text = errors.Count == 0
             ? "● Atalhos ativos"
             : string.Join(Environment.NewLine, errors);
@@ -1948,8 +2086,16 @@ public partial class MainWindow : Window
 
     private void CaptureShortcuts_OnTriggered(
         object? sender,
-        CaptureShortcutEventArgs e) =>
+        CaptureShortcutEventArgs e)
+    {
+        if (e.Action == CaptureShortcutAction.Scrolling)
+        {
+            _ = RunScrollingCaptureAsync(invokedByShortcut: true);
+            return;
+        }
+
         _ = RunCaptureAsync(e.Action, invokedByShortcut: true);
+    }
 
     private void CaptureActiveMonitor_OnClick(object sender, RoutedEventArgs e) =>
         _ = RunCaptureAsync(CaptureShortcutAction.ActiveMonitor, invokedByShortcut: false);
@@ -1960,7 +2106,10 @@ public partial class MainWindow : Window
     private void CaptureWindow_OnClick(object sender, RoutedEventArgs e) =>
         _ = RunCaptureAsync(CaptureShortcutAction.Window, invokedByShortcut: false);
 
-    private async void CaptureScrolling_OnClick(object sender, RoutedEventArgs e)
+    private void CaptureScrolling_OnClick(object sender, RoutedEventArgs e) =>
+        _ = RunScrollingCaptureAsync(invokedByShortcut: false);
+
+    private async Task RunScrollingCaptureAsync(bool invokedByShortcut)
     {
         using var captureLease = _captureGate.TryEnter();
         if (captureLease is null)
@@ -1969,40 +2118,129 @@ public partial class MainWindow : Window
             StatusText.Text = "Já existe uma captura em andamento";
             return;
         }
-        var target = _captureService.WindowUnderCursorTarget();
-        if (target is null)
-        {
-            MessageBox.Show(
-                "Posicione o cursor sobre a janela que será capturada.",
-                "Captura com rolagem",
-                MessageBoxButton.OK,
-                MessageBoxImage.Information);
-            return;
-        }
+
+        var wasVisible = IsVisible;
         try
         {
-            Hide();
-            await Task.Delay(180);
+            SafeDiagnosticLog.Write("capture.started", new Dictionary<string, object?>
+            {
+                ["action"] = CaptureShortcutAction.Scrolling.ToString(),
+                ["invokedByShortcut"] = invokedByShortcut,
+                ["windowWasVisible"] = wasVisible
+            });
+
+            if (invokedByShortcut)
+            {
+                await WaitForCaptureDelayAsync();
+                if (_settings.Capture.ShouldHideSlashDesk(wasVisible))
+                {
+                    Hide();
+                    await Task.Delay(180);
+                }
+            }
+            else
+            {
+                if (wasVisible)
+                {
+                    Hide();
+                }
+                var selectionDelaySeconds = Math.Max(
+                    3,
+                    _settings.Capture.DelaySeconds);
+                ShowTrayBalloon(
+                    Math.Min(selectionDelaySeconds * 1000, 10000),
+                    $"Captura longa em {selectionDelaySeconds}s",
+                    "Posicione o cursor sobre a página que será capturada.",
+                    Forms.ToolTipIcon.Info);
+                await Task.Delay(TimeSpan.FromSeconds(selectionDelaySeconds));
+            }
+
+            var target = _captureService.WindowUnderCursorTarget();
+            if (target is null)
+            {
+                if (wasVisible)
+                {
+                    ShowFromTray();
+                    MessageBox.Show(
+                        "Posicione o cursor sobre a janela que será capturada.",
+                        "Captura longa",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Information);
+                }
+                else
+                {
+                    ShowTrayBalloon(
+                        2500,
+                        "Captura longa não iniciada",
+                        "Não foi possível identificar a janela sob o cursor.",
+                        Forms.ToolTipIcon.Warning);
+                }
+                return;
+            }
+
             var result = await _captureService.CaptureScrollingAsync(
                 target.WindowHandle,
                 target.Bounds,
                 _settings.Capture,
-                owner: null);
-            ShowFromTray();
+                openEditor: _settings.Capture.OpenEditorForMonitorAndWindow,
+                owner: IsVisible ? this : null);
+            if (wasVisible)
+            {
+                ShowFromTray();
+            }
             if (result is not null)
             {
-                StatusText.Text = $"Captura com rolagem salva: {Path.GetFileName(result.FilePath)}";
+                StatusText.Text = string.IsNullOrWhiteSpace(result.FilePath)
+                    ? "Captura longa copiada"
+                    : $"Captura longa salva: {Path.GetFileName(result.FilePath)}";
                 RefreshCaptureHistory();
+                ShowTrayBalloon(
+                    3500,
+                    "Captura longa concluída",
+                    string.IsNullOrWhiteSpace(result.FilePath)
+                        ? "Imagem copiada para o clipboard."
+                        : "Clique para abrir a imagem.",
+                    Forms.ToolTipIcon.Info,
+                    result.FilePath);
             }
+
+            SafeDiagnosticLog.Write("capture.completed", new Dictionary<string, object?>
+            {
+                ["action"] = CaptureShortcutAction.Scrolling.ToString(),
+                ["resultCreated"] = result is not null
+            });
         }
         catch (Exception exception)
         {
-            ShowFromTray();
-            MessageBox.Show(
-                exception.Message,
-                "Captura com rolagem",
-                MessageBoxButton.OK,
-                MessageBoxImage.Warning);
+            SafeDiagnosticLog.Write("capture.failed", new Dictionary<string, object?>
+            {
+                ["action"] = CaptureShortcutAction.Scrolling.ToString(),
+                ["exceptionType"] = exception.GetType().Name
+            });
+            if (wasVisible)
+            {
+                ShowFromTray();
+                MessageBox.Show(
+                    exception.Message,
+                    "Captura longa",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+            }
+            else
+            {
+                ShowTrayBalloon(
+                    2500,
+                    "Não foi possível fazer a captura longa",
+                    exception.Message,
+                    Forms.ToolTipIcon.Warning);
+            }
+        }
+        finally
+        {
+            if (wasVisible && !IsVisible)
+            {
+                ShowFromTray();
+            }
         }
     }
 
