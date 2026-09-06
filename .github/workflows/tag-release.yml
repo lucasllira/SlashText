@@ -6,7 +6,7 @@ on:
       tag:
         description: Stable SemVer tag to create
         required: true
-        default: v3.0.0
+        default: v3.2.0
         type: string
 
 permissions:
