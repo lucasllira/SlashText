@@ -35,7 +35,7 @@ Ele foi pensado para uso pessoal ou corporativo com três prioridades:
 - distribuição portátil em um único executável;
 - preservação dos dados do usuário durante atualizações.
 
-A versão estável atual é a **3.1.0**.
+A versão estável atual é a **3.2.0**.
 
 ## Principais recursos
 
@@ -43,7 +43,7 @@ A versão estável atual é a **3.1.0**.
 |---|---|
 | **Atalhos de texto** | Expansões iniciadas por `/`, conteúdo formatado, variáveis, categorias, sugestões e estatísticas |
 | **Acento Rápido** | Seleção de caracteres por tecla, conjuntos configuráveis, suporte a Caps Lock, Shift e layouts diferentes |
-| **Captura** | Monitor, janela, região e rolagem experimental, com editor, atalhos globais, histórico e salvamento configurável |
+| **Captura** | Monitor, janela, região e captura longa adaptativa, com modos Direta/Editor, atalhos globais, histórico e salvamento configurável |
 | **Gravação** | GIF e MP4 locais, seleção de alvo, presets, cursor, pausa, retomada, prévia e histórico |
 | **Experiência** | Temas Claro, Preto e Seguir o Windows, bandeja, inicialização com o sistema e atualização automática segura |
 
@@ -64,12 +64,12 @@ A versão estável atual é a **3.1.0**.
 - ordenação por uso e exibição opcional do código Unicode;
 - suporte a Caps Lock, Shift, ABNT e layouts diferentes;
 - lista de aplicativos excluídos;
-- bloqueio do auto-repeat para impedir saltos acidentais entre caracteres.
+- temporizador independente da repetição do teclado e funcionamento nos campos editáveis do SlashDesk.
 
 ### Capturas e editor
 
 - captura do monitor ativo, janela sob o cursor ou região livre;
-- captura com rolagem experimental para páginas compatíveis;
+- captura longa adaptativa para páginas compatíveis, com card, atalho e ação próprios;
 - atraso configurável e inclusão opcional do cursor;
 - atalhos independentes com teclado, `Print Screen`, roda e botões laterais do mouse;
 - barra de anotação integrada à seleção de região;
@@ -99,7 +99,7 @@ A versão estável atual é a **3.1.0**.
 - foco visível, contraste semântico e suporte à escala do Windows;
 - barra de captura Fluent e catálogo local de emojis Noto.
 
-A migração completa de todas as telas para o contrato visual mais recente está planejada para a versão 3.2.0. A 3.1.0 entrega a fundação visual e os componentes que serão reutilizados nessa evolução.
+A migração completa de todas as telas para o contrato visual do Visual Lab está planejada para a versão 3.3.0. A 3.2.0 mantém a fundação Fluent existente e prioriza melhorias funcionais, confiabilidade e proteção dos dados.
 
 ## Instalação portátil
 
@@ -153,7 +153,7 @@ Na edição portátil, os dados permanentes ficam em `SlashDeskData`. Na ediçã
 | `usage.json` | Estatísticas locais |
 | `capture-history.json` | Metadados e caminhos das capturas e gravações |
 | `assets/` | Imagens incorporadas aos atalhos |
-| `Backups/` | Backups com manifesto e retenção |
+| `Backups/` | Backups verificáveis com manifesto, tamanho, SHA-256 e retenção |
 | `Logs/` | Diagnósticos sem conteúdo de snippets ou capturas |
 | `update-state.json` | Estado da verificação de atualizações |
 | `Updates/` | Arquivos temporários controlados da atualização |
@@ -161,6 +161,8 @@ Na edição portátil, os dados permanentes ficam em `SlashDeskData`. Na ediçã
 As capturas, GIFs e MP4 ficam no destino escolhido pelo usuário. O histórico guarda metadados e caminhos, não uma segunda cópia do conteúdo.
 
 Na primeira execução portátil, uma `SlashDeskData` válida ao lado do executável tem prioridade. Se ela não existir, dados legados de `%LocalAppData%\SlashDesk` podem ser copiados por staging, validados e ativados sem apagar a origem antiga.
+
+A restauração valida o backup antes de tocar nos dados ativos, aplica tudo em staging e executa rollback completo em caso de falha. Em **Configurações**, a ação **Analisar imagens** localiza arquivos sem referência e só permite removê-los após revisão, confirmação e criação de um novo backup.
 
 ## Atualizações seguras
 
@@ -178,7 +180,7 @@ A pasta `SlashDeskData` não é incluída no pacote e não é substituída pelo 
 
 ### Lembrar depois
 
-Ao selecionar **Lembrar depois**, as verificações automáticas aguardam 24 horas antes de oferecer novamente a mesma versão. A partir da 3.1.1, o botão **Buscar atualizações** permite retomar a oferta manualmente durante esse período, sem remover `update-state.json` nem qualquer outro arquivo de `SlashDeskData`.
+Ao selecionar **Lembrar depois**, as verificações automáticas aguardam 24 horas antes de oferecer novamente a mesma versão. A partir da 3.2.0, o botão **Buscar atualizações** permite retomar a oferta manualmente durante esse período, sem remover `update-state.json` nem qualquer outro arquivo de `SlashDeskData`. A verificação automática também permanece ativa durante a sessão, respeitando cache, preferência e versões ignoradas.
 
 ## Privacidade
 
@@ -199,7 +201,7 @@ Captura com rolagem depende do comportamento do aplicativo de destino e pode rep
 Cada Release publica o ZIP e seu arquivo `.sha256`. No PowerShell:
 
 ~~~powershell
-Get-FileHash .\SlashDesk-3.1.0-portable-win-x64.zip -Algorithm SHA256
+Get-FileHash .\SlashDesk-3.2.0-portable-win-x64.zip -Algorithm SHA256
 ~~~
 
 O resultado deve ser igual ao hash informado na página da Release.
@@ -254,6 +256,19 @@ Os workflows do GitHub repetem build, testes, validações de UI, publicação s
 - [Integração da barra de captura](docs/capture-toolbar-visual-integration.md)
 
 ## Versões
+
+### 3.2.0
+
+- captura longa adaptativa, modos Direta/Editor e ações completas na bandeja;
+- melhor qualidade de GIF com paleta adaptativa;
+- refinamentos de atalhos e Acento Rápido;
+- atualização manual corrigida após **Lembrar depois** e monitor periódico;
+- persistência atômica e preservação de arquivos corrompidos;
+- backups verificáveis, restauração transacional e rollback;
+- inicialização resiliente e limpeza manual segura de imagens órfãs;
+- preservação da pasta `SlashDeskData` durante a atualização.
+
+Veja as [notas completas da versão 3.2.0](https://github.com/lucasllira/SlashText/releases/tag/v3.2.0).
 
 ### 3.1.0
 
