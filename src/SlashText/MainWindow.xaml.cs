@@ -30,6 +30,7 @@ public partial class MainWindow : Window
     private readonly UsageService _usageService = new();
     private readonly QuickAccentService _quickAccentService = new();
     private readonly BackupService _backupService = new();
+    private readonly AssetMaintenanceService _assetMaintenanceService = new();
     private readonly SnippetImportService _snippetImportService = new();
     private readonly CaptureService _captureService = new();
     private readonly GifRecordingService _gifRecordingService = new();
@@ -1652,6 +1653,81 @@ public partial class MainWindow : Window
             MessageBox.Show(
                 exception.Message,
                 "Não foi possível criar o backup",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+        }
+    }
+
+    private void AnalyzeAssets_OnClick(object sender, RoutedEventArgs e)
+    {
+        if (!EnsureSnippetStorageAvailable())
+        {
+            return;
+        }
+
+        try
+        {
+            var report = _assetMaintenanceService.Analyze(_snippets);
+            if (report.UnsafeReferenceCount > 0)
+            {
+                MessageBox.Show(
+                    $"A análise encontrou {report.UnsafeReferenceCount} referência(s) local(is) inválida(s). " +
+                    "Por segurança, nenhuma imagem pode ser removida até que esses atalhos sejam corrigidos.",
+                    "Limpeza de imagens bloqueada",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+                return;
+            }
+
+            if (report.Orphans.Count == 0)
+            {
+                MessageBox.Show(
+                    "Nenhuma imagem órfã foi encontrada. Os arquivos em uso foram preservados.",
+                    "Análise concluída",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+                StatusText.Text = "Nenhuma imagem órfã encontrada";
+                return;
+            }
+
+            var size = report.OrphanSizeBytes < 1024
+                ? $"{report.OrphanSizeBytes} B"
+                : $"{report.OrphanSizeBytes / 1024d:N1} KB";
+            var preview = string.Join(
+                "\n• ",
+                report.Orphans.Take(10).Select(item => item.RelativePath));
+            var remaining = report.Orphans.Count > 10
+                ? $"\n• ... e mais {report.Orphans.Count - 10}"
+                : string.Empty;
+            var confirmation = MessageBox.Show(
+                $"{report.Orphans.Count} imagem(ns) sem referência ({size}):\n\n• {preview}{remaining}\n\n" +
+                "Deseja criar um backup completo e remover somente esses arquivos?",
+                "Revisar imagens órfãs",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning);
+            if (confirmation != MessageBoxResult.Yes)
+            {
+                StatusText.Text = "Limpeza de imagens cancelada";
+                return;
+            }
+
+            var result = _assetMaintenanceService.DeleteOrphansAfterBackup(
+                report,
+                _backupService.CreateManualSnapshot);
+            RefreshBackupSummary();
+            StatusText.Text = $"{result.DeletedCount} imagem(ns) órfã(s) removida(s)";
+            MessageBox.Show(
+                $"{result.DeletedCount} imagem(ns) removida(s).\n\n" +
+                $"Backup criado antes da limpeza: {Path.GetFileName(result.BackupPath)}",
+                "Limpeza concluída",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+        }
+        catch (Exception exception)
+        {
+            MessageBox.Show(
+                exception.Message,
+                "Não foi possível analisar as imagens",
                 MessageBoxButton.OK,
                 MessageBoxImage.Warning);
         }

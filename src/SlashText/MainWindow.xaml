@@ -1527,8 +1527,12 @@
                                                     Margin="0,0,8,8"
                                                     Click="RestoreBackup_OnClick"/>
                                             <Button Content="Abrir pasta"
-                                                    Margin="0,0,0,8"
+                                                    Margin="0,0,8,8"
                                                     Click="OpenBackupFolder_OnClick"/>
+                                            <Button Content="Analisar imagens"
+                                                    Margin="0,0,0,8"
+                                                    ToolTip="Localizar imagens de atalhos que não estão mais em uso"
+                                                    Click="AnalyzeAssets_OnClick"/>
                                         </WrapPanel>
                                         <TextBlock x:Name="BackupLocationText"
                                                    Margin="0,6,0,0"
