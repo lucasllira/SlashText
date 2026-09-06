@@ -9,7 +9,7 @@ on:
       release_tag:
         description: Existing SemVer tag to build and publish
         required: true
-        default: v3.0.0
+        default: v3.2.0
         type: string
 
 permissions:
@@ -133,9 +133,14 @@ jobs:
             '${{ steps.package.outputs.portableChecksum }}',
             '--repo', '${{ github.repository }}',
             '--verify-tag',
-            '--generate-notes',
             '--title', "SlashDesk ${{ steps.version.outputs.version }}"
           )
+          $notesPath = "docs/releases/${{ steps.version.outputs.stableVersion }}.md"
+          if (Test-Path $notesPath) {
+            $arguments += '--notes-file', $notesPath
+          } else {
+            $arguments += '--generate-notes'
+          }
           if ('${{ steps.version.outputs.prerelease }}' -eq 'true') {
             $arguments += '--prerelease'
           }
