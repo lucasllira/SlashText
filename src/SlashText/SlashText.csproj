@@ -30,6 +30,7 @@
 
   <ItemGroup>
     <Resource Include="Assets\SlashDesk.ico" />
+    <EmbeddedResource Include="Assets\Lucide\LICENSE.txt" />
     <Resource Include="Assets\SlashDesk.png" />
     <EmbeddedResource Include="Assets\NotoEmoji\*.png" />
     <None Update="Assets\NotoEmoji\LICENSE.txt" CopyToOutputDirectory="PreserveNewest" />

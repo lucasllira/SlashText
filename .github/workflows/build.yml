@@ -29,6 +29,30 @@ jobs:
       - name: Build
         run: dotnet build SlashText.sln --configuration Release --no-restore -p:Platform=x64
 
+      - name: Visual foundation contract and gallery smoke
+        shell: pwsh
+        run: |
+          ./scripts/visual-foundation-smoke.ps1
+          $exe = Get-ChildItem src/SlashText/bin -Recurse -Filter SlashDesk.exe | Select-Object -First 1
+          if (-not $exe) { throw 'Build executable not found' }
+          $output = Join-Path $PWD 'gallery-evidence'
+          $process = Start-Process -FilePath $exe.FullName -ArgumentList "--design-gallery-smoke `"$output`"" -PassThru
+          if (-not $process.WaitForExit(90000)) { $process.Kill(); throw 'Gallery smoke timed out' }
+          if ($process.ExitCode -ne 0) {
+            if (Test-Path "$output/failure.txt") { Get-Content "$output/failure.txt" }
+            throw "Gallery smoke failed: $($process.ExitCode)"
+          }
+          if (-not (Test-Path "$output/result.txt")) { throw 'Gallery smoke produced no result' }
+          Get-Content "$output/result.txt"
+
+      - name: Upload visual foundation evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: SlashDesk-visual-foundation-evidence
+          path: gallery-evidence/
+          if-no-files-found: warn
+
       - name: UI inventory comparison
         shell: pwsh
         run: ./scripts/compare-ui-inventory.ps1
@@ -127,6 +151,20 @@ jobs:
           New-Item preview-package -ItemType Directory -Force | Out-Null
           Copy-Item publish-portable/SlashDesk.exe preview-package/SlashDesk.exe
           Set-Content -Path preview-package/Abrir-Preview.cmd -Encoding ascii -Value '@echo off', 'start "" "%~dp0SlashDesk.exe" --capture-toolbar-preview'
+
+      - name: Create visual foundation gallery package
+        shell: pwsh
+        run: |
+          New-Item gallery-package -ItemType Directory -Force | Out-Null
+          Copy-Item publish-portable/SlashDesk.exe gallery-package/SlashDesk.exe
+          Set-Content -Path gallery-package/Abrir-Galeria.cmd -Encoding ascii -Value '@echo off', 'start "" "%~dp0SlashDesk.exe" --design-gallery'
+
+      - name: Upload visual foundation gallery
+        uses: actions/upload-artifact@v4
+        with:
+          name: SlashDesk-visual-foundation-gallery-win-x64
+          path: gallery-package/
+          if-no-files-found: error
 
       - name: Upload installed staging
         uses: actions/upload-artifact@v4
