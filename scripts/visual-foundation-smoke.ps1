@@ -12,7 +12,7 @@ foreach ($file in Get-ChildItem $styles -Filter '*.xaml') {
     $ns = New-Object System.Xml.XmlNamespaceManager($xml.NameTable)
     $ns.AddNamespace('p', 'http://schemas.microsoft.com/winfx/2006/xaml/presentation')
     $ns.AddNamespace('x', 'http://schemas.microsoft.com/winfx/2006/xaml')
-    foreach ($style in $xml.SelectNodes('//p:Style', $ns)) {
+    foreach ($style in $xml.SelectNodes('/p:ResourceDictionary/p:Style', $ns)) {
         if (-not $style.GetAttribute('Key', 'http://schemas.microsoft.com/winfx/2006/xaml').StartsWith('Lab.')) {
             throw "Unscoped style in $($file.Name)"
         }

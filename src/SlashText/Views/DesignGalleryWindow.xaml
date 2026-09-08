@@ -38,13 +38,13 @@
      <Border Style="{StaticResource Lab.Card}" VerticalAlignment="Top"><StackPanel>
       <TextBlock Text="Botões e foco" FontWeight="SemiBold" FontSize="18" Margin="0,0,0,18"/>
       <Button x:Name="NormalButton" Content="Ação secundária" Style="{StaticResource Lab.Button}" Click="ActionClicked" Margin="0,0,0,10"/>
-      <Button Content="Ação principal" Style="{StaticResource Lab.PrimaryButton}" Click="ActionClicked" Margin="0,0,0,10"/>
+      <Button x:Name="PrimaryButton" Content="Ação principal" Style="{StaticResource Lab.PrimaryButton}" Click="ActionClicked" Margin="0,0,0,10"/>
       <Button Content="Indisponível" Style="{StaticResource Lab.Button}" IsEnabled="False" Margin="0,0,0,14"/>
       <TextBlock Text="A navegação por teclado mostra o anel de foco. O estado pressionado não altera o layout." Style="{StaticResource Lab.Metadata}"/>
      </StackPanel></Border>
      <Border Grid.Column="2" Style="{StaticResource Lab.Card}" VerticalAlignment="Top"><StackPanel>
       <TextBlock Text="Campos e seleção" FontWeight="SemiBold" FontSize="18" Margin="0,0,0,14"/>
-      <Label Target="{Binding ElementName=ValidField}" Content="Nome" Foreground="{DynamicResource Lab.muted}" Padding="0,0,0,7"/>
+      <Label Target="{Binding ElementName=ValidField}" Padding="0,0,0,7"><TextBlock Text="Nome" Foreground="{DynamicResource Lab.muted}"/></Label>
       <TextBox x:Name="ValidField" Text="Resposta de boas-vindas" Style="{StaticResource Lab.Field}" AutomationProperties.Name="Nome de exemplo" Margin="0,0,0,12"/>
       <ComboBox x:Name="FormatCombo" SelectedIndex="0" Style="{StaticResource Lab.Combo}" AutomationProperties.Name="Formato de exemplo" Margin="0,0,0,12">
        <ComboBoxItem Content="PNG — imagem"/><ComboBoxItem Content="JPEG — imagem"/><ComboBoxItem Content="GIF — gravação"/>

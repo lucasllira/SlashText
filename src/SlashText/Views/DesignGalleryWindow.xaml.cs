@@ -130,6 +130,12 @@ public partial class DesignGalleryWindow : Window
             await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
             Require(PopupContent.Background.ToString() == (theme == "Dark" ? "#FF242424" : "#FFFFFFFF"), "Detached popup theme");
             OptionsPopup.IsOpen = false;
+            Require(Descendants(PrimaryButton).OfType<TextBlock>().Any(t => t.Text == "Ação principal" && t.Foreground.ToString() == (theme == "Dark" ? "#FF082126" : "#FFFFFFFF")), "Primary label must inherit on-accent color");
+            Require(Descendants(NormalButton).OfType<TextBlock>().Any(t => t.Text == "Ação secundária" && t.Foreground.ToString() == expected), "Neutral label must follow theme");
+            Require(Descendants(FormatCombo).OfType<TextBlock>().Any(t => t.Text == "PNG — imagem" && t.Foreground.ToString() == expected), "Combo selection label must follow theme");
+            // Detach from HWND to avoid the runner desktop clipping the offscreen snapshot.
+            Content = null;
+            GalleryRoot.Resources = Resources;
             foreach (var size in new[] { new Size(1440,900), new Size(980,680) })
             {
                 GalleryRoot.Width = size.Width; GalleryRoot.Height = size.Height;
@@ -142,6 +148,10 @@ public partial class DesignGalleryWindow : Window
                     using var file = File.Create(Path.Combine(_smokeOutput!, $"gallery-{theme}-{size.Width}x{size.Height}-{scale*100:0}.png")); png.Save(file);
                 }
             }
+            GalleryRoot.ClearValue(WidthProperty); GalleryRoot.ClearValue(HeightProperty);
+            Content = GalleryRoot;
+            GalleryRoot.Resources = new ResourceDictionary();
+            await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
         }
         // Exercise real clocks and interruption as well as the reduced-motion path.
         GalleryRoot.ClearValue(WidthProperty); GalleryRoot.ClearValue(HeightProperty);
@@ -156,6 +166,14 @@ public partial class DesignGalleryWindow : Window
             "PASS: themes, validation, switch interruption/rest position, ComboBox and Popup resources, entrance clocks, reduced motion.\n" +
             "16 offscreen PNGs: 1440x900 and 980x680 DIP at 100/125/150/200%. This is NOT a physical mixed-monitor test.\n" +
             "Manual pending: hover/pressed/focus, Windows theme event, actual DPI/monitors, fonts, visual approval.\n");
+    }
+    private static IEnumerable<DependencyObject> Descendants(DependencyObject parent)
+    {
+        for (var index = 0; index < VisualTreeHelper.GetChildrenCount(parent); index++)
+        {
+            var child = VisualTreeHelper.GetChild(parent, index); yield return child;
+            foreach (var descendant in Descendants(child)) yield return descendant;
+        }
     }
     private static void Require(bool value, string message) { if (!value) throw new InvalidOperationException(message); }
     private sealed class Example { public string Value { get; set; } = ""; }
