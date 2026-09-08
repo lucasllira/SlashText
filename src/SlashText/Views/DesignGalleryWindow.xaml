@@ -15,8 +15,8 @@
     <TextBlock Text="Galeria WPF · contrato 11 · desenvolvimento #62" Style="{StaticResource Lab.Metadata}" Margin="0,5,0,0"/>
    </StackPanel>
    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-    <RadioButton Content="Claro" GroupName="Theme" Tag="Light" IsChecked="True" Style="{StaticResource Lab.Tab}" Checked="ThemeChanged"/>
-    <RadioButton Content="Preto" GroupName="Theme" Tag="Dark" Style="{StaticResource Lab.Tab}" Checked="ThemeChanged"/>
+    <RadioButton x:Name="LightTheme" Content="Claro" GroupName="Theme" Tag="Light" IsChecked="True" Style="{StaticResource Lab.Tab}" Checked="ThemeChanged"/>
+    <RadioButton x:Name="DarkTheme" Content="Preto" GroupName="Theme" Tag="Dark" Style="{StaticResource Lab.Tab}" Checked="ThemeChanged"/>
     <RadioButton Content="Windows" GroupName="Theme" Tag="System" Style="{StaticResource Lab.Tab}" Checked="ThemeChanged"/>
    </StackPanel>
   </Grid>

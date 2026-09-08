@@ -108,6 +108,7 @@ public partial class DesignGalleryWindow : Window
         ApplyMotionPreference();
         foreach (var theme in new[] { "Light", "Dark" })
         {
+            (theme == "Dark" ? DarkTheme : LightTheme).IsChecked = true;
             _theme = theme; ApplyTheme(false);
             await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
             UpdateLayout();

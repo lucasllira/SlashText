@@ -77,7 +77,8 @@ public static class LabMotion
     {
         toggle.ApplyTemplate();
         if (toggle.Template?.FindName("Thumb", toggle) is not FrameworkElement thumb) return;
-        if (thumb.RenderTransform is not TranslateTransform) thumb.RenderTransform = new TranslateTransform();
+        if (thumb.RenderTransform is not TranslateTransform || thumb.RenderTransform.IsFrozen)
+            thumb.RenderTransform = new TranslateTransform();
         var transform = (TranslateTransform)thumb.RenderTransform;
         var target = toggle.IsChecked == true ? 18d : 0d;
         if (animate) Animate(transform, TranslateTransform.XProperty, target, toggle, "Lab.Motion.Switch", false);
