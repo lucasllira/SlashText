@@ -135,11 +135,17 @@ public partial class DesignGalleryWindow : Window
             Require(Descendants(FormatCombo).OfType<TextBlock>().Any(t => t.Text == "PNG — imagem" && t.Foreground.ToString() == expected), "Combo selection label must follow theme");
             // Detach from HWND to avoid the runner desktop clipping the offscreen snapshot.
             Content = null;
+            UpdateLayout();
+            await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
+            Require(VisualTreeHelper.GetParent(GalleryRoot) is null, "Offscreen gallery must be detached from HWND content presenter");
             GalleryRoot.Resources = Resources;
             foreach (var size in new[] { new Size(1440,900), new Size(980,680) })
             {
                 GalleryRoot.Width = size.Width; GalleryRoot.Height = size.Height;
                 GalleryRoot.Measure(size); GalleryRoot.Arrange(new Rect(size)); GalleryRoot.UpdateLayout();
+                GalleryScroller.ScrollToTop(); GalleryRoot.UpdateLayout();
+                Require(Math.Abs(GalleryRoot.ActualWidth - size.Width) < .1 && Math.Abs(GalleryRoot.ActualHeight - size.Height) < .1,
+                    $"Offscreen layout differs from requested size: {GalleryRoot.ActualWidth}x{GalleryRoot.ActualHeight}, expected {size}");
                 foreach (var scale in new[] { 1d, 1.25d, 1.5d, 2d })
                 {
                     var bitmap = new RenderTargetBitmap((int)(size.Width*scale), (int)(size.Height*scale), 96*scale, 96*scale, PixelFormats.Pbgra32);
