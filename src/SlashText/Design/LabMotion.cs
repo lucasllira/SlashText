@@ -46,20 +46,22 @@ public static class LabMotion
         button.IsEnabledChanged += EnabledChanged;
     }
 
-    // CSS active translateY(1px); a template-local transform never replaces caller transforms.
-    private static void Press(object sender, MouseButtonEventArgs e) { if (e.ChangedButton == MouseButton.Left) PressTo((ButtonBase)sender, 1); }
-    private static void Release(object sender, RoutedEventArgs e) => PressTo((ButtonBase)sender, 0);
-    private static void KeyDown(object sender, KeyEventArgs e) { if (e.Key is Key.Space or Key.Enter) PressTo((ButtonBase)sender, 1); }
-    private static void KeyUp(object sender, KeyEventArgs e) { if (e.Key is Key.Space or Key.Enter) PressTo((ButtonBase)sender, 0); }
-    private static void EnabledChanged(object sender, DependencyPropertyChangedEventArgs e) => PressTo((ButtonBase)sender, 0);
+    // CSS active scale(.98); a template-local transform never replaces caller transforms.
+    private static void Press(object sender, MouseButtonEventArgs e) { if (e.ChangedButton == MouseButton.Left) PressTo((ButtonBase)sender, .98); }
+    private static void Release(object sender, RoutedEventArgs e) => PressTo((ButtonBase)sender, 1);
+    private static void KeyDown(object sender, KeyEventArgs e) { if (e.Key is Key.Space or Key.Enter) PressTo((ButtonBase)sender, .98); }
+    private static void KeyUp(object sender, KeyEventArgs e) { if (e.Key is Key.Space or Key.Enter) PressTo((ButtonBase)sender, 1); }
+    private static void EnabledChanged(object sender, DependencyPropertyChangedEventArgs e) => PressTo((ButtonBase)sender, 1);
     private static void PressTo(ButtonBase control, double value)
     {
-        if (!control.IsEnabled) value = 0;
+        if (!control.IsEnabled) value = 1;
         control.ApplyTemplate();
         if (VisualTreeHelper.GetChildrenCount(control) == 0 || VisualTreeHelper.GetChild(control, 0) is not FrameworkElement surface) return;
-        if (surface.RenderTransform is not TranslateTransform) surface.RenderTransform = new TranslateTransform();
-        var transform = (TranslateTransform)surface.RenderTransform;
-        Animate(transform, TranslateTransform.YProperty, value, control, "Lab.Motion.Control", false);
+        if (surface.RenderTransform is not ScaleTransform) surface.RenderTransform = new ScaleTransform(1, 1);
+        surface.RenderTransformOrigin = new Point(.5, .5);
+        var transform = (ScaleTransform)surface.RenderTransform;
+        Animate(transform, ScaleTransform.ScaleXProperty, value, control, "Lab.Motion.Control", false);
+        Animate(transform, ScaleTransform.ScaleYProperty, value, control, "Lab.Motion.Control", false);
     }
 
     private static void SwitchChanged(DependencyObject target, DependencyPropertyChangedEventArgs e)
@@ -99,7 +101,7 @@ public static class LabMotion
         element.BeginAnimation(UIElement.OpacityProperty, null); element.Opacity = 1;
         if (!Allowed(element)) return;
         var duration = (Duration)element.FindResource(popup ? "Lab.Motion.Popup" : "Lab.Motion.Page");
-        var spline = ((KeySpline)element.FindResource("Lab.Motion.EaseOut")).Clone();
+        var spline = (KeySpline)((KeySpline)element.FindResource("Lab.Motion.EaseOut")).Clone();
         Start(translate, TranslateTransform.YProperty, popup ? 6 : 5, 0, duration, spline);
         Start(element, UIElement.OpacityProperty, popup ? 0 : .65, 1, duration, spline);
         if (popup) { Start(scale, ScaleTransform.ScaleXProperty, .98, 1, duration, spline); Start(scale, ScaleTransform.ScaleYProperty, .98, 1, duration, spline); }
@@ -108,14 +110,14 @@ public static class LabMotion
     {
         if (!(bool)e.NewValue) return;
         if (target is ToggleButton toggle && GetSwitch(toggle)) MoveThumb(toggle, false);
-        if (target is ButtonBase button && GetInteractive(button)) PressTo(button, 0);
+        if (target is ButtonBase button && GetInteractive(button)) PressTo(button, 1);
         if (target is FrameworkElement element && GetEntrance(element).Length > 0 && element.IsLoaded) PlayEntrance(element);
     }
     private static void Animate(Animatable target, DependencyProperty property, double to, FrameworkElement owner, string key, bool easeOut)
     {
         var from = (double)target.GetValue(property);
         target.BeginAnimation(property, null); target.SetValue(property, to);
-        if (Allowed(owner)) Start(target, property, from, to, (Duration)owner.FindResource(key), ((KeySpline)owner.FindResource(easeOut ? "Lab.Motion.EaseOut" : "Lab.Motion.Ease")).Clone());
+        if (Allowed(owner)) Start(target, property, from, to, (Duration)owner.FindResource(key), (KeySpline)((KeySpline)owner.FindResource(easeOut ? "Lab.Motion.EaseOut" : "Lab.Motion.Ease")).Clone());
     }
     private static void Start(DependencyObject target, DependencyProperty property, double from, double to, Duration duration, KeySpline spline)
     {
