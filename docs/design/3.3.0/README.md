@@ -17,6 +17,8 @@ O contrato web é referência visual, não implementação nativa. Os XAML do pa
 5. Onde já existe serviço/handler, preservar sua implementação e conectar o componente real. Nunca usar handlers simulados da galeria ou do React em produção.
 6. Para ícones: `LabIcon Kind="Camera" Width="18" Height="18"` com Foreground dinâmico. 54 nomes extraídos do Lab em `lucide-nodes.json`; recursos conservam viewport 24×24 e stroke 2 em coordenadas de origem (1,5 DIP ao renderizar 18 DIP).
 
+Os templates usam `LabContentPresenter` para vincular a cor dos rótulos string gerados ao Foreground do componente, preservando AccessText/teclas de acesso e protegendo contra o estilo implícito legado de TextBlock. Conteúdo UIElement e DataTemplates autorais não são alterados.
+
 Paleta base: Claro/Preto com 16 cores do contrato. `Lab.error` é extensão explícita para validação (não presente no Lab). Fonte: Segoe UI Variable Text/Display → Segoe UI; mono Cascadia Mono → Consolas. Nenhuma fonte de ícones instalada é exigida. A aparência da fonte precisa ser conferida no Windows 11 e no fallback. Licença completa Lucide/Feather distribuída como EmbeddedResource `Assets/Lucide/LICENSE.txt`.
 
 ## Movimento

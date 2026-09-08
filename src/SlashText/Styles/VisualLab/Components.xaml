@@ -40,16 +40,11 @@
   <Setter Property="FocusVisualStyle" Value="{StaticResource Lab.Focus}"/>
   <Setter Property="lab:LabMotion.Interactive" Value="True"/>
   <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Button">
-   <ControlTemplate.Resources>
-    <Style TargetType="TextBlock">
-     <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Control}}}"/>
-    </Style>
-   </ControlTemplate.Resources>
    <Border x:Name="Surface" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
      BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{StaticResource Lab.ButtonRadius}">
     <Border x:Name="Bottom" BorderBrush="{DynamicResource Lab.line-strong}" BorderThickness="0,0,0,1"
       CornerRadius="{StaticResource Lab.ButtonRadius}" Padding="{TemplateBinding Padding}">
-     <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" RecognizesAccessKey="True"
+     <lab:LabContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" RecognizesAccessKey="True"
       TextElement.Foreground="{TemplateBinding Foreground}"/>
     </Border>
    </Border>
@@ -66,14 +61,9 @@
   <Setter Property="BorderBrush" Value="{DynamicResource Lab.accent}"/>
   <!-- Keep on-accent foreground on hover; do not inherit the neutral hover fill. -->
   <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Button">
-   <ControlTemplate.Resources>
-    <Style TargetType="TextBlock">
-     <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Control}}}"/>
-    </Style>
-   </ControlTemplate.Resources>
    <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1"
      CornerRadius="{StaticResource Lab.ButtonRadius}" Padding="{TemplateBinding Padding}">
-    <Grid><ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" RecognizesAccessKey="True" TextElement.Foreground="{TemplateBinding Foreground}"/>
+    <Grid><lab:LabContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" RecognizesAccessKey="True" TextElement.Foreground="{TemplateBinding Foreground}"/>
      <Border x:Name="Hover" Background="White" Opacity="0" IsHitTestVisible="False"/>
     </Grid>
    </Border>
@@ -92,11 +82,6 @@
   <Setter Property="SelectionOpacity" Value="0.3"/><Setter Property="BorderBrush" Value="{DynamicResource Lab.line}"/>
   <Setter Property="BorderThickness" Value="1"/><Setter Property="FocusVisualStyle" Value="{StaticResource Lab.Focus}"/>
   <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="TextBox">
-   <ControlTemplate.Resources>
-    <Style TargetType="TextBlock">
-     <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Control}}}"/>
-    </Style>
-   </ControlTemplate.Resources>
    <Border x:Name="Surface" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1" CornerRadius="5">
     <Grid><ScrollViewer x:Name="PART_ContentHost" Margin="{TemplateBinding Padding}"/>
      <Border x:Name="Underline" BorderBrush="{DynamicResource Lab.line-strong}" BorderThickness="0,0,0,1" CornerRadius="5" IsHitTestVisible="False"/>
@@ -114,13 +99,8 @@
   <Setter Property="Foreground" Value="{DynamicResource Lab.text}"/><Setter Property="Background" Value="Transparent"/>
   <Setter Property="Padding" Value="11,9"/><Setter Property="FocusVisualStyle" Value="{StaticResource Lab.Focus}"/>
   <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ComboBoxItem">
-   <ControlTemplate.Resources>
-    <Style TargetType="TextBlock">
-     <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Control}}}"/>
-    </Style>
-   </ControlTemplate.Resources>
    <Border x:Name="Surface" Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}" CornerRadius="4">
-    <ContentPresenter TextElement.Foreground="{TemplateBinding Foreground}"/>
+    <lab:LabContentPresenter TextElement.Foreground="{TemplateBinding Foreground}"/>
    </Border>
    <ControlTemplate.Triggers>
     <Trigger Property="IsHighlighted" Value="True"><Setter TargetName="Surface" Property="Background" Value="{DynamicResource Lab.tint}"/></Trigger>
@@ -138,11 +118,6 @@
   <Setter Property="FocusVisualStyle" Value="{StaticResource Lab.Focus}"/><Setter Property="ItemContainerStyle" Value="{StaticResource Lab.ComboItem}"/>
   <Setter Property="ScrollViewer.CanContentScroll" Value="True"/>
   <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ComboBox">
-   <ControlTemplate.Resources>
-    <Style TargetType="TextBlock">
-     <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Control}}}"/>
-    </Style>
-   </ControlTemplate.Resources>
    <Grid>
     <ToggleButton x:Name="DropToggle" Focusable="False" IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}" ClickMode="Press">
      <ToggleButton.Template><ControlTemplate TargetType="ToggleButton">
@@ -152,7 +127,7 @@
       <ControlTemplate.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Frame" Property="BorderBrush" Value="{DynamicResource Lab.line-strong}"/></Trigger></ControlTemplate.Triggers>
      </ControlTemplate></ToggleButton.Template>
     </ToggleButton>
-    <ContentPresenter x:Name="Selection" Content="{TemplateBinding SelectionBoxItem}" ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+    <lab:LabContentPresenter x:Name="Selection" TextElement.Foreground="{TemplateBinding Foreground}" Content="{TemplateBinding SelectionBoxItem}" ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
      ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}" Margin="11,9,32,9" VerticalAlignment="Center" IsHitTestVisible="False"/>
     <TextBox x:Name="PART_EditableTextBox" Visibility="Hidden" Margin="1,1,30,1" Style="{StaticResource Lab.Field}" IsReadOnly="{TemplateBinding IsReadOnly}"/>
     <Border x:Name="Underline" BorderBrush="{DynamicResource Lab.line-strong}" BorderThickness="0,0,0,1" CornerRadius="5" IsHitTestVisible="False"/>
@@ -177,14 +152,9 @@
   <Setter Property="Cursor" Value="Hand"/><Setter Property="FocusVisualStyle" Value="{StaticResource Lab.Focus}"/>
   <Setter Property="lab:LabMotion.Switch" Value="True"/>
   <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="CheckBox">
-   <ControlTemplate.Resources>
-    <Style TargetType="TextBlock">
-     <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Control}}}"/>
-    </Style>
-   </ControlTemplate.Resources>
    <Border BorderBrush="{DynamicResource Lab.line}" BorderThickness="0,0,0,1">
     <Grid Background="Transparent"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="39"/></Grid.ColumnDefinitions>
-     <ContentPresenter VerticalAlignment="Center" Margin="0,0,15,0" RecognizesAccessKey="True" TextElement.Foreground="{TemplateBinding Foreground}"/>
+     <lab:LabContentPresenter VerticalAlignment="Center" Margin="0,0,15,0" RecognizesAccessKey="True" TextElement.Foreground="{TemplateBinding Foreground}"/>
      <Grid Grid.Column="1" Width="39" Height="21">
       <Border x:Name="Track" Background="{DynamicResource Lab.input}" BorderBrush="{DynamicResource Lab.muted}" BorderThickness="1" CornerRadius="11"/>
       <Ellipse x:Name="Thumb" Width="11" Height="11" Margin="5,5,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" Fill="{DynamicResource Lab.muted}">
@@ -206,13 +176,8 @@
   <Setter Property="Padding" Value="15,10"/><Setter Property="Foreground" Value="{DynamicResource Lab.muted}"/>
   <Setter Property="FocusVisualStyle" Value="{StaticResource Lab.Focus}"/><Setter Property="Cursor" Value="Hand"/>
   <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="RadioButton">
-   <ControlTemplate.Resources>
-    <Style TargetType="TextBlock">
-     <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Control}}}"/>
-    </Style>
-   </ControlTemplate.Resources>
    <Grid><Border x:Name="Surface" CornerRadius="6" Background="Transparent" Padding="{TemplateBinding Padding}">
-    <ContentPresenter RecognizesAccessKey="True" TextElement.Foreground="{TemplateBinding Foreground}"/>
+    <lab:LabContentPresenter RecognizesAccessKey="True" TextElement.Foreground="{TemplateBinding Foreground}"/>
    </Border><Border x:Name="Indicator" Height="3" Margin="15,0" VerticalAlignment="Bottom" CornerRadius="2" Background="{DynamicResource Lab.accent}" Visibility="Hidden"/></Grid>
    <ControlTemplate.Triggers>
     <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Surface" Property="Background" Value="{DynamicResource Lab.input}"/></Trigger>

@@ -130,7 +130,7 @@ public partial class DesignGalleryWindow : Window
             await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
             Require(PopupContent.Background.ToString() == (theme == "Dark" ? "#FF242424" : "#FFFFFFFF"), "Detached popup theme");
             OptionsPopup.IsOpen = false;
-            Require(Descendants(PrimaryButton).OfType<TextBlock>().Any(t => t.Text == "Ação principal" && t.Foreground.ToString() == (theme == "Dark" ? "#FF082126" : "#FFFFFFFF")), "Primary label must inherit on-accent color");
+            Require(Descendants(PrimaryButton).OfType<TextBlock>().Any(t => t.Text == "Ação principal" && t.Foreground.ToString() == (theme == "Dark" ? "#FF082126" : "#FFFFFFFF")), "Primary label must inherit on-accent color: " + string.Join(",", Descendants(PrimaryButton).OfType<TextBlock>().Select(t => t.Text + "=" + t.Foreground)));
             Require(Descendants(NormalButton).OfType<TextBlock>().Any(t => t.Text == "Ação secundária" && t.Foreground.ToString() == expected), "Neutral label must follow theme");
             Require(Descendants(FormatCombo).OfType<TextBlock>().Any(t => t.Text == "PNG — imagem" && t.Foreground.ToString() == expected), "Combo selection label must follow theme");
             // Detach from HWND to avoid the runner desktop clipping the offscreen snapshot.
