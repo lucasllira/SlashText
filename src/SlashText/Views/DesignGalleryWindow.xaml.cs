@@ -133,31 +133,35 @@ public partial class DesignGalleryWindow : Window
             Require(Descendants(PrimaryButton).OfType<TextBlock>().Any(t => t.Text == "Ação principal" && t.Foreground.ToString() == (theme == "Dark" ? "#FF082126" : "#FFFFFFFF")), "Primary label must inherit on-accent color: " + string.Join(",", Descendants(PrimaryButton).OfType<TextBlock>().Select(t => t.Text + "=" + t.Foreground)));
             Require(Descendants(NormalButton).OfType<TextBlock>().Any(t => t.Text == "Ação secundária" && t.Foreground.ToString() == expected), "Neutral label must follow theme");
             Require(Descendants(FormatCombo).OfType<TextBlock>().Any(t => t.Text == "PNG — imagem" && t.Foreground.ToString() == expected), "Combo selection label must follow theme");
-            // Detach from HWND to avoid the runner desktop clipping the offscreen snapshot.
-            Content = null;
-            UpdateLayout();
-            await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
-            Require(VisualTreeHelper.GetParent(GalleryRoot) is null, "Offscreen gallery must be detached from HWND content presenter");
-            GalleryRoot.Resources = Resources;
             foreach (var size in new[] { new Size(1440,900), new Size(980,680) })
             {
-                GalleryRoot.Width = size.Width; GalleryRoot.Height = size.Height;
-                GalleryRoot.Measure(size); GalleryRoot.Arrange(new Rect(size)); GalleryRoot.UpdateLayout();
-                GalleryScroller.ScrollToTop(); GalleryRoot.UpdateLayout();
-                Require(Math.Abs(GalleryRoot.ActualWidth - size.Width) < .1 && Math.Abs(GalleryRoot.ActualHeight - size.Height) < .1,
-                    $"Offscreen layout differs from requested size: {GalleryRoot.ActualWidth}x{GalleryRoot.ActualHeight}, expected {size}");
+                // A fresh, never-shown visual has no runner work-area layout cached by an HWND.
+                var snapshot = new DesignGalleryWindow();
+                snapshot._theme = theme;
+                (theme == "Dark" ? snapshot.DarkTheme : snapshot.LightTheme).IsChecked = true;
+                snapshot._ready = true;
+                snapshot.ApplyTheme(false);
+                snapshot.ReducedSwitch.IsChecked = true;
+                snapshot.ValidateField(snapshot.InvalidField, new TextChangedEventArgs(TextBox.TextChangedEvent, UndoAction.None));
+                var panel = snapshot.GalleryRoot;
+                snapshot.Content = null;
+                panel.Resources = snapshot.Resources;
+                LabMotion.SetReduced(panel, true);
+                panel.Width = size.Width; panel.Height = size.Height;
+                panel.Measure(size); panel.Arrange(new Rect(size)); panel.UpdateLayout();
+                await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
+                panel.Measure(size); panel.Arrange(new Rect(size)); panel.UpdateLayout();
+                Require(Math.Abs(panel.ActualWidth - size.Width) < .1 && Math.Abs(panel.ActualHeight - size.Height) < .1,
+                    $"Offscreen layout differs from requested size: {panel.ActualWidth}x{panel.ActualHeight}, expected {size}");
                 foreach (var scale in new[] { 1d, 1.25d, 1.5d, 2d })
                 {
                     var bitmap = new RenderTargetBitmap((int)(size.Width*scale), (int)(size.Height*scale), 96*scale, 96*scale, PixelFormats.Pbgra32);
-                    bitmap.Render(GalleryRoot);
+                    bitmap.Render(panel);
                     var png = new PngBitmapEncoder(); png.Frames.Add(BitmapFrame.Create(bitmap));
                     using var file = File.Create(Path.Combine(_smokeOutput!, $"gallery-{theme}-{size.Width}x{size.Height}-{scale*100:0}.png")); png.Save(file);
                 }
+                snapshot.Close();
             }
-            GalleryRoot.ClearValue(WidthProperty); GalleryRoot.ClearValue(HeightProperty);
-            Content = GalleryRoot;
-            GalleryRoot.Resources = new ResourceDictionary();
-            await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
         }
         // Exercise real clocks and interruption as well as the reduced-motion path.
         GalleryRoot.ClearValue(WidthProperty); GalleryRoot.ClearValue(HeightProperty);
