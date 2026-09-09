@@ -1,0 +1,2063 @@
+{
+  "base": "406022943ab13d0d78399b2a797210ae5106b0e3",
+  "namedControls": [
+    {
+      "name": "ShellPageTitle",
+      "type": "TextBlock",
+      "view": "Shell",
+      "issue": 63
+    },
+    {
+      "name": "ShellPageDescription",
+      "type": "TextBlock",
+      "view": "Shell",
+      "issue": 63
+    },
+    {
+      "name": "ShortcutHeaderActions",
+      "type": "StackPanel",
+      "view": "Shell",
+      "issue": 63
+    },
+    {
+      "name": "MonitorStatusText",
+      "type": "TextBlock",
+      "view": "Shell",
+      "issue": 63
+    },
+    {
+      "name": "ShortcutsTabButton",
+      "type": "Button",
+      "view": "Shell",
+      "issue": 63
+    },
+    {
+      "name": "QuickAccentTabButton",
+      "type": "Button",
+      "view": "Shell",
+      "issue": 63
+    },
+    {
+      "name": "CaptureTabButton",
+      "type": "Button",
+      "view": "Shell",
+      "issue": 63
+    },
+    {
+      "name": "StatisticsTabButton",
+      "type": "Button",
+      "view": "Shell",
+      "issue": 63
+    },
+    {
+      "name": "SettingsTabButton",
+      "type": "Button",
+      "view": "Shell",
+      "issue": 63
+    },
+    {
+      "name": "AboutTabButton",
+      "type": "Button",
+      "view": "Shell",
+      "issue": 63
+    },
+    {
+      "name": "WorkspaceHost",
+      "type": "Border",
+      "view": "Shell",
+      "issue": 63
+    },
+    {
+      "name": "ShortcutsView",
+      "type": "Grid",
+      "view": "ShortcutsView",
+      "issue": 64
+    },
+    {
+      "name": "ShortcutPrimaryRow",
+      "type": "RowDefinition",
+      "view": "ShortcutsView",
+      "issue": 64
+    },
+    {
+      "name": "ShortcutSecondaryRow",
+      "type": "RowDefinition",
+      "view": "ShortcutsView",
+      "issue": 64
+    },
+    {
+      "name": "ShortcutLeftColumn",
+      "type": "ColumnDefinition",
+      "view": "ShortcutsView",
+      "issue": 64
+    },
+    {
+      "name": "ShortcutLeftDividerColumn",
+      "type": "ColumnDefinition",
+      "view": "ShortcutsView",
+      "issue": 64
+    },
+    {
+      "name": "ShortcutEditorColumn",
+      "type": "ColumnDefinition",
+      "view": "ShortcutsView",
+      "issue": 64
+    },
+    {
+      "name": "ShortcutRightDividerColumn",
+      "type": "ColumnDefinition",
+      "view": "ShortcutsView",
+      "issue": 64
+    },
+    {
+      "name": "ShortcutRightColumn",
+      "type": "ColumnDefinition",
+      "view": "ShortcutsView",
+      "issue": 64
+    },
+    {
+      "name": "ShortcutSidebarPanel",
+      "type": "Grid",
+      "view": "ShortcutsView",
+      "issue": 64
+    },
+    {
+      "name": "SearchBox",
+      "type": "TextBox",
+      "view": "ShortcutsView",
+      "issue": 64
+    },
+    {
+      "name": "CategoriesPanel",
+      "type": "StackPanel",
+      "view": "ShortcutsView",
+      "issue": 64
+    },
+    {
+      "name": "MostUsedPanel",
+      "type": "StackPanel",
+      "view": "ShortcutsView",
+      "issue": 64
+    },
+    {
+      "name": "DisplayAllButton",
+      "type": "Button",
+      "view": "ShortcutsView",
+      "issue": 64
+    },
+    {
+      "name": "DisplayMostUsedButton",
+      "type": "Button",
+      "view": "ShortcutsView",
+      "issue": 64
+    },
+    {
+      "name": "SnippetCountText",
+      "type": "TextBlock",
+      "view": "ShortcutsView",
+      "issue": 64
+    },
+    {
+      "name": "SnippetListPanel",
+      "type": "StackPanel",
+      "view": "ShortcutsView",
+      "issue": 64
+    },
+    {
+      "name": "ShortcutLeftDivider",
+      "type": "GridSplitter",
+      "view": "ShortcutsView",
+      "issue": 64
+    },
+    {
+      "name": "ShortcutEditorPanel",
+      "type": "ScrollViewer",
+      "view": "ShortcutsView",
+      "issue": 64
+    },
+    {
+      "name": "NameBox",
+      "type": "TextBox",
+      "view": "ShortcutsView",
+      "issue": 64
+    },
+    {
+      "name": "TriggerBox",
+      "type": "TextBox",
+      "view": "ShortcutsView",
+      "issue": 64
+    },
+    {
+      "name": "CategoryBox",
+      "type": "TextBox",
+      "view": "ShortcutsView",
+      "issue": 64
+    },
+    {
+      "name": "FormatBox",
+      "type": "ComboBox",
+      "view": "ShortcutsView",
+      "issue": 64
+    },
+    {
+      "name": "FormattingToolbar",
+      "type": "StackPanel",
+      "view": "ShortcutsView",
+      "issue": 64
+    },
+    {
+      "name": "FontFamilyBox",
+      "type": "ComboBox",
+      "view": "ShortcutsView",
+      "issue": 64
+    },
+    {
+      "name": "FontSizeBox",
+      "type": "ComboBox",
+      "view": "ShortcutsView",
+      "issue": 64
+    },
+    {
+      "name": "ContentEditor",
+      "type": "RichTextBox",
+      "view": "ShortcutsView",
+      "issue": 64
+    },
+    {
+      "name": "PreviewViewer",
+      "type": "FlowDocumentScrollViewer",
+      "view": "ShortcutsView",
+      "issue": 64
+    },
+    {
+      "name": "PreviewDocument",
+      "type": "FlowDocument",
+      "view": "ShortcutsView",
+      "issue": 64
+    },
+    {
+      "name": "StatusText",
+      "type": "TextBlock",
+      "view": "ShortcutsView",
+      "issue": 64
+    },
+    {
+      "name": "ShortcutRightDivider",
+      "type": "GridSplitter",
+      "view": "ShortcutsView",
+      "issue": 64
+    },
+    {
+      "name": "ShortcutVariablesPanel",
+      "type": "ScrollViewer",
+      "view": "ShortcutsView",
+      "issue": 64
+    },
+    {
+      "name": "QuickAccentView",
+      "type": "ScrollViewer",
+      "view": "QuickAccentView",
+      "issue": 65
+    },
+    {
+      "name": "QuickAccentPreviewChoice0",
+      "type": "Border",
+      "view": "QuickAccentView",
+      "issue": 65
+    },
+    {
+      "name": "QuickAccentPreviewChoice1",
+      "type": "Border",
+      "view": "QuickAccentView",
+      "issue": 65
+    },
+    {
+      "name": "QuickAccentPreviewChoice2",
+      "type": "Border",
+      "view": "QuickAccentView",
+      "issue": 65
+    },
+    {
+      "name": "QuickAccentPreviewChoice3",
+      "type": "Border",
+      "view": "QuickAccentView",
+      "issue": 65
+    },
+    {
+      "name": "QuickAccentPreviewChoice4",
+      "type": "Border",
+      "view": "QuickAccentView",
+      "issue": 65
+    },
+    {
+      "name": "QuickAccentPreviewChoice5",
+      "type": "Border",
+      "view": "QuickAccentView",
+      "issue": 65
+    },
+    {
+      "name": "QuickAccentPreviewChoice6",
+      "type": "Border",
+      "view": "QuickAccentView",
+      "issue": 65
+    },
+    {
+      "name": "QuickAccentPreviewChoice7",
+      "type": "Border",
+      "view": "QuickAccentView",
+      "issue": 65
+    },
+    {
+      "name": "QuickAccentEnabledCheckBox",
+      "type": "CheckBox",
+      "view": "QuickAccentView",
+      "issue": 65
+    },
+    {
+      "name": "QuickAccentActivationBox",
+      "type": "ComboBox",
+      "view": "QuickAccentView",
+      "issue": 65
+    },
+    {
+      "name": "QuickAccentDelaySlider",
+      "type": "Slider",
+      "view": "QuickAccentView",
+      "issue": 65
+    },
+    {
+      "name": "QuickAccentDelayBox",
+      "type": "TextBox",
+      "view": "QuickAccentView",
+      "issue": 65
+    },
+    {
+      "name": "QuickAccentPositionBox",
+      "type": "ComboBox",
+      "view": "QuickAccentView",
+      "issue": 65
+    },
+    {
+      "name": "QuickAccentUnicodeCheckBox",
+      "type": "CheckBox",
+      "view": "QuickAccentView",
+      "issue": 65
+    },
+    {
+      "name": "QuickAccentSortCheckBox",
+      "type": "CheckBox",
+      "view": "QuickAccentView",
+      "issue": 65
+    },
+    {
+      "name": "QuickAccentSetSummaryText",
+      "type": "TextBlock",
+      "view": "QuickAccentView",
+      "issue": 65
+    },
+    {
+      "name": "QuickAccentPortugueseCheckBox",
+      "type": "CheckBox",
+      "view": "QuickAccentView",
+      "issue": 65
+    },
+    {
+      "name": "QuickAccentSpanishCheckBox",
+      "type": "CheckBox",
+      "view": "QuickAccentView",
+      "issue": 65
+    },
+    {
+      "name": "QuickAccentFrenchCheckBox",
+      "type": "CheckBox",
+      "view": "QuickAccentView",
+      "issue": 65
+    },
+    {
+      "name": "QuickAccentGermanCheckBox",
+      "type": "CheckBox",
+      "view": "QuickAccentView",
+      "issue": 65
+    },
+    {
+      "name": "QuickAccentItalianCheckBox",
+      "type": "CheckBox",
+      "view": "QuickAccentView",
+      "issue": 65
+    },
+    {
+      "name": "QuickAccentNordicCheckBox",
+      "type": "CheckBox",
+      "view": "QuickAccentView",
+      "issue": 65
+    },
+    {
+      "name": "QuickAccentCentralEuropeanCheckBox",
+      "type": "CheckBox",
+      "view": "QuickAccentView",
+      "issue": 65
+    },
+    {
+      "name": "QuickAccentCurrencyCheckBox",
+      "type": "CheckBox",
+      "view": "QuickAccentView",
+      "issue": 65
+    },
+    {
+      "name": "QuickAccentSpecialCheckBox",
+      "type": "CheckBox",
+      "view": "QuickAccentView",
+      "issue": 65
+    },
+    {
+      "name": "QuickAccentCharactersPreviewText",
+      "type": "TextBlock",
+      "view": "QuickAccentView",
+      "issue": 65
+    },
+    {
+      "name": "QuickAccentExcludedAppsBox",
+      "type": "TextBox",
+      "view": "QuickAccentView",
+      "issue": 65
+    },
+    {
+      "name": "CaptureView",
+      "type": "ScrollViewer",
+      "view": "CaptureView",
+      "issue": 63
+    },
+    {
+      "name": "CaptureMonitorShortcutBox",
+      "type": "ShortcutRecorderBox",
+      "view": "CaptureView",
+      "issue": 63
+    },
+    {
+      "name": "CaptureRegionShortcutBox",
+      "type": "ShortcutRecorderBox",
+      "view": "CaptureView",
+      "issue": 63
+    },
+    {
+      "name": "CaptureWindowShortcutBox",
+      "type": "ShortcutRecorderBox",
+      "view": "CaptureView",
+      "issue": 63
+    },
+    {
+      "name": "CaptureScrollingShortcutBox",
+      "type": "ShortcutRecorderBox",
+      "view": "CaptureView",
+      "issue": 63
+    },
+    {
+      "name": "RecordingTargetBox",
+      "type": "ComboBox",
+      "view": "CaptureView",
+      "issue": 63
+    },
+    {
+      "name": "RecordingFpsBox",
+      "type": "ComboBox",
+      "view": "CaptureView",
+      "issue": 63
+    },
+    {
+      "name": "RecordingQualityBox",
+      "type": "ComboBox",
+      "view": "CaptureView",
+      "issue": 63
+    },
+    {
+      "name": "RecordingQualityDescriptionText",
+      "type": "TextBlock",
+      "view": "CaptureView",
+      "issue": 63
+    },
+    {
+      "name": "RecordingCursorCheckBox",
+      "type": "CheckBox",
+      "view": "CaptureView",
+      "issue": 63
+    },
+    {
+      "name": "StartMp4RecordingButton",
+      "type": "Button",
+      "view": "CaptureView",
+      "issue": 63
+    },
+    {
+      "name": "GifFpsBox",
+      "type": "ComboBox",
+      "view": "CaptureView",
+      "issue": 63
+    },
+    {
+      "name": "GifFpsDescriptionText",
+      "type": "TextBlock",
+      "view": "CaptureView",
+      "issue": 63
+    },
+    {
+      "name": "GifQualityBox",
+      "type": "ComboBox",
+      "view": "CaptureView",
+      "issue": 63
+    },
+    {
+      "name": "GifQualityDescriptionText",
+      "type": "TextBlock",
+      "view": "CaptureView",
+      "issue": 63
+    },
+    {
+      "name": "StartGifRecordingButton",
+      "type": "Button",
+      "view": "CaptureView",
+      "issue": 63
+    },
+    {
+      "name": "CapturePreviewImage",
+      "type": "Image",
+      "view": "CaptureView",
+      "issue": 63
+    },
+    {
+      "name": "CapturePreviewEmptyPanel",
+      "type": "StackPanel",
+      "view": "CaptureView",
+      "issue": 63
+    },
+    {
+      "name": "CapturePreviewDetailsText",
+      "type": "TextBlock",
+      "view": "CaptureView",
+      "issue": 63
+    },
+    {
+      "name": "CaptureDirectoryBox",
+      "type": "TextBox",
+      "view": "CaptureView",
+      "issue": 63
+    },
+    {
+      "name": "CaptureFileNameBox",
+      "type": "TextBox",
+      "view": "CaptureView",
+      "issue": 63
+    },
+    {
+      "name": "CaptureFormatBox",
+      "type": "ComboBox",
+      "view": "CaptureView",
+      "issue": 63
+    },
+    {
+      "name": "CaptureQualityBox",
+      "type": "TextBox",
+      "view": "CaptureView",
+      "issue": 63
+    },
+    {
+      "name": "CaptureClipboardCheckBox",
+      "type": "CheckBox",
+      "view": "CaptureView",
+      "issue": 63
+    },
+    {
+      "name": "CaptureAutoSaveCheckBox",
+      "type": "CheckBox",
+      "view": "CaptureView",
+      "issue": 63
+    },
+    {
+      "name": "CaptureCursorCheckBox",
+      "type": "CheckBox",
+      "view": "CaptureView",
+      "issue": 63
+    },
+    {
+      "name": "CaptureHideSlashDeskCheckBox",
+      "type": "CheckBox",
+      "view": "CaptureView",
+      "issue": 63
+    },
+    {
+      "name": "CaptureEditorCheckBox",
+      "type": "ComboBox",
+      "view": "CaptureView",
+      "issue": 63
+    },
+    {
+      "name": "CaptureDelayBox",
+      "type": "ComboBox",
+      "view": "CaptureView",
+      "issue": 63
+    },
+    {
+      "name": "CaptureRetentionBox",
+      "type": "ComboBox",
+      "view": "CaptureView",
+      "issue": 63
+    },
+    {
+      "name": "CaptureShortcutStatusText",
+      "type": "TextBlock",
+      "view": "CaptureView",
+      "issue": 63
+    },
+    {
+      "name": "CaptureHistoryFilterBox",
+      "type": "ComboBox",
+      "view": "CaptureView",
+      "issue": 63
+    },
+    {
+      "name": "CaptureHistoryStatusText",
+      "type": "TextBlock",
+      "view": "CaptureView",
+      "issue": 63
+    },
+    {
+      "name": "CaptureHistoryPanel",
+      "type": "StackPanel",
+      "view": "CaptureView",
+      "issue": 63
+    },
+    {
+      "name": "StatisticsView",
+      "type": "ScrollViewer",
+      "view": "StatisticsView",
+      "issue": 66
+    },
+    {
+      "name": "TotalExpansionsText",
+      "type": "TextBlock",
+      "view": "StatisticsView",
+      "issue": 66
+    },
+    {
+      "name": "CharactersSavedText",
+      "type": "TextBlock",
+      "view": "StatisticsView",
+      "issue": 66
+    },
+    {
+      "name": "QuickAccentTotalText",
+      "type": "TextBlock",
+      "view": "StatisticsView",
+      "issue": 66
+    },
+    {
+      "name": "CaptureTotalText",
+      "type": "TextBlock",
+      "view": "StatisticsView",
+      "issue": 66
+    },
+    {
+      "name": "StatisticsRankingPanel",
+      "type": "StackPanel",
+      "view": "StatisticsView",
+      "issue": 66
+    },
+    {
+      "name": "UsedSnippetsText",
+      "type": "TextBlock",
+      "view": "StatisticsView",
+      "issue": 66
+    },
+    {
+      "name": "QuickAccentFavoriteText",
+      "type": "TextBlock",
+      "view": "StatisticsView",
+      "issue": 66
+    },
+    {
+      "name": "CaptureRegionTotalText",
+      "type": "TextBlock",
+      "view": "StatisticsView",
+      "issue": 66
+    },
+    {
+      "name": "CaptureMonitorTotalText",
+      "type": "TextBlock",
+      "view": "StatisticsView",
+      "issue": 66
+    },
+    {
+      "name": "CaptureWindowTotalText",
+      "type": "TextBlock",
+      "view": "StatisticsView",
+      "issue": 66
+    },
+    {
+      "name": "CaptureGifTotalText",
+      "type": "TextBlock",
+      "view": "StatisticsView",
+      "issue": 66
+    },
+    {
+      "name": "CaptureMp4TotalText",
+      "type": "TextBlock",
+      "view": "StatisticsView",
+      "issue": 66
+    },
+    {
+      "name": "QuickAccentCharactersPanel",
+      "type": "WrapPanel",
+      "view": "StatisticsView",
+      "issue": 66
+    },
+    {
+      "name": "TimeSavedText",
+      "type": "TextBlock",
+      "view": "StatisticsView",
+      "issue": 66
+    },
+    {
+      "name": "AverageCharactersText",
+      "type": "TextBlock",
+      "view": "StatisticsView",
+      "issue": 66
+    },
+    {
+      "name": "SettingsView",
+      "type": "ScrollViewer",
+      "view": "SettingsView",
+      "issue": 67
+    },
+    {
+      "name": "ThemeBox",
+      "type": "ComboBox",
+      "view": "SettingsView",
+      "issue": 67
+    },
+    {
+      "name": "CloseToTrayCheckBox",
+      "type": "CheckBox",
+      "view": "SettingsView",
+      "issue": 67
+    },
+    {
+      "name": "StartWithWindowsCheckBox",
+      "type": "CheckBox",
+      "view": "SettingsView",
+      "issue": 67
+    },
+    {
+      "name": "ShowSuggestionsCheckBox",
+      "type": "CheckBox",
+      "view": "SettingsView",
+      "issue": 67
+    },
+    {
+      "name": "ImportSourceBox",
+      "type": "ComboBox",
+      "view": "SettingsView",
+      "issue": 67
+    },
+    {
+      "name": "BackupSummaryText",
+      "type": "TextBlock",
+      "view": "SettingsView",
+      "issue": 67
+    },
+    {
+      "name": "BackupLocationText",
+      "type": "TextBlock",
+      "view": "SettingsView",
+      "issue": 67
+    },
+    {
+      "name": "SettingsVersionText",
+      "type": "TextBlock",
+      "view": "SettingsView",
+      "issue": 67
+    },
+    {
+      "name": "CheckUpdatesCheckBox",
+      "type": "CheckBox",
+      "view": "SettingsView",
+      "issue": 67
+    },
+    {
+      "name": "SettingsLastUpdateCheckText",
+      "type": "TextBlock",
+      "view": "SettingsView",
+      "issue": 67
+    },
+    {
+      "name": "SettingsLastUpdateResultText",
+      "type": "TextBlock",
+      "view": "SettingsView",
+      "issue": 67
+    },
+    {
+      "name": "SettingsCheckUpdatesButton",
+      "type": "Button",
+      "view": "SettingsView",
+      "issue": 67
+    },
+    {
+      "name": "AboutView",
+      "type": "ScrollViewer",
+      "view": "AboutView",
+      "issue": 68
+    },
+    {
+      "name": "AboutVersionText",
+      "type": "TextBlock",
+      "view": "AboutView",
+      "issue": 68
+    },
+    {
+      "name": "UpdateChannelText",
+      "type": "TextBlock",
+      "view": "AboutView",
+      "issue": 68
+    },
+    {
+      "name": "LastUpdateCheckText",
+      "type": "TextBlock",
+      "view": "AboutView",
+      "issue": 68
+    },
+    {
+      "name": "LastUpdateResultText",
+      "type": "TextBlock",
+      "view": "AboutView",
+      "issue": 68
+    },
+    {
+      "name": "CheckUpdatesButton",
+      "type": "Button",
+      "view": "AboutView",
+      "issue": 68
+    },
+    {
+      "name": "ReleaseNotesButton",
+      "type": "Button",
+      "view": "AboutView",
+      "issue": 68
+    },
+    {
+      "name": "ShellStatusText",
+      "type": "TextBlock",
+      "view": "Shell",
+      "issue": 63
+    },
+    {
+      "name": "ShellCollectionStatusText",
+      "type": "TextBlock",
+      "view": "Shell",
+      "issue": 63
+    }
+  ],
+  "eventBindings": [
+    {
+      "control": "Window",
+      "event": "SizeChanged",
+      "handler": "MainWindow_OnSizeChanged",
+      "view": "Shell",
+      "issue": 63
+    },
+    {
+      "control": "Border",
+      "event": "MouseLeftButtonDown",
+      "handler": "TitleBar_OnMouseLeftButtonDown",
+      "view": "Shell",
+      "issue": 63
+    },
+    {
+      "control": "Button",
+      "event": "Click",
+      "handler": "MinimizeWindow_OnClick",
+      "view": "Shell",
+      "issue": 63
+    },
+    {
+      "control": "Button",
+      "event": "Click",
+      "handler": "MaximizeWindow_OnClick",
+      "view": "Shell",
+      "issue": 63
+    },
+    {
+      "control": "Button",
+      "event": "Click",
+      "handler": "CloseWindow_OnClick",
+      "view": "Shell",
+      "issue": 63
+    },
+    {
+      "control": "Button",
+      "event": "Click",
+      "handler": "ImportSnippets_OnClick",
+      "view": "Shell",
+      "issue": 63
+    },
+    {
+      "control": "Button",
+      "event": "Click",
+      "handler": "NewSnippet_OnClick",
+      "view": "Shell",
+      "issue": 63
+    },
+    {
+      "control": "ShortcutsTabButton",
+      "event": "Click",
+      "handler": "ShortcutsTab_OnClick",
+      "view": "Shell",
+      "issue": 63
+    },
+    {
+      "control": "QuickAccentTabButton",
+      "event": "Click",
+      "handler": "QuickAccentTab_OnClick",
+      "view": "Shell",
+      "issue": 63
+    },
+    {
+      "control": "CaptureTabButton",
+      "event": "Click",
+      "handler": "CaptureTab_OnClick",
+      "view": "Shell",
+      "issue": 63
+    },
+    {
+      "control": "StatisticsTabButton",
+      "event": "Click",
+      "handler": "StatisticsTab_OnClick",
+      "view": "Shell",
+      "issue": 63
+    },
+    {
+      "control": "SettingsTabButton",
+      "event": "Click",
+      "handler": "SettingsTab_OnClick",
+      "view": "Shell",
+      "issue": 63
+    },
+    {
+      "control": "AboutTabButton",
+      "event": "Click",
+      "handler": "AboutTab_OnClick",
+      "view": "Shell",
+      "issue": 63
+    },
+    {
+      "control": "SearchBox",
+      "event": "TextChanged",
+      "handler": "SearchBox_OnTextChanged",
+      "view": "ShortcutsView",
+      "issue": 64
+    },
+    {
+      "control": "DisplayAllButton",
+      "event": "Click",
+      "handler": "DisplayAll_OnClick",
+      "view": "ShortcutsView",
+      "issue": 64
+    },
+    {
+      "control": "DisplayMostUsedButton",
+      "event": "Click",
+      "handler": "DisplayMostUsed_OnClick",
+      "view": "ShortcutsView",
+      "issue": 64
+    },
+    {
+      "control": "ShortcutLeftDivider",
+      "event": "PreviewKeyDown",
+      "handler": "ShortcutSplitter_OnPreviewKeyDown",
+      "view": "ShortcutsView",
+      "issue": 64
+    },
+    {
+      "control": "ShortcutLeftDivider",
+      "event": "MouseDoubleClick",
+      "handler": "ShortcutSplitter_OnMouseDoubleClick",
+      "view": "ShortcutsView",
+      "issue": 64
+    },
+    {
+      "control": "ShortcutLeftDivider",
+      "event": "DragStarted",
+      "handler": "ShortcutSplitter_OnDragStarted",
+      "view": "ShortcutsView",
+      "issue": 64
+    },
+    {
+      "control": "ShortcutLeftDivider",
+      "event": "DragCompleted",
+      "handler": "ShortcutSplitter_OnDragCompleted",
+      "view": "ShortcutsView",
+      "issue": 64
+    },
+    {
+      "control": "NameBox",
+      "event": "TextChanged",
+      "handler": "EditorField_OnTextChanged",
+      "view": "ShortcutsView",
+      "issue": 64
+    },
+    {
+      "control": "TriggerBox",
+      "event": "TextChanged",
+      "handler": "EditorField_OnTextChanged",
+      "view": "ShortcutsView",
+      "issue": 64
+    },
+    {
+      "control": "CategoryBox",
+      "event": "TextChanged",
+      "handler": "EditorField_OnTextChanged",
+      "view": "ShortcutsView",
+      "issue": 64
+    },
+    {
+      "control": "FormatBox",
+      "event": "SelectionChanged",
+      "handler": "FormatBox_OnSelectionChanged",
+      "view": "ShortcutsView",
+      "issue": 64
+    },
+    {
+      "control": "FontFamilyBox",
+      "event": "SelectionChanged",
+      "handler": "FontFamilyBox_OnSelectionChanged",
+      "view": "ShortcutsView",
+      "issue": 64
+    },
+    {
+      "control": "FontSizeBox",
+      "event": "SelectionChanged",
+      "handler": "FontSizeBox_OnSelectionChanged",
+      "view": "ShortcutsView",
+      "issue": 64
+    },
+    {
+      "control": "Button",
+      "event": "Click",
+      "handler": "Bold_OnClick",
+      "view": "ShortcutsView",
+      "issue": 64
+    },
+    {
+      "control": "Button",
+      "event": "Click",
+      "handler": "Italic_OnClick",
+      "view": "ShortcutsView",
+      "issue": 64
+    },
+    {
+      "control": "Button",
+      "event": "Click",
+      "handler": "Underline_OnClick",
+      "view": "ShortcutsView",
+      "issue": 64
+    },
+    {
+      "control": "Button",
+      "event": "Click",
+      "handler": "Color_OnClick",
+      "view": "ShortcutsView",
+      "issue": 64
+    },
+    {
+      "control": "Button",
+      "event": "Click",
+      "handler": "Highlight_OnClick",
+      "view": "ShortcutsView",
+      "issue": 64
+    },
+    {
+      "control": "Button",
+      "event": "Click",
+      "handler": "Link_OnClick",
+      "view": "ShortcutsView",
+      "issue": 64
+    },
+    {
+      "control": "Button",
+      "event": "Click",
+      "handler": "Image_OnClick",
+      "view": "ShortcutsView",
+      "issue": 64
+    },
+    {
+      "control": "Button",
+      "event": "Click",
+      "handler": "Bullets_OnClick",
+      "view": "ShortcutsView",
+      "issue": 64
+    },
+    {
+      "control": "Button",
+      "event": "Click",
+      "handler": "Numbering_OnClick",
+      "view": "ShortcutsView",
+      "issue": 64
+    },
+    {
+      "control": "Button",
+      "event": "Click",
+      "handler": "Table_OnClick",
+      "view": "ShortcutsView",
+      "issue": 64
+    },
+    {
+      "control": "Button",
+      "event": "Click",
+      "handler": "AlignLeft_OnClick",
+      "view": "ShortcutsView",
+      "issue": 64
+    },
+    {
+      "control": "Button",
+      "event": "Click",
+      "handler": "AlignCenter_OnClick",
+      "view": "ShortcutsView",
+      "issue": 64
+    },
+    {
+      "control": "Button",
+      "event": "Click",
+      "handler": "AlignRight_OnClick",
+      "view": "ShortcutsView",
+      "issue": 64
+    },
+    {
+      "control": "ContentEditor",
+      "event": "TextChanged",
+      "handler": "ContentEditor_OnTextChanged",
+      "view": "ShortcutsView",
+      "issue": 64
+    },
+    {
+      "control": "Button",
+      "event": "Click",
+      "handler": "DeleteSnippet_OnClick",
+      "view": "ShortcutsView",
+      "issue": 64
+    },
+    {
+      "control": "Button",
+      "event": "Click",
+      "handler": "SaveSnippet_OnClick",
+      "view": "ShortcutsView",
+      "issue": 64
+    },
+    {
+      "control": "ShortcutRightDivider",
+      "event": "PreviewKeyDown",
+      "handler": "ShortcutSplitter_OnPreviewKeyDown",
+      "view": "ShortcutsView",
+      "issue": 64
+    },
+    {
+      "control": "ShortcutRightDivider",
+      "event": "MouseDoubleClick",
+      "handler": "ShortcutSplitter_OnMouseDoubleClick",
+      "view": "ShortcutsView",
+      "issue": 64
+    },
+    {
+      "control": "ShortcutRightDivider",
+      "event": "DragStarted",
+      "handler": "ShortcutSplitter_OnDragStarted",
+      "view": "ShortcutsView",
+      "issue": 64
+    },
+    {
+      "control": "ShortcutRightDivider",
+      "event": "DragCompleted",
+      "handler": "ShortcutSplitter_OnDragCompleted",
+      "view": "ShortcutsView",
+      "issue": 64
+    },
+    {
+      "control": "Button",
+      "event": "Click",
+      "handler": "VariableChip_OnClick",
+      "view": "ShortcutsView",
+      "issue": 64
+    },
+    {
+      "control": "Button",
+      "event": "Click",
+      "handler": "VariableChip_OnClick",
+      "view": "ShortcutsView",
+      "issue": 64
+    },
+    {
+      "control": "Button",
+      "event": "Click",
+      "handler": "VariableChip_OnClick",
+      "view": "ShortcutsView",
+      "issue": 64
+    },
+    {
+      "control": "Button",
+      "event": "Click",
+      "handler": "VariableChip_OnClick",
+      "view": "ShortcutsView",
+      "issue": 64
+    },
+    {
+      "control": "Button",
+      "event": "Click",
+      "handler": "VariableChip_OnClick",
+      "view": "ShortcutsView",
+      "issue": 64
+    },
+    {
+      "control": "Button",
+      "event": "Click",
+      "handler": "VariableChip_OnClick",
+      "view": "ShortcutsView",
+      "issue": 64
+    },
+    {
+      "control": "Button",
+      "event": "Click",
+      "handler": "VariableChip_OnClick",
+      "view": "ShortcutsView",
+      "issue": 64
+    },
+    {
+      "control": "Button",
+      "event": "Click",
+      "handler": "VariableChip_OnClick",
+      "view": "ShortcutsView",
+      "issue": 64
+    },
+    {
+      "control": "Button",
+      "event": "Click",
+      "handler": "VariableChip_OnClick",
+      "view": "ShortcutsView",
+      "issue": 64
+    },
+    {
+      "control": "Button",
+      "event": "Click",
+      "handler": "VariableChip_OnClick",
+      "view": "ShortcutsView",
+      "issue": 64
+    },
+    {
+      "control": "Button",
+      "event": "Click",
+      "handler": "VariableChip_OnClick",
+      "view": "ShortcutsView",
+      "issue": 64
+    },
+    {
+      "control": "Button",
+      "event": "Click",
+      "handler": "VariableChip_OnClick",
+      "view": "ShortcutsView",
+      "issue": 64
+    },
+    {
+      "control": "Button",
+      "event": "Click",
+      "handler": "VariableChip_OnClick",
+      "view": "ShortcutsView",
+      "issue": 64
+    },
+    {
+      "control": "Button",
+      "event": "Click",
+      "handler": "VariableChip_OnClick",
+      "view": "ShortcutsView",
+      "issue": 64
+    },
+    {
+      "control": "Button",
+      "event": "Click",
+      "handler": "VariableChip_OnClick",
+      "view": "ShortcutsView",
+      "issue": 64
+    },
+    {
+      "control": "Button",
+      "event": "Click",
+      "handler": "VariableChip_OnClick",
+      "view": "ShortcutsView",
+      "issue": 64
+    },
+    {
+      "control": "Button",
+      "event": "Click",
+      "handler": "VariableChip_OnClick",
+      "view": "ShortcutsView",
+      "issue": 64
+    },
+    {
+      "control": "QuickAccentPreviewChoice0",
+      "event": "MouseLeftButtonDown",
+      "handler": "QuickAccentPreviewChoice_OnMouseLeftButtonDown",
+      "view": "QuickAccentView",
+      "issue": 65
+    },
+    {
+      "control": "QuickAccentPreviewChoice1",
+      "event": "MouseLeftButtonDown",
+      "handler": "QuickAccentPreviewChoice_OnMouseLeftButtonDown",
+      "view": "QuickAccentView",
+      "issue": 65
+    },
+    {
+      "control": "QuickAccentPreviewChoice2",
+      "event": "MouseLeftButtonDown",
+      "handler": "QuickAccentPreviewChoice_OnMouseLeftButtonDown",
+      "view": "QuickAccentView",
+      "issue": 65
+    },
+    {
+      "control": "QuickAccentPreviewChoice3",
+      "event": "MouseLeftButtonDown",
+      "handler": "QuickAccentPreviewChoice_OnMouseLeftButtonDown",
+      "view": "QuickAccentView",
+      "issue": 65
+    },
+    {
+      "control": "QuickAccentPreviewChoice4",
+      "event": "MouseLeftButtonDown",
+      "handler": "QuickAccentPreviewChoice_OnMouseLeftButtonDown",
+      "view": "QuickAccentView",
+      "issue": 65
+    },
+    {
+      "control": "QuickAccentPreviewChoice5",
+      "event": "MouseLeftButtonDown",
+      "handler": "QuickAccentPreviewChoice_OnMouseLeftButtonDown",
+      "view": "QuickAccentView",
+      "issue": 65
+    },
+    {
+      "control": "QuickAccentPreviewChoice6",
+      "event": "MouseLeftButtonDown",
+      "handler": "QuickAccentPreviewChoice_OnMouseLeftButtonDown",
+      "view": "QuickAccentView",
+      "issue": 65
+    },
+    {
+      "control": "QuickAccentPreviewChoice7",
+      "event": "MouseLeftButtonDown",
+      "handler": "QuickAccentPreviewChoice_OnMouseLeftButtonDown",
+      "view": "QuickAccentView",
+      "issue": 65
+    },
+    {
+      "control": "QuickAccentEnabledCheckBox",
+      "event": "Click",
+      "handler": "QuickAccentSettings_OnChanged",
+      "view": "QuickAccentView",
+      "issue": 65
+    },
+    {
+      "control": "QuickAccentActivationBox",
+      "event": "SelectionChanged",
+      "handler": "QuickAccentSettings_OnChanged",
+      "view": "QuickAccentView",
+      "issue": 65
+    },
+    {
+      "control": "QuickAccentDelaySlider",
+      "event": "ValueChanged",
+      "handler": "QuickAccentDelaySlider_OnValueChanged",
+      "view": "QuickAccentView",
+      "issue": 65
+    },
+    {
+      "control": "QuickAccentDelayBox",
+      "event": "LostFocus",
+      "handler": "QuickAccentSettings_OnChanged",
+      "view": "QuickAccentView",
+      "issue": 65
+    },
+    {
+      "control": "QuickAccentPositionBox",
+      "event": "SelectionChanged",
+      "handler": "QuickAccentSettings_OnChanged",
+      "view": "QuickAccentView",
+      "issue": 65
+    },
+    {
+      "control": "QuickAccentUnicodeCheckBox",
+      "event": "Click",
+      "handler": "QuickAccentSettings_OnChanged",
+      "view": "QuickAccentView",
+      "issue": 65
+    },
+    {
+      "control": "QuickAccentSortCheckBox",
+      "event": "Click",
+      "handler": "QuickAccentSettings_OnChanged",
+      "view": "QuickAccentView",
+      "issue": 65
+    },
+    {
+      "control": "Button",
+      "event": "Click",
+      "handler": "QuickAccentPortugueseOnly_OnClick",
+      "view": "QuickAccentView",
+      "issue": 65
+    },
+    {
+      "control": "Button",
+      "event": "Click",
+      "handler": "QuickAccentSelectAll_OnClick",
+      "view": "QuickAccentView",
+      "issue": 65
+    },
+    {
+      "control": "QuickAccentPortugueseCheckBox",
+      "event": "Click",
+      "handler": "QuickAccentCharacterSet_OnChanged",
+      "view": "QuickAccentView",
+      "issue": 65
+    },
+    {
+      "control": "QuickAccentSpanishCheckBox",
+      "event": "Click",
+      "handler": "QuickAccentCharacterSet_OnChanged",
+      "view": "QuickAccentView",
+      "issue": 65
+    },
+    {
+      "control": "QuickAccentFrenchCheckBox",
+      "event": "Click",
+      "handler": "QuickAccentCharacterSet_OnChanged",
+      "view": "QuickAccentView",
+      "issue": 65
+    },
+    {
+      "control": "QuickAccentGermanCheckBox",
+      "event": "Click",
+      "handler": "QuickAccentCharacterSet_OnChanged",
+      "view": "QuickAccentView",
+      "issue": 65
+    },
+    {
+      "control": "QuickAccentItalianCheckBox",
+      "event": "Click",
+      "handler": "QuickAccentCharacterSet_OnChanged",
+      "view": "QuickAccentView",
+      "issue": 65
+    },
+    {
+      "control": "QuickAccentNordicCheckBox",
+      "event": "Click",
+      "handler": "QuickAccentCharacterSet_OnChanged",
+      "view": "QuickAccentView",
+      "issue": 65
+    },
+    {
+      "control": "QuickAccentCentralEuropeanCheckBox",
+      "event": "Click",
+      "handler": "QuickAccentCharacterSet_OnChanged",
+      "view": "QuickAccentView",
+      "issue": 65
+    },
+    {
+      "control": "QuickAccentCurrencyCheckBox",
+      "event": "Click",
+      "handler": "QuickAccentCharacterSet_OnChanged",
+      "view": "QuickAccentView",
+      "issue": 65
+    },
+    {
+      "control": "QuickAccentSpecialCheckBox",
+      "event": "Click",
+      "handler": "QuickAccentCharacterSet_OnChanged",
+      "view": "QuickAccentView",
+      "issue": 65
+    },
+    {
+      "control": "QuickAccentExcludedAppsBox",
+      "event": "LostFocus",
+      "handler": "QuickAccentSettings_OnChanged",
+      "view": "QuickAccentView",
+      "issue": 65
+    },
+    {
+      "control": "Button",
+      "event": "Click",
+      "handler": "CaptureActiveMonitor_OnClick",
+      "view": "CaptureView",
+      "issue": 63
+    },
+    {
+      "control": "Button",
+      "event": "Click",
+      "handler": "CaptureRegion_OnClick",
+      "view": "CaptureView",
+      "issue": 63
+    },
+    {
+      "control": "Button",
+      "event": "Click",
+      "handler": "CaptureWindow_OnClick",
+      "view": "CaptureView",
+      "issue": 63
+    },
+    {
+      "control": "Button",
+      "event": "Click",
+      "handler": "CaptureScrolling_OnClick",
+      "view": "CaptureView",
+      "issue": 63
+    },
+    {
+      "control": "Button",
+      "event": "Click",
+      "handler": "StartGifRecording_OnClick",
+      "view": "CaptureView",
+      "issue": 63
+    },
+    {
+      "control": "RecordingQualityBox",
+      "event": "SelectionChanged",
+      "handler": "RecordingPreset_OnChanged",
+      "view": "CaptureView",
+      "issue": 63
+    },
+    {
+      "control": "StartMp4RecordingButton",
+      "event": "Click",
+      "handler": "StartMp4Recording_OnClick",
+      "view": "CaptureView",
+      "issue": 63
+    },
+    {
+      "control": "GifFpsBox",
+      "event": "SelectionChanged",
+      "handler": "RecordingPreset_OnChanged",
+      "view": "CaptureView",
+      "issue": 63
+    },
+    {
+      "control": "GifQualityBox",
+      "event": "SelectionChanged",
+      "handler": "RecordingPreset_OnChanged",
+      "view": "CaptureView",
+      "issue": 63
+    },
+    {
+      "control": "StartGifRecordingButton",
+      "event": "Click",
+      "handler": "StartGifRecording_OnClick",
+      "view": "CaptureView",
+      "issue": 63
+    },
+    {
+      "control": "Button",
+      "event": "Click",
+      "handler": "OpenCaptureFolder_OnClick",
+      "view": "CaptureView",
+      "issue": 63
+    },
+    {
+      "control": "Button",
+      "event": "Click",
+      "handler": "BrowseCaptureDestination_OnClick",
+      "view": "CaptureView",
+      "issue": 63
+    },
+    {
+      "control": "CaptureFormatBox",
+      "event": "SelectionChanged",
+      "handler": "CaptureFormat_OnChanged",
+      "view": "CaptureView",
+      "issue": 63
+    },
+    {
+      "control": "Button",
+      "event": "Click",
+      "handler": "SaveCaptureSettings_OnClick",
+      "view": "CaptureView",
+      "issue": 63
+    },
+    {
+      "control": "CaptureHistoryFilterBox",
+      "event": "SelectionChanged",
+      "handler": "CaptureHistoryFilter_OnChanged",
+      "view": "CaptureView",
+      "issue": 63
+    },
+    {
+      "control": "Button",
+      "event": "Click",
+      "handler": "CleanCaptureHistory_OnClick",
+      "view": "CaptureView",
+      "issue": 63
+    },
+    {
+      "control": "ThemeBox",
+      "event": "SelectionChanged",
+      "handler": "ThemeBox_OnSelectionChanged",
+      "view": "SettingsView",
+      "issue": 67
+    },
+    {
+      "control": "CloseToTrayCheckBox",
+      "event": "Click",
+      "handler": "Settings_OnClick",
+      "view": "SettingsView",
+      "issue": 67
+    },
+    {
+      "control": "StartWithWindowsCheckBox",
+      "event": "Click",
+      "handler": "Settings_OnClick",
+      "view": "SettingsView",
+      "issue": 67
+    },
+    {
+      "control": "ShowSuggestionsCheckBox",
+      "event": "Click",
+      "handler": "Settings_OnClick",
+      "view": "SettingsView",
+      "issue": 67
+    },
+    {
+      "control": "Button",
+      "event": "Click",
+      "handler": "ImportSnippets_OnClick",
+      "view": "SettingsView",
+      "issue": 67
+    },
+    {
+      "control": "Button",
+      "event": "Click",
+      "handler": "CreateBackup_OnClick",
+      "view": "SettingsView",
+      "issue": 67
+    },
+    {
+      "control": "Button",
+      "event": "Click",
+      "handler": "RestoreBackup_OnClick",
+      "view": "SettingsView",
+      "issue": 67
+    },
+    {
+      "control": "Button",
+      "event": "Click",
+      "handler": "OpenBackupFolder_OnClick",
+      "view": "SettingsView",
+      "issue": 67
+    },
+    {
+      "control": "Button",
+      "event": "Click",
+      "handler": "AnalyzeAssets_OnClick",
+      "view": "SettingsView",
+      "issue": 67
+    },
+    {
+      "control": "CheckUpdatesCheckBox",
+      "event": "Click",
+      "handler": "Settings_OnClick",
+      "view": "SettingsView",
+      "issue": 67
+    },
+    {
+      "control": "SettingsCheckUpdatesButton",
+      "event": "Click",
+      "handler": "CheckUpdates_OnClick",
+      "view": "SettingsView",
+      "issue": 67
+    },
+    {
+      "control": "Button",
+      "event": "Click",
+      "handler": "OpenGitHub_OnClick",
+      "view": "AboutView",
+      "issue": 68
+    },
+    {
+      "control": "CheckUpdatesButton",
+      "event": "Click",
+      "handler": "CheckUpdates_OnClick",
+      "view": "AboutView",
+      "issue": 68
+    },
+    {
+      "control": "ReleaseNotesButton",
+      "event": "Click",
+      "handler": "ReleaseNotes_OnClick",
+      "view": "AboutView",
+      "issue": 68
+    }
+  ],
+  "dataBindingsAndCommands": [
+    {
+      "control": "Setter",
+      "property": "Value",
+      "expression": "{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Button}}}",
+      "view": "Shell",
+      "issue": 63
+    }
+  ],
+  "views": [
+    {
+      "path": "src/SlashText/Views/CaptureEditorWindow.cs",
+      "issue": 63,
+      "sha256": "6fd4b0382e6b96663f2a63704c094e21f9c52714e72c08a67dc0fb50edfae233"
+    },
+    {
+      "path": "src/SlashText/Views/CaptureToolbarPreviewWindow.xaml",
+      "issue": 63,
+      "sha256": "cecda10df8489152883ffd64cdeb694d5cb7d8377e05186294b377de9349d52f"
+    },
+    {
+      "path": "src/SlashText/Views/CaptureToolbarPreviewWindow.xaml.cs",
+      "issue": 63,
+      "sha256": "6b8def7d31d3385a86c1afd9d09fe149ef5d9998ba36c44fcc3d89c8de591fb7"
+    },
+    {
+      "path": "src/SlashText/Views/GifPreviewWindow.cs",
+      "issue": 69,
+      "sha256": "88d6b813a307dcc435412aa9db46ac550ac6fc12694942ef86ae2a2131e56d23"
+    },
+    {
+      "path": "src/SlashText/Views/OnboardingWindow.cs",
+      "issue": 69,
+      "sha256": "69e2ce0e44e5eb4f6d3169144c4eabd97e5fd94299522d635282b9f8c90c2898"
+    },
+    {
+      "path": "src/SlashText/Views/PromptDialog.cs",
+      "issue": 69,
+      "sha256": "cb195c6b44681d56e5ddaaaa461448a57da0fa3ba155354b676b88022fd649bb"
+    },
+    {
+      "path": "src/SlashText/Views/QuickAccentWindow.cs",
+      "issue": 69,
+      "sha256": "bda8856b1ae39220692d59568555287f171ce180be2a51f9e0cd43cd043b6dc5"
+    },
+    {
+      "path": "src/SlashText/Views/RecordingControlWindow.cs",
+      "issue": 69,
+      "sha256": "3eb98308709d0331bc99cda977e1a66c017d8e768e70af211ea7978b6eef3a3a"
+    },
+    {
+      "path": "src/SlashText/Views/RegionCaptureWindow.cs",
+      "issue": 63,
+      "sha256": "4af34b8abb2a15868393615d9a0d33958600619996e7710cb091f6da93b5bb42"
+    },
+    {
+      "path": "src/SlashText/Views/RegionSelectionWindow.cs",
+      "issue": 63,
+      "sha256": "941af9d393949177a1369e8d884ec8434628bf544e7545f9d8508c6a890d97d4"
+    },
+    {
+      "path": "src/SlashText/Views/ShortcutRecorderBox.cs",
+      "issue": 69,
+      "sha256": "cb83dc7ca83284dc6d881e0076a486dc997aebed3e2d62bcd6bea9dcb1c8c136"
+    },
+    {
+      "path": "src/SlashText/Views/SuggestionWindow.cs",
+      "issue": 69,
+      "sha256": "4ecf5ce97b83203691a99c9b2b4f41f1c0b283d28fafb78475e8e55475bb0a78"
+    },
+    {
+      "path": "src/SlashText/Views/UpdateAvailableWindow.cs",
+      "issue": 69,
+      "sha256": "a8e244a15aaf50df94f66394a3082b7509a70379ff05c53af78276dbbdfbfd01"
+    },
+    {
+      "path": "src/SlashText/Views/UpdateProgressWindow.cs",
+      "issue": 69,
+      "sha256": "89e2c4e01217f551ddc2ef8721d863b7354ece2c1ae352d23b6f1bf3d0d8a347"
+    },
+    {
+      "path": "src/SlashText/Views/VariableInputWindow.cs",
+      "issue": 69,
+      "sha256": "d4c609c2674f22976f35b88c170a8310a1d350c40b7377d95eda832510d0ae70"
+    }
+  ],
+  "mainWindowMethods": [
+    "MainWindow_OnLoaded",
+    "ShowStartupWarnings",
+    "EnsureSnippetStorageAvailable",
+    "InitializeTray",
+    "ShowTrayBalloon",
+    "OpenPendingCaptureNotification",
+    "ApplyTrayTheme",
+    "ApplyTrayItemsTheme",
+    "StartMonitoring",
+    "QuickAccentService_OnChanged",
+    "QuickAccentService_OnCharacterInserted",
+    "KeyboardHook_OnSuggestionsChanged",
+    "SuggestionWindow_OnSnippetChosen",
+    "KeyboardHook_OnExpansionRequested",
+    "SearchBox_OnTextChanged",
+    "RefreshNavigation",
+    "CreateCategoryButton",
+    "CreateSnippetButton",
+    "RefreshMostUsed",
+    "DisplayAll_OnClick",
+    "DisplayMostUsed_OnClick",
+    "ApplyDisplayFilterState",
+    "SelectSnippet",
+    "NewSnippet_OnClick",
+    "BeginNewSnippet",
+    "SaveSnippet_OnClick",
+    "DeleteSnippet_OnClick",
+    "FormatBox_OnSelectionChanged",
+    "Bold_OnClick",
+    "Italic_OnClick",
+    "Underline_OnClick",
+    "FontFamilyBox_OnSelectionChanged",
+    "FontSizeBox_OnSelectionChanged",
+    "Color_OnClick",
+    "Highlight_OnClick",
+    "Bullets_OnClick",
+    "Numbering_OnClick",
+    "AlignLeft_OnClick",
+    "AlignCenter_OnClick",
+    "AlignRight_OnClick",
+    "Table_OnClick",
+    "Link_OnClick",
+    "Image_OnClick",
+    "VariableChip_OnClick",
+    "ContentEditor_OnTextChanged",
+    "EditorField_OnTextChanged",
+    "UpdatePreview",
+    "PreviewValues",
+    "ShortcutsTab_OnClick",
+    "QuickAccentTab_OnClick",
+    "CaptureTab_OnClick",
+    "StatisticsTab_OnClick",
+    "SettingsTab_OnClick",
+    "AboutTab_OnClick",
+    "ShowView",
+    "TitleBar_OnMouseLeftButtonDown",
+    "MinimizeWindow_OnClick",
+    "MaximizeWindow_OnClick",
+    "CloseWindow_OnClick",
+    "ToggleMaximizedState",
+    "RefreshStatistics",
+    "Settings_OnClick",
+    "ImportSnippets_OnClick",
+    "CreateBackup_OnClick",
+    "AnalyzeAssets_OnClick",
+    "RestoreBackup_OnClick",
+    "OpenBackupFolder_OnClick",
+    "RefreshBackupSummary",
+    "ImportSourceName",
+    "ThemeBox_OnSelectionChanged",
+    "QuickAccentSettings_OnChanged",
+    "QuickAccentDelaySlider_OnValueChanged",
+    "QuickAccentPreviewChoice_OnMouseLeftButtonDown",
+    "UpdateQuickAccentPreviewSelection",
+    "QuickAccentCharacterSet_OnChanged",
+    "QuickAccentPortugueseOnly_OnClick",
+    "QuickAccentSelectAll_OnClick",
+    "SaveQuickAccentSettingsAsync",
+    "ApplyQuickAccentSettings",
+    "ApplyQuickAccentCharacterSetSelection",
+    "SelectedQuickAccentCharacterSets",
+    "UpdateQuickAccentCharacterSetPreview",
+    "SelectedTag",
+    "InitializeRecordingPresetControls",
+    "TrayColorTable",
+    "RecordingPreset_OnChanged",
+    "UpdatePresetDescription",
+    "SelectComboByTag",
+    "LoadCaptureSettings",
+    "BrowseCaptureDestination_OnClick",
+    "SaveCaptureSettings_OnClick",
+    "TryReadCaptureSettings",
+    "ConfigureCaptureShortcuts",
+    "CaptureShortcuts_OnTriggered",
+    "CaptureActiveMonitor_OnClick",
+    "CaptureRegion_OnClick",
+    "CaptureWindow_OnClick",
+    "CaptureScrolling_OnClick",
+    "RunScrollingCaptureAsync",
+    "RunCaptureAsync",
+    "WaitForCaptureDelayAsync",
+    "StartMp4Recording_OnClick",
+    "StartGifRecording_OnClick",
+    "ResolveRecordingTarget",
+    "ParseSelectedInt",
+    "CaptureFormat_OnChanged",
+    "RefreshCaptureHistory",
+    "HistoryButton",
+    "CaptureHistoryFilter_OnChanged",
+    "OpenHistoryItem_OnClick",
+    "CopyHistoryItem_OnClick",
+    "EditHistoryItem_OnClick",
+    "DeleteHistoryItem_OnClick",
+    "CleanCaptureHistory_OnClick",
+    "OpenCaptureFolder_OnClick",
+    "CheckUpdates_OnClick",
+    "StartUpdateMonitor",
+    "StopUpdateMonitor",
+    "MonitorUpdatesAsync",
+    "CheckUpdatesSilentlyAsync",
+    "OfferUpdateAsync",
+    "DownloadAndApplyUpdateAsync",
+    "RefreshUpdateStatusAsync",
+    "UpdateUpdateDisplay",
+    "ReleaseNotes_OnClick",
+    "ProductVersion",
+    "OpenGitHub_OnClick",
+    "ReplaceList",
+    "MainWindow_OnSizeChanged",
+    "UpdateResponsiveLayout",
+    "NormalizeShortcutColumns",
+    "ShortcutSplitter_OnPreviewKeyDown",
+    "ShortcutSplitter_OnMouseDoubleClick",
+    "RestoreShortcutSplitter",
+    "ShortcutSplitter_OnDragStarted",
+    "ShortcutSplitter_OnDragCompleted",
+    "MainWindow_OnStateChanged",
+    "MainWindow_OnActivated",
+    "MainWindow_OnClosing",
+    "MainWindow_OnClosed",
+    "ShowFromTray",
+    "RequestExit",
+    "DisposeServices"
+  ],
+  "dynamicEventSites": [
+    {
+      "path": "src/SlashText/MainWindow.xaml.cs",
+      "line": 425,
+      "source": "_trayIcon.DoubleClick += (_, _) => Dispatcher.Invoke(ShowFromTray);"
+    },
+    {
+      "path": "src/SlashText/MainWindow.xaml.cs",
+      "line": 756,
+      "source": "button.Click += (_, _) =>"
+    },
+    {
+      "path": "src/SlashText/MainWindow.xaml.cs",
+      "line": 809,
+      "source": "button.Click += (_, _) => SelectSnippet((Snippet)button.Tag);"
+    },
+    {
+      "path": "src/SlashText/MainWindow.xaml.cs",
+      "line": 2953,
+      "source": "button.Click += handler;"
+    },
+    {
+      "path": "src/SlashText/Views/RegionCaptureWindow.cs",
+      "line": 289,
+      "source": "button.Click += (_, _) =>"
+    },
+    {
+      "path": "src/SlashText/Views/RegionCaptureWindow.cs",
+      "line": 318,
+      "source": "button.Click += click;"
+    },
+    {
+      "path": "src/SlashText/Views/RegionCaptureWindow.cs",
+      "line": 332,
+      "source": "capture.Click += (_, _) => Complete(CaptureEditorOutput.Default);"
+    },
+    {
+      "path": "src/SlashText/Views/RegionCaptureWindow.cs",
+      "line": 350,
+      "source": "menu.Click += (_, _) => ShowCaptureMenu();"
+    },
+    {
+      "path": "src/SlashText/Views/RegionCaptureWindow.cs",
+      "line": 490,
+      "source": "bold.Checked += (_, _) => _textBold = true;"
+    },
+    {
+      "path": "src/SlashText/Views/RegionCaptureWindow.cs",
+      "line": 491,
+      "source": "bold.Unchecked += (_, _) => _textBold = false;"
+    },
+    {
+      "path": "src/SlashText/Views/RegionCaptureWindow.cs",
+      "line": 570,
+      "source": "button.Click += (_, _) =>"
+    },
+    {
+      "path": "src/SlashText/Views/RegionCaptureWindow.cs",
+      "line": 612,
+      "source": "button.Click += (_, _) =>"
+    },
+    {
+      "path": "src/SlashText/Views/RegionCaptureWindow.cs",
+      "line": 649,
+      "source": "button.Click += (_, _) => action();"
+    },
+    {
+      "path": "src/SlashText/Views/RegionCaptureWindow.cs",
+      "line": 677,
+      "source": "none.Click += (_, _) => select(0);"
+    },
+    {
+      "path": "src/SlashText/Views/RegionCaptureWindow.cs",
+      "line": 697,
+      "source": "choice.Click += (_, _) => select(value);"
+    },
+    {
+      "path": "src/SlashText/Views/UpdateAvailableWindow.cs",
+      "line": 101,
+      "source": "button.Click += (_, _) =>"
+    },
+    {
+      "path": "src/SlashText/Views/OnboardingWindow.cs",
+      "line": 88,
+      "source": "finish.Click += (_, _) => DialogResult = true;"
+    },
+    {
+      "path": "src/SlashText/Views/RecordingControlWindow.cs",
+      "line": 144,
+      "source": "button.Click += click;"
+    },
+    {
+      "path": "src/SlashText/Views/VariableInputWindow.cs",
+      "line": 88,
+      "source": "insert.Click += (_, _) =>"
+    },
+    {
+      "path": "src/SlashText/Views/PromptDialog.cs",
+      "line": 52,
+      "source": "confirm.Click += (_, _) =>"
+    },
+    {
+      "path": "src/SlashText/Views/CaptureEditorWindow.cs",
+      "line": 195,
+      "source": "choice.Click += (_, _) => _color = (int)choice.Tag;"
+    },
+    {
+      "path": "src/SlashText/Views/CaptureEditorWindow.cs",
+      "line": 214,
+      "source": "thickness.SelectionChanged += (_, _) =>"
+    },
+    {
+      "path": "src/SlashText/Views/CaptureEditorWindow.cs",
+      "line": 269,
+      "source": "button.Click += handler;"
+    },
+    {
+      "path": "src/SlashText/Views/UpdateProgressWindow.cs",
+      "line": 55,
+      "source": "_cancel.Click += (_, _) => Cancellation.Cancel();"
+    },
+    {
+      "path": "src/SlashText/Views/GifPreviewWindow.cs",
+      "line": 75,
+      "source": "cancel.Click += (_, _) => DialogResult = false;"
+    },
+    {
+      "path": "src/SlashText/Views/GifPreviewWindow.cs",
+      "line": 83,
+      "source": "save.Click += (_, _) => DialogResult = true;"
+    }
+  ],
+  "limitations": "Inventory indexes XAML plus dynamic event sites. Review factory-generated actions and keyboard hooks against parity.md before migrating; this is not a behavioral test."
+}

@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "sitePublication": 11,
+  "siteRevision": "34de2fafbf9b1de1e15e0e7c2d5e107425cc2be3",
+  "desktopBase": "406022943ab13d0d78399b2a797210ae5106b0e3",
+  "source": "https://slashdesk-visual-lab.lucasllira.chatgpt.site/slashdesk-design-contract.zip",
+  "packageSha256": "9735356660f1c71370375aa85c02c3d610830731e2f5f1afc3ed6332caab7ad3",
+  "files": {
+    "README.md": "6a5c8a0dc2d9495a3e7b874103cd050b56247456910ba5bb19282d2c3520c437",
+    "black.xaml": "fb934a486fdee10bedc46016139cec9320f6624798c64b9ed34b5a01bbfce6cc",
+    "implementation.md": "d28e49a3975fd89b29133766aa773cdf72d790dd000f13e609795be1492480db",
+    "light.xaml": "596e54191db1f0d62b30d3afa8135d93b13155677db683abe82404df95b7a1aa",
+    "reference/app/capture-simulation.tsx": "841f0e316dbc5bd1adcd080cedbdd46b79af1935ecd4c3e30a86018c338fa4b1",
+    "reference/app/globals.css": "5e7625922d0ef1355fe19c6012ed9cd311cf67d363604b629b81923b96bc03d9",
+    "reference/app/page.tsx": "88a41cd370063ca280bf3e060a68af9a039fb2a2ff9935b6cb64348ba5acd2b0",
+    "reference/app/studio.css": "dd35551a23b40368900b0f3caa02a67cf036d4cd83a4e337ed647c47cd4217b0",
+    "reference/components/ui/button.tsx": "cc36af0f8b5019c33cc039fbf03bb952a513072b15b55b53c592b78af3e5f4c4",
+    "reference/components/ui/resizable.tsx": "bc63958467aa00557c551bb0d96a5ae4c965c1e1ba2380e595949d933b132f7c",
+    "tokens.json": "eb6268e479688d5c40a9bf51d1a084cb418eecc7c02e214241c5420d40cf2e1f"
+  }
+}

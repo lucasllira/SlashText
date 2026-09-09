@@ -1,0 +1,18 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <SolidColorBrush x:Key="SlashDesk.bg" Color="#EDEDF0" />
+  <SolidColorBrush x:Key="SlashDesk.shell" Color="#F7F7F9" />
+  <SolidColorBrush x:Key="SlashDesk.panel" Color="#FFFFFF" />
+  <SolidColorBrush x:Key="SlashDesk.raised" Color="#FFFFFF" />
+  <SolidColorBrush x:Key="SlashDesk.input" Color="#FBFBFC" />
+  <SolidColorBrush x:Key="SlashDesk.canvas" Color="#E6E7EA" />
+  <SolidColorBrush x:Key="SlashDesk.text" Color="#202024" />
+  <SolidColorBrush x:Key="SlashDesk.muted" Color="#616169" />
+  <SolidColorBrush x:Key="SlashDesk.line" Color="#DEDEE4" />
+  <SolidColorBrush x:Key="SlashDesk.line-strong" Color="#BCBCC6" />
+  <SolidColorBrush x:Key="SlashDesk.accent" Color="#007E91" />
+  <SolidColorBrush x:Key="SlashDesk.accent-text" Color="#006E80" />
+  <SolidColorBrush x:Key="SlashDesk.tint" Color="#E0F2F5" />
+  <SolidColorBrush x:Key="SlashDesk.on" Color="#FFFFFF" />
+  <SolidColorBrush x:Key="SlashDesk.green" Color="#137B53" />
+  <SolidColorBrush x:Key="SlashDesk.mark" Color="#A2DBE5" />
+</ResourceDictionary>

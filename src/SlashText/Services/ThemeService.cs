@@ -18,6 +18,7 @@ public static class ThemeService
         var dark = theme.Equals("Dark", StringComparison.OrdinalIgnoreCase) ||
                    theme.Equals("System", StringComparison.OrdinalIgnoreCase) && IsSystemDark();
         IsDark = dark;
+        SlashText.Design.LabPalette.Apply(System.Windows.Application.Current.Resources, dark);
 
         // Fluent 3.0: neutral light surfaces and a true-black theme without blue tint.
         Set("CanvasBrush", dark ? "#000000" : "#F3F3F3");

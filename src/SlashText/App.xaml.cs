@@ -14,6 +14,45 @@ public partial class App : System.Windows.Application
 
     protected override void OnStartup(StartupEventArgs e)
     {
+        // Developer-only entry point: return before updater, AppPaths, mutex and hooks.
+        if (e.Args.Contains("--design-gallery", StringComparer.OrdinalIgnoreCase) ||
+            e.Args.Contains("--design-gallery-smoke", StringComparer.OrdinalIgnoreCase))
+        {
+            _helperMode = true;
+            ShutdownMode = ShutdownMode.OnMainWindowClose;
+            var smokeIndex = Array.FindIndex(e.Args, arg => arg.Equals("--design-gallery-smoke", StringComparison.OrdinalIgnoreCase));
+            string? output = smokeIndex >= 0
+                ? (smokeIndex + 1 < e.Args.Length ? Path.GetFullPath(e.Args[smokeIndex + 1]) : Path.Combine(AppContext.BaseDirectory, "gallery-evidence"))
+                : null;
+            if (output is null)
+            {
+                DispatcherUnhandledException += (_, args) =>
+                {
+                    MessageBox.Show(
+                        "A galeria encontrou um erro e precisa ser fechada.\n\n" + args.Exception,
+                        "Galeria de desenvolvimento",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Error);
+                    args.Handled = true;
+                    Shutdown(1);
+                };
+            }
+            try
+            {
+                var gallery = new DesignGalleryWindow(output);
+                MainWindow = gallery;
+                gallery.Show();
+                base.OnStartup(e);
+            }
+            catch (Exception exception)
+            {
+                if (output is not null) { Directory.CreateDirectory(output); File.WriteAllText(Path.Combine(output, "failure.txt"), exception.ToString()); }
+                else MessageBox.Show(exception.ToString(), "Galeria de desenvolvimento");
+                Shutdown(1);
+            }
+            return;
+        }
+
         if (e.Args.Contains("--capture-toolbar-preview", StringComparer.OrdinalIgnoreCase))
         {
             _helperMode = true;
