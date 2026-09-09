@@ -12,7 +12,7 @@
         SizeChanged="MainWindow_OnSizeChanged"
         WindowStyle="None"
         WindowStartupLocation="CenterScreen"
-        Background="{DynamicResource CanvasBrush}">
+        Background="{DynamicResource Lab.bg}">
     <shell:WindowChrome.WindowChrome>
         <shell:WindowChrome CaptionHeight="34"
                             ResizeBorderThickness="6"
@@ -29,8 +29,8 @@
             <RowDefinition Height="28"/>
         </Grid.RowDefinitions>
 
-        <Border Background="{DynamicResource ChromeBrush}"
-                BorderBrush="{DynamicResource DividerBrush}"
+        <Border Background="{DynamicResource Lab.shell}"
+                BorderBrush="{DynamicResource Lab.line}"
                 BorderThickness="0,0,0,1"
                 MouseLeftButtonDown="TitleBar_OnMouseLeftButtonDown"
                 Panel.ZIndex="4">
@@ -43,7 +43,7 @@
                     <Image Source="Assets/SlashDesk.png" Width="18" Height="18"
                            RenderOptions.BitmapScalingMode="HighQuality"/>
                     <TextBlock Text="SlashDesk" Margin="8,0,0,0" VerticalAlignment="Center"
-                               FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"/>
+                               FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource Lab.text}"/>
                 </StackPanel>
                 <StackPanel Grid.Column="1" Orientation="Horizontal" shell:WindowChrome.IsHitTestVisibleInChrome="True">
                     <Button Style="{StaticResource TitleBarButton}" Content="&#xE921;"
@@ -57,7 +57,7 @@
         </Border>
 
         <Border Grid.Row="1"
-                Style="{StaticResource AppShellHeader}"
+                Style="{StaticResource Lab.Pilot.ShellHeader}"
                 Panel.ZIndex="2">
           <Grid>
             <Grid.ColumnDefinitions>
@@ -80,11 +80,11 @@
                                FontFamily="Segoe UI Variable Display"
                                FontSize="18"
                                FontWeight="SemiBold"
-                               Foreground="{DynamicResource InkBrush}"/>
+                               Foreground="{DynamicResource Lab.text}"/>
                     <TextBlock x:Name="ShellPageDescription" Text="Crie, organize e edite seus textos prontos."
                                FontSize="11"
                                Margin="0,1,0,0"
-                               Foreground="{DynamicResource MutedBrush}"/>
+                               Foreground="{DynamicResource Lab.muted}"/>
                 </StackPanel>
             </StackPanel>
 
@@ -118,7 +118,7 @@
         </Border>
 
         <Border Grid.Row="2"
-                Style="{StaticResource AppNavigationBar}">
+                Style="{StaticResource Lab.Pilot.NavigationBar}">
             <Grid>
                 <Grid.Resources>
                     <Style TargetType="TextBlock">
@@ -129,31 +129,31 @@
                 <StackPanel Orientation="Horizontal"
                             HorizontalAlignment="Center">
                     <Button x:Name="ShortcutsTabButton"
-                            Style="{StaticResource AppNavigationButton}"
+                            Style="{StaticResource Lab.Pilot.NavigationButton}"
                             Click="ShortcutsTab_OnClick">
                         <StackPanel Orientation="Horizontal">
                             <Path Data="{StaticResource Icon.Shortcuts}" Style="{StaticResource NavigationIcon}"/>
                             <TextBlock Text="Atalhos"/>
                         </StackPanel>
                     </Button>
-                    <Button x:Name="QuickAccentTabButton"
-                            Style="{StaticResource AppNavigationButton}"
-                            Click="QuickAccentTab_OnClick">
-                        <StackPanel Orientation="Horizontal">
-                            <Path Data="{StaticResource Icon.QuickAccent}" Style="{StaticResource NavigationIcon}"/>
-                            <TextBlock Text="Acento Rápido"/>
-                        </StackPanel>
-                    </Button>
                     <Button x:Name="CaptureTabButton"
-                            Style="{StaticResource AppNavigationButton}"
+                            Style="{StaticResource Lab.Pilot.NavigationButton}"
                             Click="CaptureTab_OnClick">
                         <StackPanel Orientation="Horizontal">
                             <Path Data="{StaticResource Icon.Capture}" Style="{StaticResource NavigationIcon}"/>
                             <TextBlock Text="Captura"/>
                         </StackPanel>
                     </Button>
+                    <Button x:Name="QuickAccentTabButton"
+                            Style="{StaticResource Lab.Pilot.NavigationButton}"
+                            Click="QuickAccentTab_OnClick">
+                        <StackPanel Orientation="Horizontal">
+                            <Path Data="{StaticResource Icon.QuickAccent}" Style="{StaticResource NavigationIcon}"/>
+                            <TextBlock Text="Acento Rápido"/>
+                        </StackPanel>
+                    </Button>
                     <Button x:Name="StatisticsTabButton"
-                            Style="{StaticResource AppNavigationButton}"
+                            Style="{StaticResource Lab.Pilot.NavigationButton}"
                             Click="StatisticsTab_OnClick">
                         <StackPanel Orientation="Horizontal">
                             <Path Data="{StaticResource Icon.Statistics}" Style="{StaticResource NavigationIcon}"/>
@@ -161,7 +161,7 @@
                         </StackPanel>
                     </Button>
                     <Button x:Name="SettingsTabButton"
-                            Style="{StaticResource AppNavigationButton}"
+                            Style="{StaticResource Lab.Pilot.NavigationButton}"
                             Click="SettingsTab_OnClick">
                         <StackPanel Orientation="Horizontal">
                             <Path Data="{StaticResource Icon.Settings}" Style="{StaticResource NavigationIcon}"/>
@@ -169,7 +169,7 @@
                         </StackPanel>
                     </Button>
                     <Button x:Name="AboutTabButton"
-                            Style="{StaticResource AppNavigationButton}"
+                            Style="{StaticResource Lab.Pilot.NavigationButton}"
                             Click="AboutTab_OnClick">
                         <StackPanel Orientation="Horizontal">
                             <Path Data="{StaticResource Icon.About}" Style="{StaticResource NavigationIcon}"/>
@@ -181,7 +181,8 @@
         </Border>
 
         <Border x:Name="WorkspaceHost" Grid.Row="3"
-                Style="{StaticResource AppWorkspace}">
+                Style="{StaticResource AppWorkspace}"
+                Background="{DynamicResource Lab.bg}">
                 <Grid>
                     <Grid x:Name="ShortcutsView">
                         <Grid.RowDefinitions>
@@ -799,7 +800,8 @@
 
                     <ScrollViewer x:Name="CaptureView" Visibility="Collapsed"
                                   VerticalScrollBarVisibility="Auto">
-                        <Grid Margin="24" MaxWidth="1180" HorizontalAlignment="Center">
+                        <Grid Margin="{StaticResource Lab.PagePadding}" MaxWidth="1360"
+                              HorizontalAlignment="Center">
                              <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="20"/>
@@ -820,106 +822,183 @@
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
                                 <StackPanel>
-                                    <TextBlock Text="Captura de tela" Style="{StaticResource PageTitle}"/>
-                                    <TextBlock Text="Capturas e gravações 100% locais, rápidas e privadas."
-                                               Style="{StaticResource PageDescription}"/>
+                                    <TextBlock Text="CRIE ALGO CLARO" Style="{StaticResource Lab.Pilot.Eyebrow}"/>
+                                    <TextBlock Text="Capture a ideia inteira."
+                                               Margin="0,4,0,0"
+                                               Style="{StaticResource Lab.Pilot.PageTitle}"/>
+                                    <TextBlock Text="Capture, anote e grave sua tela sem enviar seus arquivos para a nuvem."
+                                               Margin="0,5,0,0"
+                                               Style="{StaticResource Lab.Metadata}"/>
                                 </StackPanel>
-                                <Border Grid.Column="1" Style="{StaticResource CompactStatusPill}"
-                                        BorderBrush="{DynamicResource DividerBrush}" BorderThickness="1"
-                                        CornerRadius="9" Padding="13,8" VerticalAlignment="Center">
+                                <Button Grid.Column="1" Style="{StaticResource Lab.Button}"
+                                        VerticalAlignment="Center" Click="FocusCaptureRule_OnClick">
                                     <StackPanel Orientation="Horizontal">
-                                        <Ellipse Style="{StaticResource StatusDot}"/>
-                                        <TextBlock Text="Captura pronta" Foreground="{DynamicResource InkBrush}"/>
+                                        <Path Data="{StaticResource Icon.Settings}" Style="{StaticResource NavigationIcon}"/>
+                                        <TextBlock Text="Regra de captura"/>
                                     </StackPanel>
-                                </Border>
+                                </Button>
                             </Grid>
 
-                            <UniformGrid Grid.Row="2" Columns="5">
-                                <Border Style="{StaticResource MetricCard}">
+                            <Border Grid.Row="2" Style="{StaticResource Lab.Pilot.CommandBar}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="18"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="12"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Button x:Name="CaptureNewButton" Style="{StaticResource Lab.PrimaryButton}"
+                                            MinWidth="118" Click="StartSelectedCapture_OnClick">
+                                        <StackPanel Orientation="Horizontal">
+                                            <Path Data="{StaticResource Icon.Add}" Style="{StaticResource NavigationIcon}"/>
+                                            <TextBlock x:Name="CaptureNewButtonText" Text="Nova captura"/>
+                                        </StackPanel>
+                                    </Button>
+                                    <Border Grid.Column="1" Margin="10,0,0,0" Padding="3"
+                                            CornerRadius="7" Background="{DynamicResource Lab.input}"
+                                            BorderBrush="{DynamicResource Lab.line}" BorderThickness="1">
+                                        <StackPanel Orientation="Horizontal">
+                                            <RadioButton x:Name="CaptureImageMediaButton" Content="Imagem"
+                                                         GroupName="CaptureMedia" Tag="Image"
+                                                         Style="{StaticResource Lab.Pilot.Segment}"
+                                                         Click="CaptureMediaMode_OnClick"/>
+                                            <RadioButton x:Name="CaptureVideoMediaButton" Content="Vídeo"
+                                                         GroupName="CaptureMedia" Tag="Video"
+                                                         Style="{StaticResource Lab.Pilot.Segment}"
+                                                         Click="CaptureMediaMode_OnClick"/>
+                                            <RadioButton x:Name="CaptureGifMediaButton" Content="GIF"
+                                                         GroupName="CaptureMedia" Tag="Gif"
+                                                         Style="{StaticResource Lab.Pilot.Segment}"
+                                                         Click="CaptureMediaMode_OnClick"/>
+                                        </StackPanel>
+                                    </Border>
+                                    <Border Grid.Column="2" Width="1" Margin="9,4"
+                                            Background="{DynamicResource Lab.line}"/>
+                                    <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Path Data="{StaticResource Lab.Icon.Clock3}" Width="17" Height="17"
+                                              Stretch="Uniform" Stroke="{DynamicResource Lab.muted}"
+                                              StrokeThickness="1.7" Margin="0,0,8,0"/>
+                                        <ComboBox x:Name="CaptureDelayBox" Width="132" Style="{StaticResource Lab.Combo}">
+                                            <ComboBoxItem Content="Sem atraso" Tag="0"/>
+                                            <ComboBoxItem Content="3 segundos" Tag="3"/>
+                                            <ComboBoxItem Content="5 segundos" Tag="5"/>
+                                            <ComboBoxItem Content="10 segundos" Tag="10"/>
+                                        </ComboBox>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="5" Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Ellipse Width="7" Height="7" Fill="{DynamicResource SuccessBrush}" Margin="0,0,7,0"/>
+                                        <TextBlock x:Name="CaptureSelectionSummaryText" Text="Região · pronta"
+                                                   Style="{StaticResource Lab.Metadata}"/>
+                                    </StackPanel>
+                                    <Button Grid.Column="7" Style="{StaticResource Lab.Button}"
+                                            Click="OpenCaptureFolder_OnClick">
+                                        <StackPanel Orientation="Horizontal">
+                                            <Path Data="{StaticResource Icon.Folder}" Style="{StaticResource NavigationIcon}"/>
+                                            <TextBlock Text="Abrir pasta"/>
+                                        </StackPanel>
+                                    </Button>
+                                </Grid>
+                            </Border>
+
+                            <UniformGrid Grid.Row="4" Columns="5">
+                                <RadioButton x:Name="CaptureMonitorModeButton"
+                                             Style="{StaticResource Lab.Pilot.ModeCard}"
+                                             GroupName="CaptureLauncherMode" Tag="ActiveMonitor"
+                                             Click="CaptureLauncherMode_OnClick">
                                     <StackPanel>
                                         <StackPanel Orientation="Horizontal">
-                                            <Path Data="{StaticResource Icon.Monitor}" Style="{StaticResource StandaloneIcon}" Margin="0,0,8,0"/>
-                                            <TextBlock Text="Monitor" FontSize="16" FontWeight="SemiBold"/>
+                                            <Path Data="{StaticResource Icon.Monitor}" Width="21" Height="21"
+                                                  Stretch="Uniform" Stroke="{DynamicResource Lab.accent-text}"
+                                                  StrokeThickness="1.7" Margin="0,0,9,0"/>
+                                            <TextBlock Text="Monitor" FontSize="15" FontWeight="SemiBold"/>
                                         </StackPanel>
-                                        <TextBlock Text="Capture a tela inteira do monitor ativo."
-                                                   Margin="0,5,0,0"
-                                                   TextWrapping="Wrap"
-                                                   Foreground="{DynamicResource MutedBrush}"/>
+                                        <TextBlock Text="Tela inteira do monitor ativo" Margin="0,7,0,0"
+                                                   Style="{StaticResource Lab.Metadata}"/>
                                         <views:ShortcutRecorderBox x:Name="CaptureMonitorShortcutBox"
-                                                                   Margin="0,10,0,10"/>
-                                        <Button Content="Capturar monitor"
-                                                Style="{StaticResource PrimaryButton}"
-                                                Click="CaptureActiveMonitor_OnClick"/>
+                                                                   Margin="0,12,0,0" Style="{StaticResource Lab.Field}"/>
                                     </StackPanel>
-                                </Border>
-                                <Border Style="{StaticResource MetricCard}">
+                                </RadioButton>
+                                <RadioButton x:Name="CaptureRegionModeButton"
+                                             Style="{StaticResource Lab.Pilot.ModeCard}"
+                                             GroupName="CaptureLauncherMode" Tag="Region"
+                                             Click="CaptureLauncherMode_OnClick">
                                     <StackPanel>
                                         <StackPanel Orientation="Horizontal">
-                                            <Path Data="{StaticResource Icon.Region}" Style="{StaticResource StandaloneIcon}" Margin="0,0,8,0"/>
-                                            <TextBlock Text="Região" FontSize="16" FontWeight="SemiBold"/>
+                                            <Path Data="{StaticResource Icon.Region}" Width="21" Height="21"
+                                                  Stretch="Uniform" Stroke="{DynamicResource Lab.accent-text}"
+                                                  StrokeThickness="1.7" Margin="0,0,9,0"/>
+                                            <TextBlock Text="Região" FontSize="15" FontWeight="SemiBold"/>
                                         </StackPanel>
-                                        <TextBlock Text="Selecione, anote e conclua sem trocar de janela."
-                                                   Margin="0,5,0,0"
-                                                   TextWrapping="Wrap"
-                                                   Foreground="{DynamicResource MutedBrush}"/>
+                                        <TextBlock Text="Selecione e anote livremente" Margin="0,7,0,0"
+                                                   Style="{StaticResource Lab.Metadata}"/>
                                         <views:ShortcutRecorderBox x:Name="CaptureRegionShortcutBox"
-                                                                   Margin="0,10,0,10"/>
-                                        <Button Content="Selecionar região"
-                                                Style="{StaticResource PrimaryButton}"
-                                                Click="CaptureRegion_OnClick"/>
+                                                                   Margin="0,12,0,0" Style="{StaticResource Lab.Field}"/>
                                     </StackPanel>
-                                </Border>
-                                <Border Style="{StaticResource MetricCard}">
+                                </RadioButton>
+                                <RadioButton x:Name="CaptureWindowModeButton"
+                                             Style="{StaticResource Lab.Pilot.ModeCard}"
+                                             GroupName="CaptureLauncherMode" Tag="Window"
+                                             Click="CaptureLauncherMode_OnClick">
                                     <StackPanel>
                                         <StackPanel Orientation="Horizontal">
-                                            <Path Data="{StaticResource Icon.Window}" Style="{StaticResource StandaloneIcon}" Margin="0,0,8,0"/>
-                                            <TextBlock Text="Janela" FontSize="16" FontWeight="SemiBold"/>
+                                            <Path Data="{StaticResource Icon.Window}" Width="21" Height="21"
+                                                  Stretch="Uniform" Stroke="{DynamicResource Lab.accent-text}"
+                                                  StrokeThickness="1.7" Margin="0,0,9,0"/>
+                                            <TextBlock Text="Janela" FontSize="15" FontWeight="SemiBold"/>
                                         </StackPanel>
-                                        <TextBlock Text="Capture somente a janela sob o cursor."
-                                                   Margin="0,5,0,0"
-                                                   TextWrapping="Wrap"
-                                                   Foreground="{DynamicResource MutedBrush}"/>
+                                        <TextBlock Text="Janela que estiver sob o cursor" Margin="0,7,0,0"
+                                                   Style="{StaticResource Lab.Metadata}"/>
                                         <views:ShortcutRecorderBox x:Name="CaptureWindowShortcutBox"
-                                                                   Margin="0,10,0,10"/>
-                                        <Button Content="Capturar janela"
-                                                Style="{StaticResource PrimaryButton}"
-                                                Click="CaptureWindow_OnClick"/>
+                                                                   Margin="0,12,0,0" Style="{StaticResource Lab.Field}"/>
                                     </StackPanel>
-                                </Border>
-                                <Border Style="{StaticResource MetricCard}">
+                                </RadioButton>
+                                <RadioButton x:Name="CaptureScrollingModeButton"
+                                             Style="{StaticResource Lab.Pilot.ModeCard}"
+                                             GroupName="CaptureLauncherMode" Tag="Scrolling"
+                                             ToolTip="Você terá ao menos 3 segundos para posicionar o cursor sobre a página"
+                                             Click="CaptureLauncherMode_OnClick">
                                     <StackPanel>
                                         <StackPanel Orientation="Horizontal">
-                                            <Path Data="{StaticResource Icon.Scroll}" Style="{StaticResource StandaloneIcon}" Margin="0,0,8,0"/>
-                                            <TextBlock Text="Captura longa" FontSize="16" FontWeight="SemiBold"/>
+                                            <Path Data="{StaticResource Icon.Scroll}" Width="21" Height="21"
+                                                  Stretch="Uniform" Stroke="{DynamicResource Lab.accent-text}"
+                                                  StrokeThickness="1.7" Margin="0,0,9,0"/>
+                                            <TextBlock Text="Captura longa" FontSize="15" FontWeight="SemiBold"/>
                                         </StackPanel>
-                                        <TextBlock Text="Capture páginas inteiras enquanto elas rolam."
-                                                   Margin="0,5,0,0"
-                                                   TextWrapping="Wrap"
-                                                   Foreground="{DynamicResource MutedBrush}"/>
+                                        <TextBlock Text="Páginas inteiras com rolagem" Margin="0,7,0,0"
+                                                   Style="{StaticResource Lab.Metadata}"/>
                                         <views:ShortcutRecorderBox x:Name="CaptureScrollingShortcutBox"
-                                                                   Margin="0,10,0,10"/>
-                                        <Button Content="Iniciar captura longa"
-                                                Style="{StaticResource PrimaryButton}"
-                                                ToolTip="Você terá ao menos 3 segundos para posicionar o cursor sobre a página"
-                                                Click="CaptureScrolling_OnClick"/>
+                                                                   Margin="0,12,0,0" Style="{StaticResource Lab.Field}"/>
                                     </StackPanel>
-                                </Border>
-                                <Border Style="{StaticResource MetricCard}">
+                                </RadioButton>
+                                <RadioButton x:Name="CaptureGifModeButton"
+                                             Style="{StaticResource Lab.Pilot.ModeCard}"
+                                             GroupName="CaptureLauncherMode" Tag="Gif" Margin="0"
+                                             Click="CaptureLauncherMode_OnClick">
                                     <StackPanel>
                                         <StackPanel Orientation="Horizontal">
-                                            <Path Data="{StaticResource Icon.Region}" Style="{StaticResource StandaloneIcon}" Margin="0,0,8,0"/>
-                                            <TextBlock Text="Gravar GIF" FontSize="16" FontWeight="SemiBold"/>
+                                            <Path Data="{StaticResource Lab.Icon.Film}" Width="21" Height="21"
+                                                  Stretch="Uniform" Stroke="{DynamicResource Lab.accent-text}"
+                                                  StrokeThickness="1.7" Margin="0,0,9,0"/>
+                                            <TextBlock Text="Gravar GIF" FontSize="15" FontWeight="SemiBold"/>
                                         </StackPanel>
-                                        <TextBlock Text="Região real, preview e salvamento local."
-                                                   Margin="0,5,0,0" TextWrapping="Wrap"
-                                                   Foreground="{DynamicResource MutedBrush}"/>
-                                        <Button Content="Iniciar GIF" Margin="0,10,0,0"
-                                                Click="StartGifRecording_OnClick"/>
+                                        <TextBlock Text="Região, prévia e salvamento local" Margin="0,7,0,0"
+                                                   Style="{StaticResource Lab.Metadata}"/>
+                                        <Border Margin="0,12,0,0" Padding="11,9" CornerRadius="5"
+                                                Background="{DynamicResource Lab.input}"
+                                                BorderBrush="{DynamicResource Lab.line}" BorderThickness="1">
+                                            <TextBlock Text="Selecionar região" Style="{StaticResource Lab.Metadata}"/>
+                                        </Border>
                                     </StackPanel>
-                                </Border>
+                                </RadioButton>
                             </UniformGrid>
 
-                            <Border Grid.Row="4" Style="{StaticResource SettingsCard}">
+                            <Border x:Name="CaptureRecordingCard" Grid.Row="6"
+                                    Style="{StaticResource Lab.Pilot.Card}"
+                                    Visibility="Collapsed">
                                 <Grid>
                                     <Grid.RowDefinitions>
                                         <RowDefinition Height="Auto"/>
@@ -948,7 +1027,9 @@
                                             <ColumnDefinition Width="18"/>
                                             <ColumnDefinition Width="1*"/>
                                         </Grid.ColumnDefinitions>
-                                        <Border Style="{StaticResource SubtlePanel}">
+                                        <Border x:Name="CaptureVideoConfigurationPanel"
+                                                Grid.ColumnSpan="3"
+                                                Style="{StaticResource Lab.Pilot.SubtleCard}">
                                             <StackPanel>
                                                 <TextBlock Text="Vídeo MP4" Style="{StaticResource FieldLabel}"/>
                                                 <Grid Margin="0,10,0,0">
@@ -961,7 +1042,8 @@
                                                     </Grid.ColumnDefinitions>
                                                     <StackPanel>
                                                         <TextBlock Text="Destino" Foreground="{DynamicResource MutedBrush}"/>
-                                                        <ComboBox x:Name="RecordingTargetBox" Margin="0,5,0,0">
+                                                        <ComboBox x:Name="RecordingTargetBox" Margin="0,5,0,0"
+                                                                  Style="{StaticResource Lab.Combo}">
                                                             <ComboBoxItem Content="Monitor ativo" Tag="Monitor"/>
                                                             <ComboBoxItem Content="Região" Tag="Region"/>
                                                             <ComboBoxItem Content="Janela sob o cursor" Tag="Window"/>
@@ -969,7 +1051,8 @@
                                                     </StackPanel>
                                                     <StackPanel Grid.Column="2">
                                                         <TextBlock Text="FPS" Foreground="{DynamicResource MutedBrush}"/>
-                                                        <ComboBox x:Name="RecordingFpsBox" Margin="0,5,0,0">
+                                                        <ComboBox x:Name="RecordingFpsBox" Margin="0,5,0,0"
+                                                                  Style="{StaticResource Lab.Combo}">
                                                             <ComboBoxItem Content="24" Tag="24"/>
                                                             <ComboBoxItem Content="30" Tag="30"/>
                                                             <ComboBoxItem Content="60" Tag="60"/>
@@ -979,6 +1062,7 @@
                                                         <TextBlock Text="Qualidade" Foreground="{DynamicResource MutedBrush}"/>
                                                         <ComboBox x:Name="RecordingQualityBox"
                                                                   Margin="0,5,0,0"
+                                                                  Style="{StaticResource Lab.Combo}"
                                                                   SelectionChanged="RecordingPreset_OnChanged"/>
                                                     </StackPanel>
                                                 </Grid>
@@ -989,6 +1073,7 @@
                                                            Foreground="{DynamicResource MutedBrush}"/>
                                                 <CheckBox x:Name="RecordingCursorCheckBox"
                                                           Content="Mostrar cursor na gravação"
+                                                          Style="{StaticResource Lab.Switch}"
                                                           Margin="0,12,0,0"/>
                                                 <Button x:Name="StartMp4RecordingButton"
                                                         Content="Iniciar gravação MP4"
@@ -998,7 +1083,9 @@
                                                         Click="StartMp4Recording_OnClick"/>
                                             </StackPanel>
                                         </Border>
-                                        <Border Grid.Column="2" Style="{StaticResource SubtlePanel}">
+                                        <Border x:Name="CaptureGifConfigurationPanel" Grid.ColumnSpan="3"
+                                                Style="{StaticResource Lab.Pilot.SubtleCard}"
+                                                Visibility="Collapsed">
                                             <StackPanel>
                                                 <TextBlock Text="GIF animado" Style="{StaticResource FieldLabel}"/>
                                                 <Grid Margin="0,10,0,0">
@@ -1012,6 +1099,7 @@
                                                         <ComboBox x:Name="GifFpsBox"
                                                                   Margin="0,5,0,0"
                                                                   IsEditable="False"
+                                                                  Style="{StaticResource Lab.Combo}"
                                                                   SelectionChanged="RecordingPreset_OnChanged"/>
                                                         <TextBlock x:Name="GifFpsDescriptionText"
                                                                    Margin="0,6,0,0"
@@ -1024,6 +1112,7 @@
                                                         <ComboBox x:Name="GifQualityBox"
                                                                   Margin="0,5,0,0"
                                                                   IsEditable="False"
+                                                                  Style="{StaticResource Lab.Combo}"
                                                                   SelectionChanged="RecordingPreset_OnChanged"/>
                                                         <TextBlock x:Name="GifQualityDescriptionText"
                                                                    Margin="0,6,0,0"
@@ -1047,13 +1136,13 @@
                                 </Grid>
                             </Border>
 
-                            <Grid Grid.Row="6">
+                            <Grid Grid.Row="8">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="1.28*"/>
                                     <ColumnDefinition Width="20"/>
                                     <ColumnDefinition Width="0.92*"/>
                                 </Grid.ColumnDefinitions>
-                                <Border Style="{StaticResource SettingsCard}">
+                                <Border Style="{StaticResource Lab.Pilot.Card}">
                                     <Grid>
                                         <Grid.RowDefinitions>
                                             <RowDefinition Height="Auto"/>
@@ -1093,7 +1182,8 @@
                                     </Grid>
                                 </Border>
 
-                                <Border Grid.Column="2" Style="{StaticResource SettingsCard}">
+                                <Border x:Name="CaptureRuleCard" Grid.Column="2"
+                                        Style="{StaticResource Lab.Pilot.Card}">
                                     <StackPanel>
                                         <Grid>
                                             <Grid.ColumnDefinitions>
@@ -1112,16 +1202,18 @@
                                                 <ColumnDefinition Width="8"/>
                                                 <ColumnDefinition Width="Auto"/>
                                             </Grid.ColumnDefinitions>
-                                            <TextBox x:Name="CaptureDirectoryBox"/>
+                                            <TextBox x:Name="CaptureDirectoryBox" Style="{StaticResource Lab.Field}"/>
                                             <Button Grid.Column="2"
                                                     Content="Escolher pasta"
+                                                    Style="{StaticResource Lab.Button}"
                                                     Click="BrowseCaptureDestination_OnClick"/>
                                         </Grid>
                                         <TextBlock Text="Variáveis: {year}, {month}, {month-name} e {day}"
                                                    Margin="0,5,0,10" FontSize="12"
                                                    Foreground="{DynamicResource MutedBrush}"/>
                                         <TextBlock Text="Nome do arquivo" Foreground="{DynamicResource MutedBrush}"/>
-                                        <TextBox x:Name="CaptureFileNameBox" Margin="0,5,0,0"/>
+                                        <TextBox x:Name="CaptureFileNameBox" Margin="0,5,0,0"
+                                                 Style="{StaticResource Lab.Field}"/>
                                         <TextBlock Text="Variáveis: {date}, {time}, {type} e {app}"
                                                    Margin="0,5,0,10" FontSize="12"
                                                    Foreground="{DynamicResource MutedBrush}"/>
@@ -1134,6 +1226,7 @@
                                             <StackPanel>
                                                 <TextBlock Text="Formato" Foreground="{DynamicResource MutedBrush}"/>
                                                 <ComboBox x:Name="CaptureFormatBox" Margin="0,5,0,0"
+                                                          Style="{StaticResource Lab.Combo}"
                                                           SelectionChanged="CaptureFormat_OnChanged">
                                                     <ComboBoxItem Content="PNG" Tag="PNG"/>
                                                     <ComboBoxItem Content="JPEG" Tag="JPEG"/>
@@ -1141,22 +1234,24 @@
                                             </StackPanel>
                                             <StackPanel Grid.Column="2">
                                                 <TextBlock Text="Qualidade" Foreground="{DynamicResource MutedBrush}"/>
-                                                <TextBox x:Name="CaptureQualityBox" Margin="0,5,0,0"/>
+                                                <TextBox x:Name="CaptureQualityBox" Margin="0,5,0,0"
+                                                         Style="{StaticResource Lab.Field}"/>
                                             </StackPanel>
                                         </Grid>
-                                        <CheckBox x:Name="CaptureClipboardCheckBox" Style="{StaticResource ToggleSwitch}"
+                                        <CheckBox x:Name="CaptureClipboardCheckBox" Style="{StaticResource Lab.Switch}"
                                                   Content="Copiar após capturar" Margin="0,14,0,5"/>
-                                        <CheckBox x:Name="CaptureAutoSaveCheckBox" Style="{StaticResource ToggleSwitch}"
+                                        <CheckBox x:Name="CaptureAutoSaveCheckBox" Style="{StaticResource Lab.Switch}"
                                                   Content="Salvar automaticamente" Margin="0,5"/>
-                                        <CheckBox x:Name="CaptureCursorCheckBox" Style="{StaticResource ToggleSwitch}"
+                                        <CheckBox x:Name="CaptureCursorCheckBox" Style="{StaticResource Lab.Switch}"
                                                   Content="Incluir cursor na imagem" Margin="0,5"/>
-                                        <CheckBox x:Name="CaptureHideSlashDeskCheckBox" Style="{StaticResource ToggleSwitch}"
+                                        <CheckBox x:Name="CaptureHideSlashDeskCheckBox" Style="{StaticResource Lab.Switch}"
                                                   Content="Ocultar SlashDesk durante a captura" Margin="0,5"
                                                   ToolTip="Desative para permitir que a janela do SlashDesk apareça na imagem"/>
                                         <StackPanel Margin="0,10,0,0">
                                             <TextBlock Text="Após capturar monitor, janela ou rolagem"
                                                        Foreground="{DynamicResource MutedBrush}"/>
-                                            <ComboBox x:Name="CaptureEditorCheckBox" Margin="0,5,0,0">
+                                            <ComboBox x:Name="CaptureEditorCheckBox" Margin="0,5,0,0"
+                                                      Style="{StaticResource Lab.Combo}">
                                                 <ComboBoxItem Content="Direta — copiar e salvar automaticamente"
                                                               Tag="Direct"/>
                                                 <ComboBoxItem Content="Editor — revisar antes de concluir"
@@ -1168,32 +1263,17 @@
                                                        Foreground="{DynamicResource MutedBrush}"
                                                        Text="Direta aplica as opções acima imediatamente. Editor permite ajustar a imagem, inclusive a captura com rolagem, e só copia ou salva ao concluir."/>
                                         </StackPanel>
-                                        <Grid Margin="0,10,0,0">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="*"/>
-                                                <ColumnDefinition Width="12"/>
-                                                <ColumnDefinition Width="*"/>
-                                            </Grid.ColumnDefinitions>
-                                            <StackPanel>
-                                                <TextBlock Text="Atraso" Foreground="{DynamicResource MutedBrush}"/>
-                                                <ComboBox x:Name="CaptureDelayBox" Margin="0,5,0,0">
-                                                    <ComboBoxItem Content="Sem atraso" Tag="0"/>
-                                                    <ComboBoxItem Content="3 segundos" Tag="3"/>
-                                                    <ComboBoxItem Content="5 segundos" Tag="5"/>
-                                                    <ComboBoxItem Content="10 segundos" Tag="10"/>
-                                                </ComboBox>
-                                            </StackPanel>
-                                            <StackPanel Grid.Column="2">
-                                                <TextBlock Text="Limpar histórico após" Foreground="{DynamicResource MutedBrush}"/>
-                                                <ComboBox x:Name="CaptureRetentionBox" Margin="0,5,0,0">
-                                                    <ComboBoxItem Content="30 dias" Tag="30"/>
-                                                    <ComboBoxItem Content="90 dias" Tag="90"/>
-                                                    <ComboBoxItem Content="180 dias" Tag="180"/>
-                                                    <ComboBoxItem Content="Nunca" Tag="0"/>
-                                                </ComboBox>
-                                            </StackPanel>
-                                        </Grid>
-                                        <Button Content="Salvar regra" Style="{StaticResource PrimaryButton}"
+                                        <StackPanel Margin="0,10,0,0">
+                                            <TextBlock Text="Limpar histórico após" Foreground="{DynamicResource MutedBrush}"/>
+                                            <ComboBox x:Name="CaptureRetentionBox" Margin="0,5,0,0"
+                                                      Style="{StaticResource Lab.Combo}">
+                                                <ComboBoxItem Content="30 dias" Tag="30"/>
+                                                <ComboBoxItem Content="90 dias" Tag="90"/>
+                                                <ComboBoxItem Content="180 dias" Tag="180"/>
+                                                <ComboBoxItem Content="Nunca" Tag="0"/>
+                                            </ComboBox>
+                                        </StackPanel>
+                                        <Button Content="Salvar regra" Style="{StaticResource Lab.PrimaryButton}"
                                                 HorizontalAlignment="Stretch" Margin="0,14,0,0"
                                                 Click="SaveCaptureSettings_OnClick"/>
                                         <TextBlock x:Name="CaptureShortcutStatusText"
@@ -1206,7 +1286,7 @@
                                 </Border>
                             </Grid>
 
-                            <Border Grid.Row="8" Style="{StaticResource SettingsCard}">
+                            <Border Grid.Row="10" Style="{StaticResource Lab.Pilot.Card}">
                                 <StackPanel>
                                     <Grid>
                                         <Grid.ColumnDefinitions>
@@ -1225,6 +1305,7 @@
                                         <ComboBox x:Name="CaptureHistoryFilterBox"
                                                   Width="180"
                                                   Margin="10,0,0,0"
+                                                  Style="{StaticResource Lab.Combo}"
                                                   SelectionChanged="CaptureHistoryFilter_OnChanged">
                                             <ComboBoxItem Content="Todos" Tag="all"/>
                                             <ComboBoxItem Content="Monitor" Tag="monitor"/>
@@ -1235,6 +1316,7 @@
                                         </ComboBox>
                                         <Button Content="Limpar agora"
                                                 Margin="10,0,0,0"
+                                                Style="{StaticResource Lab.Button}"
                                                 Click="CleanCaptureHistory_OnClick"/>
                                         <TextBlock x:Name="CaptureHistoryStatusText"
                                                    Margin="12,0,0,0"

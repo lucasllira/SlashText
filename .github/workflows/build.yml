@@ -61,6 +61,10 @@ jobs:
         shell: pwsh
         run: ./scripts/ui-integrity-smoke.ps1
 
+      - name: Capture pilot 3.3.0 smoke
+        shell: pwsh
+        run: ./scripts/capture-pilot-smoke.ps1
+
       - name: Release workflow smoke
         shell: pwsh
         run: ./scripts/release-workflow-smoke.ps1
@@ -159,11 +163,25 @@ jobs:
           Copy-Item publish-portable/SlashDesk.exe gallery-package/SlashDesk.exe
           Set-Content -Path gallery-package/Abrir-Galeria.cmd -Encoding ascii -Value '@echo off', 'start "" "%~dp0SlashDesk.exe" --design-gallery'
 
+      - name: Create capture pilot package
+        shell: pwsh
+        run: |
+          New-Item capture-pilot-package -ItemType Directory -Force | Out-Null
+          Copy-Item publish-portable/SlashDesk.exe capture-pilot-package/SlashDesk.exe
+          Set-Content -Path capture-pilot-package/Abrir-Piloto-Captura.cmd -Encoding ascii -Value '@echo off', 'start "" "%~dp0SlashDesk.exe"'
+
       - name: Upload visual foundation gallery
         uses: actions/upload-artifact@v4
         with:
           name: SlashDesk-visual-foundation-gallery-win-x64
           path: gallery-package/
+          if-no-files-found: error
+
+      - name: Upload capture pilot candidate
+        uses: actions/upload-artifact@v4
+        with:
+          name: SlashDesk-3.3.0-capture-pilot-win-x64
+          path: capture-pilot-package/
           if-no-files-found: error
 
       - name: Upload installed staging

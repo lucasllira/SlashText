@@ -68,6 +68,8 @@ public partial class MainWindow : Window
     private CancellationTokenSource? _updateMonitorCancellation;
     private Task? _updateMonitorTask;
     private int _shortcutResponsiveBand = -1;
+    private CaptureLauncherMode _captureLauncherMode = CaptureLauncherMode.Region;
+    private CaptureMediaMode _captureMediaMode = CaptureMediaMode.Image;
 
     private const double ShortcutLeftMinimum = 220;
     private const double ShortcutLeftMaximum = 460;
@@ -77,9 +79,27 @@ public partial class MainWindow : Window
     private const double ShortcutDividerSpace = 32;
     private static readonly TimeSpan UpdateMonitorInterval = TimeSpan.FromMinutes(30);
 
+    private enum CaptureLauncherMode
+    {
+        ActiveMonitor,
+        Region,
+        Window,
+        Scrolling,
+        Gif
+    }
+
+    private enum CaptureMediaMode
+    {
+        Image,
+        Video,
+        Gif
+    }
+
     public MainWindow()
     {
         InitializeComponent();
+        CaptureImageMediaButton.IsChecked = true;
+        CaptureRegionModeButton.IsChecked = true;
         InitializeRecordingPresetControls();
         InitializeTray();
         Loaded += MainWindow_OnLoaded;
@@ -1307,7 +1327,7 @@ public partial class MainWindow : Window
     {
         var views = new UIElement[]
         {
-            ShortcutsView, QuickAccentView, CaptureView, StatisticsView, SettingsView, AboutView
+            ShortcutsView, CaptureView, QuickAccentView, StatisticsView, SettingsView, AboutView
         };
         foreach (var item in views)
         {
@@ -1318,22 +1338,13 @@ public partial class MainWindow : Window
 
         var buttons = new[]
         {
-            ShortcutsTabButton, QuickAccentTabButton, CaptureTabButton, StatisticsTabButton,
+            ShortcutsTabButton, CaptureTabButton, QuickAccentTabButton, StatisticsTabButton,
             SettingsTabButton, AboutTabButton
         };
         foreach (var button in buttons)
         {
             var selected = ReferenceEquals(button, selectedButton);
             button.Tag = selected ? "Selected" : null;
-            button.Background = selected
-                ? (Brush)FindResource("AccentSubtleBrush")
-                : Brushes.Transparent;
-            button.BorderBrush = selected
-                ? (Brush)FindResource("FocusBrush")
-                : Brushes.Transparent;
-            button.Foreground = selected
-                ? (Brush)FindResource("AccentBrush")
-                : (Brush)FindResource("MutedBrush");
         }
 
         (ShellPageTitle.Text, ShellPageDescription.Text) = ReferenceEquals(view, ShortcutsView)
@@ -2329,6 +2340,130 @@ public partial class MainWindow : Window
 
     private void CaptureScrolling_OnClick(object sender, RoutedEventArgs e) =>
         _ = RunScrollingCaptureAsync(invokedByShortcut: false);
+
+    private void CaptureLauncherMode_OnClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is not RadioButton { Tag: string tag } ||
+            !Enum.TryParse(tag, ignoreCase: true, out CaptureLauncherMode mode))
+        {
+            return;
+        }
+
+        _captureLauncherMode = mode;
+        if (mode == CaptureLauncherMode.Gif)
+        {
+            _captureMediaMode = CaptureMediaMode.Gif;
+            CaptureGifMediaButton.IsChecked = true;
+        }
+        else if (_captureMediaMode == CaptureMediaMode.Gif)
+        {
+            _captureMediaMode = CaptureMediaMode.Image;
+            CaptureImageMediaButton.IsChecked = true;
+        }
+        UpdateCaptureLauncherSummary();
+    }
+
+    private void CaptureMediaMode_OnClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is not RadioButton { Tag: string tag } ||
+            !Enum.TryParse(tag, ignoreCase: true, out CaptureMediaMode mode))
+        {
+            return;
+        }
+
+        _captureMediaMode = mode;
+        if (mode == CaptureMediaMode.Gif)
+        {
+            _captureLauncherMode = CaptureLauncherMode.Gif;
+            CaptureGifModeButton.IsChecked = true;
+        }
+        else if (_captureLauncherMode == CaptureLauncherMode.Gif)
+        {
+            _captureLauncherMode = CaptureLauncherMode.Region;
+            CaptureRegionModeButton.IsChecked = true;
+        }
+        UpdateCaptureLauncherSummary();
+    }
+
+    private async void StartSelectedCapture_OnClick(object sender, RoutedEventArgs e)
+    {
+        if (!TryReadCaptureSettings(out var error))
+        {
+            MessageBox.Show(
+                error,
+                "Regra de captura",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+            return;
+        }
+
+        await _settingsStore.SaveAsync(_settings);
+        ConfigureCaptureShortcuts();
+        switch (_captureMediaMode)
+        {
+            case CaptureMediaMode.Video:
+                StartMp4Recording_OnClick(sender, e);
+                return;
+            case CaptureMediaMode.Gif:
+                StartGifRecording_OnClick(sender, e);
+                return;
+        }
+
+        switch (_captureLauncherMode)
+        {
+            case CaptureLauncherMode.ActiveMonitor:
+                CaptureActiveMonitor_OnClick(sender, e);
+                break;
+            case CaptureLauncherMode.Window:
+                CaptureWindow_OnClick(sender, e);
+                break;
+            case CaptureLauncherMode.Scrolling:
+                CaptureScrolling_OnClick(sender, e);
+                break;
+            default:
+                CaptureRegion_OnClick(sender, e);
+                break;
+        }
+    }
+
+    private void UpdateCaptureLauncherSummary()
+    {
+        var action = _captureMediaMode switch
+        {
+            CaptureMediaMode.Video => "Gravar vídeo",
+            CaptureMediaMode.Gif => "Gravar GIF",
+            _ => "Nova captura"
+        };
+        var selection = _captureMediaMode switch
+        {
+            CaptureMediaMode.Video => "Vídeo MP4",
+            CaptureMediaMode.Gif => "GIF · região",
+            _ => _captureLauncherMode switch
+            {
+                CaptureLauncherMode.ActiveMonitor => "Monitor",
+                CaptureLauncherMode.Window => "Janela",
+                CaptureLauncherMode.Scrolling => "Captura longa",
+                _ => "Região"
+            }
+        };
+        CaptureNewButtonText.Text = action;
+        CaptureSelectionSummaryText.Text = $"{selection} · pronta";
+        CaptureRecordingCard.Visibility = _captureMediaMode == CaptureMediaMode.Image
+            ? Visibility.Collapsed
+            : Visibility.Visible;
+        CaptureVideoConfigurationPanel.Visibility = _captureMediaMode == CaptureMediaMode.Video
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+        CaptureGifConfigurationPanel.Visibility = _captureMediaMode == CaptureMediaMode.Gif
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+    }
+
+    private void FocusCaptureRule_OnClick(object sender, RoutedEventArgs e)
+    {
+        CaptureRuleCard.BringIntoView();
+        CaptureDirectoryBox.Focus();
+    }
 
     private async Task RunScrollingCaptureAsync(bool invokedByShortcut)
     {
