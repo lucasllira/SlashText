@@ -38,6 +38,9 @@ Equivalente: `SlashDesk.exe --design-gallery`. Sem o argumento, o executável in
 Testar:
 
 - Claro, Preto e Windows (alterar o tema do Windows com a galeria aberta).
+- A troca de tema é feita em execução, sem reiniciar ou fechar a galeria.
+- As abas atualizam o contexto demonstrado; o catálogo de componentes permanece
+  compartilhado porque as telas produtivas completas pertencem às issues #63–#68.
 - Tab/Shift+Tab: foco visível; Espaço/Enter: ações e switches; setas: abas/ComboBox; Escape: popup.
 - Mouse hover/pressionado, clique repetido, desativados não respondem.
 - Campo obrigatório começa inválido, corrige ao digitar e volta a inválido ao limpar.

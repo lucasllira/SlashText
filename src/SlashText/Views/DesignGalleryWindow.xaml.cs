@@ -81,7 +81,21 @@ public partial class DesignGalleryWindow : Window
     private void TabChanged(object sender, RoutedEventArgs e)
     {
         if (!_ready) return;
-        Status.Text = $"Aba selecionada: {((RadioButton)sender).Content}. Demonstração do componente.";
+        var tab = ((RadioButton)sender).Content?.ToString() ?? "Atalhos";
+        var page = tab switch
+        {
+            "Captura" => ("Captura", "Superfícies para capturar, editar e gravar com resposta visual imediata."),
+            "Acento Rápido" => ("Acento Rápido", "Seleção de caracteres, estados de teclado e preferências de ativação."),
+            "Estatísticas" => ("Estatísticas", "Cartões, filtros e hierarquia para apresentar uso sem poluir a leitura."),
+            "Configurações" => ("Configurações", "Campos, seleções e switches para preferências persistentes do aplicativo."),
+            "Sobre" => ("Sobre", "Informações do produto, versão, atualização e diagnósticos em linguagem clara."),
+            _ => ("Atalhos", "Organização, edição e descoberta dos textos prontos do usuário.")
+        };
+        PageTitle.Text = $"Fundação para {page.Item1}";
+        PageDescription.Text = page.Item2;
+        Status.Text = $"Aba selecionada: {page.Item1}. O catálogo abaixo é compartilhado; a tela produtiva será migrada na issue correspondente.";
+        GalleryScroller.ScrollToTop();
+        LabMotion.PlayEntrance(PageSurface);
     }
     private void ActionClicked(object sender, RoutedEventArgs e) => Status.Text = $"{((Button)sender).Content}: clique recebido.";
     private void ReplayClicked(object sender, RoutedEventArgs e) => LabMotion.PlayEntrance(PageSurface);
@@ -104,6 +118,9 @@ public partial class DesignGalleryWindow : Window
     private async Task RunSmoke()
     {
         Directory.CreateDirectory(_smokeOutput!);
+        // Exercise the animated path used by an interactive theme click.
+        _theme = "Dark"; ApplyTheme(true);
+        _theme = "Light"; ApplyTheme(true);
         ReducedSwitch.IsChecked = true;
         ApplyMotionPreference();
         foreach (var theme in new[] { "Light", "Dark" })
@@ -130,6 +147,12 @@ public partial class DesignGalleryWindow : Window
             await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
             Require(PopupContent.Background.ToString() == (theme == "Dark" ? "#FF242424" : "#FFFFFFFF"), "Detached popup theme");
             OptionsPopup.IsOpen = false;
+            foreach (var tab in new[] { "Captura", "Acento Rápido", "Estatísticas", "Configurações", "Sobre", "Atalhos" })
+            {
+                var item = FindPageTab(tab);
+                item.IsChecked = true;
+                Require(PageTitle.Text.Contains(tab, StringComparison.Ordinal), $"Tab content did not change for {tab}");
+            }
             Require(Descendants(PrimaryButton).OfType<TextBlock>().Any(t => t.Text == "Ação principal" && t.Foreground.ToString() == (theme == "Dark" ? "#FF082126" : "#FFFFFFFF")), "Primary label must inherit on-accent color: " + string.Join(",", Descendants(PrimaryButton).OfType<TextBlock>().Select(t => t.Text + "=" + t.Foreground)));
             Require(Descendants(NormalButton).OfType<TextBlock>().Any(t => t.Text == "Ação secundária" && t.Foreground.ToString() == expected), "Neutral label must follow theme");
             Require(Descendants(FormatCombo).OfType<TextBlock>().Any(t => t.Text == "PNG — imagem" && t.Foreground.ToString() == expected), "Combo selection label must follow theme");
@@ -173,7 +196,7 @@ public partial class DesignGalleryWindow : Window
         ReducedSwitch.IsChecked = true;
         Require(!LabMotion.Allowed(PageSurface), "Reduced motion must propagate");
         File.WriteAllText(Path.Combine(_smokeOutput!, "result.txt"),
-            "PASS: themes, validation, switch interruption/rest position, ComboBox and Popup resources, entrance clocks, reduced motion.\n" +
+            "PASS: interactive theme transition, tabs, validation, switch interruption/rest position, ComboBox and Popup resources, entrance clocks, reduced motion.\n" +
             "16 offscreen PNGs: 1440x900 and 980x680 DIP at 100/125/150/200%. This is NOT a physical mixed-monitor test.\n" +
             "Manual pending: hover/pressed/focus, Windows theme event, actual DPI/monitors, fonts, visual approval.\n");
     }
@@ -186,6 +209,8 @@ public partial class DesignGalleryWindow : Window
         }
     }
     private static void Require(bool value, string message) { if (!value) throw new InvalidOperationException(message); }
+    private RadioButton FindPageTab(string content) => PageTabs.Children.OfType<RadioButton>()
+        .Single(tab => string.Equals(tab.Content?.ToString(), content, StringComparison.Ordinal));
     private sealed class Example { public string Value { get; set; } = ""; }
     private sealed class RequiredRule : ValidationRule
     { public override ValidationResult Validate(object value, CultureInfo cultureInfo) => string.IsNullOrWhiteSpace(value?.ToString()) ? new ValidationResult(false, "Campo obrigatório.") : ValidationResult.ValidResult; }

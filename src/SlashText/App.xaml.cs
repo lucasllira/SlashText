@@ -24,6 +24,19 @@ public partial class App : System.Windows.Application
             string? output = smokeIndex >= 0
                 ? (smokeIndex + 1 < e.Args.Length ? Path.GetFullPath(e.Args[smokeIndex + 1]) : Path.Combine(AppContext.BaseDirectory, "gallery-evidence"))
                 : null;
+            if (output is null)
+            {
+                DispatcherUnhandledException += (_, args) =>
+                {
+                    MessageBox.Show(
+                        "A galeria encontrou um erro e precisa ser fechada.\n\n" + args.Exception,
+                        "Galeria de desenvolvimento",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Error);
+                    args.Handled = true;
+                    Shutdown(1);
+                };
+            }
             try
             {
                 var gallery = new DesignGalleryWindow(output);

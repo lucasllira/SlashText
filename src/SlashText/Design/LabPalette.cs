@@ -18,14 +18,18 @@ public static class LabPalette
             var next = ((SolidColorBrush)source[key]).Color;
             var old = target.Contains(key) ? target[key] as SolidColorBrush : null;
             var brush = new SolidColorBrush(next);
-            target[key] = brush;
             if (animate && SystemParameters.ClientAreaAnimation && old is not null)
             {
                 var frames = new ColorAnimationUsingKeyFrames { Duration = TimeSpan.FromMilliseconds(200), FillBehavior = FillBehavior.Stop };
                 frames.KeyFrames.Add(new DiscreteColorKeyFrame(old.Color, KeyTime.FromTimeSpan(TimeSpan.Zero)));
                 frames.KeyFrames.Add(new SplineColorKeyFrame(next, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(200)), new KeySpline(.25,.1,.25,1)));
+                // Start the clock before publishing the brush. Once a Freezable is
+                // exposed by a ResourceDictionary, WPF may freeze it while resolving
+                // DynamicResource references, which makes BeginAnimation throw on an
+                // interactive theme change.
                 brush.BeginAnimation(SolidColorBrush.ColorProperty, frames);
             }
+            target[key] = brush;
         }
     }
 }
