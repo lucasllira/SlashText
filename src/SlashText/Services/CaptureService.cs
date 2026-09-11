@@ -231,7 +231,8 @@ public sealed class CaptureService
     public async Task<bool> EditExistingAsync(
         string id,
         CaptureSettings settings,
-        Window owner)
+        Window owner,
+        CaptureAnnotationKind initialTool = CaptureAnnotationKind.Arrow)
     {
         var record = _history.FirstOrDefault(item => item.Id == id);
         if (record is null ||
@@ -245,7 +246,7 @@ public sealed class CaptureService
         var resolvedPath = ResolveFilePath(record);
         using var sourceFile = new Bitmap(resolvedPath);
         using var source = new Bitmap(sourceFile);
-        var editor = new CaptureEditorWindow(source)
+        var editor = new CaptureEditorWindow(source, initialTool)
         {
             Owner = owner,
             WindowStartupLocation = WindowStartupLocation.CenterOwner

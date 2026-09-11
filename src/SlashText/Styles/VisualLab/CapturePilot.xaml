@@ -100,7 +100,7 @@
     </Style>
 
     <Style x:Key="Lab.Pilot.ModeCard" TargetType="RadioButton">
-        <Setter Property="MinHeight" Value="104"/>
+        <Setter Property="MinHeight" Value="76"/>
         <Setter Property="Margin" Value="0,0,8,0"/>
         <Setter Property="Padding" Value="16"/>
         <Setter Property="Foreground" Value="{DynamicResource Lab.text}"/>
@@ -135,6 +135,49 @@
                             <Setter TargetName="Surface" Property="BorderBrush" Value="{DynamicResource Lab.accent}"/>
                             <Setter TargetName="Surface" Property="Background" Value="{DynamicResource Lab.tint}"/>
                             <Setter TargetName="Check" Property="Visibility" Value="Visible"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="Lab.Pilot.ToolButton" TargetType="Button" BasedOn="{StaticResource Lab.Button}">
+        <Setter Property="Width" Value="38"/>
+        <Setter Property="Height" Value="38"/>
+        <Setter Property="MinHeight" Value="38"/>
+        <Setter Property="Padding" Value="9"/>
+        <Setter Property="Margin" Value="0,0,4,0"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderBrush" Value="Transparent"/>
+    </Style>
+
+    <Style x:Key="Lab.Pilot.ToolIcon" TargetType="Path">
+        <Setter Property="Width" Value="19"/>
+        <Setter Property="Height" Value="19"/>
+        <Setter Property="Stretch" Value="Uniform"/>
+        <Setter Property="Stroke" Value="{DynamicResource Lab.text}"/>
+        <Setter Property="StrokeThickness" Value="1.7"/>
+        <Setter Property="StrokeStartLineCap" Value="Round"/>
+        <Setter Property="StrokeEndLineCap" Value="Round"/>
+        <Setter Property="StrokeLineJoin" Value="Round"/>
+    </Style>
+
+    <Style x:Key="Lab.Pilot.TextButton" TargetType="Button">
+        <Setter Property="Foreground" Value="{DynamicResource Lab.muted}"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderBrush" Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Padding" Value="0"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="FocusVisualStyle" Value="{StaticResource Lab.Focus}"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <ContentPresenter TextElement.Foreground="{TemplateBinding Foreground}"/>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter Property="Foreground" Value="{DynamicResource Lab.accent-text}"/>
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
