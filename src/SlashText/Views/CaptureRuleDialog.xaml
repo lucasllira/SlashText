@@ -1,0 +1,141 @@
+<Window x:Class="SlashText.Views.CaptureRuleDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Regra de captura"
+        Width="570"
+        MaxHeight="820"
+        SizeToContent="Height"
+        ResizeMode="NoResize"
+        WindowStyle="None"
+        ShowInTaskbar="False"
+        WindowStartupLocation="CenterOwner"
+        Background="Transparent"
+        AllowsTransparency="True">
+    <Border Margin="18"
+            Background="{DynamicResource Lab.raised}"
+            BorderBrush="{DynamicResource Lab.line-strong}"
+            BorderThickness="1"
+            CornerRadius="11">
+        <Border.Effect>
+            <DropShadowEffect BlurRadius="28" ShadowDepth="8" Opacity="0.38"/>
+        </Border.Effect>
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="68"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+            <Border BorderBrush="{DynamicResource Lab.line}" BorderThickness="0,0,0,1">
+                <Grid Margin="24,0,15,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="Regra de captura" FontSize="19" FontWeight="SemiBold"
+                               VerticalAlignment="Center" Foreground="{DynamicResource Lab.text}"/>
+                    <Button Grid.Column="1" Width="38" Height="38" Padding="8"
+                            Style="{StaticResource Lab.Button}" ToolTip="Fechar" Click="Cancel_OnClick">
+                        <Path Data="{StaticResource Lab.Icon.X}" Stroke="{DynamicResource Lab.text}"
+                              StrokeThickness="1.8" Stretch="Uniform"/>
+                    </Button>
+                </Grid>
+            </Border>
+
+            <ScrollViewer Grid.Row="1" MaxHeight="710" VerticalScrollBarVisibility="Auto">
+                <StackPanel Margin="24">
+                    <TextBlock Text="Defina o que acontece depois de capturar."
+                               Style="{StaticResource Lab.Metadata}" FontSize="13" Margin="0,0,0,18"/>
+
+                    <TextBlock Text="Monitor, janela e captura longa" Style="{StaticResource Lab.Metadata}"/>
+                    <ComboBox x:Name="AfterCaptureBox" Margin="0,6,0,10" Style="{StaticResource Lab.Combo}">
+                        <ComboBoxItem Content="Direta — copiar e salvar automaticamente" Tag="Direct"/>
+                        <ComboBoxItem Content="Editor — revisar antes de concluir" Tag="Editor"/>
+                    </ComboBox>
+
+                    <CheckBox x:Name="CopyCheckBox" Content="Copiar após capturar" Style="{StaticResource Lab.Switch}"/>
+                    <CheckBox x:Name="SaveCheckBox" Content="Salvar automaticamente" Style="{StaticResource Lab.Switch}"/>
+
+                    <TextBlock Text="Destino" Style="{StaticResource Lab.Metadata}" Margin="0,14,0,0"/>
+                    <TextBox x:Name="DirectoryBox" Margin="0,6,0,8" Style="{StaticResource Lab.Field}"/>
+                    <Button HorizontalAlignment="Left" Style="{StaticResource Lab.Button}" Click="Browse_OnClick">
+                        <StackPanel Orientation="Horizontal">
+                            <Path Data="{StaticResource Lab.Icon.FolderOpen}" Width="17" Height="17"
+                                  Stroke="{DynamicResource Lab.text}" StrokeThickness="1.7" Stretch="Uniform" Margin="0,0,8,0"/>
+                            <TextBlock Text="Escolher pasta"/>
+                        </StackPanel>
+                    </Button>
+                    <TextBlock Text="Variáveis: {year}, {month}, {month-name}, {day}"
+                               Style="{StaticResource Lab.Metadata}" Margin="0,7,0,14"/>
+
+                    <TextBlock Text="Nome do arquivo" Style="{StaticResource Lab.Metadata}"/>
+                    <TextBox x:Name="FileNameBox" Margin="0,6,0,0" Style="{StaticResource Lab.Field}"/>
+                    <TextBlock Text="Variáveis: {date}, {time}, {type}, {app}"
+                               Style="{StaticResource Lab.Metadata}" Margin="0,7,0,14"/>
+
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="16"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock Text="Formato" Style="{StaticResource Lab.Metadata}"/>
+                            <ComboBox x:Name="FormatBox" Margin="0,6,0,0" Style="{StaticResource Lab.Combo}"
+                                      SelectionChanged="Format_OnChanged">
+                                <ComboBoxItem Content="PNG" Tag="PNG"/>
+                                <ComboBoxItem Content="JPEG" Tag="JPEG"/>
+                            </ComboBox>
+                        </StackPanel>
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Text="Qualidade JPEG" Style="{StaticResource Lab.Metadata}"/>
+                            <TextBox x:Name="QualityBox" Margin="0,6,0,0" Style="{StaticResource Lab.Field}"/>
+                        </StackPanel>
+                    </Grid>
+
+                    <CheckBox x:Name="CursorCheckBox" Content="Incluir cursor na imagem"
+                              Style="{StaticResource Lab.Switch}" Margin="0,14,0,0"/>
+                    <CheckBox x:Name="HideCheckBox" Content="Ocultar SlashDesk durante a captura"
+                              Style="{StaticResource Lab.Switch}"/>
+
+                    <Grid Margin="0,14,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="16"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock Text="Atraso" Style="{StaticResource Lab.Metadata}"/>
+                            <ComboBox x:Name="DelayBox" Margin="0,6,0,0" Style="{StaticResource Lab.Combo}">
+                                <ComboBoxItem Content="Sem atraso" Tag="0"/>
+                                <ComboBoxItem Content="3 segundos" Tag="3"/>
+                                <ComboBoxItem Content="5 segundos" Tag="5"/>
+                                <ComboBoxItem Content="10 segundos" Tag="10"/>
+                            </ComboBox>
+                        </StackPanel>
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Text="Limpar histórico após" Style="{StaticResource Lab.Metadata}"/>
+                            <ComboBox x:Name="RetentionBox" Margin="0,6,0,0" Style="{StaticResource Lab.Combo}">
+                                <ComboBoxItem Content="30 dias" Tag="30"/>
+                                <ComboBoxItem Content="90 dias" Tag="90"/>
+                                <ComboBoxItem Content="180 dias" Tag="180"/>
+                                <ComboBoxItem Content="Nunca" Tag="0"/>
+                            </ComboBox>
+                        </StackPanel>
+                    </Grid>
+
+                    <Border Height="1" Background="{DynamicResource Lab.line}" Margin="0,24,0,18"/>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button Content="Cancelar" Style="{StaticResource Lab.Button}" Margin="0,0,10,0"
+                                Click="Cancel_OnClick"/>
+                        <Button Style="{StaticResource Lab.PrimaryButton}" Click="Save_OnClick">
+                            <StackPanel Orientation="Horizontal">
+                                <Path Data="{StaticResource Lab.Icon.Check}" Width="16" Height="16"
+                                      Stroke="{DynamicResource Lab.on}" StrokeThickness="1.8" Stretch="Uniform" Margin="0,0,8,0"/>
+                                <TextBlock Text="Salvar regra"/>
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                </StackPanel>
+            </ScrollViewer>
+        </Grid>
+    </Border>
+</Window>

@@ -112,10 +112,10 @@ foreach ($shellElement in @(
     '<RowDefinition Height="34"/>',
     '<RowDefinition Height="66"/>',
     '<RowDefinition Height="52"/>',
-    'Style="{StaticResource AppShellHeader}"',
-    'Style="{StaticResource AppNavigationBar}"',
+    'Style="{StaticResource Lab.Pilot.ShellHeader}"',
+    'Style="{StaticResource Lab.Pilot.NavigationBar}"',
     'Crie, organize e edite seus textos prontos.',
-    'Style="{StaticResource AppNavigationButton}"'
+    'Style="{StaticResource Lab.Pilot.NavigationButton}"'
 )) {
     if (-not $xaml.Contains($shellElement)) {
         throw "Shell visual novo ausente: $shellElement"
@@ -184,7 +184,9 @@ foreach ($splitterRequirement in @(
 foreach ($dictionary in @(
     'Styles/Foundation.xaml',
     'Styles/Icons.xaml',
-    'Styles/Components.xaml'
+    'Styles/Components.xaml',
+    'Styles/VisualLab/Components.xaml',
+    'Styles/VisualLab/CapturePilot.xaml'
 )) {
     if (-not $resources.Contains("Source=`"$dictionary`"")) {
         throw "O App.xaml não carrega o recurso do design system: $dictionary"

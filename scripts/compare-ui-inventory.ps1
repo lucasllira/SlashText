@@ -21,7 +21,16 @@ $currentHandlers = [regex]::Matches(
 ) | ForEach-Object { $_.Groups[1].Value } | Sort-Object -Unique
 
 $missingControls = @($baseline.namedControls | Where-Object { $_ -notin $currentControls })
-$missingHandlers = @($baseline.handlers | Where-Object { $_ -notin $currentHandlers })
+$relayedCaptureHandlers = @(
+    'CaptureActiveMonitor_OnClick',
+    'CaptureRegion_OnClick',
+    'CaptureWindow_OnClick',
+    'CaptureScrolling_OnClick'
+)
+$missingHandlers = @($baseline.handlers | Where-Object {
+    $_ -notin $currentHandlers -and
+    ($_ -notin $relayedCaptureHandlers -or -not $code.Contains("$_(sender, e)"))
+})
 $missingViews = @($baseline.requiredViews | Where-Object {
     -not (Test-Path (Join-Path $viewsPath $_))
 })

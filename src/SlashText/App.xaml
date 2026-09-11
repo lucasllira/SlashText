@@ -8,6 +8,8 @@
                 <ResourceDictionary Source="Styles/Icons.xaml"/>
                 <ResourceDictionary Source="Styles/Components.xaml"/>
                 <ResourceDictionary Source="Styles/CaptureToolbar.xaml"/>
+                <ResourceDictionary Source="Styles/VisualLab/Components.xaml"/>
+                <ResourceDictionary Source="Styles/VisualLab/CapturePilot.xaml"/>
             </ResourceDictionary.MergedDictionaries>
 
             <Color x:Key="CanvasColor">#F3F3F3</Color>
