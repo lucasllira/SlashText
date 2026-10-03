@@ -76,6 +76,7 @@
         <Setter Property="Padding" Value="12,8"/>
         <Setter Property="Cursor" Value="Hand"/>
         <Setter Property="FocusVisualStyle" Value="{StaticResource Lab.Focus}"/>
+        <Setter Property="lab:LabMotion.Interactive" Value="True"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="RadioButton">
@@ -97,6 +98,13 @@
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
+    </Style>
+
+    <Style x:Key="Lab.Pilot.NewButton" TargetType="Button" BasedOn="{StaticResource Lab.PrimaryButton}">
+        <Setter Property="MinWidth" Value="98"/>
+        <Setter Property="MinHeight" Value="38"/>
+        <Setter Property="Padding" Value="14,8"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
     </Style>
 
     <Style x:Key="Lab.Pilot.ModeCard" TargetType="RadioButton">
@@ -150,6 +158,40 @@
         <Setter Property="Margin" Value="0,0,4,0"/>
         <Setter Property="Background" Value="Transparent"/>
         <Setter Property="BorderBrush" Value="Transparent"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="Surface" Padding="{TemplateBinding Padding}"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="1" CornerRadius="6">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"
+                                          TextElement.Foreground="{TemplateBinding Foreground}"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Surface" Property="Background" Value="{DynamicResource Lab.input}"/>
+                            <Setter TargetName="Surface" Property="BorderBrush" Value="{DynamicResource Lab.line-strong}"/>
+                        </Trigger>
+                        <Trigger Property="Tag" Value="Selected">
+                            <Setter Property="Foreground" Value="{DynamicResource Lab.accent-text}"/>
+                            <Setter TargetName="Surface" Property="Background" Value="{DynamicResource Lab.tint}"/>
+                            <Setter TargetName="Surface" Property="BorderBrush" Value="{DynamicResource Lab.accent}"/>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.38"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="Lab.Pilot.ToolGlyph" TargetType="lab:LabIcon">
+        <Setter Property="Width" Value="19"/>
+        <Setter Property="Height" Value="19"/>
+        <Setter Property="Foreground"
+                Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
     </Style>
 
     <Style x:Key="Lab.Pilot.ToolIcon" TargetType="Path">

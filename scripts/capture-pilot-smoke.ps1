@@ -8,6 +8,7 @@ $ruleDialog = Get-Content 'src/SlashText/Views/CaptureRuleDialog.xaml' -Raw
 $ruleCode = Get-Content 'src/SlashText/Views/CaptureRuleDialog.xaml.cs' -Raw
 $shortcutDialog = Get-Content 'src/SlashText/Views/CaptureShortcutDialog.xaml' -Raw
 $shortcutCode = Get-Content 'src/SlashText/Views/CaptureShortcutDialog.xaml.cs' -Raw
+$inlineEditor = Get-Content 'src/SlashText/Views/CaptureWorkbenchEditor.cs' -Raw
 
 [xml]$null = $xaml
 [xml]$null = $app
@@ -50,7 +51,10 @@ foreach ($surface in @(
     'x:Name="CaptureHistoryPanel"',
     'x:Name="CaptureWorkbenchZoomBox"',
     'x:Name="CapturePostModeText"',
-    'Text="Personalizar atalho"',
+    'Text="Personalizar atalhos"',
+    'x:Name="CaptureInlineEditor"',
+    'x:Name="CaptureHistoryScroller"',
+    'Text="Editor avançado"',
     'Click="OpenCaptureImage_OnClick"',
     'Click="CopyCapturePreview_OnClick"',
     'Click="SaveCapturePreview_OnClick"',
@@ -75,11 +79,40 @@ foreach ($behavior in @(
     'new CaptureRuleDialog(_settings.Capture)',
     'new CaptureShortcutDialog(_settings.Capture)',
     'LoadCaptureWorkbenchImage(',
-    'BuildCaptureHistoryCard(item)'
+    'BuildCaptureHistoryCard(item)',
+    'SelectCaptureWorkbenchTool_OnClick',
+    'ScrollCaptureHistoryBy(',
+    'CaptureNewButtonText.Text = "Novo"',
+    'Edição avançada aplicada — clique em Concluir para gravar'
 )) {
     if (-not $code.Contains($behavior)) {
         throw "Comando real do piloto ausente: $behavior"
     }
+}
+
+foreach ($mediaIcon in @(
+    'Kind="Camera"',
+    'Kind="Video"',
+    'Kind="Film"'
+)) {
+    if (-not $xaml.Contains($mediaIcon)) {
+        throw "Ícone do seletor de mídia ausente: $mediaIcon"
+    }
+}
+
+foreach ($shortcutField in @(
+    'x:Name="MonitorBox"',
+    'x:Name="RegionBox"',
+    'x:Name="WindowBox"',
+    'x:Name="ScrollingBox"'
+)) {
+    if (-not $shortcutDialog.Contains($shortcutField)) {
+        throw "O diálogo deixou de exibir todos os atalhos: $shortcutField"
+    }
+}
+
+if (-not $shortcutDialog.Contains('lab:LabMotion.Entrance="Popup"')) {
+    throw 'O diálogo de atalhos perdeu a entrada animada do contrato.'
 }
 
 foreach ($style in @(
@@ -89,11 +122,38 @@ foreach ($style in @(
     'Lab.Pilot.Segment',
     'Lab.Pilot.ModeCard',
     'Lab.Pilot.ToolButton',
+    'Lab.Pilot.ToolGlyph',
+    'Lab.Pilot.NewButton',
     'Lab.Pilot.Card'
 )) {
     if (-not $styles.Contains("x:Key=`"$style`"")) {
         throw "Estilo opt-in do piloto ausente: $style"
     }
+}
+
+foreach ($inlineContract in @(
+    'CaptureAnnotationRenderer.Render(',
+    'CaptureAnnotationKind.Pencil',
+    'CaptureAnnotationKind.Highlighter',
+    'CaptureAnnotationKind.Arrow',
+    'CaptureAnnotationKind.Rectangle',
+    'CaptureAnnotationKind.Text',
+    'CaptureAnnotationKind.Stamp',
+    'public void Undo()',
+    'public void Redo()'
+)) {
+    if (-not $inlineEditor.Contains($inlineContract)) {
+        throw "Contrato do editor integrado ausente: $inlineContract"
+    }
+}
+
+if ($xaml.Contains('Click="EditCapturePreview_OnClick"')) {
+    throw 'A toolbar rápida ainda abre diretamente o editor legado.'
+}
+
+if (-not $xaml.Contains('Orientation="Horizontal"') -or
+    -not $xaml.Contains('HorizontalScrollBarVisibility="Hidden"')) {
+    throw 'Recentes não está configurado como faixa horizontal.'
 }
 
 if (-not $app.Contains('Source="Styles/VisualLab/CapturePilot.xaml"')) {
