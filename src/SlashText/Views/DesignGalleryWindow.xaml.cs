@@ -224,6 +224,7 @@ public partial class DesignGalleryWindow : Window
         await CaptureWindowEvidence(new CaptureRuleDialog(new Models.CaptureSettings()), theme, "capture-rule", new Size(580, 900), "Salvar regra");
         await CaptureWindowEvidence(new CaptureShortcutDialog(new Models.CaptureSettings()), theme, "capture-shortcuts", new Size(510, 650), "Salvar atalhos");
         await CaptureUnifiedEditorEvidence(annotated, theme);
+        await CaptureUnifiedShellEvidence(annotated, theme);
     }
 
     private async Task CaptureUnifiedEditorEvidence(System.Drawing.Bitmap source, string theme)
@@ -260,6 +261,37 @@ public partial class DesignGalleryWindow : Window
         editor.InsertStamp("⭐", new Point(300, 180));
         editor.SetZoom(2);
         Require(ReferenceEquals(session, editor.Document) && editor.CanUndo, "Unified document survives viewport changes");
+    }
+
+    private async Task CaptureUnifiedShellEvidence(System.Drawing.Bitmap source, string theme)
+    {
+        foreach (var size in new[] { new Size(1440, 900), new Size(980, 680) })
+        {
+            var window = new MainWindow(captureEvidence: true);
+            var root = (FrameworkElement)window.Content; window.Content = null;
+            LabMotion.SetReduced(root, true);
+            var host = new Border { Child = root, Width = size.Width, Height = size.Height };
+            void Layout() { host.Measure(size); host.Arrange(new Rect(size)); host.UpdateLayout(); }
+            Services.CaptureEditorDocument? firstDocument = null;
+            foreach (var expanded in new[] { false, true })
+            {
+                window.PrepareCaptureEvidence(source, Services.CaptureAnnotationKind.Text, expanded);
+                var document = window.CaptureEvidenceDocument;
+                firstDocument ??= document;
+                Layout();
+                await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
+                window.ResizeCaptureEvidenceViewport(); Layout();
+                Require(ReferenceEquals(firstDocument, window.CaptureEvidenceDocument) && document!.CanUndo, "Shell normal/expanded preserve one document and undo");
+                var copy = (Button)window.FindName("CaptureCopyImageButton");
+                Require(copy.IsEnabled && copy.ActualWidth > 0, "Unified shell output actions remain usable");
+                var commands = (StackPanel)window.FindName("CaptureOutputCommands");
+                Require(Grid.GetRow(commands) == (size.Width == 980 ? 1 : 0), "Toolbar responsive output row");
+                var bmp = new RenderTargetBitmap((int)size.Width, (int)size.Height, 96, 96, PixelFormats.Pbgra32); bmp.Render(host);
+                var png = new PngBitmapEncoder(); png.Frames.Add(BitmapFrame.Create(bmp));
+                using var file = File.Create(Path.Combine(_smokeOutput!, $"unified-shell-{theme}-{(expanded ? "expanded" : "normal")}-{size.Width}.png")); png.Save(file);
+            }
+            window.DisposeCaptureEvidence(); window.Close();
+        }
     }
 
     private async Task CaptureWindowEvidence(Window window, string theme, string name, Size size, string label)

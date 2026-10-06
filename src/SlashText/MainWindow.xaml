@@ -1500,12 +1500,23 @@
                                                  HorizontalAlignment="Center" VerticalAlignment="Center"
                                                  Style="{StaticResource Lab.Metadata}"/>
                                       <ComboBox x:Name="CaptureWorkbenchZoomBox" Grid.Column="2" Width="84"
-                                                Style="{StaticResource Lab.Combo}" SelectedIndex="2"
+                                                Style="{StaticResource Lab.Combo}" SelectedIndex="3"
                                                 SelectionChanged="CaptureWorkbenchZoom_OnChanged">
                                         <ComboBoxItem Content="25%" Tag="0.25"/>
                                         <ComboBoxItem Content="50%" Tag="0.5"/>
+                                        <ComboBoxItem Content="75%" Tag="0.75"/>
                                         <ComboBoxItem Content="100%" Tag="1"/>
+                                        <ComboBoxItem Content="125%" Tag="1.25"/>
+                                        <ComboBoxItem Content="150%" Tag="1.5"/>
+                                        <ComboBoxItem Content="175%" Tag="1.75"/>
                                         <ComboBoxItem Content="200%" Tag="2"/>
+                                        <ComboBoxItem Content="225%" Tag="2.25"/>
+                                        <ComboBoxItem Content="250%" Tag="2.5"/>
+                                        <ComboBoxItem Content="275%" Tag="2.75"/>
+                                        <ComboBoxItem Content="300%" Tag="3"/>
+                                        <ComboBoxItem Content="325%" Tag="3.25"/>
+                                        <ComboBoxItem Content="350%" Tag="3.5"/>
+                                        <ComboBoxItem Content="375%" Tag="3.75"/>
                                         <ComboBoxItem Content="400%" Tag="4"/>
                                       </ComboBox>
                                     </Grid>

@@ -181,6 +181,17 @@ jobs:
           Copy-Item docs/capture-editor-pilot-testing.md capture-pilot-package/LEIA-ANTES.md
           Set-Content -Path capture-pilot-package/Abrir-Piloto-Captura.cmd -Encoding ascii -Value '@echo off', 'start "" "%~dp0SlashDesk.exe"'
 
+      - name: Validate isolated pilot clean-folder startup
+        shell: pwsh
+        run: |
+          $pilotProbe = Join-Path $env:RUNNER_TEMP 'SlashDesk piloto isolado'
+          New-Item $pilotProbe -ItemType Directory -Force | Out-Null
+          Copy-Item publish-capture-pilot/SlashDesk.exe (Join-Path $pilotProbe 'SlashDesk.exe')
+          $pilotSmoke = Start-Process -FilePath (Join-Path $pilotProbe 'SlashDesk.exe') -ArgumentList '--portable-smoke' -Wait -PassThru
+          if ($pilotSmoke.ExitCode -ne 0) { throw "Pilot startup failed: $($pilotSmoke.ExitCode)" }
+          if (-not (Test-Path (Join-Path $pilotProbe 'SlashDeskPilotData/snippets.md'))) { throw 'Pilot metadata/data isolation absent' }
+          if (Test-Path (Join-Path $pilotProbe 'SlashDeskData')) { throw 'Pilot created the official portable data directory' }
+
       - name: Upload visual foundation gallery
         uses: actions/upload-artifact@v4
         with:

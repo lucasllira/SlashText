@@ -138,7 +138,9 @@ public partial class MainWindow : Window
         Gif
     }
 
-    public MainWindow()
+    public MainWindow() : this(captureEvidence: false) { }
+
+    internal MainWindow(bool captureEvidence)
     {
         InitializeComponent();
         CaptureInlineEditor.StateChanged += CaptureInlineEditor_OnStateChanged;
@@ -149,6 +151,8 @@ public partial class MainWindow : Window
         CaptureImageMediaButton.IsChecked = true;
         CaptureRegionModeButton.IsChecked = true;
         InitializeRecordingPresetControls();
+        // Unshown UI fixture: no tray, startup/data loading, hooks or updater.
+        if (captureEvidence) return;
         InitializeTray();
         Loaded += MainWindow_OnLoaded;
         Closing += MainWindow_OnClosing;
@@ -2812,6 +2816,8 @@ public partial class MainWindow : Window
                 ShowFromTray();
             }
             _captureCommitInProgress = false;
+            CaptureEditorCard.IsEnabled = true;
+            _completedCaptureDocument = null;
             CaptureInlineEditor_OnStateChanged(this, EventArgs.Empty);
         }
     }
@@ -2951,6 +2957,7 @@ public partial class MainWindow : Window
                 ShowFromTray();
             }
             _captureCommitInProgress = false;
+            CaptureEditorCard.IsEnabled = true;
             _completedCaptureDocument = null;
             CaptureInlineEditor_OnStateChanged(this, EventArgs.Empty);
         }
@@ -3284,6 +3291,7 @@ public partial class MainWindow : Window
         CaptureWorkbenchUndoButton.IsEnabled = CaptureInlineEditor.CanUndo;
         CaptureWorkbenchRedoButton.IsEnabled = CaptureInlineEditor.CanRedo;
         CaptureEditorContext.Refresh();
+        if (_captureEditorExpanded) Dispatcher.BeginInvoke(new Action(() => UpdateCaptureEditorViewport()));
         UpdateCaptureWorkbenchToolState(CaptureInlineEditor.SelectedTool);
         var ready = CaptureInlineEditor.HasImage && !CaptureInlineEditor.HasPendingCrop && !_captureCommitInProgress;
         CaptureCopyImageButton.IsEnabled = ready;
@@ -3380,6 +3388,7 @@ public partial class MainWindow : Window
         ShellRoot.RowDefinitions[1].Height = new GridLength(expanded ? 0 : 66);
         ShellRoot.RowDefinitions[2].Height = new GridLength(expanded ? 0 : 52);
         UpdateCaptureEditorViewport(animate: true);
+        if (expanded) Dispatcher.BeginInvoke(new Action(() => UpdateCaptureEditorViewport(animate: true)), DispatcherPriority.ApplicationIdle);
         CaptureInlineEditor.Focus();
         CaptureInlineEditor.BringIntoView();
     }
@@ -3387,7 +3396,11 @@ public partial class MainWindow : Window
     private void UpdateCaptureEditorViewport(bool animate = false)
     {
         if (CaptureEditorViewport is null) return;
-        var height = _captureEditorExpanded ? Math.Max(240, ActualHeight - 330) : 480;
+        var outside = Math.Max(0, CapturePageLayout.ActualHeight - CaptureEditorViewport.ActualHeight) +
+                      CapturePageLayout.Margin.Top + CapturePageLayout.Margin.Bottom;
+        var height = _captureEditorExpanded
+            ? Math.Max(240, CaptureView.ActualHeight > 0 ? CaptureView.ActualHeight - outside - 2 : Height - 330)
+            : 480;
         if (animate && LabMotion.Allowed(CaptureEditorViewport))
             CaptureEditorViewport.BeginAnimation(FrameworkElement.HeightProperty, new DoubleAnimation(height, TimeSpan.FromMilliseconds(220))
             { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } });
@@ -3402,6 +3415,25 @@ public partial class MainWindow : Window
         return MessageBox.Show("Há alterações ou uma seleção de recorte pendentes. Descartá-las e abrir outra imagem?",
             "Editor de imagem", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) == MessageBoxResult.Yes;
     }
+
+    internal void PrepareCaptureEvidence(DrawingBitmap source, CaptureAnnotationKind tool, bool expanded)
+    {
+        ShowView(CaptureView, CaptureTabButton);
+        if (!CaptureInlineEditor.HasImage)
+        {
+            CaptureInlineEditor.LoadImage(source);
+            CaptureInlineEditor.InsertStamp("⭐", new Point(300, 180));
+        }
+        CapturePreviewEmptyPanel.Visibility = Visibility.Collapsed;
+        CaptureWorkbenchToolbar.Visibility = CaptureWorkbenchFooter.Visibility = CaptureEditorContext.Visibility = Visibility.Visible;
+        CapturePreviewDetailsText.Text = "Imagem de teste local · sessão única";
+        CaptureInlineEditor.SelectTool(tool);
+        SetCaptureEditorExpanded(expanded);
+    }
+
+    internal CaptureEditorDocument? CaptureEvidenceDocument => CaptureInlineEditor.Document;
+    internal void ResizeCaptureEvidenceViewport() => UpdateCaptureEditorViewport();
+    internal void DisposeCaptureEvidence() => CaptureInlineEditor.Dispose();
 
     private void CaptureDiscardChanges_OnClick(object sender, RoutedEventArgs e)
     {
@@ -3472,7 +3504,7 @@ public partial class MainWindow : Window
     private async Task<bool> CommitCaptureWorkbenchImageAsync(DrawingBitmap bitmap, string path)
     {
         _captureCommitInProgress = true;
-        CaptureInlineEditor.IsEnabled = false;
+        CaptureEditorCard.IsEnabled = false;
         CaptureInlineEditor_OnStateChanged(this, EventArgs.Empty);
         try
         {
@@ -3493,7 +3525,7 @@ public partial class MainWindow : Window
         finally
         {
             _captureCommitInProgress = false;
-            CaptureInlineEditor.IsEnabled = true;
+            CaptureEditorCard.IsEnabled = true;
             CaptureInlineEditor_OnStateChanged(this, EventArgs.Empty);
         }
     }
@@ -3542,6 +3574,7 @@ public partial class MainWindow : Window
         {
             _completedCaptureDocument = CaptureInlineEditor.Document;
             _captureCommitInProgress = true;
+            CaptureEditorCard.IsEnabled = false;
             _pendingCaptureEdit.TrySetResult(new CaptureImageEditResult(CaptureInlineEditor.Render(), CaptureEditorOutput.Default));
             CaptureInlineEditor_OnStateChanged(this, EventArgs.Empty);
             return;
@@ -3569,11 +3602,13 @@ public partial class MainWindow : Window
         }
         if (_settings.Capture.CopyToClipboard)
         {
-            Clipboard.SetImage(ToBitmapSource(rendered));
+            try { Clipboard.SetImage(ToBitmapSource(rendered)); }
+            catch (System.Runtime.InteropServices.ExternalException)
+            { StatusText.Text = saved ? "Edição salva; a área de transferência está ocupada. Tente copiar novamente." : "A área de transferência está ocupada. Tente copiar novamente."; return; }
         }
         StatusText.Text = saved
             ? "Edição concluída e atualizada nos Recentes"
-            : "Captura concluída";
+            : _settings.Capture.CopyToClipboard ? "Captura copiada; a sessão permanece disponível" : "Resultado mantido apenas na sessão — copiar e salvar estão desativados na regra";
     }
 
     private void CaptureWorkbenchZoom_OnChanged(object sender, SelectionChangedEventArgs e)
