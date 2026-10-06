@@ -242,6 +242,17 @@ public partial class DesignGalleryWindow : Window
         Require(button.Background.ToString() == (theme == "Dark" ? "#FF74D1E5" : "#FF337C8F"), name + " primary fill");
         Require(Descendants(button).OfType<TextBlock>().Any(t => t.Text == label && t.Foreground.ToString() == expectedInk),
             name + " primary text contrast");
+        if (name == "capture-shortcuts")
+            Require(Descendants(host).OfType<TextBlock>().Single(t => t.Text == "Personalizar atalhos").Foreground.ToString() ==
+                (theme == "Dark" ? "#FFF3F3F3" : "#FF202024"), "Shortcuts heading must not inherit legacy ink");
+        // Save lives inside the rule's scrollable content; include it in the
+        // evidence rather than claiming visual approval for an offscreen button.
+        if (name == "capture-rule")
+        {
+            Descendants(host).OfType<ScrollViewer>().First().ScrollToBottom();
+            host.UpdateLayout();
+            await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
+        }
         var bitmap = new RenderTargetBitmap((int)size.Width, (int)size.Height, 96, 96, PixelFormats.Pbgra32);
         bitmap.Render(host);
         var png = new PngBitmapEncoder(); png.Frames.Add(BitmapFrame.Create(bitmap));

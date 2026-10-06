@@ -14,7 +14,8 @@
             <Grid>
                 <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                 <StackPanel>
-                    <TextBlock Text="Personalizar atalhos" FontSize="19" FontWeight="SemiBold"/>
+                    <TextBlock Text="Personalizar atalhos" FontSize="19" FontWeight="SemiBold"
+                               Foreground="{DynamicResource Lab.text}"/>
                     <TextBlock Text="Clique em um campo e pressione a combinação desejada."
                                Style="{StaticResource Lab.Metadata}" Margin="0,5,0,0"/>
                 </StackPanel>
