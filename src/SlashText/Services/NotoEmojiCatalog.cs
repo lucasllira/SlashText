@@ -68,7 +68,7 @@ public static class NotoEmojiCatalog
     {
         if (!TryGet(value, out var item))
         {
-            item = Items[0];
+            throw new ArgumentException("Emoji não disponível no catálogo local.", nameof(value));
         }
         using var stream = Open(item);
         var image = new BitmapImage();
@@ -84,7 +84,7 @@ public static class NotoEmojiCatalog
     {
         if (!TryGet(value, out var item))
         {
-            item = Items[0];
+            throw new ArgumentException("Emoji não disponível no catálogo local.", nameof(value));
         }
         using var stream = Open(item);
         using var source = new System.Drawing.Bitmap(stream);

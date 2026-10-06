@@ -156,6 +156,7 @@ public partial class DesignGalleryWindow : Window
             Require(Descendants(PrimaryButton).OfType<TextBlock>().Any(t => t.Text == "Ação principal" && t.Foreground.ToString() == (theme == "Dark" ? "#FF082126" : "#FFFFFFFF")), "Primary label must inherit on-accent color: " + string.Join(",", Descendants(PrimaryButton).OfType<TextBlock>().Select(t => t.Text + "=" + t.Foreground)));
             Require(Descendants(NormalButton).OfType<TextBlock>().Any(t => t.Text == "Ação secundária" && t.Foreground.ToString() == expected), "Neutral label must follow theme");
             Require(Descendants(FormatCombo).OfType<TextBlock>().Any(t => t.Text == "PNG — imagem" && t.Foreground.ToString() == expected), "Combo selection label must follow theme");
+            await CaptureEditorEvidence(theme);
             foreach (var size in new[] { new Size(1440,900), new Size(980,680) })
             {
                 // A fresh, never-shown visual has no runner work-area layout cached by an HWND.
@@ -198,7 +199,55 @@ public partial class DesignGalleryWindow : Window
         File.WriteAllText(Path.Combine(_smokeOutput!, "result.txt"),
             "PASS: interactive theme transition, tabs, validation, switch interruption/rest position, ComboBox and Popup resources, entrance clocks, reduced motion.\n" +
             "16 offscreen PNGs: 1440x900 and 980x680 DIP at 100/125/150/200%. This is NOT a physical mixed-monitor test.\n" +
+            "6 capture PNGs: advanced editor, capture rule and shortcuts in Light/Dark; primary fill and text contrast verified.\n" +
             "Manual pending: hover/pressed/focus, Windows theme event, actual DPI/monitors, fonts, visual approval.\n");
+    }
+
+    private async Task CaptureEditorEvidence(string theme)
+    {
+        LabPalette.Apply(Application.Current.Resources, theme == "Dark");
+        using var source = new System.Drawing.Bitmap(960, 500);
+        using (var graphics = System.Drawing.Graphics.FromImage(source))
+        {
+            graphics.Clear(System.Drawing.Color.WhiteSmoke);
+            using var ink = new System.Drawing.SolidBrush(System.Drawing.Color.FromArgb(32, 32, 36));
+            using var font = new System.Drawing.Font("Segoe UI", 26);
+            graphics.DrawString("Uma edição, os mesmos emotes.", font, ink, 48, 56);
+        }
+        using var annotated = Services.CaptureAnnotationRenderer.Render(source,
+            new[] { "👍", "😀", "⭐", "❤️" }.Select((value, index) => new Services.CaptureAnnotation
+            {
+                Kind = Services.CaptureAnnotationKind.Stamp,
+                Start = new Point(160 + index * 190, 250), Text = value, Size = 64
+            }).ToList(), 960, 500);
+        await CaptureWindowEvidence(new CaptureEditorWindow(annotated), theme, "advanced-editor", new Size(1220, 860), "Concluir");
+        await CaptureWindowEvidence(new CaptureRuleDialog(new Models.CaptureSettings()), theme, "capture-rule", new Size(580, 900), "Salvar regra");
+        await CaptureWindowEvidence(new CaptureShortcutDialog(new Models.CaptureSettings()), theme, "capture-shortcuts", new Size(510, 650), "Salvar atalhos");
+    }
+
+    private async Task CaptureWindowEvidence(Window window, string theme, string name, Size size, string label)
+    {
+        var content = (FrameworkElement)window.Content;
+        window.Content = null;
+        content.Resources = window.Resources;
+        LabMotion.SetReduced(content, true);
+        var host = new Border { Child = content, Width = size.Width, Height = size.Height };
+        host.SetResourceReference(Border.BackgroundProperty, "Lab.shell");
+        host.Measure(size); host.Arrange(new Rect(size)); host.UpdateLayout();
+        await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
+        host.Measure(size); host.Arrange(new Rect(size)); host.UpdateLayout();
+        var button = Descendants(host).OfType<Button>().Single(b =>
+            b.Content is string text && text == label || Descendants(b).OfType<TextBlock>().Any(t => t.Text == label));
+        var expectedInk = theme == "Dark" ? "#FF082126" : "#FFFFFFFF";
+        Require(button.Background.ToString() == (theme == "Dark" ? "#FF74D1E5" : "#FF337C8F"), name + " primary fill");
+        Require(Descendants(button).OfType<TextBlock>().Any(t => t.Text == label && t.Foreground.ToString() == expectedInk),
+            name + " primary text contrast");
+        var bitmap = new RenderTargetBitmap((int)size.Width, (int)size.Height, 96, 96, PixelFormats.Pbgra32);
+        bitmap.Render(host);
+        var png = new PngBitmapEncoder(); png.Frames.Add(BitmapFrame.Create(bitmap));
+        using var file = File.Create(Path.Combine(_smokeOutput!, $"{name}-{theme}.png"));
+        png.Save(file);
+        window.Close();
     }
     private static IEnumerable<DependencyObject> Descendants(DependencyObject parent)
     {

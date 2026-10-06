@@ -1440,10 +1440,12 @@
                                             <TextBlock Text="Salvar"/>
                                           </StackPanel>
                                         </Button>
-                                        <Button Style="{StaticResource Lab.PrimaryButton}" Click="CompleteCapturePreview_OnClick">
+                                        <Button Style="{StaticResource Lab.Pilot.PrimaryButton}" Click="CompleteCapturePreview_OnClick">
                                           <StackPanel Orientation="Horizontal">
-                                            <Path Data="{StaticResource Lab.Icon.Check}" Style="{StaticResource NavigationIcon}"/>
-                                            <TextBlock Text="Concluir"/>
+                                            <Path Data="{StaticResource Lab.Icon.Check}" Style="{StaticResource NavigationIcon}"
+                                                  Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
+                                            <TextBlock Text="Concluir"
+                                                       Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
                                           </StackPanel>
                                         </Button>
                                       </StackPanel>

@@ -178,6 +178,56 @@ public sealed class CaptureService
         await _historyStore.SaveAsync(_history);
     }
 
+    /// <summary>Commit the edited pixels and register the exact saved file, not its source.</summary>
+    public async Task<CaptureRecord> SaveEditedImageAsync(
+        Bitmap bitmap, string path, CaptureSettings settings, CaptureRecord? sourceRecord = null)
+    {
+        path = Path.GetFullPath(path);
+        var extension = Path.GetExtension(path).ToLowerInvariant();
+        if (extension is not (".png" or ".jpg" or ".jpeg"))
+        {
+            throw new ArgumentException("Salve a imagem editada em PNG ou JPEG.", nameof(path));
+        }
+        var record = _history.FirstOrDefault(item =>
+            string.Equals(ResolveFilePath(item), path, StringComparison.OrdinalIgnoreCase));
+        if (record is not null && !record.MediaKind.Equals("image", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException("Uma edição estática não pode substituir uma gravação.");
+        }
+        var temporary = path + $".editing-{Guid.NewGuid():N}";
+        try
+        {
+            if (extension is ".jpg" or ".jpeg")
+            {
+                var encoder = ImageCodecInfo.GetImageEncoders().First(item => item.FormatID == ImageFormat.Jpeg.Guid);
+                using var parameters = new EncoderParameters(1);
+                parameters.Param[0] = new EncoderParameter(
+                    System.Drawing.Imaging.Encoder.Quality, Math.Clamp(settings.JpegQuality, 1, 100));
+                bitmap.Save(temporary, encoder, parameters);
+            }
+            else bitmap.Save(temporary, ImageFormat.Png);
+            File.Move(temporary, path, overwrite: true);
+        }
+        finally
+        {
+            if (File.Exists(temporary)) File.Delete(temporary);
+        }
+        record ??= new CaptureRecord
+        {
+            CreatedAt = DateTimeOffset.Now,
+            Type = sourceRecord?.Type ?? "regiao"
+        };
+        record.FilePath = path;
+        record.PortableRelativePath = CapturePathResolver.CreatePortableRelativePath(path, AppPaths.Current);
+        record.Width = bitmap.Width;
+        record.Height = bitmap.Height;
+        _history.Remove(record);
+        _history.Insert(0, record);
+        if (_history.Count > 1000) _history.RemoveRange(1000, _history.Count - 1000);
+        await _historyStore.SaveAsync(_history);
+        return record;
+    }
+
     public async Task<bool> DeleteAsync(string id, bool deleteFile)
     {
         var record = _history.FirstOrDefault(item => item.Id == id);
@@ -244,8 +294,9 @@ public sealed class CaptureService
         }
 
         var resolvedPath = ResolveFilePath(record);
-        using var sourceFile = new Bitmap(resolvedPath);
-        using var source = new Bitmap(sourceFile);
+        Bitmap source;
+        using (var sourceFile = new Bitmap(resolvedPath)) source = new Bitmap(sourceFile);
+        using var sourceLifetime = source;
         var editor = new CaptureEditorWindow(source, initialTool)
         {
             Owner = owner,
@@ -257,27 +308,25 @@ public sealed class CaptureService
         }
 
         using var edited = editor.EditedBitmap;
-        var extension = Path.GetExtension(resolvedPath);
-        var temporary = resolvedPath + ".editing";
-        if (extension.Equals(".jpg", StringComparison.OrdinalIgnoreCase) ||
-            extension.Equals(".jpeg", StringComparison.OrdinalIgnoreCase))
+        if (editor.RequestedOutput == CaptureEditorOutput.Clipboard)
         {
-            var encoder = ImageCodecInfo.GetImageEncoders()
-                .First(item => item.FormatID == ImageFormat.Jpeg.Guid);
-            using var parameters = new EncoderParameters(1);
-            parameters.Param[0] = new EncoderParameter(
-                System.Drawing.Imaging.Encoder.Quality,
-                Math.Clamp(settings.JpegQuality, 1, 100));
-            edited.Save(temporary, encoder, parameters);
+            CopyToClipboard(edited);
+            return false; // Copy is not a save and must not overwrite the original.
         }
-        else
+        var destination = resolvedPath;
+        if (editor.RequestedOutput == CaptureEditorOutput.File)
         {
-            edited.Save(temporary, ImageFormat.Png);
+            var jpeg = Path.GetExtension(resolvedPath).Equals(".jpg", StringComparison.OrdinalIgnoreCase) ||
+                       Path.GetExtension(resolvedPath).Equals(".jpeg", StringComparison.OrdinalIgnoreCase);
+            var dialog = new Microsoft.Win32.SaveFileDialog
+            {
+                Title = "Salvar uma cópia editada", FileName = Path.GetFileName(resolvedPath),
+                DefaultExt = jpeg ? ".jpg" : ".png", Filter = jpeg ? "JPEG|*.jpg|PNG|*.png" : "PNG|*.png|JPEG|*.jpg"
+            };
+            if (dialog.ShowDialog(owner) != true) return false;
+            destination = dialog.FileName;
         }
-        File.Move(temporary, resolvedPath, true);
-        record.Width = edited.Width;
-        record.Height = edited.Height;
-        await _historyStore.SaveAsync(_history);
+        await SaveEditedImageAsync(edited, destination, settings, record);
         return true;
     }
 

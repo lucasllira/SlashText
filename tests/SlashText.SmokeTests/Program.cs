@@ -425,6 +425,20 @@ try
             }
             RequireThrows<ArgumentOutOfRangeException>(() => editor.SetZoom(double.NaN),
                 "zoom inválido é rejeitado");
+            editor.InsertStamp("👍", new System.Windows.Point(400, 200));
+            var overlay = (System.Windows.Controls.Canvas)((System.Windows.Controls.Grid)preview.Child).Children[1];
+            Require(overlay.Children[0] is System.Windows.Controls.Image { Source: not null },
+                "prévia do emote usa imagem Noto local, não glifo da fonte do Windows");
+            using (var stampOutput = editor.Render())
+            using (var expectedStamp = CaptureAnnotationRenderer.Render(bitmap,
+                [new CaptureAnnotation { Kind = CaptureAnnotationKind.Stamp, Start = new System.Windows.Point(400, 200),
+                    Text = "👍", Size = 42 }], 800, 400))
+            {
+                Require(stampOutput.GetPixel(400, 200).ToArgb() == expectedStamp.GetPixel(400, 200).ToArgb(),
+                    "editor simples exporta o mesmo emote do renderizador compartilhado");
+            }
+            RequireThrows<ArgumentException>(() => NotoEmojiCatalog.CreateBitmap("emoji-inexistente"),
+                "emoji desconhecido não vira silenciosamente um coração");
             foreach (var extension in new[] { ".png", ".jpg", ".gif" })
             {
                 var path = Path.Combine(root, "clipboard-probe" + extension);
@@ -1500,6 +1514,42 @@ try
     Require(
         tolerantHistory.History.Count == 1 && tolerantHistory.History[0].Id == "valid-item",
         "item de histórico corrompido não impede carregar registros válidos");
+
+    var editedHistory = new CaptureService();
+    await editedHistory.LoadAsync();
+    var originalPath = Path.Combine(movedCaptureDirectory, "original-do-editor.png");
+    var editedPath = Path.Combine(movedCaptureDirectory, "copia-editada.png");
+    using (var originalBitmap = new System.Drawing.Bitmap(80, 60))
+    using (var editedBitmap = new System.Drawing.Bitmap(40, 30))
+    {
+        using (var graphics = System.Drawing.Graphics.FromImage(originalBitmap)) graphics.Clear(System.Drawing.Color.Blue);
+        using (var graphics = System.Drawing.Graphics.FromImage(editedBitmap)) graphics.Clear(System.Drawing.Color.Red);
+        var originalRecord = await editedHistory.SaveEditedImageAsync(originalBitmap, originalPath, new CaptureSettings());
+        var editedRecord = await editedHistory.SaveEditedImageAsync(editedBitmap, editedPath, new CaptureSettings(), originalRecord);
+        Require(originalRecord.Id != editedRecord.Id && editedHistory.History[0].Id == editedRecord.Id &&
+                editedRecord.Width == 40 && editedRecord.Height == 30 && editedRecord.MediaKind == "image",
+            "Salvar cópia registra o arquivo editado como recente, com ID e dimensões próprios");
+        using (var originalFile = new System.Drawing.Bitmap(originalPath))
+        using (var editedFile = new System.Drawing.Bitmap(editedHistory.ResolveFilePath(editedRecord)))
+            Require(originalFile.GetPixel(10, 10).ToArgb() == System.Drawing.Color.Blue.ToArgb() &&
+                    editedFile.GetPixel(10, 10).ToArgb() == System.Drawing.Color.Red.ToArgb(),
+                "Recentes aponta para pixels editados e preserva o original ao salvar uma cópia");
+        using (var graphics = System.Drawing.Graphics.FromImage(editedBitmap)) graphics.Clear(System.Drawing.Color.Green);
+        var updatedRecord = await editedHistory.SaveEditedImageAsync(editedBitmap, editedPath, new CaptureSettings(), editedRecord);
+        Require(updatedRecord.Id == editedRecord.Id && editedHistory.History.Count(r => r.Id == editedRecord.Id) == 1,
+            "Concluir atualiza o mesmo registro sem criar duplicatas");
+        var reloadedHistory = new CaptureService();
+        await reloadedHistory.LoadAsync();
+        var reloadedRecord = reloadedHistory.History.First(r => r.Id == editedRecord.Id);
+        using var latest = new System.Drawing.Bitmap(reloadedHistory.ResolveFilePath(reloadedRecord));
+        Require(latest.GetPixel(10, 10).ToArgb() == System.Drawing.Color.Green.ToArgb() &&
+                reloadedRecord.Width == 40 && reloadedRecord.Height == 30,
+            "reiniciar mantém a versão editada e as dimensões corretas do histórico");
+        RequireThrows<ArgumentException>(
+            () => editedHistory.SaveEditedImageAsync(editedBitmap, Path.Combine(movedCaptureDirectory, "nao-substituir.gif"),
+                new CaptureSettings()).GetAwaiter().GetResult(),
+            "edição estática não substitui GIF animado");
+    }
 
     var invalidPortableRoot = Path.Combine(storageRoot, "sem-permissão");
     await File.WriteAllTextAsync(invalidPortableRoot, "não é um diretório");

@@ -3268,7 +3268,7 @@ public partial class MainWindow : Window
         StatusText.Text = "Cor da anotação alterada";
     }
 
-    private void OpenAdvancedCaptureEditor_OnClick(object sender, RoutedEventArgs e)
+    private async void OpenAdvancedCaptureEditor_OnClick(object sender, RoutedEventArgs e)
     {
         if (!CaptureInlineEditor.HasImage)
         {
@@ -3297,9 +3297,7 @@ public partial class MainWindow : Window
         {
             var save = CreateCapturePreviewSaveDialog("Salvar imagem editada");
             if (save.ShowDialog(this) != true) return;
-            SaveCaptureBitmap(edited, save.FileName);
-            LoadCaptureWorkbenchImage(save.FileName, null, $"Imagem · {Path.GetFileName(save.FileName)}");
-            StatusText.Text = $"Imagem salva: {Path.GetFileName(save.FileName)}";
+            await CommitCaptureWorkbenchImageAsync(edited, save.FileName);
             return;
         }
 
@@ -3311,25 +3309,35 @@ public partial class MainWindow : Window
     {
         var sourcePath = _captureWorkbenchPath ?? "captura.png";
         var extension = Path.GetExtension(sourcePath);
+        var jpeg = extension.Equals(".jpg", StringComparison.OrdinalIgnoreCase) ||
+                   extension.Equals(".jpeg", StringComparison.OrdinalIgnoreCase);
+        extension = jpeg ? ".jpg" : ".png";
         return new Microsoft.Win32.SaveFileDialog
         {
             Title = title,
-            FileName = Path.GetFileName(sourcePath),
-            DefaultExt = string.IsNullOrWhiteSpace(extension) ? ".png" : extension,
-            Filter = extension.Equals(".jpg", StringComparison.OrdinalIgnoreCase) ||
-                     extension.Equals(".jpeg", StringComparison.OrdinalIgnoreCase)
+            FileName = Path.GetFileNameWithoutExtension(sourcePath) + extension,
+            DefaultExt = extension,
+            Filter = jpeg
                 ? "JPEG|*.jpg|PNG|*.png"
                 : "PNG|*.png|JPEG|*.jpg"
         };
     }
 
-    private static void SaveCaptureBitmap(DrawingBitmap bitmap, string path)
+    private async Task<bool> CommitCaptureWorkbenchImageAsync(DrawingBitmap bitmap, string path)
     {
-        bitmap.Save(path,
-            Path.GetExtension(path).Equals(".jpg", StringComparison.OrdinalIgnoreCase) ||
-            Path.GetExtension(path).Equals(".jpeg", StringComparison.OrdinalIgnoreCase)
-                ? System.Drawing.Imaging.ImageFormat.Jpeg
-                : System.Drawing.Imaging.ImageFormat.Png);
+        try
+        {
+            var record = await _captureService.SaveEditedImageAsync(bitmap, path, _settings.Capture, _captureWorkbenchRecord);
+            LoadCaptureWorkbenchImage(path, record, $"{CaptureTypeLabel(record)} · {record.Width}×{record.Height}");
+            RefreshCaptureHistory();
+            StatusText.Text = $"Edição salva e atualizada nos Recentes: {Path.GetFileName(path)}";
+            return true;
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ArgumentException or InvalidOperationException or System.Runtime.InteropServices.ExternalException)
+        {
+            MessageBox.Show(exception.Message, "Salvar captura", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return false;
+        }
     }
 
     private void CopyCapturePreview_OnClick(object sender, RoutedEventArgs e)
@@ -3345,9 +3353,9 @@ public partial class MainWindow : Window
         StatusText.Text = "Imagem copiada para a área de transferência";
     }
 
-    private void SaveCapturePreview_OnClick(object sender, RoutedEventArgs e)
+    private async void SaveCapturePreview_OnClick(object sender, RoutedEventArgs e)
     {
-        if (string.IsNullOrWhiteSpace(_captureWorkbenchPath) || !File.Exists(_captureWorkbenchPath))
+        if (!CaptureInlineEditor.HasImage)
         {
             MessageBox.Show("Não há uma imagem no editor.", "Salvar",
                 MessageBoxButton.OK, MessageBoxImage.Information);
@@ -3359,11 +3367,10 @@ public partial class MainWindow : Window
             return;
         }
         using var rendered = CaptureInlineEditor.Render();
-        SaveCaptureBitmap(rendered, dialog.FileName);
-        StatusText.Text = $"Cópia salva: {Path.GetFileName(dialog.FileName)}";
+        await CommitCaptureWorkbenchImageAsync(rendered, dialog.FileName);
     }
 
-    private void CompleteCapturePreview_OnClick(object sender, RoutedEventArgs e)
+    private async void CompleteCapturePreview_OnClick(object sender, RoutedEventArgs e)
     {
         if (!CaptureInlineEditor.HasImage)
         {
@@ -3372,19 +3379,26 @@ public partial class MainWindow : Window
             return;
         }
         using var rendered = CaptureInlineEditor.Render();
-        if (_captureWorkbenchRecord is not null &&
+        var saved = false;
+        if (_captureWorkbenchRecord?.MediaKind.Equals("image", StringComparison.OrdinalIgnoreCase) == true &&
             !string.IsNullOrWhiteSpace(_captureWorkbenchPath) &&
             File.Exists(_captureWorkbenchPath))
         {
-            SaveCaptureBitmap(rendered, _captureWorkbenchPath);
-            CaptureInlineEditor.LoadImage(rendered);
+            if (!await CommitCaptureWorkbenchImageAsync(rendered, _captureWorkbenchPath)) return;
+            saved = true;
+        }
+        else if (_settings.Capture.SaveAutomatically)
+        {
+            var dialog = CreateCapturePreviewSaveDialog("Salvar edição");
+            if (dialog.ShowDialog(this) != true || !await CommitCaptureWorkbenchImageAsync(rendered, dialog.FileName)) return;
+            saved = true;
         }
         if (_settings.Capture.CopyToClipboard)
         {
             Clipboard.SetImage(ToBitmapSource(rendered));
         }
-        StatusText.Text = _settings.Capture.SaveAutomatically
-            ? "Captura concluída e mantida no histórico local"
+        StatusText.Text = saved
+            ? "Edição concluída e atualizada nos Recentes"
             : "Captura concluída";
     }
 
@@ -3827,8 +3841,10 @@ public partial class MainWindow : Window
         }
         if (await _captureService.EditExistingAsync(record.Id, _settings.Capture, this))
         {
-            StatusText.Text =
-                $"Captura atualizada: {Path.GetFileName(_captureService.ResolveFilePath(record))}";
+            if (_captureWorkbenchRecord?.Id == record.Id)
+                LoadCaptureWorkbenchImage(_captureService.ResolveFilePath(record), record,
+                    $"{CaptureTypeLabel(record)} · {record.Width}×{record.Height}");
+            StatusText.Text = "Edição salva nos Recentes";
             RefreshCaptureHistory();
         }
     }

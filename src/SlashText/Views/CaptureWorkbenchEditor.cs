@@ -183,6 +183,14 @@ public sealed class CaptureWorkbenchEditor : UserControl, IDisposable
             Math.Max(1, _overlay.Height));
     }
 
+    public void InsertStamp(string value, Point center, float size = 42)
+    {
+        if (!HasImage) throw new InvalidOperationException("Nenhuma imagem carregada.");
+        if (!NotoEmojiCatalog.TryGet(value, out _)) throw new ArgumentException("Emoji não disponível.", nameof(value));
+        Add(new CaptureAnnotation { Kind = CaptureAnnotationKind.Stamp, Start = Clamp(center),
+            End = Clamp(center), Text = value, Size = size });
+    }
+
     private void OverlayOnMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         if (_source is null || _tool is null) return;
@@ -212,14 +220,7 @@ public sealed class CaptureWorkbenchEditor : UserControl, IDisposable
             var stamp = PromptForStamp();
             if (!string.IsNullOrWhiteSpace(stamp))
             {
-                Add(new CaptureAnnotation
-                {
-                    Kind = CaptureAnnotationKind.Stamp,
-                    Start = _start,
-                    End = _start,
-                    Text = stamp,
-                    Size = 42
-                });
+                InsertStamp(stamp, _start);
             }
             return;
         }
@@ -344,11 +345,12 @@ public sealed class CaptureWorkbenchEditor : UserControl, IDisposable
                 _overlay.Children.Add(text);
                 break;
             case CaptureAnnotationKind.Stamp:
-                var stamp = new TextBlock
+                var stamp = new Image
                 {
-                    Text = annotation.Text,
-                    FontFamily = new FontFamily("Segoe UI Emoji"),
-                    FontSize = annotation.Size,
+                    Source = NotoEmojiCatalog.CreateImageSource(annotation.Text),
+                    Width = annotation.Size,
+                    Height = annotation.Size,
+                    Stretch = Stretch.Uniform,
                     IsHitTestVisible = false
                 };
                 Canvas.SetLeft(stamp, annotation.Start.X - annotation.Size / 2);
@@ -384,39 +386,14 @@ public sealed class CaptureWorkbenchEditor : UserControl, IDisposable
         panel.Children.Add(new TextBlock { Text = "Texto da anotação" });
         panel.Children.Add(input);
         var insert = new Button { Content = "Inserir", HorizontalAlignment = HorizontalAlignment.Right };
-        insert.SetResourceReference(StyleProperty, "Lab.PrimaryButton");
+        insert.SetResourceReference(StyleProperty, "Lab.Pilot.PrimaryButton");
         insert.Click += (_, _) => dialog.DialogResult = true;
         panel.Children.Add(insert);
         dialog.Loaded += (_, _) => input.Focus();
         return dialog.ShowDialog() == true ? input.Text.Trim() : null;
     }
 
-    private string? PromptForStamp()
-    {
-        string? selected = null;
-        var dialog = CreatePrompt("Inserir emoji", 430, 185);
-        var panel = (StackPanel)dialog.Content;
-        panel.Children.Add(new TextBlock { Text = "Escolha um emoji para posicionar" });
-        var row = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 14, 0, 0) };
-        foreach (var value in new[] { "😀", "👍", "✅", "⭐", "❤️", "⚠️" })
-        {
-            var button = new Button
-            {
-                Content = value,
-                FontFamily = new FontFamily("Segoe UI Emoji"),
-                FontSize = 22,
-                Width = 52,
-                Height = 44,
-                Margin = new Thickness(0, 0, 8, 0)
-            };
-            button.SetResourceReference(StyleProperty, "Lab.Button");
-            button.Click += (_, _) => { selected = value; dialog.DialogResult = true; };
-            row.Children.Add(button);
-        }
-        panel.Children.Add(row);
-        dialog.ShowDialog();
-        return selected;
-    }
+    private string? PromptForStamp() => CaptureEmojiPicker.Show(Window.GetWindow(this));
 
     private Window CreatePrompt(string title, double width, double height)
     {

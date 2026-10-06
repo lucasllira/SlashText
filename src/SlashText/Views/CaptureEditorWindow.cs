@@ -6,6 +6,7 @@ using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
+using SlashText.Design;
 using SlashText.Services;
 using DrawingBitmap = System.Drawing.Bitmap;
 using DrawingColor = System.Drawing.Color;
@@ -55,22 +56,35 @@ public sealed class CaptureEditorWindow : Window
         MinWidth = 900;
         MinHeight = 650;
         WindowStartupLocation = WindowStartupLocation.CenterScreen;
-        Background = (Brush)Application.Current.FindResource("CanvasBrush");
-        Foreground = (Brush)Application.Current.FindResource("InkBrush");
+        SetResourceReference(BackgroundProperty, "Lab.shell");
+        SetResourceReference(ForegroundProperty, "Lab.text");
+        SetResourceReference(FontFamilyProperty, "Lab.Font");
         SourceInitialized += (_, _) => ThemeService.ApplyToWindow(this);
 
         var scale = Math.Min(1d, Math.Min(1080d / source.Width, 620d / source.Height));
         _previewWidth = Math.Max(1, source.Width * scale);
         _previewHeight = Math.Max(1, source.Height * scale);
 
-        var root = new Grid { Margin = new Thickness(16) };
+        var root = new Grid { Margin = new Thickness(24) };
+        root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(14) });
         root.RowDefinitions.Add(new RowDefinition());
         root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(14) });
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 
+        var heading = new StackPanel { Margin = new Thickness(0, 0, 0, 18) };
+        var title = new TextBlock { Text = "Editor de captura", FontSize = 24, FontWeight = FontWeights.SemiBold };
+        title.SetResourceReference(TextBlock.ForegroundProperty, "Lab.text");
+        heading.Children.Add(title);
+        var description = new TextBlock { Text = "Mais espaço para sua edição · Recorte, redimensione e proteja informações.",
+            Margin = new Thickness(0, 6, 0, 0) };
+        description.SetResourceReference(StyleProperty, "Lab.Metadata");
+        heading.Children.Add(description);
+        root.Children.Add(heading);
         var toolbar = BuildToolbar();
+        Grid.SetRow(toolbar, 1);
+        LabMotion.SetEntrance(toolbar, "Page");
         root.Children.Add(toolbar);
         UpdateToolSelection();
 
@@ -104,12 +118,14 @@ public sealed class CaptureEditorWindow : Window
             VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
             HorizontalContentAlignment = HorizontalAlignment.Center,
             VerticalContentAlignment = VerticalAlignment.Center,
-            Background = (Brush)Application.Current.FindResource("ChromeBrush"),
-            BorderBrush = (Brush)Application.Current.FindResource("DividerBrush"),
-            BorderThickness = new Thickness(1)
+            BorderThickness = new Thickness(0),
+            Padding = new Thickness(18)
         };
-        Grid.SetRow(viewer, 2);
-        root.Children.Add(viewer);
+        viewer.SetResourceReference(BackgroundProperty, "Lab.canvas");
+        var workspace = new Border { Child = viewer, CornerRadius = new CornerRadius(9), BorderThickness = new Thickness(1), ClipToBounds = true };
+        workspace.SetResourceReference(Border.BorderBrushProperty, "Lab.line");
+        Grid.SetRow(workspace, 3);
+        root.Children.Add(workspace);
 
         var footer = new Grid();
         footer.ColumnDefinitions.Add(new ColumnDefinition());
@@ -118,19 +134,20 @@ public sealed class CaptureEditorWindow : Window
         {
             Text = "Arraste para desenhar · Ctrl+Z desfaz · Esc cancela",
             VerticalAlignment = VerticalAlignment.Center,
-            Foreground = (Brush)Application.Current.FindResource("MutedBrush")
+            TextWrapping = TextWrapping.Wrap
         };
+        hint.SetResourceReference(StyleProperty, "Lab.Metadata");
         footer.Children.Add(hint);
         var actions = new StackPanel { Orientation = Orientation.Horizontal };
         actions.Children.Add(ActionButton("Cancelar", (_, _) => DialogResult = false));
         actions.Children.Add(ActionButton("Copiar", (_, _) => Complete(CaptureEditorOutput.Clipboard)));
         actions.Children.Add(ActionButton("Salvar", (_, _) => Complete(CaptureEditorOutput.File)));
         var finish = ActionButton("Concluir", (_, _) => Complete(CaptureEditorOutput.Default));
-        finish.Style = (Style)Application.Current.FindResource("PrimaryButton");
+        finish.SetResourceReference(StyleProperty, "Lab.Pilot.PrimaryButton");
         actions.Children.Add(finish);
         Grid.SetColumn(actions, 1);
         footer.Children.Add(actions);
-        Grid.SetRow(footer, 4);
+        Grid.SetRow(footer, 5);
         root.Children.Add(footer);
 
         Content = root;
@@ -147,6 +164,7 @@ public sealed class CaptureEditorWindow : Window
         panel.Children.Add(ToolButton("Lápis", CaptureAnnotationKind.Pencil));
         panel.Children.Add(ToolButton("Texto", CaptureAnnotationKind.Text));
         panel.Children.Add(ToolButton("Número", CaptureAnnotationKind.Number));
+        panel.Children.Add(ToolButton("Emoji", CaptureAnnotationKind.Stamp));
         panel.Children.Add(ToolButton("Desfocar", CaptureAnnotationKind.Blur));
         panel.Children.Add(ToolButton("Pixelizar", CaptureAnnotationKind.Pixelate));
         panel.Children.Add(ActionButton("Recortar", (_, _) =>
@@ -156,7 +174,7 @@ public sealed class CaptureEditorWindow : Window
             _tool = CaptureAnnotationKind.Rectangle;
             _overlay.Cursor = Cursors.Cross;
             UpdateToolSelection();
-            _overlay.ToolTip = "Arraste o recorte e clique novamente em Recortar para aplicar";
+            _overlay.ToolTip = "Arraste para selecionar o recorte; Concluir aplica a seleção";
         }));
         panel.Children.Add(ActionButton("Redimensionar", (_, _) => ConfigureResize()));
         panel.Children.Add(ActionButton("Desfazer", (_, _) => Undo()));
@@ -167,7 +185,7 @@ public sealed class CaptureEditorWindow : Window
             Text = "  Cor",
             VerticalAlignment = VerticalAlignment.Center,
             Margin = new Thickness(4, 0, 6, 6),
-            Foreground = (Brush)Application.Current.FindResource("MutedBrush")
+            Foreground = (Brush)Application.Current.FindResource("Lab.muted")
         });
         foreach (var color in new[]
                  {
@@ -187,11 +205,13 @@ public sealed class CaptureEditorWindow : Window
                 Padding = new Thickness(0),
                 Background = new SolidColorBrush(
                     Color.FromArgb(color.A, color.R, color.G, color.B)),
-                BorderBrush = (Brush)Application.Current.FindResource("DividerBrush"),
+                BorderBrush = (Brush)Application.Current.FindResource("Lab.line"),
                 BorderThickness = new Thickness(2),
                 ToolTip = color.Name,
                 Tag = color.ToArgb()
             };
+            choice.SetResourceReference(StyleProperty, "Lab.Button");
+            choice.MinHeight = 28;
             choice.Click += (_, _) => _color = (int)choice.Tag;
             panel.Children.Add(choice);
         }
@@ -218,10 +238,11 @@ public sealed class CaptureEditorWindow : Window
                 _thickness = value;
             }
         };
+        thickness.SetResourceReference(StyleProperty, "Lab.Combo");
         panel.Children.Add(thickness);
         return new Border
         {
-            Style = (Style)Application.Current.FindResource("SettingsCard"),
+            Style = (Style)Application.Current.FindResource("Lab.Card"),
             Padding = new Thickness(12, 12, 6, 6),
             Child = panel
         };
@@ -239,6 +260,7 @@ public sealed class CaptureEditorWindow : Window
             UpdateToolSelection();
         });
         button.ToolTip = $"Ferramenta {text}";
+        button.SetResourceReference(StyleProperty, "Lab.Pilot.EditorTool");
         _toolButtons[tool] = button;
         return button;
     }
@@ -248,12 +270,7 @@ public sealed class CaptureEditorWindow : Window
         foreach (var (tool, button) in _toolButtons)
         {
             var selected = tool == _tool;
-            button.Background = (Brush)Application.Current.FindResource(
-                selected ? "AccentSubtleBrush" : "ControlBrush");
-            button.BorderBrush = (Brush)Application.Current.FindResource(
-                selected ? "AccentBrush" : "DividerBrush");
-            button.Foreground = (Brush)Application.Current.FindResource(
-                selected ? "AccentBrush" : "InkBrush");
+            button.Tag = selected ? "Selected" : null;
         }
     }
 
@@ -266,6 +283,7 @@ public sealed class CaptureEditorWindow : Window
             Margin = new Thickness(0, 0, 7, 6),
             Padding = new Thickness(12, 5, 12, 5)
         };
+        button.SetResourceReference(StyleProperty, "Lab.Button");
         button.Click += handler;
         return button;
     }
@@ -273,6 +291,13 @@ public sealed class CaptureEditorWindow : Window
     private void OverlayOnMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         _start = Clamp(e.GetPosition(_overlay));
+        if (_tool == CaptureAnnotationKind.Stamp)
+        {
+            var value = CaptureEmojiPicker.Show(this);
+            if (value is not null) Add(new CaptureAnnotation { Kind = CaptureAnnotationKind.Stamp,
+                Start = _start, End = _start, Text = value, Size = 42 });
+            return;
+        }
         if (_tool == CaptureAnnotationKind.Text)
         {
             var text = PromptForText();
@@ -413,7 +438,7 @@ public sealed class CaptureEditorWindow : Window
             {
                 Width = crop.Width,
                 Height = crop.Height,
-                Stroke = (Brush)Application.Current.FindResource("AccentBrush"),
+                Stroke = (Brush)Application.Current.FindResource("Lab.accent"),
                 StrokeThickness = 2,
                 StrokeDashArray = new DoubleCollection { 4, 2 },
                 Fill = Brushes.Transparent,
@@ -494,6 +519,13 @@ public sealed class CaptureEditorWindow : Window
                 Canvas.SetTop(text, annotation.Start.Y);
                 _overlay.Children.Add(text);
                 break;
+            case CaptureAnnotationKind.Stamp:
+                var stamp = new Image { Source = NotoEmojiCatalog.CreateImageSource(annotation.Text),
+                    Width = annotation.Size, Height = annotation.Size, Stretch = Stretch.Uniform };
+                Canvas.SetLeft(stamp, annotation.Start.X - annotation.Size / 2);
+                Canvas.SetTop(stamp, annotation.Start.Y - annotation.Size / 2);
+                _overlay.Children.Add(stamp);
+                break;
             case CaptureAnnotationKind.Number:
                 var badge = new Border
                 {
@@ -520,8 +552,8 @@ public sealed class CaptureEditorWindow : Window
                 {
                     Width = Math.Abs(annotation.End.X - annotation.Start.X),
                     Height = Math.Abs(annotation.End.Y - annotation.Start.Y),
-                    Background = (Brush)Application.Current.FindResource("AccentSubtleBrush"),
-                    BorderBrush = (Brush)Application.Current.FindResource("AccentBrush"),
+                    Background = (Brush)Application.Current.FindResource("Lab.tint"),
+                    BorderBrush = (Brush)Application.Current.FindResource("Lab.accent"),
                     BorderThickness = new Thickness(2),
                     Opacity = .72,
                     Child = new TextBlock
@@ -531,7 +563,7 @@ public sealed class CaptureEditorWindow : Window
                             : "Pixelização",
                         HorizontalAlignment = HorizontalAlignment.Center,
                         VerticalAlignment = VerticalAlignment.Center,
-                        Foreground = (Brush)Application.Current.FindResource("AccentBrush"),
+                        Foreground = (Brush)Application.Current.FindResource("Lab.accent-text"),
                         FontWeight = FontWeights.SemiBold
                     }
                 };
@@ -564,22 +596,23 @@ public sealed class CaptureEditorWindow : Window
     private string? PromptForText()
     {
         var input = new TextBox { MinWidth = 300, Margin = new Thickness(0, 8, 0, 12) };
+        input.SetResourceReference(StyleProperty, "Lab.Field");
         var dialog = new Window
         {
             Title = "Inserir texto",
             Owner = this,
             Width = 390,
-            Height = 175,
+            SizeToContent = SizeToContent.Height,
             ResizeMode = ResizeMode.NoResize,
             WindowStartupLocation = WindowStartupLocation.CenterOwner,
-            Background = (Brush)Application.Current.FindResource("CanvasBrush"),
-            Foreground = (Brush)Application.Current.FindResource("InkBrush")
+            Background = (Brush)Application.Current.FindResource("Lab.raised"),
+            Foreground = (Brush)Application.Current.FindResource("Lab.text")
         };
         var panel = new StackPanel { Margin = new Thickness(20) };
         panel.Children.Add(new TextBlock { Text = "Texto da marcação" });
         panel.Children.Add(input);
         var ok = ActionButton("Inserir", (_, _) => dialog.DialogResult = true);
-        ok.Style = (Style)Application.Current.FindResource("PrimaryButton");
+        ok.SetResourceReference(StyleProperty, "Lab.Pilot.PrimaryButton");
         ok.HorizontalAlignment = HorizontalAlignment.Right;
         panel.Children.Add(ok);
         dialog.Content = panel;
@@ -632,17 +665,18 @@ public sealed class CaptureEditorWindow : Window
             Title = "Redimensionar",
             Owner = this,
             Width = 340,
-            Height = 180,
+            SizeToContent = SizeToContent.Height,
             ResizeMode = ResizeMode.NoResize,
             WindowStartupLocation = WindowStartupLocation.CenterOwner,
-            Background = (Brush)Application.Current.FindResource("CanvasBrush"),
-            Foreground = (Brush)Application.Current.FindResource("InkBrush")
+            Background = (Brush)Application.Current.FindResource("Lab.raised"),
+            Foreground = (Brush)Application.Current.FindResource("Lab.text")
         };
         var panel = new StackPanel { Margin = new Thickness(20) };
         panel.Children.Add(new TextBlock { Text = "Nova largura em pixels" });
         panel.Children.Add(input);
         var apply = ActionButton("Aplicar", (_, _) => dialog.DialogResult = true);
-        apply.Style = (Style)Application.Current.FindResource("PrimaryButton");
+        input.SetResourceReference(StyleProperty, "Lab.Field");
+        apply.SetResourceReference(StyleProperty, "Lab.Pilot.PrimaryButton");
         apply.HorizontalAlignment = HorizontalAlignment.Right;
         panel.Children.Add(apply);
         dialog.Content = panel;

@@ -9,6 +9,9 @@ $ruleCode = Get-Content 'src/SlashText/Views/CaptureRuleDialog.xaml.cs' -Raw
 $shortcutDialog = Get-Content 'src/SlashText/Views/CaptureShortcutDialog.xaml' -Raw
 $shortcutCode = Get-Content 'src/SlashText/Views/CaptureShortcutDialog.xaml.cs' -Raw
 $inlineEditor = Get-Content 'src/SlashText/Views/CaptureWorkbenchEditor.cs' -Raw
+$advancedEditor = Get-Content 'src/SlashText/Views/CaptureEditorWindow.cs' -Raw
+$emojiPicker = Get-Content 'src/SlashText/Views/CaptureEmojiPicker.cs' -Raw
+$captureService = Get-Content 'src/SlashText/Services/CaptureService.cs' -Raw
 
 [xml]$null = $xaml
 [xml]$null = $app
@@ -124,6 +127,8 @@ foreach ($style in @(
     'Lab.Pilot.ToolButton',
     'Lab.Pilot.ToolGlyph',
     'Lab.Pilot.NewButton',
+    'Lab.Pilot.PrimaryButton',
+    'Lab.Pilot.EditorTool',
     'Lab.Pilot.Card'
 )) {
     if (-not $styles.Contains("x:Key=`"$style`"")) {
@@ -172,6 +177,34 @@ foreach ($palette in @(
     if ($brush.Color -ne $palette.Color) {
         throw "A cor do Novo diverge da referência visual enviada: $($palette.File)"
     }
+}
+
+foreach ($label in @(
+    @{ Markup = $captureMarkup; Text = 'Concluir' },
+    @{ Markup = [xml]$ruleDialog; Text = 'Salvar regra' },
+    @{ Markup = [xml]$shortcutDialog; Text = 'Salvar atalhos' }
+)) {
+    $labelNs = New-Object System.Xml.XmlNamespaceManager($label.Markup.NameTable)
+    $labelNs.AddNamespace('p', 'http://schemas.microsoft.com/winfx/2006/xaml/presentation')
+    $text = $label.Markup.SelectSingleNode("//p:TextBlock[@Text='$($label.Text)']", $labelNs)
+    if ($text.Foreground -ne '{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}' -or
+        $text.ParentNode.ParentNode.Style -ne '{StaticResource Lab.Pilot.PrimaryButton}') {
+        throw "Botão principal sem cor/contraste do piloto: $($label.Text)"
+    }
+}
+if ($inlineEditor.Contains('FontFamily = new FontFamily("Segoe UI Emoji")') -or
+    -not $inlineEditor.Contains('NotoEmojiCatalog.CreateImageSource(annotation.Text)') -or
+    -not $emojiPicker.Contains('foreach (var item in NotoEmojiCatalog.Items)') -or
+    -not $advancedEditor.Contains('CaptureEmojiPicker.Show(this)')) {
+    throw 'Os editores precisam compartilhar catálogo e assets Noto na prévia e exportação.'
+}
+if ([regex]::IsMatch($advancedEditor, 'FindResource\("(?:PrimaryButton|SettingsCard|CanvasBrush|InkBrush|AccentBrush)"\)') -or
+    -not $advancedEditor.Contains('Lab.Pilot.EditorTool')) {
+    throw 'Editor avançado ainda usa o tema/controles antigos.'
+}
+if (-not $code.Contains('_captureService.SaveEditedImageAsync(') -or
+    -not $captureService.Contains('public async Task<CaptureRecord> SaveEditedImageAsync(')) {
+    throw 'Salvar/Concluir não registra a edição real no histórico.'
 }
 
 if ($xaml.Contains('Click="EditCapturePreview_OnClick"')) {

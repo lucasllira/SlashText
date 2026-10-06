@@ -37,11 +37,12 @@
             <Border Height="1" Background="{DynamicResource Lab.line}" Margin="0,22,0,18"/>
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                 <Button Content="Cancelar" Style="{StaticResource Lab.Button}" Margin="0,0,10,0" Click="Cancel_OnClick"/>
-                <Button Style="{StaticResource Lab.PrimaryButton}" Click="Save_OnClick">
+                <Button Style="{StaticResource Lab.Pilot.PrimaryButton}" Click="Save_OnClick">
                     <StackPanel Orientation="Horizontal">
                         <lab:LabIcon Kind="Check" Width="16" Height="16" Margin="0,0,8,0"
                                      Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
-                        <TextBlock Text="Salvar atalhos"/>
+                        <TextBlock Text="Salvar atalhos"
+                                   Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
                     </StackPanel>
                 </Button>
             </StackPanel>
