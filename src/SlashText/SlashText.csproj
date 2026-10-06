@@ -35,6 +35,7 @@
     <Resource Include="Assets\SlashDesk.png" />
     <EmbeddedResource Include="Assets\NotoEmoji\*.png" />
     <EmbeddedResource Include="Assets\NotoEmoji\catalog.json" LogicalName="SlashText.Assets.NotoEmoji.catalog.json" />
+    <EmbeddedResource Include="Assets\NotoEmoji\catalog-assets.zip" LogicalName="SlashText.Assets.NotoEmoji.catalog-assets.zip" />
     <EmbeddedResource Include="Assets\NotoEmoji\LICENSE.txt" />
     <EmbeddedResource Include="Assets\NotoEmoji\UNICODE-LICENSE.txt" />
     <EmbeddedResource Include="Assets\NotoEmoji\FLAGS-LICENSE.txt" />
@@ -47,13 +48,5 @@
   </ItemGroup>
   <Target Name="RestoreNotoEmoji" BeforeTargets="PrepareForBuild">
     <Exec Command="pwsh -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildProjectDirectory)\..\..\scripts\restore-noto-emoji.ps1&quot;" />
-    <ItemGroup>
-      <!-- WPF's temporary markup project inherits this item list and invokes
-           PrepareForBuild again. Replace the list instead of adding it twice. -->
-      <EmbeddedResource Remove="Assets\NotoEmoji\Full\*.png" />
-      <EmbeddedResource Include="Assets\NotoEmoji\Full\*.png">
-        <LogicalName>SlashText.Assets.NotoEmoji.Full.%(Filename)%(Extension)</LogicalName>
-      </EmbeddedResource>
-    </ItemGroup>
   </Target>
 </Project>

@@ -6,6 +6,8 @@ $manifestPath = Join-Path $folder 'catalog.json'
 $manifest = Get-Content $manifestPath -Raw -Encoding UTF8 | ConvertFrom-Json
 $destination = Join-Path $folder 'Full'
 $stamp = Join-Path $destination '.verified'
+$archive = Join-Path $folder 'catalog-assets.zip'
+$archiveStamp = "$archive.verified"
 $manifestHash = (Get-FileHash $manifestPath -Algorithm SHA256).Hash
 if (-not $SourceDirectory -and (Test-Path $stamp) -and (Get-Content $stamp -Raw).Trim() -eq $manifestHash -and
     @(Get-ChildItem $destination -Filter *.png).Count -eq $manifest.Count) { $SourceDirectory = $destination }
@@ -52,4 +54,19 @@ foreach ($item in $manifest.Items) {
 $names = @{}; foreach ($item in $manifest.Items) { $names[$item.AssetName] = $true }
 Get-ChildItem $destination -Filter *.png | Where-Object { -not $names.ContainsKey($_.Name) } | Remove-Item
 Set-Content $stamp -Value $manifestHash -Encoding ascii
+$archiveKey = if ((Test-Path $archive) -and (Test-Path $archiveStamp)) {
+    "$manifestHash $((Get-FileHash $archive -Algorithm SHA256).Hash)"
+} else { '' }
+if (-not $archiveKey -or (Get-Content $archiveStamp -Raw).Trim() -ne $archiveKey) {
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
+    Remove-Item $archive -ErrorAction SilentlyContinue
+    $zip = [IO.Compression.ZipFile]::Open($archive, [IO.Compression.ZipArchiveMode]::Create)
+    try {
+        foreach ($item in $manifest.Items) {
+            [IO.Compression.ZipFileExtensions]::CreateEntryFromFile($zip, (Join-Path $destination $item.AssetName),
+                $item.AssetName, [IO.Compression.CompressionLevel]::Optimal) | Out-Null
+        }
+    } finally { $zip.Dispose() }
+    Set-Content $archiveStamp -Value "$manifestHash $((Get-FileHash $archive -Algorithm SHA256).Hash)" -Encoding ascii
+}
 "Verified $($manifest.Count) offline Noto PNGs from $($manifest.Commit)."

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Text.Json;
 using System.Windows.Media.Imaging;
@@ -74,6 +75,9 @@ public static class NotoEmojiCatalog
         Items.ToDictionary(i => NormalizeValue(i.Value), StringComparer.Ordinal);
     private static readonly Dictionary<string, BitmapSource> PreviewCache = new(StringComparer.Ordinal);
     private static readonly Queue<string> PreviewOrder = new();
+    private static readonly Lazy<ZipArchive> AssetArchive = new(() => new ZipArchive(
+        typeof(NotoEmojiCatalog).Assembly.GetManifestResourceStream(ResourcePrefix + "catalog-assets.zip")
+            ?? throw new InvalidOperationException("Pacote Noto incorporado ausente."), ZipArchiveMode.Read));
 
     public static bool TryGet(string value, out NotoEmojiItem item)
     {
@@ -114,12 +118,22 @@ public static class NotoEmojiCatalog
         return new System.Drawing.Bitmap(source);
     }
 
-    public static bool HasAsset(NotoEmojiItem item) =>
-        typeof(NotoEmojiCatalog).Assembly.GetManifestResourceInfo(
-            ResourcePrefix + "Full." + item.AssetName) is not null;
+    public static bool HasAsset(NotoEmojiItem item)
+    {
+        lock (AssetArchive) return AssetArchive.Value.GetEntry(item.AssetName) is not null;
+    }
 
-    private static Stream Open(NotoEmojiItem item) =>
-        typeof(NotoEmojiCatalog).Assembly.GetManifestResourceStream(
-            ResourcePrefix + "Full." + item.AssetName)
-        ?? throw new InvalidOperationException($"Recurso Noto Emoji ausente: {item.AssetName}");
+    private static Stream Open(NotoEmojiItem item)
+    {
+        // ZipArchive shares a seekable resource stream. Copy only the requested
+        // PNG under the lock; callers then decode their own independent stream.
+        lock (AssetArchive)
+        {
+            var entry = AssetArchive.Value.GetEntry(item.AssetName)
+                ?? throw new InvalidOperationException($"Recurso Noto Emoji ausente: {item.AssetName}");
+            using var source = entry.Open();
+            var bytes = new MemoryStream((int)entry.Length);
+            source.CopyTo(bytes); bytes.Position = 0; return bytes;
+        }
+    }
 }
