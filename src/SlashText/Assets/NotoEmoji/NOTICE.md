@@ -24,7 +24,7 @@ Os PNGs completos são recuperados **durante a compilação**, em commit fixo,
 via `scripts/restore-noto-emoji.ps1`. Cada arquivo é verificado pelo hash Git
 registrado no manifesto; a coleção e esta atribuição são incorporadas ao EXE.
 Não há download, consulta ou dependência de rede em tempo de execução.
-Para desenvolver/compilar no Windows: .NET 10, Git e Windows PowerShell.
+Para desenvolver/compilar: .NET 10, Git e PowerShell 7 (`pwsh`).
 Os arquivos gerados em `Full/` não são versionados; o script aceita
 `-SourceDirectory` para fornecer um checkout local do snapshot revisado.
 

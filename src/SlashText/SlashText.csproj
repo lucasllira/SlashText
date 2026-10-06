@@ -46,7 +46,7 @@
                       LogicalName="SlashText.Defaults.snippets.md" />
   </ItemGroup>
   <Target Name="RestoreNotoEmoji" BeforeTargets="PrepareForBuild">
-    <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildProjectDirectory)\..\..\scripts\restore-noto-emoji.ps1&quot;" />
+    <Exec Command="pwsh -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildProjectDirectory)\..\..\scripts\restore-noto-emoji.ps1&quot;" />
     <ItemGroup>
       <EmbeddedResource Include="Assets\NotoEmoji\Full\*.png">
         <LogicalName>SlashText.Assets.NotoEmoji.Full.%(Filename)%(Extension)</LogicalName>

@@ -20,8 +20,9 @@ if (-not $SourceDirectory) {
         New-Item $cache -ItemType Directory -Force | Out-Null
         Git-Checked @('init', $cache)
         Git-Checked @('-C', $cache, 'remote', 'add', 'origin', 'https://github.com/googlefonts/noto-emoji.git')
-        Git-Checked @('-C', $cache, 'fetch', '--depth=1', '--filter=blob:none', 'origin', $manifest.Commit)
     }
+    & git -C $cache cat-file -e "$($manifest.Commit)^{commit}" 2>$null
+    if ($LASTEXITCODE -ne 0) { Git-Checked @('-C', $cache, 'fetch', '--depth=1', '--filter=blob:none', 'origin', $manifest.Commit) }
     Git-Checked @('-C', $cache, 'sparse-checkout', 'set', '--cone', '2D/png/128', 'third_party/region-flags/png')
     Git-Checked @('-C', $cache, 'checkout', '--detach', $manifest.Commit)
     $SourceDirectory = $cache
