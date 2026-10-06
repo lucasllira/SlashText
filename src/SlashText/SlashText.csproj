@@ -48,6 +48,9 @@
   <Target Name="RestoreNotoEmoji" BeforeTargets="PrepareForBuild">
     <Exec Command="pwsh -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildProjectDirectory)\..\..\scripts\restore-noto-emoji.ps1&quot;" />
     <ItemGroup>
+      <!-- WPF's temporary markup project inherits this item list and invokes
+           PrepareForBuild again. Replace the list instead of adding it twice. -->
+      <EmbeddedResource Remove="Assets\NotoEmoji\Full\*.png" />
       <EmbeddedResource Include="Assets\NotoEmoji\Full\*.png">
         <LogicalName>SlashText.Assets.NotoEmoji.Full.%(Filename)%(Extension)</LogicalName>
       </EmbeddedResource>
