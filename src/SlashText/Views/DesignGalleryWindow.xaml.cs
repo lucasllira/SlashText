@@ -205,7 +205,7 @@ public partial class DesignGalleryWindow : Window
 
     private async Task CaptureEditorEvidence(string theme)
     {
-        LabPalette.Apply(Application.Current.Resources, theme == "Dark");
+        Services.ThemeService.Apply(theme);
         using var source = new System.Drawing.Bitmap(960, 500);
         using (var graphics = System.Drawing.Graphics.FromImage(source))
         {
@@ -271,6 +271,7 @@ public partial class DesignGalleryWindow : Window
             var root = (FrameworkElement)window.Content; window.Content = null;
             LabMotion.SetReduced(root, true);
             var host = new Border { Child = root, Width = size.Width, Height = size.Height };
+            host.SetResourceReference(Border.BackgroundProperty, "Lab.bg");
             void Layout() { host.Measure(size); host.Arrange(new Rect(size)); host.UpdateLayout(); }
             Services.CaptureEditorDocument? firstDocument = null;
             foreach (var expanded in new[] { false, true })

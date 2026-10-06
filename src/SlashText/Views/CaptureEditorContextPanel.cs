@@ -43,19 +43,20 @@ public sealed class CaptureEditorContextPanel : UserControl
             var installed = Fonts.SystemFontFamilies.Select(f => f.Source).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
             var fonts = preferred.Where(p => installed.Contains(p, StringComparer.OrdinalIgnoreCase))
                 .Concat(installed.Except(preferred, StringComparer.OrdinalIgnoreCase).OrderBy(f => f)).ToArray();
-            Combo(fonts, _editor.TextFontFamily, value => _editor.TextFontFamily = value, 155);
+            var fontBox = Combo(fonts, _editor.TextFontFamily, value => _editor.TextFontFamily = value, 155);
             AddLabel("Tamanho");
             Combo(new[] { "12", "16", "20", "24", "32", "40", "48", "64", "80", "96", "120" },
                 _editor.TextSize.ToString(CultureInfo.InvariantCulture), value => _editor.TextSize = float.Parse(value, CultureInfo.InvariantCulture), 68);
             var input = new TextBox { Text = _editor.AnnotationText, MinWidth = 210, MaxLength = 120, Margin = new Thickness(0, 0, 10, 0) };
             input.SetResourceReference(StyleProperty, "Lab.Field");
             input.FontFamily = new FontFamily(_editor.TextFontFamily);
+            fontBox.SelectionChanged += (_, _) => input.FontFamily = new FontFamily(_editor.TextFontFamily);
             input.TextChanged += (_, _) => _editor.AnnotationText = input.Text;
             _panel.Children.Add(input);
             Toggle("Negrito", _editor.TextBold, value => _editor.TextBold = value);
             Toggle("Itálico", _editor.TextItalic, value => _editor.TextItalic = value);
             Combo(new[] { "Esquerda", "Centro", "Direita" }, _editor.TextAlignment switch { "Center" => "Centro", "Right" => "Direita", _ => "Esquerda" },
-                value => _editor.TextAlignment = value switch { "Centro" => "Center", "Direita" => "Right", _ => "Left" }, 96);
+                value => _editor.TextAlignment = value switch { "Centro" => "Center", "Direita" => "Right", _ => "Left" }, 116);
         }
         else if (shown == "Stamp")
         {
@@ -79,8 +80,22 @@ public sealed class CaptureEditorContextPanel : UserControl
                 button.Click += (_, _) => { _editor.SelectedStamp = item.Value; foreach (var pair in buttons) pair.Value.Tag = pair.Key == item.Value ? "Selected" : null; };
                 buttons[item.Value] = button; strip.Children.Add(button);
             }
-            scroller.SizeChanged += (_, _) => scroller.MaxWidth = Math.Max(150, Math.Min(810, ActualWidth - 270));
+            Button NavigationButton(string label, bool forward)
+            {
+                var icon = new LabIcon { Kind = "ArrowLeft", Width = 16, Height = 16,
+                    RenderTransformOrigin = new Point(.5, .5), RenderTransform = new RotateTransform(forward ? 180 : 0) };
+                icon.SetResourceReference(LabIcon.ForegroundProperty, "Lab.text");
+                var button = new Button { Content = icon, ToolTip = label, Width = 34, Height = 34,
+                    Margin = new Thickness(0, 0, 6, 0), Padding = new Thickness(6) };
+                button.SetResourceReference(StyleProperty, "Lab.Pilot.ToolButton");
+                System.Windows.Automation.AutomationProperties.SetName(button, label);
+                button.Click += (_, _) => scroller.ScrollToHorizontalOffset(scroller.HorizontalOffset + (forward ? 300 : -300));
+                return button;
+            }
+            scroller.SizeChanged += (_, _) => scroller.MaxWidth = Math.Max(150, Math.Min(810, ActualWidth - 350));
+            _panel.Children.Add(NavigationButton("Emotes anteriores", false));
             _panel.Children.Add(scroller);
+            _panel.Children.Add(NavigationButton("Próximos emotes", true));
             AddButton("Ver todos", "Smile", () =>
             {
                 var selected = CaptureEmojiPicker.Show(Window.GetWindow(this));
@@ -113,7 +128,7 @@ public sealed class CaptureEditorContextPanel : UserControl
         else if (shown is "Rectangle" or "Ellipse")
         {
             Toggle("Contorno", _editor.ShapeOutline, value => _editor.ShapeOutline = value);
-            Toggle("Preenchimento", _editor.ShapeFill.HasValue, value => _editor.ShapeFill = value ? System.Drawing.Color.FromArgb(232, 78, 96).ToArgb() : null);
+            Toggle("Preenchimento", _editor.ShapeFill.HasValue, value => _editor.ShapeFill = value ? _editor.InkArgb : null);
             AddLabel("Opacidade");
             Combo(new[] { "25%", "50%", "75%", "100%" }, ((int)(_editor.AnnotationOpacity * 100)) + "%", value => _editor.AnnotationOpacity = int.Parse(value.TrimEnd('%')) / 100f, 80);
         }
@@ -184,14 +199,16 @@ public sealed class CaptureEditorContextPanel : UserControl
         var label = new TextBlock { Text = text, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, emphasis ? 18 : 8, 0), FontSize = 12 };
         label.SetResourceReference(TextBlock.ForegroundProperty, emphasis ? "Lab.accent-text" : "Lab.muted"); _panel.Children.Add(label);
     }
-    private void Combo(IEnumerable<string> choices, string selected, Action<string> change, double width)
+    private ComboBox Combo(IEnumerable<string> choices, string selected, Action<string> change, double width)
     {
         var combo = new ComboBox { ItemsSource = choices.ToArray(), SelectedItem = selected, Width = width, Margin = new Thickness(0, 0, 12, 0) };
         combo.SetResourceReference(StyleProperty, "Lab.Combo"); combo.SelectionChanged += (_, _) => { if (combo.SelectedItem is string value) change(value); }; _panel.Children.Add(combo);
+        return combo;
     }
     private void Toggle(string text, bool state, Action<bool> change)
     {
         var control = new CheckBox { Content = text, IsChecked = state, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 12, 0) };
+        control.SetResourceReference(Control.ForegroundProperty, "Lab.text");
         control.Checked += (_, _) => change(true); control.Unchecked += (_, _) => change(false); _panel.Children.Add(control);
     }
     private Button AddButton(string text, string icon, Action click, bool primary = false) { var button = MakeButton(text, icon, click, primary); _panel.Children.Add(button); return button; }

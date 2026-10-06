@@ -50,6 +50,7 @@ public sealed class CaptureWorkbenchEditor : UserControl, IDisposable
     public CaptureAnnotationKind? SelectedTool => _tool;
     public CaptureEditorDocument? Document => _document;
     public double Zoom => _zoom;
+    public int InkArgb => _color;
     public string AnnotationText { get; set; } = "Anotação";
     public string TextFontFamily { get; set; } = "Segoe UI";
     public float TextSize { get; set; } = 24;
@@ -160,7 +161,7 @@ public sealed class CaptureWorkbenchEditor : UserControl, IDisposable
     {
         SelectTool(null); _cropTool = true; _overlay.Cursor = Cursors.Cross; NotifyStateChanged();
     }
-    public void SetColor(int argb) { _color = argb; NotifyStateChanged(); }
+    public void SetColor(int argb) { _color = argb; if (ShapeFill.HasValue) ShapeFill = argb; NotifyStateChanged(); }
     public void SetThickness(float thickness) => _thickness = Math.Clamp(thickness, 1, 24);
     public void Undo() { CancelCrop(); _document?.Undo(); RefreshPreview(); NotifyStateChanged(); }
     public void Redo() { CancelCrop(); _document?.Redo(); RefreshPreview(); NotifyStateChanged(); }

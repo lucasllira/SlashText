@@ -802,7 +802,7 @@
                     <ScrollViewer x:Name="CaptureView" Visibility="Collapsed"
                                   VerticalScrollBarVisibility="Auto">
                         <Grid x:Name="CapturePageLayout" Margin="{StaticResource Lab.PagePadding}" MaxWidth="1360"
-                              HorizontalAlignment="Center">
+                              HorizontalAlignment="Stretch">
                              <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="20"/>
