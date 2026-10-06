@@ -101,6 +101,8 @@
     </Style>
 
     <Style x:Key="Lab.Pilot.NewButton" TargetType="Button" BasedOn="{StaticResource Lab.PrimaryButton}">
+        <Setter Property="Background" Value="{DynamicResource Lab.capture-primary}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource Lab.capture-primary}"/>
         <Setter Property="MinWidth" Value="98"/>
         <Setter Property="MinHeight" Value="38"/>
         <Setter Property="Padding" Value="14,8"/>

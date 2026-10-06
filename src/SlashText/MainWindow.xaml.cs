@@ -3399,7 +3399,7 @@ public partial class MainWindow : Window
         _captureWorkbenchZoom = zoom;
         if (CaptureInlineEditor is not null)
         {
-            CaptureInlineEditor.LayoutTransform = new ScaleTransform(zoom, zoom);
+            CaptureInlineEditor.SetZoom(zoom);
         }
     }
 
@@ -3807,7 +3807,7 @@ public partial class MainWindow : Window
         {
             var path = _captureService.ResolveFilePath(record);
             CaptureService.CopyFileToClipboard(path);
-            StatusText.Text = $"Arquivo copiado: {Path.GetFileName(path)}";
+            StatusText.Text = $"Captura copiada: {Path.GetFileName(path)}";
         }
         catch (Exception exception)
         {

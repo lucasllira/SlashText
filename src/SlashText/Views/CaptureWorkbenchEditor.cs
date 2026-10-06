@@ -21,6 +21,14 @@ public sealed class CaptureWorkbenchEditor : UserControl, IDisposable
     private readonly Image _image = new() { Stretch = Stretch.Fill };
     private readonly Canvas _overlay = new() { Background = Brushes.Transparent };
     private readonly Grid _surface = new() { Background = Brushes.Black, ClipToBounds = true };
+    private readonly Viewbox _viewbox = new() { Stretch = Stretch.Uniform };
+    private readonly ScrollViewer _viewport = new()
+    {
+        HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
+        VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+        CanContentScroll = false
+    };
+    private double _zoom = 1d;
     private readonly List<CaptureAnnotation> _annotations = [];
     private readonly Stack<CaptureAnnotation> _redo = new();
     private readonly List<Point> _pencilPoints = [];
@@ -46,15 +54,39 @@ public sealed class CaptureWorkbenchEditor : UserControl, IDisposable
         _overlay.MouseLeftButtonDown += OverlayOnMouseLeftButtonDown;
         _overlay.MouseMove += OverlayOnMouseMove;
         _overlay.MouseLeftButtonUp += OverlayOnMouseLeftButtonUp;
-        Content = new Viewbox
-        {
-            Stretch = Stretch.Uniform,
-            StretchDirection = StretchDirection.Both,
-            HorizontalAlignment = HorizontalAlignment.Stretch,
-            VerticalAlignment = VerticalAlignment.Stretch,
-            Child = _surface
-        };
+        _viewbox.Child = _surface;
+        _viewbox.HorizontalAlignment = HorizontalAlignment.Center;
+        _viewbox.VerticalAlignment = VerticalAlignment.Center;
+        _viewport.Content = _viewbox;
+        _viewport.SizeChanged += (_, _) => UpdateZoom();
+        Content = _viewport;
         PreviewKeyDown += OnPreviewKeyDown;
+    }
+
+    /// <summary>Zoom relative to the fitted preview, never to the saved bitmap.</summary>
+    public void SetZoom(double zoom)
+    {
+        if (!double.IsFinite(zoom) || zoom <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(zoom));
+        }
+        _zoom = zoom;
+        UpdateZoom();
+    }
+
+    private void UpdateZoom()
+    {
+        if (!HasImage || _viewport.ActualWidth <= 0 || _viewport.ActualHeight <= 0)
+        {
+            return;
+        }
+        // Reserve scrollbar space even at 100%: appearing scrollbars must not
+        // trigger a second fit that cancels zoom or oscillates at the boundary.
+        var width = Math.Max(1d, _viewport.ActualWidth - SystemParameters.VerticalScrollBarWidth);
+        var height = Math.Max(1d, _viewport.ActualHeight - SystemParameters.HorizontalScrollBarHeight);
+        var fit = Math.Min(width / _surface.Width, height / _surface.Height);
+        _viewbox.Width = _surface.Width * fit * _zoom;
+        _viewbox.Height = _surface.Height * fit * _zoom;
     }
 
     public void LoadImage(string path)
@@ -83,6 +115,7 @@ public sealed class CaptureWorkbenchEditor : UserControl, IDisposable
         _overlay.Width = width;
         _overlay.Height = height;
         _image.Source = ToBitmapSource(_source);
+        UpdateZoom();
         Rebuild();
         NotifyStateChanged();
     }

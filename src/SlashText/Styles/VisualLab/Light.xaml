@@ -13,6 +13,8 @@
     <SolidColorBrush x:Key="Lab.accent-text" Color="#006e80"/>
     <SolidColorBrush x:Key="Lab.tint" Color="#e0f2f5"/>
     <SolidColorBrush x:Key="Lab.on" Color="#ffffff"/>
+    <!-- Capture refinement approved against the latest Visual Lab screenshots. -->
+    <SolidColorBrush x:Key="Lab.capture-primary" Color="#337c8f"/>
     <SolidColorBrush x:Key="Lab.green" Color="#137b53"/>
     <SolidColorBrush x:Key="Lab.mark" Color="#a2dbe5"/>
     <SolidColorBrush x:Key="Lab.error" Color="#B42332"/>

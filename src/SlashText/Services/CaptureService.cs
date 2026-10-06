@@ -283,15 +283,37 @@ public sealed class CaptureService
 
     public static void CopyFileToClipboard(string path)
     {
+        Clipboard.SetDataObject(CreateClipboardData(path), copy: true);
+    }
+
+    /// <summary>
+    /// Images can be pasted into editors/chats; the original file is also kept
+    /// for Explorer and for animated GIFs. Videos retain file-copy behavior.
+    /// </summary>
+    public static DataObject CreateClipboardData(string path)
+    {
         if (!File.Exists(path))
         {
             throw new FileNotFoundException("O arquivo não está mais disponível.", path);
         }
+        path = Path.GetFullPath(path);
+        var data = new DataObject();
         var collection = new System.Collections.Specialized.StringCollection
         {
             path
         };
-        Clipboard.SetFileDropList(collection);
+        data.SetFileDropList(collection);
+        var extension = Path.GetExtension(path).ToLowerInvariant();
+        if (extension is ".png" or ".jpg" or ".jpeg" or ".gif" or ".bmp" or ".tif" or ".tiff")
+        {
+            using var stream = File.OpenRead(path);
+            var decoder = BitmapDecoder.Create(
+                stream, BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.OnLoad);
+            var image = decoder.Frames[0];
+            image.Freeze();
+            data.SetImage(image);
+        }
+        return data;
     }
 
     public async Task<CaptureRecord?> ProcessEditedRegionAsync(

@@ -140,10 +140,37 @@ foreach ($inlineContract in @(
     'CaptureAnnotationKind.Text',
     'CaptureAnnotationKind.Stamp',
     'public void Undo()',
-    'public void Redo()'
+    'public void Redo()',
+    'public void SetZoom(double zoom)',
+    '_viewbox.Width = _surface.Width * fit * _zoom',
+    '_viewbox.Height = _surface.Height * fit * _zoom'
 )) {
     if (-not $inlineEditor.Contains($inlineContract)) {
         throw "Contrato do editor integrado ausente: $inlineContract"
+    }
+}
+
+if ($code.Contains('CaptureInlineEditor.LayoutTransform =') -or
+    -not $code.Contains('CaptureInlineEditor.SetZoom(zoom)')) {
+    throw 'O zoom deve agir dentro do viewport, sem redimensionar o editor inteiro.'
+}
+[xml]$captureMarkup = $xaml
+$ns = New-Object System.Xml.XmlNamespaceManager($captureMarkup.NameTable)
+$ns.AddNamespace('p', 'http://schemas.microsoft.com/winfx/2006/xaml/presentation')
+$ns.AddNamespace('x', 'http://schemas.microsoft.com/winfx/2006/xaml')
+$newLabel = $captureMarkup.SelectSingleNode('//p:TextBlock[@x:Name="CaptureNewButtonText"]', $ns)
+if ($newLabel.Foreground -ne '{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}' -or
+    -not $styles.Contains('Value="{DynamicResource Lab.capture-primary}"')) {
+    throw 'Novo perdeu a cor dedicada ou o contraste do texto/ícone no tema ativo.'
+}
+foreach ($palette in @(
+    @{ File = 'Light'; Color = '#337c8f' },
+    @{ File = 'Black'; Color = '#74d1e5' }
+)) {
+    [xml]$theme = Get-Content "src/SlashText/Styles/VisualLab/$($palette.File).xaml" -Raw
+    $brush = $theme.ResourceDictionary.SolidColorBrush | Where-Object { $_.Key -eq 'Lab.capture-primary' }
+    if ($brush.Color -ne $palette.Color) {
+        throw "A cor do Novo diverge da referência visual enviada: $($palette.File)"
     }
 }
 

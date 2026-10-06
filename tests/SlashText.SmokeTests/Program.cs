@@ -383,6 +383,88 @@ var snippetsFile = Path.Combine(root, "snippets.md");
 var backups = Path.Combine(root, "backups");
 try
 {
+    // Exercise the real WPF preview and clipboard payload on an STA thread,
+    // without changing the runner's system clipboard or opening production UI.
+    Directory.CreateDirectory(root);
+    Exception? workbenchFailure = null;
+    var workbenchThread = new Thread(() =>
+    {
+        try
+        {
+            using var bitmap = new System.Drawing.Bitmap(800, 400);
+            using (var graphics = System.Drawing.Graphics.FromImage(bitmap))
+            {
+                graphics.Clear(System.Drawing.Color.CornflowerBlue);
+            }
+            using var editor = new SlashText.Views.CaptureWorkbenchEditor();
+            editor.LoadImage(bitmap);
+            void LayoutPreview()
+            {
+                editor.Measure(new System.Windows.Size(600, 320));
+                editor.Arrange(new System.Windows.Rect(0, 0, 600, 320));
+                editor.UpdateLayout();
+            }
+            LayoutPreview();
+            var viewport = (System.Windows.Controls.ScrollViewer)editor.Content;
+            var preview = (System.Windows.Controls.Viewbox)viewport.Content;
+            editor.SetZoom(1);
+            LayoutPreview();
+            var fittedWidth = preview.Width;
+            Require(double.IsFinite(fittedWidth) && fittedWidth > 0,
+                "prévia tem uma dimensão ajustada e limitada ao viewport");
+            foreach (var zoom in new[] { .75, 1d, 1.25 })
+            {
+                editor.SetZoom(zoom);
+                LayoutPreview();
+                Require(Math.Abs(preview.Width - fittedWidth * zoom) < .01,
+                    $"zoom {zoom:P0} muda a dimensão visível sem ser compensado pelo Viewbox");
+                using var output = editor.Render();
+                Require(output.Width == 800 && output.Height == 400 &&
+                        output.GetPixel(200, 100).ToArgb() == bitmap.GetPixel(200, 100).ToArgb(),
+                    "zoom não redimensiona nem altera os pixels da imagem exportada");
+            }
+            RequireThrows<ArgumentOutOfRangeException>(() => editor.SetZoom(double.NaN),
+                "zoom inválido é rejeitado");
+            foreach (var extension in new[] { ".png", ".jpg", ".gif" })
+            {
+                var path = Path.Combine(root, "clipboard-probe" + extension);
+                var format = extension switch
+                {
+                    ".jpg" => System.Drawing.Imaging.ImageFormat.Jpeg,
+                    ".gif" => System.Drawing.Imaging.ImageFormat.Gif,
+                    _ => System.Drawing.Imaging.ImageFormat.Png
+                };
+                bitmap.Save(path, format);
+                var payload = CaptureService.CreateClipboardData(path);
+                Require(payload.ContainsImage() && payload.GetImage().PixelWidth == 800 &&
+                        payload.GetImage().PixelHeight == 400,
+                    $"Recentes disponibiliza imagem colável para {extension}");
+                Require(payload.ContainsFileDropList() && payload.GetFileDropList()[0] == path,
+                    $"Recentes preserva o arquivo original de {extension}, inclusive GIF animado");
+                using var unlockedFile = File.Open(path, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
+            }
+            var videoPath = Path.Combine(root, "clipboard-probe.mp4");
+            File.WriteAllBytes(videoPath, [0]);
+            var videoPayload = CaptureService.CreateClipboardData(videoPath);
+            Require(videoPayload.ContainsFileDropList() && !videoPayload.ContainsImage(),
+                "copiar MP4 continua copiando o arquivo, sem tentar decodificar como imagem");
+            RequireThrows<FileNotFoundException>(
+                () => CaptureService.CreateClipboardData(Path.Combine(root, "missing.png")),
+                "arquivo ausente é informado sem substituir o clipboard");
+        }
+        catch (Exception exception)
+        {
+            workbenchFailure = exception;
+        }
+    });
+    workbenchThread.SetApartmentState(ApartmentState.STA);
+    workbenchThread.Start();
+    workbenchThread.Join();
+    if (workbenchFailure is not null)
+    {
+        throw new InvalidOperationException("Smoke de zoom/clipboard da Captura falhou.", workbenchFailure);
+    }
+
     var repository = new SnippetMarkdownRepository(snippetsFile, backups);
     var snippet = new Snippet
     {
