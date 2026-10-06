@@ -3396,8 +3396,9 @@ public partial class MainWindow : Window
     private void UpdateCaptureEditorViewport(bool animate = false)
     {
         if (CaptureEditorViewport is null) return;
-        var outside = Math.Max(0, CapturePageLayout.ActualHeight - CaptureEditorViewport.ActualHeight) +
-                      CapturePageLayout.Margin.Top + CapturePageLayout.Margin.Bottom;
+        // Desired size excludes the unused stretch space of the page. ActualHeight
+        // would count that blank area as chrome and keep the viewport at its minimum.
+        var outside = Math.Max(0, CapturePageLayout.DesiredSize.Height - CaptureEditorViewport.DesiredSize.Height);
         var height = _captureEditorExpanded
             ? Math.Max(240, CaptureView.ActualHeight > 0 ? CaptureView.ActualHeight - outside - 2 : Height - 330)
             : 480;

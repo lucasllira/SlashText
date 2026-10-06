@@ -289,6 +289,9 @@ public partial class DesignGalleryWindow : Window
                 var toolbar = (Grid)window.FindName("CaptureWorkbenchToolbar");
                 Require(Grid.GetRow(commands) == (toolbar.ActualWidth < 1060 ? 1 : 0),
                     $"Toolbar responsive output row: width={toolbar.ActualWidth}, row={Grid.GetRow(commands)}");
+                if (expanded && size.Width == 1440)
+                    Require(((Border)window.FindName("CaptureEditorViewport")).ActualHeight > 350,
+                        "Expanded viewport must use available space, not count blank page area as chrome");
                 var bmp = new RenderTargetBitmap((int)size.Width, (int)size.Height, 96, 96, PixelFormats.Pbgra32); bmp.Render(host);
                 var png = new PngBitmapEncoder(); png.Frames.Add(BitmapFrame.Create(bmp));
                 using var file = File.Create(Path.Combine(_smokeOutput!, $"unified-shell-{theme}-{(expanded ? "expanded" : "normal")}-{size.Width}.png")); png.Save(file);
