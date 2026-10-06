@@ -57,7 +57,7 @@
             </Grid>
         </Border>
 
-        <Border Grid.Row="1"
+        <Border x:Name="CaptureShellHeader" Grid.Row="1"
                 Style="{StaticResource Lab.Pilot.ShellHeader}"
                 Panel.ZIndex="2">
           <Grid>
@@ -118,7 +118,7 @@
           </Grid>
         </Border>
 
-        <Border Grid.Row="2"
+        <Border x:Name="CaptureShellNavigation" Grid.Row="2"
                 Style="{StaticResource Lab.Pilot.NavigationBar}">
             <Grid>
                 <Grid.Resources>
@@ -801,7 +801,7 @@
 
                     <ScrollViewer x:Name="CaptureView" Visibility="Collapsed"
                                   VerticalScrollBarVisibility="Auto">
-                        <Grid Margin="{StaticResource Lab.PagePadding}" MaxWidth="1360"
+                        <Grid x:Name="CapturePageLayout" Margin="{StaticResource Lab.PagePadding}" MaxWidth="1360"
                               HorizontalAlignment="Center">
                              <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto"/>
@@ -817,7 +817,7 @@
                                  <RowDefinition Height="Auto"/>
                              </Grid.RowDefinitions>
 
-                            <Grid>
+                            <Grid x:Name="CapturePageHeading">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="Auto"/>
@@ -840,7 +840,7 @@
                                 </Button>
                             </Grid>
 
-                            <Border Grid.Row="2" Style="{StaticResource Lab.Pilot.CommandBar}">
+                            <Border x:Name="CaptureCommandBar" Grid.Row="2" Style="{StaticResource Lab.Pilot.CommandBar}">
                                 <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="Auto"/>
@@ -1342,21 +1342,35 @@
                               </Grid>
 
                               <StackPanel>
-                                <Border Style="{StaticResource Lab.Pilot.Card}" Padding="0" ClipToBounds="True">
+                                <Border x:Name="CaptureEditorCard" Style="{StaticResource Lab.Pilot.Card}" Padding="0" ClipToBounds="True">
                                   <Grid>
                                     <Grid.RowDefinitions>
                                       <RowDefinition Height="Auto"/>
+                                      <RowDefinition Height="Auto"/>
+                                      <RowDefinition Height="Auto"/>
                                       <RowDefinition Height="*"/>
+                                      <RowDefinition Height="Auto"/>
                                       <RowDefinition Height="Auto"/>
                                     </Grid.RowDefinitions>
 
-                                    <Grid x:Name="CaptureWorkbenchToolbar" Height="56" Background="{DynamicResource Lab.raised}"
-                                          Visibility="Collapsed">
+                                    <DockPanel Margin="14,9">
+                                      <Button x:Name="CaptureExpandEditorButton" DockPanel.Dock="Right" HorizontalAlignment="Right"
+                                              Style="{StaticResource Lab.Button}" Content="Expandir editor"
+                                              Click="OpenAdvancedCaptureEditor_OnClick"/>
+                                      <StackPanel VerticalAlignment="Center">
+                                        <TextBlock Text="Editor de imagem" FontWeight="SemiBold"/>
+                                        <TextBlock x:Name="CaptureEditorSessionText" Text="Uma sessão · edição não destrutiva"
+                                                   Style="{StaticResource Lab.Metadata}"/>
+                                      </StackPanel>
+                                    </DockPanel>
+                                    <Grid x:Name="CaptureWorkbenchToolbar" Grid.Row="1" MinHeight="56" Background="{DynamicResource Lab.raised}"
+                                          SizeChanged="CaptureWorkbenchToolbar_OnSizeChanged" Visibility="Collapsed">
+                                      <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
                                       <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="Auto"/>
                                       </Grid.ColumnDefinitions>
-                                      <StackPanel Orientation="Horizontal" Margin="13,9">
+                                      <WrapPanel x:Name="CaptureToolCommands" Margin="13,9">
                                         <Button x:Name="CaptureSelectToolButton" Style="{StaticResource Lab.Pilot.ToolButton}"
                                                 ToolTip="Selecionar" Tag="Selected"
                                                 Click="SelectCaptureWorkbenchTool_OnClick">
@@ -1392,6 +1406,10 @@
                                                 Click="SelectCaptureWorkbenchTool_OnClick">
                                           <lab:LabIcon Kind="Smile" Style="{StaticResource Lab.Pilot.ToolGlyph}"/>
                                         </Button>
+                                        <Button Style="{StaticResource Lab.Pilot.ToolButton}" ToolTip="Mais ferramentas: elipse, linha, números, privacidade, recorte e tamanho"
+                                                Click="CaptureMoreTools_OnClick">
+                                          <lab:LabIcon Kind="MoreHorizontal" Style="{StaticResource Lab.Pilot.ToolGlyph}"/>
+                                        </Button>
                                         <Button x:Name="CaptureWorkbenchColorButton" Width="32" Height="38" Margin="8,0,4,0"
                                                 Padding="6" Style="{StaticResource Lab.Pilot.ToolButton}"
                                                 ToolTip="Alterar cor" Click="CycleCaptureWorkbenchColor_OnClick">
@@ -1415,32 +1433,23 @@
                                                 ToolTip="Refazer" IsEnabled="False" Click="CaptureWorkbenchRedo_OnClick">
                                           <lab:LabIcon Kind="Redo2" Style="{StaticResource Lab.Pilot.ToolGlyph}"/>
                                         </Button>
-                                      </StackPanel>
-                                      <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="8,9,13,9">
-                                        <Button Style="{StaticResource Lab.Button}" Margin="0,0,8,0"
-                                                ToolTip="Recortar, redimensionar, desfocar ou pixelizar"
-                                                Click="OpenAdvancedCaptureEditor_OnClick">
-                                          <StackPanel Orientation="Horizontal">
-                                            <lab:LabIcon Kind="Maximize2" Width="16" Height="16" Margin="0,0,8,0"
-                                                         Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
-                                            <TextBlock Text="Editor avançado"/>
-                                          </StackPanel>
-                                        </Button>
-                                        <Button Style="{StaticResource Lab.Button}" Margin="0,0,8,0"
+                                      </WrapPanel>
+                                      <StackPanel x:Name="CaptureOutputCommands" Grid.Column="1" Orientation="Horizontal" Margin="8,9,13,9">
+                                        <Button x:Name="CaptureCopyImageButton" Style="{StaticResource Lab.Button}" Margin="0,0,8,0"
                                                 Click="CopyCapturePreview_OnClick">
                                           <StackPanel Orientation="Horizontal">
                                             <Path Data="{StaticResource Lab.Icon.Copy}" Style="{StaticResource NavigationIcon}"/>
                                             <TextBlock Text="Copiar"/>
                                           </StackPanel>
                                         </Button>
-                                        <Button Style="{StaticResource Lab.Button}" Margin="0,0,8,0"
+                                        <Button x:Name="CaptureSaveImageButton" Style="{StaticResource Lab.Button}" Margin="0,0,8,0"
                                                 Click="SaveCapturePreview_OnClick">
                                           <StackPanel Orientation="Horizontal">
                                             <Path Data="{StaticResource Lab.Icon.Save}" Style="{StaticResource NavigationIcon}"/>
-                                            <TextBlock Text="Salvar"/>
+                                            <TextBlock Text="Salvar cópia"/>
                                           </StackPanel>
                                         </Button>
-                                        <Button Style="{StaticResource Lab.Pilot.PrimaryButton}" Click="CompleteCapturePreview_OnClick">
+                                        <Button x:Name="CaptureCompleteImageButton" Style="{StaticResource Lab.Pilot.PrimaryButton}" Click="CompleteCapturePreview_OnClick">
                                           <StackPanel Orientation="Horizontal">
                                             <Path Data="{StaticResource Lab.Icon.Check}" Style="{StaticResource NavigationIcon}"
                                                   Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
@@ -1451,7 +1460,8 @@
                                       </StackPanel>
                                     </Grid>
 
-                                    <Border Grid.Row="1" Height="480" MinHeight="360" Background="{DynamicResource Lab.canvas}"
+                                    <views:CaptureEditorContextPanel x:Name="CaptureEditorContext" Grid.Row="2" Visibility="Collapsed"/>
+                                    <Border x:Name="CaptureEditorViewport" Grid.Row="3" Height="480" MinHeight="240" Background="{DynamicResource Lab.canvas}"
                                             BorderBrush="{DynamicResource Lab.line}" BorderThickness="0,1">
                                       <Grid Margin="28">
                                         <views:CaptureWorkbenchEditor x:Name="CaptureInlineEditor"/>
@@ -1476,7 +1486,7 @@
                                       </Grid>
                                     </Border>
 
-                                    <Grid x:Name="CaptureWorkbenchFooter" Grid.Row="2" Height="42" Margin="14,0"
+                                    <Grid x:Name="CaptureWorkbenchFooter" Grid.Row="4" Height="42" Margin="14,0"
                                           Visibility="Collapsed">
                                       <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
@@ -1486,18 +1496,30 @@
                                       <TextBlock x:Name="CapturePreviewDetailsText" Text="Nenhuma captura realizada"
                                                  VerticalAlignment="Center" Style="{StaticResource Lab.Metadata}"
                                                  TextTrimming="CharacterEllipsis"/>
-                                      <TextBlock Grid.Column="1" Text="Selecione uma ferramenta para anotar"
+                                      <TextBlock Grid.Column="1" Text="Ctrl+Z / Ctrl+Y · Ctrl+roda para zoom"
                                                  HorizontalAlignment="Center" VerticalAlignment="Center"
                                                  Style="{StaticResource Lab.Metadata}"/>
                                       <ComboBox x:Name="CaptureWorkbenchZoomBox" Grid.Column="2" Width="84"
-                                                Style="{StaticResource Lab.Combo}" SelectedIndex="1"
+                                                Style="{StaticResource Lab.Combo}" SelectedIndex="2"
                                                 SelectionChanged="CaptureWorkbenchZoom_OnChanged">
-                                        <ComboBoxItem Content="75%" Tag="0.75"/>
+                                        <ComboBoxItem Content="25%" Tag="0.25"/>
+                                        <ComboBoxItem Content="50%" Tag="0.5"/>
                                         <ComboBoxItem Content="100%" Tag="1"/>
-                                        <ComboBoxItem Content="125%" Tag="1.25"/>
+                                        <ComboBoxItem Content="200%" Tag="2"/>
+                                        <ComboBoxItem Content="400%" Tag="4"/>
                                       </ComboBox>
                                     </Grid>
+                                    <StackPanel Grid.Row="5" Orientation="Horizontal" HorizontalAlignment="Right" Margin="14,8">
+                                      <Button x:Name="CaptureCancelPendingButton" Content="Cancelar captura" Visibility="Collapsed"
+                                              Style="{StaticResource Lab.Button}" Margin="0,0,8,0" Click="CaptureCancelPending_OnClick"/>
+                                      <Button x:Name="CaptureDiscardChangesButton" Content="Descartar alterações" IsEnabled="False"
+                                              Style="{StaticResource Lab.Button}" Click="CaptureDiscardChanges_OnClick"/>
+                                    </StackPanel>
                                   </Grid>
+                                </Border>
+                                <Border x:Name="CaptureMediaPreviewPanel" Visibility="Collapsed" Style="{StaticResource Lab.Pilot.Card}">
+                                  <TextBlock Text="Vídeo e GIF · gravação disponível; edição de mídia ficará para uma etapa futura. Sua sessão de imagem permanece preservada."
+                                             TextWrapping="Wrap"/>
                                 </Border>
 
                                 <Grid Margin="4,14,4,0">

@@ -27,6 +27,12 @@ public sealed class DataMigrationService
     {
         var target = environment.DataDirectory;
         var warnings = new List<string>();
+        // Pilot never probes, imports or backs up the official installation.
+        if (environment.IsCapturePilot)
+        {
+            EnsureDirectories(target);
+            return new DataMigrationResult(target, null, false, false, null, warnings);
+        }
         var source = SelectMigrationSource(environment, target);
         var targetHasData = HasRecognizedData(target);
         string? backupPath = null;

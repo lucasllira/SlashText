@@ -32,6 +32,9 @@ public sealed class CaptureAnnotation
     public float Opacity { get; init; } = 1;
     public float Size { get; init; } = 32;
     public bool Bold { get; init; } = true;
+    public bool Italic { get; init; }
+    public string FontFamily { get; init; } = "Segoe UI";
+    public int PrivacyStrength { get; init; }
     public string Alignment { get; init; } = "Left";
     public string Text { get; init; } = string.Empty;
 
@@ -57,19 +60,16 @@ public static class CaptureAnnotationRenderer
 
         var scaleX = source.Width / previewWidth;
         var scaleY = source.Height / previewHeight;
-        foreach (var annotation in annotations.Where(item =>
-                     item.Kind is CaptureAnnotationKind.Blur or CaptureAnnotationKind.Pixelate))
+        foreach (var annotation in annotations)
         {
-            ApplyPrivacyEffect(output, annotation, scaleX, scaleY);
-        }
-        using var graphics = Graphics.FromImage(output);
-        graphics.SmoothingMode = SmoothingMode.AntiAlias;
-        graphics.TextRenderingHint =
-            System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
-
-        foreach (var annotation in annotations.Where(item =>
-                     item.Kind is not CaptureAnnotationKind.Blur and not CaptureAnnotationKind.Pixelate))
-        {
+            if (annotation.Kind is CaptureAnnotationKind.Blur or CaptureAnnotationKind.Pixelate)
+            {
+                ApplyPrivacyEffect(output, annotation, scaleX, scaleY);
+                continue;
+            }
+            using var graphics = Graphics.FromImage(output);
+            graphics.SmoothingMode = SmoothingMode.AntiAlias;
+            graphics.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
             Draw(graphics, annotation, scaleX, scaleY);
         }
         return output;
@@ -89,7 +89,9 @@ public static class CaptureAnnotationRenderer
         {
             return;
         }
-        var divisor = annotation.Kind == CaptureAnnotationKind.Pixelate ? 18 : 7;
+        var divisor = annotation.PrivacyStrength > 0
+            ? Math.Clamp(annotation.PrivacyStrength, 6, 40)
+            : annotation.Kind == CaptureAnnotationKind.Pixelate ? 18 : 7;
         var smallWidth = Math.Max(1, region.Width / divisor);
         var smallHeight = Math.Max(1, region.Height / divisor);
         using var small = new Bitmap(smallWidth, smallHeight);
@@ -168,13 +170,22 @@ public static class CaptureAnnotationRenderer
                 break;
             case CaptureAnnotationKind.Text:
                 using (var font = new Font(
-                           "Segoe UI",
+                           string.IsNullOrWhiteSpace(annotation.FontFamily) ? "Segoe UI" : annotation.FontFamily,
                            Math.Max(11f, annotation.Size * (float)scaleY),
-                           annotation.Bold ? FontStyle.Bold : FontStyle.Regular,
+                           (annotation.Bold ? FontStyle.Bold : FontStyle.Regular) | (annotation.Italic ? FontStyle.Italic : FontStyle.Regular),
                            GraphicsUnit.Pixel))
                 using (var brush = new SolidBrush(color))
                 {
-                    graphics.DrawString(annotation.Text, font, brush, start);
+                    using var format = new StringFormat
+                    {
+                        Alignment = annotation.Alignment switch
+                        {
+                            "Center" => StringAlignment.Center,
+                            "Right" => StringAlignment.Far,
+                            _ => StringAlignment.Near
+                        }
+                    };
+                    graphics.DrawString(annotation.Text, font, brush, start, format);
                 }
                 break;
             case CaptureAnnotationKind.Number:

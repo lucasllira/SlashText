@@ -11,6 +11,8 @@ using SlashText.Views;
 
 namespace SlashText.Services;
 
+public sealed record CaptureImageEditResult(Bitmap Bitmap, CaptureEditorOutput Output);
+
 public sealed class CaptureService
 {
     private const int DwmwaExtendedFrameBounds = 9;
@@ -20,6 +22,7 @@ public sealed class CaptureService
     private List<CaptureRecord> _history = [];
 
     public IReadOnlyList<CaptureRecord> History => _history;
+    public Func<Bitmap, CaptureAnnotationKind, Task<CaptureImageEditResult?>>? ImageEditor { get; set; }
     public string ResolveFilePath(CaptureRecord record) =>
         CapturePathResolver.Resolve(record, AppPaths.Current);
     public async Task LoadAsync()
@@ -743,21 +746,25 @@ public sealed class CaptureService
         {
             if (openEditor)
             {
-                var editor = new CaptureEditorWindow(captured, initialTool);
-                if (owner is { IsVisible: true })
+                CaptureEditorOutput editorOutput;
+                if (ImageEditor is not null)
                 {
-                    editor.Owner = owner;
-                    editor.WindowStartupLocation =
-                        WindowStartupLocation.CenterOwner;
+                    var result = await ImageEditor(captured, initialTool);
+                    if (result is null) return null;
+                    output = result.Bitmap;
+                    editorOutput = result.Output;
                 }
-                if (editor.ShowDialog() != true ||
-                    editor.EditedBitmap is null)
+                else
                 {
-                    return null;
+                    // Legacy fallback for isolated callers; production shell uses one document.
+                    var editor = new CaptureEditorWindow(captured, initialTool);
+                    if (owner is { IsVisible: true })
+                    { editor.Owner = owner; editor.WindowStartupLocation = WindowStartupLocation.CenterOwner; }
+                    if (editor.ShowDialog() != true || editor.EditedBitmap is null) return null;
+                    output = editor.EditedBitmap;
+                    editorOutput = editor.RequestedOutput;
                 }
-
-                output = editor.EditedBitmap;
-                switch (editor.RequestedOutput)
+                switch (editorOutput)
                 {
                     case CaptureEditorOutput.Clipboard:
                         save = false;

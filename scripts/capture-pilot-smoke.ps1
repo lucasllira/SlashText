@@ -12,6 +12,8 @@ $inlineEditor = Get-Content 'src/SlashText/Views/CaptureWorkbenchEditor.cs' -Raw
 $advancedEditor = Get-Content 'src/SlashText/Views/CaptureEditorWindow.cs' -Raw
 $emojiPicker = Get-Content 'src/SlashText/Views/CaptureEmojiPicker.cs' -Raw
 $captureService = Get-Content 'src/SlashText/Services/CaptureService.cs' -Raw
+$contextPanel = Get-Content 'src/SlashText/Views/CaptureEditorContextPanel.cs' -Raw
+$document = Get-Content 'src/SlashText/Services/CaptureEditorDocument.cs' -Raw
 
 [xml]$null = $xaml
 [xml]$null = $app
@@ -57,7 +59,8 @@ foreach ($surface in @(
     'Text="Personalizar atalhos"',
     'x:Name="CaptureInlineEditor"',
     'x:Name="CaptureHistoryScroller"',
-    'Text="Editor avançado"',
+    'Content="Expandir editor"',
+    'x:Name="CaptureEditorContext"',
     'Click="OpenCaptureImage_OnClick"',
     'Click="CopyCapturePreview_OnClick"',
     'Click="SaveCapturePreview_OnClick"',
@@ -86,7 +89,9 @@ foreach ($behavior in @(
     'SelectCaptureWorkbenchTool_OnClick',
     'ScrollCaptureHistoryBy(',
     'CaptureNewButtonText.Text = "Novo"',
-    'Edição avançada aplicada — clique em Concluir para gravar'
+    'SetCaptureEditorExpanded(!_captureEditorExpanded)',
+    '_captureService.ImageEditor = EditNewCaptureInWorkbenchAsync',
+    'CaptureInlineEditor.MarkSaved()'
 )) {
     if (-not $code.Contains($behavior)) {
         throw "Comando real do piloto ausente: $behavior"
@@ -193,8 +198,8 @@ foreach ($label in @(
     }
 }
 if ($inlineEditor.Contains('FontFamily = new FontFamily("Segoe UI Emoji")') -or
-    -not $inlineEditor.Contains('NotoEmojiCatalog.CreateImageSource(annotation.Text)') -or
-    -not $emojiPicker.Contains('foreach (var item in NotoEmojiCatalog.Items)') -or
+    -not $contextPanel.Contains('NotoEmojiCatalog.CreateImageSource(item.Value)') -or
+    -not $emojiPicker.Contains('foreach (var item in Search(search.Text))') -or
     -not $advancedEditor.Contains('CaptureEmojiPicker.Show(this)')) {
     throw 'Os editores precisam compartilhar catálogo e assets Noto na prévia e exportação.'
 }
@@ -207,6 +212,15 @@ if (-not $code.Contains('_captureService.SaveEditedImageAsync(') -or
     throw 'Salvar/Concluir não registra a edição real no histórico.'
 }
 
+foreach ($contract in @('CaptureEditorDocument', 'public bool HasUnsavedChanges', 'public void MarkSaved()', 'public void DiscardChanges()', 'public bool Crop(', 'public void Resize(')) {
+    if (-not $document.Contains($contract)) { throw "Documento único incompleto: $contract" }
+}
+if ($code.Contains('CaptureInlineEditor.LoadImage(edited)') -or $code.Contains('new CaptureEditorWindow(current)')) {
+    throw 'Expandir não pode rasterizar a sessão ou criar um segundo editor.'
+}
+foreach ($contract in @('Fonts.SystemFontFamilies', 'TextFontFamily', 'TextItalic', 'Manter proporção', 'ShowMoreTools', 'Aplicar recorte', 'Ver todos')) {
+    if (-not $contextPanel.Contains($contract)) { throw "Ferramenta contextual ausente: $contract" }
+}
 if ($xaml.Contains('Click="EditCapturePreview_OnClick"')) {
     throw 'A toolbar rápida ainda abre diretamente o editor legado.'
 }

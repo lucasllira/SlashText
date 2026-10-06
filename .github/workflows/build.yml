@@ -163,11 +163,22 @@ jobs:
           Copy-Item publish-portable/SlashDesk.exe gallery-package/SlashDesk.exe
           Set-Content -Path gallery-package/Abrir-Galeria.cmd -Encoding ascii -Value '@echo off', 'start "" "%~dp0SlashDesk.exe" --design-gallery'
 
+      - name: Publish isolated capture pilot
+        run: >
+          dotnet publish src/SlashText/SlashText.csproj
+          --configuration Release
+          -p:Platform=x64
+          -p:PublishProfile=Portable
+          -p:CapturePilotBuild=true
+          --no-restore
+          --output publish-capture-pilot
+
       - name: Create capture pilot package
         shell: pwsh
         run: |
           New-Item capture-pilot-package -ItemType Directory -Force | Out-Null
-          Copy-Item publish-portable/SlashDesk.exe capture-pilot-package/SlashDesk.exe
+          Copy-Item publish-capture-pilot/SlashDesk.exe capture-pilot-package/SlashDesk.exe
+          Copy-Item docs/capture-editor-pilot-testing.md capture-pilot-package/LEIA-ANTES.md
           Set-Content -Path capture-pilot-package/Abrir-Piloto-Captura.cmd -Encoding ascii -Value '@echo off', 'start "" "%~dp0SlashDesk.exe"'
 
       - name: Upload visual foundation gallery

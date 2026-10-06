@@ -22,6 +22,7 @@
 
   <ItemGroup>
     <AssemblyMetadata Include="SlashDeskDistribution" Value="$(SlashDeskDistribution)" />
+    <AssemblyMetadata Include="SlashDeskCapturePilot" Value="true" Condition="'$(CapturePilotBuild)' == 'true'" />
   </ItemGroup>
 
   <ItemGroup>

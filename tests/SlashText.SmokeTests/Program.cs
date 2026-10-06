@@ -426,17 +426,36 @@ try
             RequireThrows<ArgumentOutOfRangeException>(() => editor.SetZoom(double.NaN),
                 "zoom inválido é rejeitado");
             editor.InsertStamp("👍", new System.Windows.Point(400, 200));
-            var overlay = (System.Windows.Controls.Canvas)((System.Windows.Controls.Grid)preview.Child).Children[1];
-            Require(overlay.Children[0] is System.Windows.Controls.Image { Source: not null },
-                "prévia do emote usa imagem Noto local, não glifo da fonte do Windows");
+            var previewImage = (System.Windows.Controls.Image)((System.Windows.Controls.Grid)preview.Child).Children[0];
+            Require(previewImage.Source is System.Windows.Media.Imaging.BitmapSource,
+                "prévia usa a mesma composição raster do documento, incluindo emote Noto");
             using (var stampOutput = editor.Render())
             using (var expectedStamp = CaptureAnnotationRenderer.Render(bitmap,
                 [new CaptureAnnotation { Kind = CaptureAnnotationKind.Stamp, Start = new System.Windows.Point(400, 200),
-                    Text = "👍", Size = 42 }], 800, 400))
+                    Text = "👍", Size = 48 }], 800, 400))
             {
                 Require(stampOutput.GetPixel(400, 200).ToArgb() == expectedStamp.GetPixel(400, 200).ToArgb(),
                     "editor simples exporta o mesmo emote do renderizador compartilhado");
+                var pixel = new byte[4];
+                ((System.Windows.Media.Imaging.BitmapSource)previewImage.Source).CopyPixels(new System.Windows.Int32Rect(400, 200, 1, 1), pixel, 4, 0);
+                var expectedPixel = stampOutput.GetPixel(400, 200);
+                Require(pixel[0] == expectedPixel.B && pixel[1] == expectedPixel.G && pixel[2] == expectedPixel.R,
+                    "emote da prévia e do arquivo tem os mesmos pixels, sem glifo do sistema");
             }
+            var session = editor.Document;
+            editor.MarkSaved();
+            editor.ResizeImage(400, 200);
+            Require(editor.HasUnsavedChanges && ReferenceEquals(session, editor.Document), "redimensionar não recria a sessão");
+            editor.Undo();
+            Require(!editor.HasUnsavedChanges && editor.CanRedo && editor.Document!.Dimensions.Width == 800,
+                "salvar preserva undo/redo e checkpoint");
+            editor.Redo();
+            Require(editor.Document!.Dimensions.Width == 400, "refazer restaura dimensões");
+            editor.DiscardChanges();
+            Require(!editor.HasUnsavedChanges && editor.Document!.Dimensions.Width == 800, "descartar volta à última versão salva");
+            Require(SlashText.Views.CaptureEmojiPicker.Search("coracao").Count > 0 &&
+                    SlashText.Views.CaptureEmojiPicker.Search("emote inexistente xyz").Count == 0,
+                "busca do seletor Noto ignora acentos e expõe resultado vazio");
             RequireThrows<ArgumentException>(() => NotoEmojiCatalog.CreateBitmap("emoji-inexistente"),
                 "emoji desconhecido não vira silenciosamente um coração");
             foreach (var extension in new[] { ".png", ".jpg", ".gif" })
@@ -478,6 +497,60 @@ try
     {
         throw new InvalidOperationException("Smoke de zoom/clipboard da Captura falhou.", workbenchFailure);
     }
+
+    using (var original = new System.Drawing.Bitmap(240, 160))
+    {
+        using (var graphics = System.Drawing.Graphics.FromImage(original)) graphics.Clear(System.Drawing.Color.White);
+        using var document = new CaptureEditorDocument(original);
+        var points = new List<System.Windows.Point> { new(20, 20), new(200, 20) };
+        document.AddAnnotation(new CaptureAnnotation { Kind = CaptureAnnotationKind.Pencil, Points = points,
+            OutlineArgb = System.Drawing.Color.Red.ToArgb(), Thickness = 8 });
+        points.Clear();
+        using (var result = document.Render())
+            Require(result.GetPixel(100, 20).R > 230 && result.GetPixel(100, 20).G < 50 && original.GetPixel(100, 20).G == 255,
+                "comando copia pontos mutáveis e preserva a fonte original");
+        document.MarkSaved();
+        Require(!document.Crop(new System.Windows.Rect(0, 0, 7, 7)), "recorte pequeno não altera o documento");
+        Require(document.Crop(new System.Windows.Rect(new System.Windows.Point(220, 140), new System.Windows.Point(20, 20))),
+            "recorte aceita arraste inverso");
+        Require(document.Dimensions == new System.Drawing.Size(200, 120), "recorte usa pixels de imagem");
+        document.Resize(100, 60);
+        document.AddAnnotation(new CaptureAnnotation { Kind = CaptureAnnotationKind.Rectangle,
+            Start = new System.Windows.Point(10, 10), End = new System.Windows.Point(35, 35),
+            FillArgb = System.Drawing.Color.Blue.ToArgb(), OutlineArgb = null });
+        using (var result = document.Render())
+            Require(result.Size == new System.Drawing.Size(100, 60) && result.GetPixel(20, 20).B == 255 && result.GetPixel(20, 20).R == 0,
+                "anotações posteriores à geometria usam coordenadas do novo resultado");
+        document.Undo(); document.Undo(); document.Undo();
+        Require(!document.HasUnsavedChanges && document.CanRedo && document.Dimensions == original.Size,
+            "undo de anotações e geometria chega ao checkpoint salvo");
+        document.AddAnnotation(new CaptureAnnotation { Kind = CaptureAnnotationKind.Text, Start = new(25, 60),
+            Text = "Texto", FontFamily = "Georgia", Size = 24, Bold = false, Italic = true });
+        Require(document.HasUnsavedChanges && !document.CanRedo, "bifurcação invalida redo e não se confunde com checkpoint de mesmo tamanho");
+        document.DiscardChanges();
+        Require(document.OperationCount == 1 && !document.HasUnsavedChanges, "descartar restaura checkpoint, não o arquivo original");
+        Require(!CaptureEditorDocument.ValidSize(32000, 32000) && !CaptureEditorDocument.ValidSize(7, 8) && CaptureEditorDocument.ValidSize(8000, 8000),
+            "redimensionamento tem limite de memória e dimensões");
+        document.Resize(120, 80);
+        using var resized = document.Render();
+        Require(resized.GetPixel(119, 79).A == 255, "resize não introduz bordas transparentes");
+    }
+    var pilotExe = Path.Combine(root, "pilot-isolation");
+    var officialData = Path.Combine(root, "pilot-local", "SlashDesk");
+    Directory.CreateDirectory(officialData);
+    await File.WriteAllTextAsync(Path.Combine(officialData, "settings.json"), "{\"theme\":\"Dark\"}");
+    Directory.CreateDirectory(Path.Combine(pilotExe, "SlashDeskData"));
+    await File.WriteAllTextAsync(Path.Combine(pilotExe, "SlashDeskData", "snippets.md"), "official-portable-sentinel");
+    var pilotEnvironment = new AppDataEnvironment(DistributionMode.Installed, pilotExe, Path.Combine(root, "pilot-local"), isCapturePilot: true);
+    var pilotLayout = new DataMigrationService().EnsureLayout(pilotEnvironment);
+    Require(pilotEnvironment.IsPortable && pilotEnvironment.DataDirectory == Path.Combine(pilotExe, "SlashDeskPilotData") &&
+            !pilotLayout.Migrated && pilotLayout.SourceDirectory is null && pilotLayout.BackupPath is null &&
+            !File.Exists(Path.Combine(pilotEnvironment.DataDirectory, "settings.json")) &&
+            !File.Exists(Path.Combine(pilotEnvironment.DataDirectory, "snippets.md")),
+        "piloto não migra nem importa dados da instalação oficial ou do portátil adjacente");
+    Require(await File.ReadAllTextAsync(Path.Combine(pilotExe, "SlashDeskData", "snippets.md")) == "official-portable-sentinel" &&
+            await File.ReadAllTextAsync(Path.Combine(officialData, "settings.json")) == "{\"theme\":\"Dark\"}",
+        "isolamento preserva arquivos oficiais byte a byte");
 
     var repository = new SnippetMarkdownRepository(snippetsFile, backups);
     var snippet = new Snippet

@@ -223,6 +223,43 @@ public partial class DesignGalleryWindow : Window
         await CaptureWindowEvidence(new CaptureEditorWindow(annotated), theme, "advanced-editor", new Size(1220, 860), "Concluir");
         await CaptureWindowEvidence(new CaptureRuleDialog(new Models.CaptureSettings()), theme, "capture-rule", new Size(580, 900), "Salvar regra");
         await CaptureWindowEvidence(new CaptureShortcutDialog(new Models.CaptureSettings()), theme, "capture-shortcuts", new Size(510, 650), "Salvar atalhos");
+        await CaptureUnifiedEditorEvidence(annotated, theme);
+    }
+
+    private async Task CaptureUnifiedEditorEvidence(System.Drawing.Bitmap source, string theme)
+    {
+        using var editor = new CaptureWorkbenchEditor();
+        editor.LoadImage(source);
+        var context = new CaptureEditorContextPanel(); context.Attach(editor);
+        editor.StateChanged += (_, _) => context.Refresh();
+        var layout = new Grid();
+        layout.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        layout.RowDefinitions.Add(new RowDefinition());
+        layout.Children.Add(context); Grid.SetRow(editor, 1); layout.Children.Add(editor);
+        var host = new Border { Child = layout, Width = 1360, Height = 640, Padding = new Thickness(12) };
+        host.SetResourceReference(Border.BackgroundProperty, "Lab.canvas");
+        LabMotion.SetReduced(host, true);
+        foreach (var tool in new[] { Services.CaptureAnnotationKind.Text, Services.CaptureAnnotationKind.Stamp, Services.CaptureAnnotationKind.Blur })
+        {
+            editor.SelectTool(tool);
+            var size = new Size(1360, 640);
+            host.Measure(size); host.Arrange(new Rect(size)); host.UpdateLayout();
+            await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
+            host.Measure(size); host.Arrange(new Rect(size)); host.UpdateLayout();
+            Require(context.ActualWidth > 1000 && editor.HasImage, "Unified editor real contextual layout");
+            if (tool == Services.CaptureAnnotationKind.Text)
+                Require(Descendants(context).OfType<ComboBox>().Any(c => c.SelectedItem?.ToString() == "Segoe UI"), "Font selector before text input");
+            if (tool == Services.CaptureAnnotationKind.Stamp)
+                Require(Descendants(context).OfType<Image>().Count() == Services.NotoEmojiCatalog.Items.Count,
+                    "All local Noto emotes are available in the contextual strip");
+            var bitmap = new RenderTargetBitmap(1360, 640, 96, 96, PixelFormats.Pbgra32); bitmap.Render(host);
+            var png = new PngBitmapEncoder(); png.Frames.Add(BitmapFrame.Create(bitmap));
+            using var file = File.Create(Path.Combine(_smokeOutput!, $"unified-editor-{tool}-{theme}.png")); png.Save(file);
+        }
+        var session = editor.Document;
+        editor.InsertStamp("⭐", new Point(300, 180));
+        editor.SetZoom(2);
+        Require(ReferenceEquals(session, editor.Document) && editor.CanUndo, "Unified document survives viewport changes");
     }
 
     private async Task CaptureWindowEvidence(Window window, string theme, string name, Size size, string label)

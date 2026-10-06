@@ -1,26 +1,22 @@
-using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
-using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
+using System.Windows.Threading;
 using SlashText.Services;
 using DrawingBitmap = System.Drawing.Bitmap;
 using DrawingColor = System.Drawing.Color;
 
 namespace SlashText.Views;
 
-/// <summary>
-/// Lightweight, in-page annotation surface used by the Capture workbench.
-/// The full editor remains available for crop, resize and privacy effects.
-/// </summary>
+/// <summary>One in-page image session in normal and expanded layouts.</summary>
 public sealed class CaptureWorkbenchEditor : UserControl, IDisposable
 {
     private readonly Image _image = new() { Stretch = Stretch.Fill };
     private readonly Canvas _overlay = new() { Background = Brushes.Transparent };
-    private readonly Grid _surface = new() { Background = Brushes.Black, ClipToBounds = true };
+    private readonly Grid _surface = new() { ClipToBounds = true };
     private readonly Viewbox _viewbox = new() { Stretch = Stretch.Uniform };
     private readonly ScrollViewer _viewport = new()
     {
@@ -28,32 +24,54 @@ public sealed class CaptureWorkbenchEditor : UserControl, IDisposable
         VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
         CanContentScroll = false
     };
-    private double _zoom = 1d;
-    private readonly List<CaptureAnnotation> _annotations = [];
-    private readonly Stack<CaptureAnnotation> _redo = new();
+    private readonly DispatcherTimer _previewTimer = new() { Interval = TimeSpan.FromMilliseconds(24) };
     private readonly List<Point> _pencilPoints = [];
-    private DrawingBitmap? _source;
+    private CaptureEditorDocument? _document;
+    private DrawingBitmap? _previewBitmap;
+    private CaptureAnnotation? _pending;
     private CaptureAnnotationKind? _tool;
     private Point _start;
-    private bool _drawing;
+    private Point? _panStart;
+    private double _panLeft, _panTop, _zoom = 1d;
+    private bool _drawing, _cropTool;
+    private Rect? _crop;
     private int _color = DrawingColor.FromArgb(232, 78, 96).ToArgb();
     private float _thickness = 4;
 
     public event EventHandler? StateChanged;
-
-    public bool HasImage => _source is not null;
-    public bool CanUndo => _annotations.Count > 0;
-    public bool CanRedo => _redo.Count > 0;
+    public event EventHandler? SaveCopyRequested;
+    public event EventHandler? ExitRequested;
+    public bool HasImage => _document is not null;
+    public bool CanUndo => _document?.CanUndo == true;
+    public bool CanRedo => _document?.CanRedo == true;
+    public bool HasUnsavedChanges => _document?.HasUnsavedChanges == true;
+    public bool HasPendingCrop => _crop.HasValue;
+    public bool IsCropTool => _cropTool;
     public CaptureAnnotationKind? SelectedTool => _tool;
+    public CaptureEditorDocument? Document => _document;
+    public double Zoom => _zoom;
+    public string AnnotationText { get; set; } = "Anotação";
+    public string TextFontFamily { get; set; } = "Segoe UI";
+    public float TextSize { get; set; } = 24;
+    public bool TextBold { get; set; }
+    public bool TextItalic { get; set; }
+    public string TextAlignment { get; set; } = "Left";
+    public string SelectedStamp { get; set; } = "👍";
+    public float StampSize { get; set; } = 48;
+    public int PrivacyStrength { get; set; } = 16;
+    public int? ShapeFill { get; set; }
+    public bool ShapeOutline { get; set; } = true;
+    public float AnnotationOpacity { get; set; } = 1;
 
     public CaptureWorkbenchEditor()
     {
         Focusable = true;
         _surface.Children.Add(_image);
         _surface.Children.Add(_overlay);
-        _overlay.MouseLeftButtonDown += OverlayOnMouseLeftButtonDown;
-        _overlay.MouseMove += OverlayOnMouseMove;
-        _overlay.MouseLeftButtonUp += OverlayOnMouseLeftButtonUp;
+        _overlay.MouseLeftButtonDown += PointerDown;
+        _overlay.MouseMove += PointerMove;
+        _overlay.MouseLeftButtonUp += PointerUp;
+        _overlay.LostMouseCapture += (_, _) => { if (_drawing || _panStart.HasValue) CancelGesture(); };
         _viewbox.Child = _surface;
         _viewbox.HorizontalAlignment = HorizontalAlignment.Center;
         _viewbox.VerticalAlignment = VerticalAlignment.Center;
@@ -61,27 +79,36 @@ public sealed class CaptureWorkbenchEditor : UserControl, IDisposable
         _viewport.SizeChanged += (_, _) => UpdateZoom();
         Content = _viewport;
         PreviewKeyDown += OnPreviewKeyDown;
+        PreviewMouseWheel += (_, e) =>
+        {
+            if (!Keyboard.Modifiers.HasFlag(ModifierKeys.Control) || !HasImage) return;
+            SetZoom(Math.Clamp(_zoom + (e.Delta > 0 ? .25 : -.25), .25, 4));
+            e.Handled = true;
+        };
+        _previewTimer.Tick += (_, _) =>
+        {
+            _previewTimer.Stop();
+            if (_pending is not null && _previewBitmap is not null)
+            {
+                using var rendered = CaptureAnnotationRenderer.Render(
+                    _previewBitmap, [_pending], _previewBitmap.Width, _previewBitmap.Height);
+                _image.Source = ToBitmapSource(rendered);
+            }
+        };
     }
 
-    /// <summary>Zoom relative to the fitted preview, never to the saved bitmap.</summary>
     public void SetZoom(double zoom)
     {
-        if (!double.IsFinite(zoom) || zoom <= 0)
-        {
+        if (!double.IsFinite(zoom) || zoom < .25 || zoom > 4)
             throw new ArgumentOutOfRangeException(nameof(zoom));
-        }
         _zoom = zoom;
         UpdateZoom();
+        NotifyStateChanged();
     }
 
     private void UpdateZoom()
     {
-        if (!HasImage || _viewport.ActualWidth <= 0 || _viewport.ActualHeight <= 0)
-        {
-            return;
-        }
-        // Reserve scrollbar space even at 100%: appearing scrollbars must not
-        // trigger a second fit that cancels zoom or oscillates at the boundary.
+        if (!HasImage || _viewport.ActualWidth <= 0 || _viewport.ActualHeight <= 0) return;
         var width = Math.Max(1d, _viewport.ActualWidth - SystemParameters.VerticalScrollBarWidth);
         var height = Math.Max(1d, _viewport.ActualHeight - SystemParameters.HorizontalScrollBarHeight);
         var fit = Math.Min(width / _surface.Width, height / _surface.Height);
@@ -91,370 +118,197 @@ public sealed class CaptureWorkbenchEditor : UserControl, IDisposable
 
     public void LoadImage(string path)
     {
-        using var file = new DrawingBitmap(path);
-        LoadImage(file);
+        using var source = new DrawingBitmap(path);
+        // Never flatten animation into an editable still image.
+        if (source.RawFormat.Guid == System.Drawing.Imaging.ImageFormat.Gif.Guid)
+            throw new NotSupportedException("GIF é uma gravação; sua edição ficará para outra etapa.");
+        LoadImage(source);
     }
 
     public void LoadImage(DrawingBitmap bitmap)
     {
-        _source?.Dispose();
-        _source = new DrawingBitmap(bitmap);
-        _annotations.Clear();
-        _redo.Clear();
+        var next = new CaptureEditorDocument(bitmap);
+        _document?.Dispose();
+        _document = next;
         _tool = null;
-        _drawing = false;
-        _overlay.ReleaseMouseCapture();
-        _overlay.Cursor = Cursors.Arrow;
-        var scale = Math.Min(1d, Math.Min(1120d / _source.Width, 620d / _source.Height));
-        var width = Math.Max(1d, _source.Width * scale);
-        var height = Math.Max(1d, _source.Height * scale);
-        _surface.Width = width;
-        _surface.Height = height;
-        _image.Width = width;
-        _image.Height = height;
-        _overlay.Width = width;
-        _overlay.Height = height;
-        _image.Source = ToBitmapSource(_source);
-        UpdateZoom();
-        Rebuild();
+        _cropTool = false;
+        _crop = null;
+        CancelGesture();
+        RefreshPreview();
+        _viewport.ScrollToHome();
         NotifyStateChanged();
     }
 
     public void Clear()
     {
-        _source?.Dispose();
-        _source = null;
+        CancelGesture();
+        _document?.Dispose(); _document = null;
+        _previewBitmap?.Dispose(); _previewBitmap = null;
         _image.Source = null;
-        _annotations.Clear();
-        _redo.Clear();
-        _tool = null;
-        _drawing = false;
-        _overlay.ReleaseMouseCapture();
-        _overlay.Cursor = Cursors.Arrow;
         _overlay.Children.Clear();
+        _tool = null; _cropTool = false; _crop = null;
         NotifyStateChanged();
     }
 
     public void SelectTool(CaptureAnnotationKind? tool)
     {
-        _tool = tool;
-        _overlay.Cursor = tool switch
-        {
-            null => Cursors.Arrow,
-            CaptureAnnotationKind.Text => Cursors.IBeam,
-            _ => Cursors.Cross
-        };
-        NotifyStateChanged();
+        CancelGesture(); _crop = null; _cropTool = false; _tool = tool;
+        _overlay.Cursor = tool switch { null => Cursors.Hand, CaptureAnnotationKind.Text => Cursors.IBeam, _ => Cursors.Cross };
+        _overlay.Children.Clear(); NotifyStateChanged();
     }
-
-    public void SetColor(int argb)
+    public void SelectCrop()
     {
-        _color = argb;
-        NotifyStateChanged();
+        SelectTool(null); _cropTool = true; _overlay.Cursor = Cursors.Cross; NotifyStateChanged();
     }
-
+    public void SetColor(int argb) { _color = argb; NotifyStateChanged(); }
     public void SetThickness(float thickness) => _thickness = Math.Clamp(thickness, 1, 24);
-
-    public void Undo()
-    {
-        if (_annotations.Count == 0) return;
-        var last = _annotations[^1];
-        _annotations.RemoveAt(_annotations.Count - 1);
-        _redo.Push(last);
-        Rebuild();
-        NotifyStateChanged();
-    }
-
-    public void Redo()
-    {
-        if (_redo.Count == 0) return;
-        _annotations.Add(_redo.Pop());
-        Rebuild();
-        NotifyStateChanged();
-    }
-
+    public void Undo() { CancelCrop(); _document?.Undo(); RefreshPreview(); NotifyStateChanged(); }
+    public void Redo() { CancelCrop(); _document?.Redo(); RefreshPreview(); NotifyStateChanged(); }
+    public void MarkSaved() { _document?.MarkSaved(); NotifyStateChanged(); }
+    public void DiscardChanges() { CancelCrop(); _document?.DiscardChanges(); RefreshPreview(); NotifyStateChanged(); }
     public DrawingBitmap Render()
     {
-        if (_source is null) throw new InvalidOperationException("Nenhuma imagem carregada.");
-        return CaptureAnnotationRenderer.Render(
-            _source,
-            _annotations,
-            Math.Max(1, _overlay.Width),
-            Math.Max(1, _overlay.Height));
+        if (_document is null) throw new InvalidOperationException("Nenhuma imagem carregada.");
+        if (HasPendingCrop) throw new InvalidOperationException("Aplique ou cancele o recorte antes de copiar/salvar.");
+        return _document.Render();
+    }
+    public bool ApplyCrop()
+    {
+        if (_document is null || !_crop.HasValue || !_document.Crop(_crop.Value)) return false;
+        CancelCrop(); _cropTool = false; RefreshPreview(); NotifyStateChanged(); return true;
+    }
+    public void CancelCrop()
+    {
+        CancelGesture(); _crop = null; _overlay.Children.Clear(); NotifyStateChanged();
+    }
+    public void ResizeImage(int width, int height)
+    {
+        if (_document is null) return;
+        CancelCrop(); _document.Resize(width, height); RefreshPreview(); NotifyStateChanged();
     }
 
-    public void InsertStamp(string value, Point center, float size = 42)
+    public void InsertAnnotation(CaptureAnnotation annotation)
     {
-        if (!HasImage) throw new InvalidOperationException("Nenhuma imagem carregada.");
+        if (_document is null) throw new InvalidOperationException("Nenhuma imagem carregada.");
+        _document.AddAnnotation(annotation); RefreshPreview(); NotifyStateChanged();
+    }
+    public void InsertStamp(string value, Point center, float size = 48)
+    {
         if (!NotoEmojiCatalog.TryGet(value, out _)) throw new ArgumentException("Emoji não disponível.", nameof(value));
-        Add(new CaptureAnnotation { Kind = CaptureAnnotationKind.Stamp, Start = Clamp(center),
-            End = Clamp(center), Text = value, Size = size });
+        InsertAnnotation(new CaptureAnnotation { Kind = CaptureAnnotationKind.Stamp, Start = Clamp(center), End = Clamp(center), Text = value, Size = size });
     }
 
-    private void OverlayOnMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    private void PointerDown(object sender, MouseButtonEventArgs e)
     {
-        if (_source is null || _tool is null) return;
-        Focus();
+        if (_document is null || e.ChangedButton != MouseButton.Left) return;
+        Focus(); e.Handled = true;
         _start = Clamp(e.GetPosition(_overlay));
+        if (_cropTool) { _drawing = true; _crop = new Rect(_start, _start); _overlay.CaptureMouse(); return; }
+        if (_tool is null)
+        {
+            _panStart = e.GetPosition(_viewport); _panLeft = _viewport.HorizontalOffset; _panTop = _viewport.VerticalOffset;
+            _overlay.CaptureMouse(); return;
+        }
         if (_tool == CaptureAnnotationKind.Text)
         {
-            var text = PromptForText();
-            if (!string.IsNullOrWhiteSpace(text))
-            {
-                Add(new CaptureAnnotation
-                {
-                    Kind = CaptureAnnotationKind.Text,
-                    Start = _start,
-                    End = _start,
-                    Text = text,
-                    Argb = _color,
-                    OutlineArgb = _color,
-                    Thickness = _thickness,
-                    Size = 28
-                });
-            }
+            if (!string.IsNullOrWhiteSpace(AnnotationText)) InsertAnnotation(CreateAnnotation(_start));
             return;
         }
-        if (_tool == CaptureAnnotationKind.Stamp)
+        if (_tool == CaptureAnnotationKind.Stamp) { InsertStamp(SelectedStamp, _start, StampSize); return; }
+        if (_tool == CaptureAnnotationKind.Number) { InsertAnnotation(CreateAnnotation(_start)); return; }
+        _drawing = true; _pencilPoints.Clear(); _pencilPoints.Add(_start); _overlay.CaptureMouse();
+    }
+
+    private void PointerMove(object sender, MouseEventArgs e)
+    {
+        if (_panStart is Point origin)
         {
-            var stamp = PromptForStamp();
-            if (!string.IsNullOrWhiteSpace(stamp))
-            {
-                InsertStamp(stamp, _start);
-            }
+            var point = e.GetPosition(_viewport);
+            _viewport.ScrollToHorizontalOffset(_panLeft - point.X + origin.X);
+            _viewport.ScrollToVerticalOffset(_panTop - point.Y + origin.Y);
             return;
         }
-
-        _drawing = true;
-        _pencilPoints.Clear();
-        _pencilPoints.Add(_start);
-        _overlay.CaptureMouse();
-        e.Handled = true;
+        if (!_drawing) return;
+        var end = Clamp(e.GetPosition(_overlay));
+        if (_cropTool)
+        {
+            _crop = new Rect(_start, end); ShowCrop(); NotifyStateChanged(); return;
+        }
+        if (_tool == CaptureAnnotationKind.Pencil) _pencilPoints.Add(end);
+        _pending = CreateAnnotation(end);
+        if (!_previewTimer.IsEnabled) _previewTimer.Start();
     }
 
-    private void OverlayOnMouseMove(object sender, MouseEventArgs e)
+    private void PointerUp(object sender, MouseButtonEventArgs e)
     {
-        if (!_drawing || _tool is null) return;
+        if (_panStart.HasValue) { _panStart = null; _overlay.ReleaseMouseCapture(); return; }
+        if (!_drawing) return;
         var end = Clamp(e.GetPosition(_overlay));
+        _drawing = false; _overlay.ReleaseMouseCapture(); _previewTimer.Stop(); _pending = null;
+        if (_cropTool) { _crop = new Rect(_start, end); ShowCrop(); NotifyStateChanged(); return; }
         if (_tool == CaptureAnnotationKind.Pencil) _pencilPoints.Add(end);
-        Rebuild(CreateAnnotation(end));
-    }
-
-    private void OverlayOnMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
-    {
-        if (!_drawing || _tool is null) return;
-        _drawing = false;
-        _overlay.ReleaseMouseCapture();
-        var end = Clamp(e.GetPosition(_overlay));
-        if (_tool == CaptureAnnotationKind.Pencil) _pencilPoints.Add(end);
-        Add(CreateAnnotation(end));
-        e.Handled = true;
+        if (_tool == CaptureAnnotationKind.Pencil || (end - _start).Length > 2)
+            InsertAnnotation(CreateAnnotation(end));
+        else RefreshPreview();
     }
 
     private CaptureAnnotation CreateAnnotation(Point end) => new()
     {
-        Kind = _tool ?? CaptureAnnotationKind.Arrow,
-        Start = _start,
-        End = end,
-        Points = [.. _pencilPoints],
-        Argb = _color,
-        OutlineArgb = _color,
-        Thickness = _thickness,
-        Opacity = _tool == CaptureAnnotationKind.Highlighter ? .38f : 1f
+        Kind = _tool ?? CaptureAnnotationKind.Arrow, Start = _start, End = end, Points = [.. _pencilPoints],
+        Argb = _color, OutlineArgb = ShapeOutline || _tool is not (CaptureAnnotationKind.Rectangle or CaptureAnnotationKind.Ellipse) ? _color : null,
+        FillArgb = ShapeFill, Thickness = _thickness, Opacity = _tool == CaptureAnnotationKind.Highlighter ? .35f * AnnotationOpacity : AnnotationOpacity,
+        Size = _tool == CaptureAnnotationKind.Number ? 32 : TextSize,
+        Bold = TextBold, Italic = TextItalic, FontFamily = TextFontFamily, Alignment = TextAlignment,
+        PrivacyStrength = PrivacyStrength, Text = _tool == CaptureAnnotationKind.Number ? (_document?.NextNumber ?? 1).ToString() : AnnotationText
     };
 
-    private void Add(CaptureAnnotation annotation)
+    private void CancelGesture()
     {
-        _annotations.Add(annotation);
-        _redo.Clear();
-        Rebuild();
-        NotifyStateChanged();
+        _previewTimer.Stop(); _pending = null; _drawing = false; _panStart = null;
+        _overlay.ReleaseMouseCapture();
+        if (_previewBitmap is not null) _image.Source = ToBitmapSource(_previewBitmap);
     }
 
-    private void Rebuild(CaptureAnnotation? pending = null)
+    private void RefreshPreview()
+    {
+        if (_document is null) return;
+        var next = _document.Render();
+        _previewBitmap?.Dispose(); _previewBitmap = next;
+        _surface.Width = _image.Width = _overlay.Width = next.Width;
+        _surface.Height = _image.Height = _overlay.Height = next.Height;
+        _image.Source = ToBitmapSource(next);
+        _overlay.Children.Clear(); UpdateZoom();
+    }
+
+    private void ShowCrop()
     {
         _overlay.Children.Clear();
-        foreach (var annotation in _annotations) AddVisual(annotation);
-        if (pending is not null) AddVisual(pending);
-    }
-
-    private void AddVisual(CaptureAnnotation annotation)
-    {
-        var color = DrawingColor.FromArgb(annotation.OutlineArgb ?? annotation.Argb);
-        var brush = new SolidColorBrush(Color.FromArgb(color.A, color.R, color.G, color.B));
-        var thickness = annotation.Kind == CaptureAnnotationKind.Highlighter
-            ? annotation.Thickness * 4
-            : annotation.Thickness;
-        if (annotation.Kind == CaptureAnnotationKind.Highlighter) brush.Opacity = .38;
-
-        switch (annotation.Kind)
-        {
-            case CaptureAnnotationKind.Arrow:
-            case CaptureAnnotationKind.Highlighter:
-                _overlay.Children.Add(new Line
-                {
-                    X1 = annotation.Start.X,
-                    Y1 = annotation.Start.Y,
-                    X2 = annotation.End.X,
-                    Y2 = annotation.End.Y,
-                    Stroke = brush,
-                    StrokeThickness = thickness,
-                    StrokeStartLineCap = PenLineCap.Round,
-                    StrokeEndLineCap = PenLineCap.Round,
-                    IsHitTestVisible = false
-                });
-                if (annotation.Kind == CaptureAnnotationKind.Arrow)
-                    _overlay.Children.Add(ArrowHead(annotation, brush));
-                break;
-            case CaptureAnnotationKind.Rectangle:
-                var rectangle = new Rectangle
-                {
-                    Width = Math.Abs(annotation.End.X - annotation.Start.X),
-                    Height = Math.Abs(annotation.End.Y - annotation.Start.Y),
-                    Stroke = brush,
-                    StrokeThickness = thickness,
-                    IsHitTestVisible = false
-                };
-                Canvas.SetLeft(rectangle, Math.Min(annotation.Start.X, annotation.End.X));
-                Canvas.SetTop(rectangle, Math.Min(annotation.Start.Y, annotation.End.Y));
-                _overlay.Children.Add(rectangle);
-                break;
-            case CaptureAnnotationKind.Pencil:
-                _overlay.Children.Add(new Polyline
-                {
-                    Points = new PointCollection(annotation.Points),
-                    Stroke = brush,
-                    StrokeThickness = thickness,
-                    StrokeLineJoin = PenLineJoin.Round,
-                    StrokeStartLineCap = PenLineCap.Round,
-                    StrokeEndLineCap = PenLineCap.Round,
-                    IsHitTestVisible = false
-                });
-                break;
-            case CaptureAnnotationKind.Text:
-                var text = new TextBlock
-                {
-                    Text = annotation.Text,
-                    Foreground = brush,
-                    FontSize = annotation.Size,
-                    FontWeight = FontWeights.SemiBold,
-                    IsHitTestVisible = false
-                };
-                Canvas.SetLeft(text, annotation.Start.X);
-                Canvas.SetTop(text, annotation.Start.Y);
-                _overlay.Children.Add(text);
-                break;
-            case CaptureAnnotationKind.Stamp:
-                var stamp = new Image
-                {
-                    Source = NotoEmojiCatalog.CreateImageSource(annotation.Text),
-                    Width = annotation.Size,
-                    Height = annotation.Size,
-                    Stretch = Stretch.Uniform,
-                    IsHitTestVisible = false
-                };
-                Canvas.SetLeft(stamp, annotation.Start.X - annotation.Size / 2);
-                Canvas.SetTop(stamp, annotation.Start.Y - annotation.Size / 2);
-                _overlay.Children.Add(stamp);
-                break;
-        }
-    }
-
-    private static Polygon ArrowHead(CaptureAnnotation annotation, Brush brush)
-    {
-        var angle = Math.Atan2(annotation.End.Y - annotation.Start.Y,
-            annotation.End.X - annotation.Start.X);
-        var length = Math.Max(13, annotation.Thickness * 4);
-        var left = new Point(annotation.End.X - length * Math.Cos(angle - Math.PI / 6),
-            annotation.End.Y - length * Math.Sin(angle - Math.PI / 6));
-        var right = new Point(annotation.End.X - length * Math.Cos(angle + Math.PI / 6),
-            annotation.End.Y - length * Math.Sin(angle + Math.PI / 6));
-        return new Polygon
-        {
-            Points = new PointCollection([annotation.End, left, right]),
-            Fill = brush,
-            IsHitTestVisible = false
-        };
-    }
-
-    private string? PromptForText()
-    {
-        var input = new TextBox { MinWidth = 310, Margin = new Thickness(0, 9, 0, 16) };
-        input.SetResourceReference(StyleProperty, "Lab.Field");
-        var dialog = CreatePrompt("Inserir texto", 410, 205);
-        var panel = (StackPanel)dialog.Content;
-        panel.Children.Add(new TextBlock { Text = "Texto da anotação" });
-        panel.Children.Add(input);
-        var insert = new Button { Content = "Inserir", HorizontalAlignment = HorizontalAlignment.Right };
-        insert.SetResourceReference(StyleProperty, "Lab.Pilot.PrimaryButton");
-        insert.Click += (_, _) => dialog.DialogResult = true;
-        panel.Children.Add(insert);
-        dialog.Loaded += (_, _) => input.Focus();
-        return dialog.ShowDialog() == true ? input.Text.Trim() : null;
-    }
-
-    private string? PromptForStamp() => CaptureEmojiPicker.Show(Window.GetWindow(this));
-
-    private Window CreatePrompt(string title, double width, double height)
-    {
-        var dialog = new Window
-        {
-            Title = title,
-            Owner = Window.GetWindow(this),
-            Width = width,
-            Height = height,
-            ResizeMode = ResizeMode.NoResize,
-            WindowStartupLocation = WindowStartupLocation.CenterOwner,
-            Background = (Brush)Application.Current.FindResource("Lab.raised"),
-            Foreground = (Brush)Application.Current.FindResource("Lab.text"),
-            Content = new StackPanel { Margin = new Thickness(24) }
-        };
-        dialog.SourceInitialized += (_, _) => ThemeService.ApplyToWindow(dialog);
-        return dialog;
+        if (_crop is not Rect crop) return;
+        var outline = new Rectangle { Width = crop.Width, Height = crop.Height, Fill = Brushes.Transparent, StrokeThickness = 2 / Math.Max(.05, _viewbox.Width / _surface.Width), StrokeDashArray = new DoubleCollection([4, 3]), IsHitTestVisible = false };
+        outline.SetResourceReference(System.Windows.Shapes.Shape.StrokeProperty, "Lab.accent");
+        Canvas.SetLeft(outline, crop.Left); Canvas.SetTop(outline, crop.Top); _overlay.Children.Add(outline);
     }
 
     private void OnPreviewKeyDown(object sender, KeyEventArgs e)
     {
+        if (!IsVisible || !IsEnabled) return;
         if (e.Key == Key.Z && Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
-        {
-            Undo();
-            e.Handled = true;
-        }
-        else if (e.Key == Key.Y && Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
-        {
-            Redo();
-            e.Handled = true;
-        }
+        { if (Keyboard.Modifiers.HasFlag(ModifierKeys.Shift)) Redo(); else Undo(); e.Handled = true; }
+        else if (e.Key == Key.Y && Keyboard.Modifiers.HasFlag(ModifierKeys.Control)) { Redo(); e.Handled = true; }
+        else if (e.Key == Key.S && Keyboard.Modifiers.HasFlag(ModifierKeys.Control)) { SaveCopyRequested?.Invoke(this, EventArgs.Empty); e.Handled = true; }
+        else if (e.Key == Key.Escape) { if (HasPendingCrop) CancelCrop(); else ExitRequested?.Invoke(this, EventArgs.Empty); e.Handled = true; }
     }
 
-    private Point Clamp(Point point) => new(
-        Math.Clamp(point.X, 0, Math.Max(1, _overlay.Width)),
-        Math.Clamp(point.Y, 0, Math.Max(1, _overlay.Height)));
-
+    private Point Clamp(Point point) => new(Math.Clamp(point.X, 0, Math.Max(1, _surface.Width)), Math.Clamp(point.Y, 0, Math.Max(1, _surface.Height)));
     private void NotifyStateChanged() => StateChanged?.Invoke(this, EventArgs.Empty);
-
-    public void Dispose()
-    {
-        _source?.Dispose();
-        _source = null;
-    }
+    public void Dispose() { _previewTimer.Stop(); _document?.Dispose(); _document = null; _previewBitmap?.Dispose(); _previewBitmap = null; }
 
     private static BitmapSource ToBitmapSource(DrawingBitmap bitmap)
     {
-        var handle = bitmap.GetHbitmap();
-        try
-        {
-            var source = Imaging.CreateBitmapSourceFromHBitmap(
-                handle, IntPtr.Zero, Int32Rect.Empty, BitmapSizeOptions.FromEmptyOptions());
-            source.Freeze();
-            return source;
-        }
-        finally
-        {
-            DeleteObject(handle);
-        }
+        using var stream = new System.IO.MemoryStream();
+        bitmap.Save(stream, System.Drawing.Imaging.ImageFormat.Png);
+        stream.Position = 0;
+        var image = new BitmapImage(); image.BeginInit(); image.CacheOption = BitmapCacheOption.OnLoad; image.StreamSource = stream; image.EndInit(); image.Freeze();
+        return image;
     }
-
-    [DllImport("gdi32.dll")]
-    private static extern bool DeleteObject(IntPtr value);
 }
