@@ -264,8 +264,12 @@ public partial class DesignGalleryWindow : Window
                         "Three-digit emote sizes and dropdown arrow fit without clipping");
                 foreach (var width in new[] { 520d, 980d, 1360d })
                 {
-                    context.Measure(new Size(width, double.PositiveInfinity));
-                    context.Arrange(new Rect(0, 0, width, context.DesiredSize.Height)); context.UpdateLayout();
+                    // Resize the parent too: UpdateLayout would otherwise arrange
+                    // this child back into the original 1360px host.
+                    host.Width = width + 24;
+                    var narrowSize = new Size(host.Width, 640);
+                    host.Measure(narrowSize); host.Arrange(new Rect(narrowSize)); host.UpdateLayout();
+                    Require(Math.Abs(context.ActualWidth - width) < .5, $"Emoji context viewport is {width}px");
                     foreach (var control in Descendants(context).OfType<Control>().Where(c => c is Button or ComboBox))
                     {
                         // ScrollViewer intentionally clips offscreen strip buttons horizontally.
@@ -275,8 +279,10 @@ public partial class DesignGalleryWindow : Window
                     }
                     var sizeBox = Descendants(context).OfType<ComboBox>().Single();
                     var point = sizeBox.TranslatePoint(new Point(), context);
-                    Require(point.X + sizeBox.ActualWidth <= width + .5, $"Emoji size field fits horizontally at {width}px");
+                    Require(point.X + sizeBox.ActualWidth <= width + .5,
+                        $"Emoji size field fits horizontally at {width}px (right={point.X + sizeBox.ActualWidth})");
                 }
+                host.Width = 1360;
                 context.InvalidateMeasure(); host.InvalidateMeasure();
                 host.Measure(size); host.Arrange(new Rect(size)); host.UpdateLayout();
             }
