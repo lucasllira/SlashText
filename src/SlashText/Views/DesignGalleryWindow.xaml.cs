@@ -254,7 +254,9 @@ public partial class DesignGalleryWindow : Window
             {
                 Require(Descendants(context).OfType<Image>().Count() == Services.NotoEmojiCatalog.QuickItems.Count,
                     "Quick strip stays bounded; complete catalog is in the picker");
-                var strip = Descendants(context).OfType<ScrollViewer>().Single();
+                // ComboBox templates also contain a ScrollViewer; select the actual quick strip.
+                var strip = Descendants(context).OfType<ScrollViewer>()
+                    .Single(s => s.Content is StackPanel && s.HorizontalScrollBarVisibility == ScrollBarVisibility.Hidden);
                 Require(strip.ActualHeight >= 48 && strip.HorizontalScrollBarVisibility == ScrollBarVisibility.Hidden,
                     "Emoji buttons have room without a scrollbar clipping their bottoms");
                 foreach (var sizeBox in Descendants(context).OfType<ComboBox>())
