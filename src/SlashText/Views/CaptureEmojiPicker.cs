@@ -16,14 +16,14 @@ namespace SlashText.Views;
 public static class CaptureEmojiPicker
 {
     public const int PageSize = 96;
-    private static string Key(string text) => string.Concat(text.Normalize(NormalizationForm.FormD)
+    private static string SearchKey(string text) => string.Concat(text.Normalize(NormalizationForm.FormD)
         .Where(c => CharUnicodeInfo.GetUnicodeCategory(c) != UnicodeCategory.NonSpacingMark)).Trim().ToLowerInvariant();
     private static readonly IReadOnlyDictionary<string, string> SearchKeys = NotoEmojiCatalog.Items.ToDictionary(
-        item => item.Value, item => Key(item.Name + " " + item.Keywords + " " + item.Value), StringComparer.Ordinal);
+        item => item.Value, item => SearchKey(item.Name + " " + item.Keywords + " " + item.Value), StringComparer.Ordinal);
 
     public static IReadOnlyList<NotoEmojiItem> Search(string query, string? category = null)
     {
-        var words = Key(query).Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        var words = SearchKey(query).Split(' ', StringSplitOptions.RemoveEmptyEntries);
         return NotoEmojiCatalog.Items.Where(item =>
             (string.IsNullOrEmpty(category) || category == "Todos" || item.Category == category) &&
             words.All(word => SearchKeys[item.Value].Contains(word, StringComparison.Ordinal))).ToArray();
