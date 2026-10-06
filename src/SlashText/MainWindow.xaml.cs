@@ -3271,18 +3271,29 @@ public partial class MainWindow : Window
         CaptureAnnotationKind.Rectangle => "Retângulo",
         CaptureAnnotationKind.Text => "Texto",
         CaptureAnnotationKind.Stamp => "Emoji",
+        CaptureAnnotationKind.Ellipse => "Elipse",
+        CaptureAnnotationKind.Line => "Linha",
+        CaptureAnnotationKind.Number => "Número",
+        CaptureAnnotationKind.Blur => "Desfocar",
+        CaptureAnnotationKind.Pixelate => "Pixelizar",
         _ => "Ferramenta"
     };
 
     private void UpdateCaptureWorkbenchToolState(CaptureAnnotationKind? selected)
     {
-        CaptureSelectToolButton.Tag = selected is null ? "Selected" : null;
+        CaptureSelectToolButton.Tag = selected is null && !CaptureInlineEditor.IsCropTool ? "Selected" : null;
         CapturePencilToolButton.Tag = selected == CaptureAnnotationKind.Pencil ? "Selected" : null;
         CaptureHighlighterToolButton.Tag = selected == CaptureAnnotationKind.Highlighter ? "Selected" : null;
         CaptureArrowToolButton.Tag = selected == CaptureAnnotationKind.Arrow ? "Selected" : null;
         CaptureRectangleToolButton.Tag = selected == CaptureAnnotationKind.Rectangle ? "Selected" : null;
         CaptureTextToolButton.Tag = selected == CaptureAnnotationKind.Text ? "Selected" : null;
         CaptureStampToolButton.Tag = selected == CaptureAnnotationKind.Stamp ? "Selected" : null;
+        CaptureEllipseToolButton.Tag = selected == CaptureAnnotationKind.Ellipse ? "Selected" : null;
+        CaptureLineToolButton.Tag = selected == CaptureAnnotationKind.Line ? "Selected" : null;
+        CaptureNumberToolButton.Tag = selected == CaptureAnnotationKind.Number ? "Selected" : null;
+        CaptureBlurToolButton.Tag = selected == CaptureAnnotationKind.Blur ? "Selected" : null;
+        CapturePixelateToolButton.Tag = selected == CaptureAnnotationKind.Pixelate ? "Selected" : null;
+        CaptureCropToolButton.Tag = CaptureInlineEditor.IsCropTool ? "Selected" : null;
     }
 
     private void CaptureInlineEditor_OnStateChanged(object? sender, EventArgs e)
@@ -3353,10 +3364,14 @@ public partial class MainWindow : Window
         if (sender is Button anchor) CaptureEditorContext.ShowMoreTools(anchor);
     }
 
-    private void CaptureWorkbenchToolbar_OnSizeChanged(object sender, SizeChangedEventArgs e)
+    private void CaptureCropTool_OnClick(object sender, RoutedEventArgs e) => CaptureInlineEditor.SelectCrop();
+    private void CaptureResizeTool_OnClick(object sender, RoutedEventArgs e) => CaptureEditorContext.ShowResize();
+
+    private void UpdateCaptureToolbarLayout()
     {
         if (CaptureOutputCommands is null || CaptureToolCommands is null) return;
-        var compact = e.NewSize.Width < 1060;
+        // Full tools need their own row on smaller viewports; never hide them again.
+        var compact = CaptureWorkbenchToolbar.ActualWidth < (_captureEditorExpanded ? 1250 : 1060);
         Grid.SetRow(CaptureOutputCommands, compact ? 1 : 0);
         Grid.SetColumn(CaptureOutputCommands, compact ? 0 : 1);
         Grid.SetColumnSpan(CaptureOutputCommands, compact ? 2 : 1);
@@ -3364,10 +3379,20 @@ public partial class MainWindow : Window
         CaptureOutputCommands.HorizontalAlignment = compact ? HorizontalAlignment.Left : HorizontalAlignment.Right;
     }
 
+    private void CaptureWorkbenchToolbar_OnSizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        UpdateCaptureToolbarLayout();
+    }
+
     private void SetCaptureEditorExpanded(bool expanded)
     {
         if (_captureEditorExpanded == expanded) return;
         _captureEditorExpanded = expanded;
+        CaptureMoreToolsButton.Visibility = expanded ? Visibility.Collapsed : Visibility.Visible;
+        foreach (var tool in new[] { CaptureEllipseToolButton, CaptureLineToolButton, CaptureNumberToolButton,
+                     CaptureBlurToolButton, CapturePixelateToolButton, CaptureCropToolButton, CaptureResizeToolButton })
+            tool.Visibility = expanded ? Visibility.Visible : Visibility.Collapsed;
+        UpdateCaptureToolbarLayout();
         CaptureExpandEditorButton.Content = expanded ? "Voltar ao painel · Esc" : "Expandir editor";
         if (expanded)
         {

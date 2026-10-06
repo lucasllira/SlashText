@@ -547,7 +547,7 @@ public sealed class RegionCaptureWindow : Window
         var panel = ContextStack(280);
         panel.Children.Add(ContextTitle("Emoticons e carimbos"));
         var grid = new UniformGrid { Columns = 6 };
-        foreach (var emoji in NotoEmojiCatalog.Items)
+        foreach (var emoji in NotoEmojiCatalog.QuickItems)
         {
             var value = emoji.Value;
             var button = new Button

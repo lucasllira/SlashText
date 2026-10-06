@@ -199,7 +199,7 @@ foreach ($label in @(
 }
 if ($inlineEditor.Contains('FontFamily = new FontFamily("Segoe UI Emoji")') -or
     -not $contextPanel.Contains('NotoEmojiCatalog.CreateImageSource(item.Value)') -or
-    -not $emojiPicker.Contains('foreach (var item in Search(search.Text))') -or
+    -not $emojiPicker.Contains('matches = Search(search.Text, category.SelectedItem as string)') -or
     -not $advancedEditor.Contains('CaptureEmojiPicker.Show(this)')) {
     throw 'Os editores precisam compartilhar catálogo e assets Noto na prévia e exportação.'
 }

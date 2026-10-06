@@ -322,12 +322,21 @@ Require(
     CaptureMotion.Duration(animationsEnabled: true, 160) == TimeSpan.FromMilliseconds(160),
     "animações respeitam a preferência do Windows");
 Require(
-    NotoEmojiCatalog.Items.Count == 36 &&
-    NotoEmojiCatalog.Items.Select(item => item.Value).Distinct().Count() == 36,
-    "catálogo Noto Emoji contém 36 opções únicas");
+    NotoEmojiCatalog.Items.Count == 3972 && NotoEmojiCatalog.QuickItems.Count == 36 &&
+    NotoEmojiCatalog.Items.Select(item => item.Value).Distinct().Count() == NotoEmojiCatalog.Items.Count &&
+    NotoEmojiCatalog.Categories.Count == 9,
+    "catálogo Noto completo contém 3972 opções únicas, 9 categorias e 36 acessos rápidos");
 Require(
     NotoEmojiCatalog.Items.All(NotoEmojiCatalog.HasAsset),
     "todos os emojis Noto possuem PNG incorporado");
+Require(NotoEmojiCatalog.TryGet("❤️", out var qualifiedHeart) &&
+        NotoEmojiCatalog.TryGet("❤", out var plainHeart) && qualifiedHeart == plainHeart &&
+        NotoEmojiCatalog.QuickItems.All(item => NotoEmojiCatalog.TryGet(item.Value, out _)),
+    "sequências legadas/qualificadas e todos os acessos rápidos resolvem o mesmo catálogo completo");
+Require(SlashText.Views.CaptureEmojiPicker.Search("gato", "Animais e natureza").Count > 0 &&
+        SlashText.Views.CaptureEmojiPicker.Search("", "Bandeiras").All(i => i.Category == "Bandeiras") &&
+        NotoEmojiCatalog.TryGet("👍🏽", out _) && NotoEmojiCatalog.TryGet("🇧🇷", out _),
+    "catálogo pesquisável inclui animais, categorias, variantes de pele e bandeiras");
 
 foreach (var anchor in new[]
          {

@@ -1406,9 +1406,37 @@
                                                 Click="SelectCaptureWorkbenchTool_OnClick">
                                           <lab:LabIcon Kind="Smile" Style="{StaticResource Lab.Pilot.ToolGlyph}"/>
                                         </Button>
-                                        <Button Style="{StaticResource Lab.Pilot.ToolButton}" ToolTip="Mais ferramentas: elipse, linha, números, privacidade, recorte e tamanho"
+                                        <Button x:Name="CaptureMoreToolsButton" Style="{StaticResource Lab.Pilot.ToolButton}" ToolTip="Mais ferramentas: elipse, linha, números, privacidade, recorte e tamanho"
                                                 Click="CaptureMoreTools_OnClick">
                                           <lab:LabIcon Kind="MoreHorizontal" Style="{StaticResource Lab.Pilot.ToolGlyph}"/>
+                                        </Button>
+                                        <Button x:Name="CaptureEllipseToolButton" Visibility="Collapsed" Style="{StaticResource Lab.Pilot.ToolButton}"
+                                                ToolTip="Elipse" CommandParameter="Ellipse" Click="SelectCaptureWorkbenchTool_OnClick">
+                                          <lab:LabIcon Kind="Circle" Style="{StaticResource Lab.Pilot.ToolGlyph}"/>
+                                        </Button>
+                                        <Button x:Name="CaptureLineToolButton" Visibility="Collapsed" Style="{StaticResource Lab.Pilot.ToolButton}"
+                                                ToolTip="Linha" CommandParameter="Line" Click="SelectCaptureWorkbenchTool_OnClick">
+                                          <lab:LabIcon Kind="Minus" Style="{StaticResource Lab.Pilot.ToolGlyph}"/>
+                                        </Button>
+                                        <Button x:Name="CaptureNumberToolButton" Visibility="Collapsed" Style="{StaticResource Lab.Pilot.ToolButton}"
+                                                ToolTip="Número" CommandParameter="Number" Click="SelectCaptureWorkbenchTool_OnClick">
+                                          <lab:LabIcon Kind="Hash" Style="{StaticResource Lab.Pilot.ToolGlyph}"/>
+                                        </Button>
+                                        <Button x:Name="CaptureBlurToolButton" Visibility="Collapsed" Style="{StaticResource Lab.Pilot.ToolButton}"
+                                                ToolTip="Desfocar" CommandParameter="Blur" Click="SelectCaptureWorkbenchTool_OnClick">
+                                          <lab:LabIcon Kind="ScanLine" Style="{StaticResource Lab.Pilot.ToolGlyph}"/>
+                                        </Button>
+                                        <Button x:Name="CapturePixelateToolButton" Visibility="Collapsed" Style="{StaticResource Lab.Pilot.ToolButton}"
+                                                ToolTip="Pixelizar" CommandParameter="Pixelate" Click="SelectCaptureWorkbenchTool_OnClick">
+                                          <lab:LabIcon Kind="Grid2X2" Style="{StaticResource Lab.Pilot.ToolGlyph}"/>
+                                        </Button>
+                                        <Button x:Name="CaptureCropToolButton" Visibility="Collapsed" Style="{StaticResource Lab.Pilot.ToolButton}"
+                                                ToolTip="Recortar" Click="CaptureCropTool_OnClick">
+                                          <lab:LabIcon Kind="Crop" Style="{StaticResource Lab.Pilot.ToolGlyph}"/>
+                                        </Button>
+                                        <Button x:Name="CaptureResizeToolButton" Visibility="Collapsed" Style="{StaticResource Lab.Pilot.ToolButton}"
+                                                ToolTip="Redimensionar" Click="CaptureResizeTool_OnClick">
+                                          <lab:LabIcon Kind="Scaling" Style="{StaticResource Lab.Pilot.ToolGlyph}"/>
                                         </Button>
                                         <Button x:Name="CaptureWorkbenchColorButton" Width="32" Height="38" Margin="8,0,4,0"
                                                 Padding="6" Style="{StaticResource Lab.Pilot.ToolButton}"

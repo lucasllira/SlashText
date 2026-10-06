@@ -228,11 +228,14 @@ public static class CaptureAnnotationRenderer
         var pixels = Math.Max(12, (int)Math.Ceiling(
             annotation.Size * ((scaleX + scaleY) / 2d)));
         using var stamp = NotoEmojiCatalog.CreateBitmap(annotation.Text);
+        var fit = pixels / (float)Math.Max(stamp.Width, stamp.Height);
+        var width = stamp.Width * fit;
+        var height = stamp.Height * fit;
         var destination = new RectangleF(
-            (float)(center.X - pixels / 2d),
-            (float)(center.Y - pixels / 2d),
-            pixels,
-            pixels);
+            center.X - width / 2,
+            center.Y - height / 2,
+            width,
+            height);
         graphics.InterpolationMode = InterpolationMode.HighQualityBicubic;
         graphics.PixelOffsetMode = PixelOffsetMode.HighQuality;
         graphics.DrawImage(stamp, destination);

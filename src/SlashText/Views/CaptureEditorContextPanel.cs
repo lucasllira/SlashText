@@ -29,7 +29,7 @@ public sealed class CaptureEditorContextPanel : UserControl
         if (_applyCrop is not null) _applyCrop.IsEnabled = _editor.HasPendingCrop;
         var shown = _editor.IsCropTool ? "crop" : _editor.SelectedTool?.ToString() ?? "navigate";
         if (_shown == shown) return;
-        _shown = shown; _applyCrop = null; _panel.Children.Clear();
+        _shown = shown; _applyCrop = null; _panel.Children.Clear(); Content = _panel;
         AddLabel(shown switch
         {
             "crop" => "Recortar", "navigate" => "Navegar", "Text" => "Texto", "Stamp" => "Emotes",
@@ -60,19 +60,31 @@ public sealed class CaptureEditorContextPanel : UserControl
         }
         else if (shown == "Stamp")
         {
+            _panel.Children.Clear();
+            var row = new Grid { Margin = new Thickness(14, 9, 14, 9), MinHeight = 48 };
+            foreach (var width in new[] { GridLength.Auto, GridLength.Auto, new GridLength(1, GridUnitType.Star),
+                         GridLength.Auto, GridLength.Auto, GridLength.Auto })
+                row.ColumnDefinitions.Add(new ColumnDefinition { Width = width });
+            void Place(UIElement control, int column) { Grid.SetColumn(control, column); row.Children.Add(control); }
+            var label = new TextBlock { Text = "Emotes", VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 12, 0), FontSize = 12 };
+            label.SetResourceReference(TextBlock.ForegroundProperty, "Lab.accent-text"); Place(label, 0);
             var strip = new StackPanel { Orientation = Orientation.Horizontal };
             var scroller = new ScrollViewer
             {
-                Content = strip, MaxWidth = 810, Height = 45, HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
-                VerticalScrollBarVisibility = ScrollBarVisibility.Disabled, Margin = new Thickness(0, 0, 10, 0)
+                Content = strip, Height = 48, HorizontalScrollBarVisibility = ScrollBarVisibility.Hidden,
+                VerticalScrollBarVisibility = ScrollBarVisibility.Disabled, Margin = new Thickness(0, 0, 8, 0)
             };
             var buttons = new Dictionary<string, Button>();
-            foreach (var item in NotoEmojiCatalog.Items)
+            var quick = NotoEmojiCatalog.QuickItems.AsEnumerable();
+            if (!quick.Any(i => i.Value == _editor.SelectedStamp) && NotoEmojiCatalog.TryGet(_editor.SelectedStamp, out var current))
+                quick = new[] { current }.Concat(quick);
+            foreach (var item in quick)
             {
                 var button = new Button
                 {
                     Content = new Image { Source = NotoEmojiCatalog.CreateImageSource(item.Value), Width = 26, Height = 26 },
-                    ToolTip = item.Name, Width = 34, Height = 34, Padding = new Thickness(3), Margin = new Thickness(0, 0, 3, 0),
+                    ToolTip = item.Name, Width = 38, Height = 40, MinWidth = 38, MinHeight = 40, Padding = new Thickness(3),
+                    Margin = new Thickness(0, 4, 3, 4), VerticalAlignment = VerticalAlignment.Center,
                     Tag = item.Value == _editor.SelectedStamp ? "Selected" : null
                 };
                 System.Windows.Automation.AutomationProperties.SetName(button, item.Name);
@@ -85,26 +97,34 @@ public sealed class CaptureEditorContextPanel : UserControl
                 var icon = new LabIcon { Kind = "ArrowLeft", Width = 16, Height = 16,
                     RenderTransformOrigin = new Point(.5, .5), RenderTransform = new RotateTransform(forward ? 180 : 0) };
                 icon.SetResourceReference(LabIcon.ForegroundProperty, "Lab.text");
-                var button = new Button { Content = icon, ToolTip = label, Width = 34, Height = 34,
-                    Margin = new Thickness(0, 0, 6, 0), Padding = new Thickness(6) };
+                var button = new Button { Content = icon, ToolTip = label, Width = 38, Height = 40,
+                    Margin = new Thickness(0, 0, 6, 0), Padding = new Thickness(6), VerticalAlignment = VerticalAlignment.Center };
                 button.SetResourceReference(StyleProperty, "Lab.Pilot.ToolButton");
                 System.Windows.Automation.AutomationProperties.SetName(button, label);
-                button.Click += (_, _) => scroller.ScrollToHorizontalOffset(scroller.HorizontalOffset + (forward ? 300 : -300));
+                button.Click += (_, _) => scroller.ScrollToHorizontalOffset(scroller.HorizontalOffset + (forward ? 328 : -328));
                 return button;
             }
-            scroller.SizeChanged += (_, _) => scroller.MaxWidth = Math.Max(150, Math.Min(810, ActualWidth - 350));
-            _panel.Children.Add(NavigationButton("Emotes anteriores", false));
-            _panel.Children.Add(scroller);
-            _panel.Children.Add(NavigationButton("Próximos emotes", true));
-            AddButton("Ver todos", "Smile", () =>
+            var previous = NavigationButton("Emotes anteriores", false);
+            var next = NavigationButton("Próximos emotes", true);
+            scroller.ScrollChanged += (_, _) => { previous.IsEnabled = scroller.HorizontalOffset > 0; next.IsEnabled = scroller.HorizontalOffset < scroller.ScrollableWidth; };
+            Place(previous, 1); Place(scroller, 2); Place(next, 3);
+            var all = MakeButton("Ver todos", "Smile", () =>
             {
                 var selected = CaptureEmojiPicker.Show(Window.GetWindow(this));
                 if (selected is null) return;
                 _editor.SelectedStamp = selected;
-                foreach (var pair in buttons) pair.Value.Tag = pair.Key == selected ? "Selected" : null;
-                buttons[selected].BringIntoView();
+                _shown = null; Refresh();
             });
-            Combo(new[] { "32", "48", "64", "96", "128" }, _editor.StampSize.ToString(CultureInfo.InvariantCulture), value => _editor.StampSize = float.Parse(value, CultureInfo.InvariantCulture), 70);
+            all.VerticalAlignment = VerticalAlignment.Center; Place(all, 4);
+            var size = new ComboBox { ItemsSource = new[] { "32", "48", "64", "96", "128" },
+                SelectedItem = _editor.StampSize.ToString(CultureInfo.InvariantCulture), Width = 90,
+                VerticalAlignment = VerticalAlignment.Center, ToolTip = "Tamanho do emote (px)" };
+            size.SetResourceReference(StyleProperty, "Lab.Combo");
+            System.Windows.Automation.AutomationProperties.SetName(size, "Tamanho do emote em pixels");
+            size.SelectionChanged += (_, _) => { if (size.SelectedItem is string value) _editor.StampSize = float.Parse(value, CultureInfo.InvariantCulture); };
+            Place(size, 5); Content = row;
+            LabMotion.SetEntrance(row, "Page");
+            if (row.IsLoaded) LabMotion.PlayEntrance(row);
         }
         else if (shown == "crop")
         {
@@ -164,7 +184,7 @@ public sealed class CaptureEditorContextPanel : UserControl
         LabMotion.SetEntrance(border, "Popup"); popup.IsOpen = true;
     }
 
-    private void ShowResize()
+    public void ShowResize()
     {
         if (_editor?.Document is not { } document) return;
         var size = document.Dimensions;

@@ -251,8 +251,33 @@ public partial class DesignGalleryWindow : Window
             if (tool == Services.CaptureAnnotationKind.Text)
                 Require(Descendants(context).OfType<ComboBox>().Any(c => c.SelectedItem?.ToString() == "Segoe UI"), "Font selector before text input");
             if (tool == Services.CaptureAnnotationKind.Stamp)
-                Require(Descendants(context).OfType<Image>().Count() == Services.NotoEmojiCatalog.Items.Count,
-                    "All local Noto emotes are available in the contextual strip");
+            {
+                Require(Descendants(context).OfType<Image>().Count() == Services.NotoEmojiCatalog.QuickItems.Count,
+                    "Quick strip stays bounded; complete catalog is in the picker");
+                var strip = Descendants(context).OfType<ScrollViewer>().Single();
+                Require(strip.ActualHeight >= 48 && strip.HorizontalScrollBarVisibility == ScrollBarVisibility.Hidden,
+                    "Emoji buttons have room without a scrollbar clipping their bottoms");
+                foreach (var sizeBox in Descendants(context).OfType<ComboBox>())
+                    Require(sizeBox.ActualWidth >= 90 && sizeBox.ActualHeight >= 38,
+                        "Three-digit emote sizes and dropdown arrow fit without clipping");
+                foreach (var width in new[] { 520d, 980d, 1360d })
+                {
+                    context.Measure(new Size(width, double.PositiveInfinity));
+                    context.Arrange(new Rect(0, 0, width, context.DesiredSize.Height)); context.UpdateLayout();
+                    foreach (var control in Descendants(context).OfType<Control>().Where(c => c is Button or ComboBox))
+                    {
+                        // ScrollViewer intentionally clips offscreen strip buttons horizontally.
+                        var origin = control.TranslatePoint(new Point(), context);
+                        Require(origin.Y >= 0 && origin.Y + control.ActualHeight <= context.ActualHeight + .5,
+                            $"Emoji control fits vertically at {width}px");
+                    }
+                    var sizeBox = Descendants(context).OfType<ComboBox>().Single();
+                    var point = sizeBox.TranslatePoint(new Point(), context);
+                    Require(point.X + sizeBox.ActualWidth <= width + .5, $"Emoji size field fits horizontally at {width}px");
+                }
+                context.InvalidateMeasure(); host.InvalidateMeasure();
+                host.Measure(size); host.Arrange(new Rect(size)); host.UpdateLayout();
+            }
             var bitmap = new RenderTargetBitmap(1360, 640, 96, 96, PixelFormats.Pbgra32); bitmap.Render(host);
             var png = new PngBitmapEncoder(); png.Frames.Add(BitmapFrame.Create(bitmap));
             using var file = File.Create(Path.Combine(_smokeOutput!, $"unified-editor-{tool}-{theme}.png")); png.Save(file);
@@ -261,6 +286,22 @@ public partial class DesignGalleryWindow : Window
         editor.InsertStamp("⭐", new Point(300, 180));
         editor.SetZoom(2);
         Require(ReferenceEquals(session, editor.Document) && editor.CanUndo, "Unified document survives viewport changes");
+        var picker = CaptureEmojiPicker.CreateContent(_ => { }, () => { });
+        var pickerSize = new Size(900, 560);
+        picker.Measure(pickerSize); picker.Arrange(new Rect(pickerSize)); picker.UpdateLayout();
+        Require(Descendants(picker).OfType<Image>().Count() == CaptureEmojiPicker.PageSize,
+            "Complete picker decodes at most one page, not thousands of PNGs");
+        var next = Descendants(picker).OfType<Button>().Single(b => b.Content is string text && text == "Próxima");
+        next.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); picker.UpdateLayout();
+        Require(Descendants(picker).OfType<TextBlock>().Any(t => t.Text.Contains("página 2/")), "Picker next page is functional");
+        var category = Descendants(picker).OfType<ComboBox>().Single();
+        category.SelectedItem = "Bandeiras"; picker.UpdateLayout();
+        Require(Descendants(picker).OfType<Image>().Count() <= CaptureEmojiPicker.PageSize && next.IsEnabled,
+            "Flag category remains paginated and complete");
+        var pngPicker = new PngBitmapEncoder();
+        var pickerBitmap = new RenderTargetBitmap(900, 560, 96, 96, PixelFormats.Pbgra32); pickerBitmap.Render(picker);
+        pngPicker.Frames.Add(BitmapFrame.Create(pickerBitmap));
+        using var pickerFile = File.Create(Path.Combine(_smokeOutput!, $"unified-emotes-catalog-{theme}.png")); pngPicker.Save(pickerFile);
     }
 
     private async Task CaptureUnifiedShellEvidence(System.Drawing.Bitmap source, string theme)
@@ -287,8 +328,14 @@ public partial class DesignGalleryWindow : Window
                 Require(copy.IsEnabled && copy.ActualWidth > 0, "Unified shell output actions remain usable");
                 var commands = (StackPanel)window.FindName("CaptureOutputCommands");
                 var toolbar = (Grid)window.FindName("CaptureWorkbenchToolbar");
-                Require(Grid.GetRow(commands) == (toolbar.ActualWidth < 1060 ? 1 : 0),
+                Require(Grid.GetRow(commands) == (toolbar.ActualWidth < (expanded ? 1250 : 1060) ? 1 : 0),
                     $"Toolbar responsive output row: width={toolbar.ActualWidth}, row={Grid.GetRow(commands)}");
+                Require(((Button)window.FindName("CaptureMoreToolsButton")).Visibility == (expanded ? Visibility.Collapsed : Visibility.Visible),
+                    "Expanded editor replaces More with inline tools");
+                foreach (var name in new[] { "CaptureEllipseToolButton", "CaptureLineToolButton", "CaptureNumberToolButton",
+                             "CaptureBlurToolButton", "CapturePixelateToolButton", "CaptureCropToolButton", "CaptureResizeToolButton" })
+                    Require(((Button)window.FindName(name)).Visibility == (expanded ? Visibility.Visible : Visibility.Collapsed),
+                        $"Expanded tool visibility: {name}");
                 if (expanded && size.Width == 1440)
                     Require(((Border)window.FindName("CaptureEditorViewport")).ActualHeight > 350,
                         "Expanded viewport must use available space, not count blank page area as chrome");
