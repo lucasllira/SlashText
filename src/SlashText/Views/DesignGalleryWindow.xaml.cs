@@ -157,6 +157,7 @@ public partial class DesignGalleryWindow : Window
             Require(Descendants(NormalButton).OfType<TextBlock>().Any(t => t.Text == "Ação secundária" && t.Foreground.ToString() == expected), "Neutral label must follow theme");
             Require(Descendants(FormatCombo).OfType<TextBlock>().Any(t => t.Text == "PNG — imagem" && t.Foreground.ToString() == expected), "Combo selection label must follow theme");
             await CaptureEditorEvidence(theme);
+            CaptureInkPickerEvidence(theme);
             foreach (var size in new[] { new Size(1440,900), new Size(980,680) })
             {
                 // A fresh, never-shown visual has no runner work-area layout cached by an HWND.
@@ -390,6 +391,54 @@ public partial class DesignGalleryWindow : Window
         png.Save(file);
         window.Close();
     }
+    private void CaptureInkPickerEvidence(string theme)
+    {
+        using var editor = new CaptureWorkbenchEditor();
+        using var source = new System.Drawing.Bitmap(320, 180);
+        editor.LoadImage(source);
+        var document = editor.Document;
+        var picker = CaptureInkPicker.CreateContent(editor);
+        picker.VerticalAlignment = VerticalAlignment.Top;
+        LabMotion.SetReduced(picker, true);
+        var size = new Size(724, 340);
+        var host = new Border { Child = picker, Padding = new Thickness(12), Width = size.Width, Height = size.Height,
+            HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top };
+        host.SetResourceReference(Border.BackgroundProperty, "Lab.canvas");
+        void Layout() { host.Measure(size); host.Arrange(new Rect(size)); host.UpdateLayout(); }
+        Layout();
+        var colors = Descendants(picker).OfType<Button>().Where(b => b.Tag is int).ToArray();
+        Require(colors.Length == 30, "Ink picker has 30 individually accessible round colors");
+        var selected = colors.Single(b => b.ToolTip?.ToString()?.StartsWith("Azul ·") == true);
+        selected.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        Require(editor.InkArgb == (int)selected.Tag && System.Windows.Automation.AutomationProperties.GetItemStatus(selected) == "Selecionada",
+            "Click selects a color instead of cycling through a fixed sequence");
+        var slider = Descendants(picker).OfType<Slider>().Single(); slider.Value = 7;
+        Require(editor.InkThickness == 7, "Ink thickness slider configures the real editor");
+        Require(Descendants(picker).OfType<StackPanel>().Single(p => p.Name == "InkRgbPanel").Visibility == Visibility.Collapsed,
+            "RGB fields stay hidden until requested");
+        Descendants(picker).OfType<Button>().Single(b => b.Name == "OpenInkRgb").RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); Layout();
+        var hex = Descendants(picker).OfType<TextBox>().Single(b => b.Name == "InkHex");
+        var apply = Descendants(picker).OfType<Button>().Single(b => b.Name == "ApplyInkHex");
+        hex.Text = "#ZZZZZZ"; apply.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        Require(Descendants(picker).OfType<TextBlock>().Any(t => t.Text.StartsWith("Use R") && t.Visibility == Visibility.Visible),
+            "Invalid custom color reports an error without changing ink");
+        hex.Text = "#E84E60"; apply.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); Layout();
+        Require(editor.InkArgb == System.Drawing.Color.FromArgb(232, 78, 96).ToArgb() &&
+            ReferenceEquals(document, editor.Document) && document!.OperationCount == 0,
+            "Custom color applies to future annotations without altering history");
+        Require(picker.Background.ToString() == (theme == "Dark" ? "#FF242424" : "#FFFFFFFF"), "Ink picker background follows theme");
+        foreach (var control in Descendants(picker).OfType<Control>().Where(c => c is Button or TextBox or Slider))
+        {
+            if (control is Button { Tag: int }) continue; // Offscreen palette colors deliberately scroll.
+            var p = control.TranslatePoint(new Point(), host);
+            Require(p.X >= 0 && p.Y >= 0 && p.X + control.ActualWidth <= size.Width && p.Y + control.ActualHeight <= size.Height,
+                "Ink picker controls fit without clipping");
+        }
+        var image = new RenderTargetBitmap((int)size.Width, (int)size.Height, 96, 96, PixelFormats.Pbgra32); image.Render(host);
+        var png = new PngBitmapEncoder(); png.Frames.Add(BitmapFrame.Create(image));
+        using var file = File.Create(Path.Combine(_smokeOutput!, $"capture-ink-picker-{theme}.png")); png.Save(file);
+    }
+
     private static IEnumerable<DependencyObject> Descendants(DependencyObject parent)
     {
         for (var index = 0; index < VisualTreeHelper.GetChildrenCount(parent); index++)

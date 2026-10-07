@@ -77,23 +77,12 @@ public partial class MainWindow : Window
     private CaptureRecord? _captureWorkbenchRecord;
     private string? _captureWorkbenchPath;
     private double _captureWorkbenchZoom = 1d;
-    private int _captureWorkbenchColorIndex;
     private bool _captureEditorExpanded;
     private bool _captureCommitInProgress;
     private TaskCompletionSource<CaptureImageEditResult?>? _pendingCaptureEdit;
     private CaptureEditorDocument? _completedCaptureDocument;
     private readonly Dictionary<UIElement, Visibility> _capturePageVisibility = new();
     private GridLength[]? _capturePageRowHeights;
-
-    private static readonly int[] CaptureWorkbenchColors =
-    [
-        DrawingColor.FromArgb(232, 78, 96).ToArgb(),
-        DrawingColor.FromArgb(255, 159, 10).ToArgb(),
-        DrawingColor.FromArgb(255, 204, 0).ToArgb(),
-        DrawingColor.FromArgb(48, 209, 88).ToArgb(),
-        DrawingColor.FromArgb(50, 173, 230).ToArgb(),
-        DrawingColor.FromArgb(94, 92, 230).ToArgb()
-    ];
 
     private static readonly DependencyProperty CaptureHistoryOffsetProperty =
         DependencyProperty.Register(
@@ -3299,6 +3288,17 @@ public partial class MainWindow : Window
     private void CaptureInlineEditor_OnStateChanged(object? sender, EventArgs e)
     {
         if (CaptureWorkbenchUndoButton is null || CaptureWorkbenchRedoButton is null) return;
+        var ink = DrawingColor.FromArgb(CaptureInlineEditor.InkArgb);
+        CaptureWorkbenchColorSwatch.Background = new SolidColorBrush(Color.FromArgb(ink.A, ink.R, ink.G, ink.B));
+        var size = CaptureInlineEditor.InkThickness.ToString("0", System.Globalization.CultureInfo.InvariantCulture);
+        var sizeItem = CaptureWorkbenchThicknessBox.Items.OfType<ComboBoxItem>().FirstOrDefault(i => i.Tag?.ToString() == size);
+        if (sizeItem is null)
+        {
+            sizeItem = new ComboBoxItem { Content = size, Tag = size };
+            var index = CaptureWorkbenchThicknessBox.Items.OfType<ComboBoxItem>().Count(i => int.Parse(i.Tag!.ToString()!) < (int)CaptureInlineEditor.InkThickness);
+            CaptureWorkbenchThicknessBox.Items.Insert(index, sizeItem);
+        }
+        CaptureWorkbenchThicknessBox.SelectedItem = sizeItem;
         CaptureWorkbenchUndoButton.IsEnabled = CaptureInlineEditor.CanUndo;
         CaptureWorkbenchRedoButton.IsEnabled = CaptureInlineEditor.CanRedo;
         CaptureEditorContext.Refresh();
@@ -3338,13 +3338,7 @@ public partial class MainWindow : Window
 
     private void CycleCaptureWorkbenchColor_OnClick(object sender, RoutedEventArgs e)
     {
-        _captureWorkbenchColorIndex = (_captureWorkbenchColorIndex + 1) % CaptureWorkbenchColors.Length;
-        var argb = CaptureWorkbenchColors[_captureWorkbenchColorIndex];
-        var color = DrawingColor.FromArgb(argb);
-        CaptureWorkbenchColorSwatch.Background = new SolidColorBrush(
-            Color.FromArgb(color.A, color.R, color.G, color.B));
-        CaptureInlineEditor.SetColor(argb);
-        StatusText.Text = "Cor da anotação alterada";
+        if (sender is Button anchor) CaptureInkPicker.Show(anchor, CaptureInlineEditor);
     }
 
     private void OpenAdvancedCaptureEditor_OnClick(object sender, RoutedEventArgs e)

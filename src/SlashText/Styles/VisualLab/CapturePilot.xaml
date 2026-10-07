@@ -2,6 +2,30 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                     xmlns:lab="clr-namespace:SlashText.Design">
     <!-- Production pilot for issue #63. All keys remain opt-in. -->
+    <Style x:Key="Lab.Pilot.SliderTrack" TargetType="RepeatButton">
+        <Setter Property="Focusable" Value="False"/>
+        <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="RepeatButton">
+            <Border Height="4" CornerRadius="2" Background="{TemplateBinding Background}"/>
+        </ControlTemplate></Setter.Value></Setter>
+    </Style>
+    <Style x:Key="Lab.Pilot.InkSlider" TargetType="Slider">
+        <Setter Property="Height" Value="30"/>
+        <Setter Property="FocusVisualStyle" Value="{StaticResource Lab.Focus}"/>
+        <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Slider">
+            <Grid Background="Transparent">
+                <Track x:Name="PART_Track" Minimum="{TemplateBinding Minimum}" Maximum="{TemplateBinding Maximum}"
+                       Value="{TemplateBinding Value}" IsDirectionReversed="{TemplateBinding IsDirectionReversed}">
+                    <Track.DecreaseRepeatButton><RepeatButton Command="Slider.DecreaseLarge" Style="{StaticResource Lab.Pilot.SliderTrack}" Background="{DynamicResource Lab.accent}"/></Track.DecreaseRepeatButton>
+                    <Track.Thumb><Thumb Width="18" Height="18">
+                        <Thumb.Template><ControlTemplate TargetType="Thumb">
+                            <Border CornerRadius="9" Background="{DynamicResource Lab.accent}" BorderThickness="4" BorderBrush="{DynamicResource Lab.line-strong}"/>
+                        </ControlTemplate></Thumb.Template>
+                    </Thumb></Track.Thumb>
+                    <Track.IncreaseRepeatButton><RepeatButton Command="Slider.IncreaseLarge" Style="{StaticResource Lab.Pilot.SliderTrack}" Background="{DynamicResource Lab.muted}"/></Track.IncreaseRepeatButton>
+                </Track>
+            </Grid>
+        </ControlTemplate></Setter.Value></Setter>
+    </Style>
     <Style x:Key="Lab.Pilot.ShellHeader" TargetType="Border">
         <Setter Property="Background" Value="{DynamicResource Lab.shell}"/>
         <Setter Property="BorderBrush" Value="{DynamicResource Lab.line}"/>

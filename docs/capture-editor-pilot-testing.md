@@ -38,6 +38,22 @@ Não existe reposicionamento/edição individual de objetos já inseridos nesta 
 
 ## Testes manuais para aprovação
 
+### Cores e desempenho — retorno de 06/10/2026
+
+- O botão de cor abre uma faixa horizontal: principais cores primeiro, setas para os demais 30 tons e **RGB** no final. Os campos R/G/B (0–255) e hexadecimal ficam recolhidos até solicitados. Enter/Aplicar confirma a cor; entrada inválida mantém a anterior. Esc/clique fora fecha a faixa. Espessura de 1–24 px, amostra do traço e campo da barra ficam sincronizados. Propriedades afetam próximas anotações.
+- Repetir Claro/Preto/Windows; verificar teclado, RGB inválido/255, hexadecimal, setas, cor branca/preta e tamanhos 1/7/24. Reduzir a janela/DPI: RGB pode quebrar linha, sem sobrepor controles.
+- Repetir o caso relatado: imagem 2560×2317, pelo menos 61 emotes e desfoques sobrepostos. Comparar resposta ao inserir novas anotações, trocar ferramenta, expandir e desfazer. Salvar/copiar precisam preservar a mesma composição. Desfoques grandes e reconstrução após desfazer ainda dependem do tamanho/CPU; o benchmark do runner não aprova fluidez física.
+- A prévia agora transfere pixels sem comprimir PNG. O documento mantém **um** bitmap de cache, aplica novos comandos incrementalmente e invalida o cache quando undo/descartar altera o prefixo. Fonte/undo/checkpoint não são achatados; exportação devolve cópia independente.
+
+### Próxima etapa da #63: overlay/barra de seleção
+
+Já pertence à #63; não está implementada por este ajuste de cor/desempenho. Antes de encerrar o piloto:
+1. Inventariar os handlers de `RegionCaptureWindow` e a barra nativa, usando contrato fixado e o print de referência Snipping Tool.
+2. Provar seleção por arraste, mover e **reduzir/ampliar a área pelas alças**, cancelar e finalizar. Coordenadas de imagem/desktop, DPI e monitores devem permanecer corretos.
+3. Harmonizar barra flutuante, ícones, popups de propriedades e animações; permitir anotações rápidas **antes** de finalizar a captura real. Reutilizar componentes/renderer quando as coordenadas e lifecycle permitirem; não substituir por desktop fictício do Lab.
+4. Validar posicionamento nos quatro cantos, monitores negativos/mistos, taskbar, saídas Direta/Editor e todos os instrumentos já existentes.
+5. Entregar outro candidato isolado com evidências Claro/Preto e teste manual. Não avançar às demais telas nem fechar #63 sem essa validação.
+
 Use imagens/capturas de teste, não arquivos únicos importantes. Repita em Claro, Preto e Windows.
 
 1. **Imagem importada:** abrir PNG/JPEG; caneta, seta, retângulo, texto Georgia e Consolas, tamanhos distintos, negrito/itálico, emotes diferentes. Conferir prévia e arquivo/clipboard.

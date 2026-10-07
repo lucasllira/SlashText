@@ -58,8 +58,18 @@ public static class CaptureAnnotationRenderer
             return output;
         }
 
-        var scaleX = source.Width / previewWidth;
-        var scaleY = source.Height / previewHeight;
+        try { Apply(output, annotations, previewWidth, previewHeight); return output; }
+        catch { output.Dispose(); throw; }
+    }
+
+    // Only the document owns this bitmap. Applying an append in place avoids
+    // copying the entire capture and decoding all previous stamps again.
+    internal static void Apply(Bitmap output, IReadOnlyList<CaptureAnnotation> annotations,
+        double previewWidth, double previewHeight)
+    {
+        if (previewWidth <= 0 || previewHeight <= 0) return;
+        var scaleX = output.Width / previewWidth;
+        var scaleY = output.Height / previewHeight;
         foreach (var annotation in annotations)
         {
             if (annotation.Kind is CaptureAnnotationKind.Blur or CaptureAnnotationKind.Pixelate)
@@ -72,7 +82,6 @@ public static class CaptureAnnotationRenderer
             graphics.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
             Draw(graphics, annotation, scaleX, scaleY);
         }
-        return output;
     }
 
     private static void ApplyPrivacyEffect(

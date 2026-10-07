@@ -1438,14 +1438,17 @@
                                                 ToolTip="Redimensionar" Click="CaptureResizeTool_OnClick">
                                           <lab:LabIcon Kind="Scaling" Style="{StaticResource Lab.Pilot.ToolGlyph}"/>
                                         </Button>
-                                        <Button x:Name="CaptureWorkbenchColorButton" Width="32" Height="38" Margin="8,0,4,0"
-                                                Padding="6" Style="{StaticResource Lab.Pilot.ToolButton}"
-                                                ToolTip="Alterar cor" Click="CycleCaptureWorkbenchColor_OnClick">
+                                        <Button x:Name="CaptureWorkbenchColorButton" Width="44" Height="38" Margin="8,0,4,0"
+                                                Padding="4" Style="{StaticResource Lab.Pilot.ToolButton}"
+                                                ToolTip="Cor e espessura do traço" Click="CycleCaptureWorkbenchColor_OnClick">
+                                          <StackPanel Orientation="Horizontal">
                                           <Border x:Name="CaptureWorkbenchColorSwatch" Width="18" Height="18"
                                                   Background="{DynamicResource Lab.error}"
                                                   BorderBrush="{DynamicResource Lab.line-strong}" BorderThickness="1"/>
+                                            <lab:LabIcon Kind="ChevronDown" Width="10" Height="10" Margin="4,0,0,0"/>
+                                          </StackPanel>
                                         </Button>
-                                        <ComboBox x:Name="CaptureWorkbenchThicknessBox" Width="62" Margin="0,0,8,0"
+                                        <ComboBox x:Name="CaptureWorkbenchThicknessBox" Width="70" Margin="0,0,8,0"
                                                   Style="{StaticResource Lab.Combo}" SelectedIndex="1"
                                                   SelectionChanged="CaptureWorkbenchThickness_OnChanged">
                                           <ComboBoxItem Content="2" Tag="2"/>

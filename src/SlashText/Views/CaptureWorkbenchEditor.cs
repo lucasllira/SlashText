@@ -28,6 +28,7 @@ public sealed class CaptureWorkbenchEditor : UserControl, IDisposable
     private readonly List<Point> _pencilPoints = [];
     private CaptureEditorDocument? _document;
     private DrawingBitmap? _previewBitmap;
+    private BitmapSource? _previewSource;
     private CaptureAnnotation? _pending;
     private CaptureAnnotationKind? _tool;
     private Point _start;
@@ -51,6 +52,7 @@ public sealed class CaptureWorkbenchEditor : UserControl, IDisposable
     public CaptureEditorDocument? Document => _document;
     public double Zoom => _zoom;
     public int InkArgb => _color;
+    public float InkThickness => _thickness;
     public string AnnotationText { get; set; } = "Anotação";
     public string TextFontFamily { get; set; } = "Segoe UI";
     public float TextSize { get; set; } = 24;
@@ -145,7 +147,7 @@ public sealed class CaptureWorkbenchEditor : UserControl, IDisposable
         CancelGesture();
         _document?.Dispose(); _document = null;
         _previewBitmap?.Dispose(); _previewBitmap = null;
-        _image.Source = null;
+        _image.Source = null; _previewSource = null;
         _overlay.Children.Clear();
         _tool = null; _cropTool = false; _crop = null;
         NotifyStateChanged();
@@ -162,7 +164,12 @@ public sealed class CaptureWorkbenchEditor : UserControl, IDisposable
         SelectTool(null); _cropTool = true; _overlay.Cursor = Cursors.Cross; NotifyStateChanged();
     }
     public void SetColor(int argb) { _color = argb; if (ShapeFill.HasValue) ShapeFill = argb; NotifyStateChanged(); }
-    public void SetThickness(float thickness) => _thickness = Math.Clamp(thickness, 1, 24);
+    public void SetThickness(float thickness)
+    {
+        var next = Math.Clamp(thickness, 1, 24);
+        if (Math.Abs(_thickness - next) < .001f) return;
+        _thickness = next; NotifyStateChanged();
+    }
     public void Undo() { CancelCrop(); _document?.Undo(); RefreshPreview(); NotifyStateChanged(); }
     public void Redo() { CancelCrop(); _document?.Redo(); RefreshPreview(); NotifyStateChanged(); }
     public void MarkSaved() { _document?.MarkSaved(); NotifyStateChanged(); }
@@ -267,7 +274,7 @@ public sealed class CaptureWorkbenchEditor : UserControl, IDisposable
     {
         _previewTimer.Stop(); _pending = null; _drawing = false; _panStart = null;
         _overlay.ReleaseMouseCapture();
-        if (_previewBitmap is not null) _image.Source = ToBitmapSource(_previewBitmap);
+        if (_previewSource is not null) _image.Source = _previewSource;
     }
 
     private void RefreshPreview()
@@ -277,7 +284,7 @@ public sealed class CaptureWorkbenchEditor : UserControl, IDisposable
         _previewBitmap?.Dispose(); _previewBitmap = next;
         _surface.Width = _image.Width = _overlay.Width = next.Width;
         _surface.Height = _image.Height = _overlay.Height = next.Height;
-        _image.Source = ToBitmapSource(next);
+        _image.Source = _previewSource = ToBitmapSource(next);
         _overlay.Children.Clear(); UpdateZoom();
     }
 
@@ -302,14 +309,7 @@ public sealed class CaptureWorkbenchEditor : UserControl, IDisposable
 
     private Point Clamp(Point point) => new(Math.Clamp(point.X, 0, Math.Max(1, _surface.Width)), Math.Clamp(point.Y, 0, Math.Max(1, _surface.Height)));
     private void NotifyStateChanged() => StateChanged?.Invoke(this, EventArgs.Empty);
-    public void Dispose() { _previewTimer.Stop(); _document?.Dispose(); _document = null; _previewBitmap?.Dispose(); _previewBitmap = null; }
+    public void Dispose() { _previewTimer.Stop(); _document?.Dispose(); _document = null; _previewBitmap?.Dispose(); _previewBitmap = null; _previewSource = null; }
 
-    private static BitmapSource ToBitmapSource(DrawingBitmap bitmap)
-    {
-        using var stream = new System.IO.MemoryStream();
-        bitmap.Save(stream, System.Drawing.Imaging.ImageFormat.Png);
-        stream.Position = 0;
-        var image = new BitmapImage(); image.BeginInit(); image.CacheOption = BitmapCacheOption.OnLoad; image.StreamSource = stream; image.EndInit(); image.Freeze();
-        return image;
-    }
+    private static BitmapSource ToBitmapSource(DrawingBitmap bitmap) => CaptureBitmapSource.Create(bitmap);
 }

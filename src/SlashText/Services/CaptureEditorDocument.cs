@@ -20,6 +20,8 @@ public sealed class CaptureEditorDocument : IDisposable
     private readonly Stack<Step> _redo = new();
     private Step[] _checkpoint = [];
     private long _nextId;
+    private Bitmap? _rendered;
+    private Step[] _renderedSteps = [];
 
     public CaptureEditorDocument(Bitmap source) => _source = new Bitmap(source);
     public int OperationCount => _steps.Count;
@@ -90,22 +92,39 @@ public sealed class CaptureEditorDocument : IDisposable
     /// <summary>Preview, clipboard and export all call this same renderer.</summary>
     public Bitmap Render(CaptureAnnotation? pending = null)
     {
-        Bitmap bitmap = new(_source);
-        var annotations = new List<CaptureAnnotation>();
-        void Flush()
-        {
-            if (annotations.Count == 0) return;
-            var next = CaptureAnnotationRenderer.Render(bitmap, annotations, bitmap.Width, bitmap.Height);
-            bitmap.Dispose(); bitmap = next; annotations.Clear();
-        }
+        EnsureRender();
+        // Callers own their copy: disposing/editing an export cannot corrupt
+        // the cached preview or change the non-destructive command history.
+        var bitmap = _rendered!.Clone(new Rectangle(0, 0, _rendered.Width, _rendered.Height), PixelFormat.Format32bppArgb);
         try
         {
-            foreach (var step in _steps)
+            if (pending is not null) CaptureAnnotationRenderer.Apply(bitmap, [pending], bitmap.Width, bitmap.Height);
+            return bitmap;
+        }
+        catch { bitmap.Dispose(); throw; }
+    }
+
+    private void EnsureRender()
+    {
+        // One bounded full-size cache, not one bitmap per undo operation.
+        // Undo, discard or a branched redo rebuild only when the prefix changes.
+        if (_renderedSteps.Length > _steps.Count ||
+            !_renderedSteps.Select(s => s.Id).SequenceEqual(_steps.Take(_renderedSteps.Length).Select(s => s.Id)))
+        {
+            _rendered?.Dispose(); _rendered = null; _renderedSteps = [];
+        }
+        _rendered ??= new Bitmap(_source);
+        try
+        {
+            foreach (var step in _steps.Skip(_renderedSteps.Length))
             {
-                if (step is AnnotationStep annotation) { annotations.Add(annotation.Annotation); continue; }
-                Flush();
+                if (step is AnnotationStep annotation)
+                {
+                    CaptureAnnotationRenderer.Apply(_rendered, [annotation.Annotation], _rendered.Width, _rendered.Height);
+                    continue;
+                }
                 Bitmap next;
-                if (step is CropStep crop) next = bitmap.Clone(crop.Bounds, PixelFormat.Format32bppArgb);
+                if (step is CropStep crop) next = _rendered.Clone(crop.Bounds, PixelFormat.Format32bppArgb);
                 else if (step is ResizeStep resize)
                 {
                     next = new Bitmap(resize.Width, resize.Height, PixelFormat.Format32bppArgb);
@@ -115,18 +134,16 @@ public sealed class CaptureEditorDocument : IDisposable
                     graphics.PixelOffsetMode = PixelOffsetMode.HighQuality;
                     using var attributes = new ImageAttributes();
                     attributes.SetWrapMode(WrapMode.TileFlipXY);
-                    graphics.DrawImage(bitmap, new Rectangle(0, 0, next.Width, next.Height),
-                        0, 0, bitmap.Width, bitmap.Height, GraphicsUnit.Pixel, attributes);
+                    graphics.DrawImage(_rendered, new Rectangle(0, 0, next.Width, next.Height),
+                        0, 0, _rendered.Width, _rendered.Height, GraphicsUnit.Pixel, attributes);
                 }
                 else throw new InvalidOperationException("Comando de edição desconhecido.");
-                bitmap.Dispose(); bitmap = next;
+                _rendered.Dispose(); _rendered = next;
             }
-            if (pending is not null) annotations.Add(pending);
-            Flush();
-            return bitmap;
+            _renderedSteps = [.. _steps];
         }
-        catch { bitmap.Dispose(); throw; }
+        catch { _rendered?.Dispose(); _rendered = null; _renderedSteps = []; throw; }
     }
 
-    public void Dispose() => _source.Dispose();
+    public void Dispose() { _source.Dispose(); _rendered?.Dispose(); _rendered = null; }
 }
