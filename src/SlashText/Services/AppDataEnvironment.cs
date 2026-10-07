@@ -16,17 +16,20 @@ public sealed class AppDataEnvironment
     public AppDataEnvironment(
         DistributionMode mode,
         string executableDirectory,
-        string localAppDataDirectory)
+        string localAppDataDirectory,
+        bool isCapturePilot = false)
     {
-        Mode = mode;
+        IsCapturePilot = isCapturePilot;
+        Mode = isCapturePilot ? DistributionMode.Portable : mode;
         ExecutableDirectory = Path.GetFullPath(executableDirectory);
         LocalAppDataDirectory = Path.GetFullPath(localAppDataDirectory);
-        DataDirectory = mode == DistributionMode.Portable
+        DataDirectory = isCapturePilot ? Path.Combine(ExecutableDirectory, "SlashDeskPilotData") : mode == DistributionMode.Portable
             ? Path.Combine(ExecutableDirectory, "SlashDeskData")
             : Path.Combine(LocalAppDataDirectory, "SlashDesk");
     }
 
     public DistributionMode Mode { get; }
+    public bool IsCapturePilot { get; }
     public string ExecutableDirectory { get; }
     public string LocalAppDataDirectory { get; }
     public string DataDirectory { get; }
@@ -36,6 +39,8 @@ public sealed class AppDataEnvironment
     public static AppDataEnvironment Detect()
     {
         var assembly = Assembly.GetEntryAssembly() ?? Assembly.GetExecutingAssembly();
+        var pilot = assembly.GetCustomAttributes<AssemblyMetadataAttribute>()
+            .Any(item => item.Key == "SlashDeskCapturePilot" && item.Value == "true");
         var declared = assembly.GetCustomAttributes<AssemblyMetadataAttribute>()
             .FirstOrDefault(item => item.Key.Equals(
                 DistributionMetadataKey,
@@ -50,7 +55,7 @@ public sealed class AppDataEnvironment
         return new AppDataEnvironment(
             mode,
             executableDirectory,
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData));
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), pilot);
     }
 
     public bool TryProbePortableWrite(out string? error)

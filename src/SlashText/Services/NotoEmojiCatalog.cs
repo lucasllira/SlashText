@@ -1,18 +1,21 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
+using System.Text.Json;
 using System.Windows.Media.Imaging;
 
 namespace SlashText.Services;
 
-public sealed record NotoEmojiItem(string Value, string Name, string AssetName);
+public sealed record NotoEmojiItem(string Value, string Name, string AssetName,
+    string Category = "Acesso rápido", string Keywords = "");
 
 public static class NotoEmojiCatalog
 {
     private const string ResourcePrefix = "SlashText.Assets.NotoEmoji.";
 
-    public static IReadOnlyList<NotoEmojiItem> Items { get; } =
+    public static IReadOnlyList<NotoEmojiItem> QuickItems { get; } =
     [
         new("❤️", "Coração", "emoji_u2764.png"),
         new("⭐", "Estrela", "emoji_u2b50.png"),
@@ -52,51 +55,85 @@ public static class NotoEmojiCatalog
         new("🎉", "Confetes", "emoji_u1f389.png")
     ];
 
+    private sealed record Snapshot(string Commit, int Count, NotoEmojiItem[] Items);
+    private static Snapshot LoadSnapshot()
+    {
+        using var stream = typeof(NotoEmojiCatalog).Assembly.GetManifestResourceStream(ResourcePrefix + "catalog.json")
+            ?? throw new InvalidOperationException("Catálogo Noto incorporado ausente.");
+        var snapshot = JsonSerializer.Deserialize<Snapshot>(stream)
+            ?? throw new InvalidOperationException("Catálogo Noto inválido.");
+        if (snapshot.Items.Length != snapshot.Count || snapshot.Count < 3600)
+            throw new InvalidOperationException("Catálogo Noto incompleto.");
+        return snapshot;
+    }
+    private static readonly Snapshot Catalog = LoadSnapshot();
+    public static IReadOnlyList<NotoEmojiItem> Items { get; } = Array.AsReadOnly(Catalog.Items);
+    public static string SourceCommit => Catalog.Commit;
+    public static IReadOnlyList<string> Categories { get; } = Items.Select(i => i.Category).Distinct().ToArray();
+    private static string NormalizeValue(string value) => value.Replace("\uFE0F", "", StringComparison.Ordinal);
+    private static readonly IReadOnlyDictionary<string, NotoEmojiItem> Index =
+        Items.ToDictionary(i => NormalizeValue(i.Value), StringComparer.Ordinal);
+    private static readonly Dictionary<string, BitmapSource> PreviewCache = new(StringComparer.Ordinal);
+    private static readonly Queue<string> PreviewOrder = new();
+    private static readonly Lazy<ZipArchive> AssetArchive = new(() => new ZipArchive(
+        typeof(NotoEmojiCatalog).Assembly.GetManifestResourceStream(ResourcePrefix + "catalog-assets.zip")
+            ?? throw new InvalidOperationException("Pacote Noto incorporado ausente."), ZipArchiveMode.Read));
+
     public static bool TryGet(string value, out NotoEmojiItem item)
     {
-        var found = Items.FirstOrDefault(candidate => candidate.Value == value);
-        if (found is null)
-        {
-            item = null!;
-            return false;
-        }
-        item = found;
-        return true;
+        return Index.TryGetValue(NormalizeValue(value), out item!);
     }
 
     public static BitmapSource CreateImageSource(string value)
     {
         if (!TryGet(value, out var item))
         {
-            item = Items[0];
+            throw new ArgumentException("Emoji não disponível no catálogo local.", nameof(value));
         }
-        using var stream = Open(item);
-        var image = new BitmapImage();
-        image.BeginInit();
-        image.CacheOption = BitmapCacheOption.OnLoad;
-        image.StreamSource = stream;
-        image.EndInit();
-        image.Freeze();
-        return image;
+        lock (PreviewCache)
+        {
+            if (PreviewCache.TryGetValue(item.Value, out var cached)) return cached;
+            using var stream = Open(item);
+            var image = new BitmapImage();
+            image.BeginInit();
+            image.CacheOption = BitmapCacheOption.OnLoad;
+            image.DecodePixelWidth = 40;
+            image.StreamSource = stream;
+            image.EndInit();
+            image.Freeze();
+            if (PreviewCache.Count >= 192) PreviewCache.Remove(PreviewOrder.Dequeue());
+            PreviewCache[item.Value] = image; PreviewOrder.Enqueue(item.Value);
+            return image;
+        }
     }
 
     public static System.Drawing.Bitmap CreateBitmap(string value)
     {
         if (!TryGet(value, out var item))
         {
-            item = Items[0];
+            throw new ArgumentException("Emoji não disponível no catálogo local.", nameof(value));
         }
         using var stream = Open(item);
         using var source = new System.Drawing.Bitmap(stream);
         return new System.Drawing.Bitmap(source);
     }
 
-    public static bool HasAsset(NotoEmojiItem item) =>
-        typeof(NotoEmojiCatalog).Assembly.GetManifestResourceInfo(
-            ResourcePrefix + item.AssetName) is not null;
+    public static bool HasAsset(NotoEmojiItem item)
+    {
+        lock (AssetArchive) return AssetArchive.Value.GetEntry(item.AssetName) is not null;
+    }
 
-    private static Stream Open(NotoEmojiItem item) =>
-        typeof(NotoEmojiCatalog).Assembly.GetManifestResourceStream(
-            ResourcePrefix + item.AssetName)
-        ?? throw new InvalidOperationException($"Recurso Noto Emoji ausente: {item.AssetName}");
+    private static Stream Open(NotoEmojiItem item)
+    {
+        // ZipArchive shares a seekable resource stream. Copy only the requested
+        // PNG under the lock; callers then decode their own independent stream.
+        lock (AssetArchive)
+        {
+            var entry = AssetArchive.Value.GetEntry(item.AssetName)
+                ?? throw new InvalidOperationException($"Recurso Noto Emoji ausente: {item.AssetName}");
+            using var source = entry.Open();
+            var bytes = new MemoryStream((int)entry.Length);
+            source.CopyTo(bytes); bytes.Position = 0; return bytes;
+        }
+    }
 }

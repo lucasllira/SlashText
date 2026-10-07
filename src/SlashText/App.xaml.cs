@@ -10,6 +10,7 @@ namespace SlashText;
 public partial class App : System.Windows.Application
 {
     private Mutex? _singleInstance;
+    private bool _ownsSingleInstance;
     private bool _helperMode;
 
     protected override void OnStartup(StartupEventArgs e)
@@ -64,7 +65,8 @@ public partial class App : System.Windows.Application
             return;
         }
 
-        if (PortableUpdateService.TryRunHelper(e.Args, out var helperExitCode))
+        var dataEnvironment = AppDataEnvironment.Detect();
+        if (!dataEnvironment.IsCapturePilot && PortableUpdateService.TryRunHelper(e.Args, out var helperExitCode))
         {
             _helperMode = true;
             Shutdown(helperExitCode);
@@ -72,7 +74,7 @@ public partial class App : System.Windows.Application
         }
         try
         {
-            PortableUpdateService.ConfirmAndScheduleCleanup(e.Args);
+            if (!dataEnvironment.IsCapturePilot) PortableUpdateService.ConfirmAndScheduleCleanup(e.Args);
         }
         catch
         {
@@ -82,7 +84,6 @@ public partial class App : System.Windows.Application
             return;
         }
 
-        var dataEnvironment = AppDataEnvironment.Detect();
         AppPaths.Initialize(dataEnvironment);
         if (!EnsurePortableLocationIsWritable(dataEnvironment))
         {
@@ -144,6 +145,7 @@ public partial class App : System.Windows.Application
         // Mantém o identificador legado para impedir que SlashText e SlashDesk
         // monitorem o teclado ao mesmo tempo durante uma atualização.
         _singleInstance = new Mutex(true, "SlashText.SingleInstance", out var created);
+        _ownsSingleInstance = created;
         if (!created)
         {
             MessageBox.Show(
@@ -242,7 +244,7 @@ public partial class App : System.Windows.Application
         {
             AppDiagnosticLog.Write("application.exit", ("exitCode", e.ApplicationExitCode));
         }
-        _singleInstance?.ReleaseMutex();
+        if (_ownsSingleInstance) _singleInstance?.ReleaseMutex();
         _singleInstance?.Dispose();
         base.OnExit(e);
     }

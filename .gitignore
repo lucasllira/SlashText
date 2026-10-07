@@ -7,3 +7,5 @@ publish/
 backups/
 settings.json
 usage.json
+src/SlashText/Assets/NotoEmoji/Full/
+src/SlashText/Assets/NotoEmoji/catalog-assets.zip*

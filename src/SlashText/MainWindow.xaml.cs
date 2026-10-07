@@ -9,14 +9,17 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
+using SlashText.Design;
 using SlashText.Models;
 using SlashText.Services;
 using SlashText.Views;
 using Forms = System.Windows.Forms;
 using Button = System.Windows.Controls.Button;
 using DrawingIcon = System.Drawing.Icon;
+using DrawingBitmap = System.Drawing.Bitmap;
 using DrawingSystemIcons = System.Drawing.SystemIcons;
 using DrawingColor = System.Drawing.Color;
 
@@ -56,6 +59,7 @@ public partial class MainWindow : Window
     private bool _initialized;
     private bool _snippetStorageAvailable = true;
     private bool _updatingQuickAccentSets;
+    private bool _updatingCaptureRecordingCompact;
     private readonly DispatcherTimer _quickAccentPreviewTimer =
         new() { Interval = TimeSpan.FromMilliseconds(900) };
     private int _quickAccentPreviewIndex = 1;
@@ -68,6 +72,36 @@ public partial class MainWindow : Window
     private CancellationTokenSource? _updateMonitorCancellation;
     private Task? _updateMonitorTask;
     private int _shortcutResponsiveBand = -1;
+    private CaptureLauncherMode _captureLauncherMode = CaptureLauncherMode.Region;
+    private CaptureMediaMode _captureMediaMode = CaptureMediaMode.Image;
+    private CaptureRecord? _captureWorkbenchRecord;
+    private string? _captureWorkbenchPath;
+    private double _captureWorkbenchZoom = 1d;
+    private bool _captureEditorExpanded;
+    private bool _captureCommitInProgress;
+    private TaskCompletionSource<CaptureImageEditResult?>? _pendingCaptureEdit;
+    private CaptureEditorDocument? _completedCaptureDocument;
+    private readonly Dictionary<UIElement, Visibility> _capturePageVisibility = new();
+    private GridLength[]? _capturePageRowHeights;
+
+    private static readonly DependencyProperty CaptureHistoryOffsetProperty =
+        DependencyProperty.Register(
+            nameof(CaptureHistoryOffset),
+            typeof(double),
+            typeof(MainWindow),
+            new PropertyMetadata(0d, (target, args) =>
+            {
+                if (target is MainWindow window && window.CaptureHistoryScroller is not null)
+                {
+                    window.CaptureHistoryScroller.ScrollToHorizontalOffset((double)args.NewValue);
+                }
+            }));
+
+    private double CaptureHistoryOffset
+    {
+        get => (double)GetValue(CaptureHistoryOffsetProperty);
+        set => SetValue(CaptureHistoryOffsetProperty, value);
+    }
 
     private const double ShortcutLeftMinimum = 220;
     private const double ShortcutLeftMaximum = 460;
@@ -77,10 +111,37 @@ public partial class MainWindow : Window
     private const double ShortcutDividerSpace = 32;
     private static readonly TimeSpan UpdateMonitorInterval = TimeSpan.FromMinutes(30);
 
-    public MainWindow()
+    private enum CaptureLauncherMode
+    {
+        ActiveMonitor,
+        Region,
+        Window,
+        Scrolling,
+        Gif
+    }
+
+    private enum CaptureMediaMode
+    {
+        Image,
+        Video,
+        Gif
+    }
+
+    public MainWindow() : this(captureEvidence: false) { }
+
+    internal MainWindow(bool captureEvidence)
     {
         InitializeComponent();
+        CaptureInlineEditor.StateChanged += CaptureInlineEditor_OnStateChanged;
+        CaptureEditorContext.Attach(CaptureInlineEditor);
+        CaptureInlineEditor.SaveCopyRequested += (_, _) => SaveCapturePreview_OnClick(this, new RoutedEventArgs());
+        CaptureInlineEditor.ExitRequested += (_, _) => { if (_captureEditorExpanded) SetCaptureEditorExpanded(false); };
+        _captureService.ImageEditor = EditNewCaptureInWorkbenchAsync;
+        CaptureImageMediaButton.IsChecked = true;
+        CaptureRegionModeButton.IsChecked = true;
         InitializeRecordingPresetControls();
+        // Unshown UI fixture: no tray, startup/data loading, hooks or updater.
+        if (captureEvidence) return;
         InitializeTray();
         Loaded += MainWindow_OnLoaded;
         Closing += MainWindow_OnClosing;
@@ -122,6 +183,20 @@ public partial class MainWindow : Window
 
             _settings.Capture ??= new CaptureSettings();
             _settings.Capture.Recording ??= new RecordingSettings();
+            if (AppPaths.IsCapturePilot)
+            {
+                Title = "SlashDesk — Piloto Captura 3.3.0 · #63";
+                _settings.CheckUpdatesOnStartup = false;
+                _settings.StartWithWindows = false;
+                _settings.OnboardingCompleted = true;
+                _settings.CloseToTray = false;
+                if (!File.Exists(AppPaths.SettingsFile))
+                    _settings.Capture.OutputDirectoryTemplate = Path.Combine(AppPaths.DataDirectory, "Capturas", "{year}", "{month}");
+                StartWithWindowsCheckBox.IsEnabled = false;
+                CheckUpdatesCheckBox.IsEnabled = false;
+                CheckUpdatesButton.IsEnabled = false;
+                SettingsCheckUpdatesButton.IsEnabled = false;
+            }
             RecordingPresetCatalog.Normalize(_settings.Capture.Recording);
             ThemeService.Apply(_settings.Theme);
             if (_trayIcon?.ContextMenuStrip is { } startupTrayMenu)
@@ -220,6 +295,7 @@ public partial class MainWindow : Window
                 "Atalhos globais de captura",
                 ConfigureCaptureShortcuts);
             RefreshCaptureHistory();
+            if (AppPaths.IsCapturePilot) ShowView(CaptureView, CaptureTabButton);
 
             if (!_settings.OnboardingCompleted)
             {
@@ -1307,7 +1383,7 @@ public partial class MainWindow : Window
     {
         var views = new UIElement[]
         {
-            ShortcutsView, QuickAccentView, CaptureView, StatisticsView, SettingsView, AboutView
+            ShortcutsView, CaptureView, QuickAccentView, StatisticsView, SettingsView, AboutView
         };
         foreach (var item in views)
         {
@@ -1318,22 +1394,13 @@ public partial class MainWindow : Window
 
         var buttons = new[]
         {
-            ShortcutsTabButton, QuickAccentTabButton, CaptureTabButton, StatisticsTabButton,
+            ShortcutsTabButton, CaptureTabButton, QuickAccentTabButton, StatisticsTabButton,
             SettingsTabButton, AboutTabButton
         };
         foreach (var button in buttons)
         {
             var selected = ReferenceEquals(button, selectedButton);
             button.Tag = selected ? "Selected" : null;
-            button.Background = selected
-                ? (Brush)FindResource("AccentSubtleBrush")
-                : Brushes.Transparent;
-            button.BorderBrush = selected
-                ? (Brush)FindResource("FocusBrush")
-                : Brushes.Transparent;
-            button.Foreground = selected
-                ? (Brush)FindResource("AccentBrush")
-                : (Brush)FindResource("MutedBrush");
         }
 
         (ShellPageTitle.Text, ShellPageDescription.Text) = ReferenceEquals(view, ShortcutsView)
@@ -1502,7 +1569,7 @@ public partial class MainWindow : Window
 
         try
         {
-            if (previousStart != _settings.StartWithWindows)
+            if (!AppPaths.IsCapturePilot && previousStart != _settings.StartWithWindows)
             {
                 StartupService.SetEnabled(_settings.StartWithWindows);
             }
@@ -2058,6 +2125,78 @@ public partial class MainWindow : Window
             item => $"{item.Value} FPS — {item.Name}", item => item.Value.ToString());
         AddPresetItems(GifQualityBox, RecordingPresetCatalog.GifQuality,
             item => item.Name, item => item.Value.ToString());
+        PopulateCompactRecordingControls();
+    }
+
+    private void PopulateCompactRecordingControls()
+    {
+        if (CaptureCompactFpsBox is null || CaptureCompactQualityBox is null)
+        {
+            return;
+        }
+        _updatingCaptureRecordingCompact = true;
+        try
+        {
+            CaptureCompactFpsBox.Items.Clear();
+            CaptureCompactQualityBox.Items.Clear();
+            if (_captureMediaMode == CaptureMediaMode.Gif)
+            {
+                CaptureCompactHintText.Text = "Paleta adaptativa · prévia antes de salvar";
+                CaptureCompactTargetBox.Items.Clear();
+                CaptureCompactTargetBox.Items.Add(new ComboBoxItem { Content = "Região", Tag = "Region" });
+                CaptureCompactTargetBox.SelectedIndex = 0;
+                CaptureCompactTargetBox.IsEnabled = false;
+                AddPresetItems(CaptureCompactFpsBox, RecordingPresetCatalog.GifFps,
+                    item => $"{item.Value}", item => item.Value.ToString());
+                AddPresetItems(CaptureCompactQualityBox, RecordingPresetCatalog.GifQuality,
+                    item => item.Name, item => item.Value.ToString());
+                SelectComboByTag(CaptureCompactFpsBox, _settings.Capture.Recording.GifFps.ToString());
+                SelectComboByTag(CaptureCompactQualityBox, _settings.Capture.Recording.GifQuality.ToString());
+            }
+            else
+            {
+                CaptureCompactHintText.Text = "H.264 local · pausa e retomada";
+                CaptureCompactTargetBox.Items.Clear();
+                CaptureCompactTargetBox.Items.Add(new ComboBoxItem { Content = "Monitor ativo", Tag = "Monitor" });
+                CaptureCompactTargetBox.Items.Add(new ComboBoxItem { Content = "Região", Tag = "Region" });
+                CaptureCompactTargetBox.Items.Add(new ComboBoxItem { Content = "Janela sob o cursor", Tag = "Window" });
+                CaptureCompactTargetBox.IsEnabled = true;
+                foreach (var fps in new[] { 24, 30, 60 })
+                {
+                    CaptureCompactFpsBox.Items.Add(new ComboBoxItem { Content = fps.ToString(), Tag = fps.ToString() });
+                }
+                AddPresetItems(CaptureCompactQualityBox, RecordingPresetCatalog.Mp4Quality,
+                    item => item.Name, item => item.Value);
+                SelectComboByTag(CaptureCompactTargetBox, SelectedTag(RecordingTargetBox, "Monitor"));
+                SelectComboByTag(CaptureCompactFpsBox, _settings.Capture.Recording.VideoFps.ToString());
+                SelectComboByTag(CaptureCompactQualityBox, _settings.Capture.Recording.VideoQuality);
+            }
+            CaptureCompactCursorCheckBox.IsChecked = _settings.Capture.Recording.IncludeCursor;
+        }
+        finally
+        {
+            _updatingCaptureRecordingCompact = false;
+        }
+    }
+
+    private void CaptureCompactRecording_OnChanged(object sender, RoutedEventArgs e)
+    {
+        if (_updatingCaptureRecordingCompact || RecordingCursorCheckBox is null)
+        {
+            return;
+        }
+        RecordingCursorCheckBox.IsChecked = CaptureCompactCursorCheckBox.IsChecked == true;
+        if (_captureMediaMode == CaptureMediaMode.Gif)
+        {
+            SelectComboByTag(GifFpsBox, SelectedTag(CaptureCompactFpsBox, "10"));
+            SelectComboByTag(GifQualityBox, SelectedTag(CaptureCompactQualityBox, "128"));
+        }
+        else
+        {
+            SelectComboByTag(RecordingTargetBox, SelectedTag(CaptureCompactTargetBox, "Monitor"));
+            SelectComboByTag(RecordingFpsBox, SelectedTag(CaptureCompactFpsBox, "30"));
+            SelectComboByTag(RecordingQualityBox, SelectedTag(CaptureCompactQualityBox, "Alta"));
+        }
     }
 
     private sealed class TrayColorTable(bool dark) : Forms.ProfessionalColorTable
@@ -2139,6 +2278,10 @@ public partial class MainWindow : Window
         CaptureRegionShortcutBox.Text = capture.RegionShortcut;
         CaptureWindowShortcutBox.Text = capture.WindowShortcut;
         CaptureScrollingShortcutBox.Text = capture.ScrollingShortcut;
+        CaptureMonitorShortcutText.Text = DisplayShortcut(capture.ActiveMonitorShortcut);
+        CaptureRegionShortcutText.Text = DisplayShortcut(capture.RegionShortcut);
+        CaptureWindowShortcutText.Text = DisplayShortcut(capture.WindowShortcut);
+        CaptureScrollingShortcutText.Text = DisplayShortcut(capture.ScrollingShortcut);
         CaptureDirectoryBox.Text = capture.OutputDirectoryTemplate;
         CaptureFileNameBox.Text = capture.FileNameTemplate;
         SelectComboByTag(CaptureFormatBox, capture.ImageFormat);
@@ -2162,7 +2305,14 @@ public partial class MainWindow : Window
         SelectComboByTag(CaptureHistoryFilterBox, "all");
         CaptureQualityBox.IsEnabled =
             capture.ImageFormat.Equals("JPEG", StringComparison.OrdinalIgnoreCase);
+        CapturePostModeText.Text = capture.OpenEditorForMonitorAndWindow
+            ? "Editor: revisar antes de concluir"
+            : "Direta: copiar e salvar";
+        PopulateCompactRecordingControls();
     }
+
+    private static string DisplayShortcut(string value) =>
+        value.Replace("+", " + ", StringComparison.Ordinal);
 
     private void BrowseCaptureDestination_OnClick(object sender, RoutedEventArgs e)
     {
@@ -2330,6 +2480,223 @@ public partial class MainWindow : Window
     private void CaptureScrolling_OnClick(object sender, RoutedEventArgs e) =>
         _ = RunScrollingCaptureAsync(invokedByShortcut: false);
 
+    private void CaptureLauncherMode_OnClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is not RadioButton { Tag: string tag } ||
+            !Enum.TryParse(tag, ignoreCase: true, out CaptureLauncherMode mode))
+        {
+            return;
+        }
+
+        _captureLauncherMode = mode;
+        if (mode == CaptureLauncherMode.Gif)
+        {
+            _captureMediaMode = CaptureMediaMode.Gif;
+            CaptureGifMediaButton.IsChecked = true;
+        }
+        else if (_captureMediaMode == CaptureMediaMode.Gif)
+        {
+            _captureMediaMode = CaptureMediaMode.Image;
+            CaptureImageMediaButton.IsChecked = true;
+        }
+        UpdateCaptureLauncherSummary();
+    }
+
+    private void CaptureMediaMode_OnClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is not RadioButton { Tag: string tag } ||
+            !Enum.TryParse(tag, ignoreCase: true, out CaptureMediaMode mode))
+        {
+            return;
+        }
+
+        _captureMediaMode = mode;
+        if (mode == CaptureMediaMode.Gif)
+        {
+            _captureLauncherMode = CaptureLauncherMode.Gif;
+            CaptureGifModeButton.IsChecked = true;
+        }
+        else if (_captureLauncherMode == CaptureLauncherMode.Gif)
+        {
+            _captureLauncherMode = CaptureLauncherMode.Region;
+            CaptureRegionModeButton.IsChecked = true;
+        }
+        UpdateCaptureLauncherSummary();
+    }
+
+    private async void StartSelectedCapture_OnClick(object sender, RoutedEventArgs e)
+    {
+        if (!TryReadCaptureSettings(out var error))
+        {
+            MessageBox.Show(
+                error,
+                "Regra de captura",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+            return;
+        }
+
+        await _settingsStore.SaveAsync(_settings);
+        ConfigureCaptureShortcuts();
+        switch (_captureMediaMode)
+        {
+            case CaptureMediaMode.Video:
+                StartMp4Recording_OnClick(sender, e);
+                return;
+            case CaptureMediaMode.Gif:
+                StartGifRecording_OnClick(sender, e);
+                return;
+        }
+
+        switch (_captureLauncherMode)
+        {
+            case CaptureLauncherMode.ActiveMonitor:
+                CaptureActiveMonitor_OnClick(sender, e);
+                break;
+            case CaptureLauncherMode.Window:
+                CaptureWindow_OnClick(sender, e);
+                break;
+            case CaptureLauncherMode.Scrolling:
+                CaptureScrolling_OnClick(sender, e);
+                break;
+            default:
+                CaptureRegion_OnClick(sender, e);
+                break;
+        }
+    }
+
+    private void UpdateCaptureLauncherSummary()
+    {
+        if (CaptureEditorCard is not null)
+        {
+            var image = _captureMediaMode == CaptureMediaMode.Image;
+            CaptureEditorCard.Visibility = image ? Visibility.Visible : Visibility.Collapsed;
+            CaptureMediaPreviewPanel.Visibility = image ? Visibility.Collapsed : Visibility.Visible;
+        }
+        var selection = _captureMediaMode switch
+        {
+            CaptureMediaMode.Video => "Vídeo MP4",
+            CaptureMediaMode.Gif => "GIF · região",
+            _ => _captureLauncherMode switch
+            {
+                CaptureLauncherMode.ActiveMonitor => "Monitor",
+                CaptureLauncherMode.Window => "Janela",
+                CaptureLauncherMode.Scrolling => "Captura longa",
+                _ => "Região"
+            }
+        };
+        CaptureNewButtonText.Text = "Novo";
+        CaptureSelectionSummaryText.Text = $"{selection} · pronta";
+        CaptureRecordingCard.Visibility = Visibility.Collapsed;
+        CaptureRecordingCompactCard.Visibility = _captureMediaMode == CaptureMediaMode.Image
+            ? Visibility.Collapsed
+            : Visibility.Visible;
+        CaptureRecordingTopGapRow.Height = new GridLength(20);
+        CaptureRecordingBottomGapRow.Height = new GridLength(
+            _captureMediaMode == CaptureMediaMode.Image ? 0 : 20);
+        CaptureVideoConfigurationPanel.Visibility = _captureMediaMode == CaptureMediaMode.Video
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+        CaptureGifConfigurationPanel.Visibility = _captureMediaMode == CaptureMediaMode.Gif
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+        PopulateCompactRecordingControls();
+        if (CaptureRecordingCompactCard.IsVisible && CaptureRecordingCompactCard.IsLoaded)
+        {
+            LabMotion.PlayEntrance(CaptureRecordingCompactCard);
+        }
+    }
+
+    private ScreenHelpHighlighter? _captureHelpHighlight;
+
+    private void OpenCaptureHelp_OnClick(object sender, RoutedEventArgs e)
+    {
+        _captureHelpHighlight?.Remove(); _captureHelpHighlight = null;
+        var guide = new ScreenHelpWindow(CaptureHelpContent.Create(_settings.Capture)) { Owner = this };
+        LabMotion.SetReduced(guide, LabMotion.GetReduced(this));
+        if (sender is Button button && button != CaptureHelpButton) guide.OpenTopic("zoom");
+        ShowCaptureDialog(guide);
+        if (guide.RequestedTarget is not { } name) return;
+        if (FindName(name) is not FrameworkElement target) return;
+        // Do not switch media, select tools or discard a session just to reveal help.
+        if (!target.IsVisible)
+        {
+            StatusText.Text = "Este recurso aparece no painel de imagem. Sua sessão foi preservada.";
+            target = _captureEditorExpanded ? CaptureExpandEditorButton : CaptureImageMediaButton;
+        }
+        else StatusText.Text = "Recurso destacado: " + (System.Windows.Automation.AutomationProperties.GetName(target) is { Length: > 0 } label ? label : guide.Title);
+        target.BringIntoView();
+        Dispatcher.BeginInvoke(new Action(() =>
+        {
+            if (!target.IsVisible) return;
+            target.Focus(); _captureHelpHighlight = ScreenHelpHighlighter.Show(target);
+        }), DispatcherPriority.Loaded);
+    }
+
+    private async void FocusCaptureRule_OnClick(object sender, RoutedEventArgs e)
+    {
+        if (!TryReadCaptureSettings(out var currentError))
+        {
+            MessageBox.Show(currentError, "Regra de captura",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+        var dialog = new CaptureRuleDialog(_settings.Capture)
+        {
+            Owner = this
+        };
+        var accepted = ShowCaptureDialog(dialog);
+        if (!accepted)
+        {
+            return;
+        }
+
+        _settings.Capture = dialog.Result;
+        await _settingsStore.SaveAsync(_settings);
+        LoadCaptureSettings();
+        ConfigureCaptureShortcuts();
+        StatusText.Text = "Regra de captura salva";
+    }
+
+    private async void OpenCaptureShortcuts_OnClick(object sender, RoutedEventArgs e)
+    {
+        var dialog = new CaptureShortcutDialog(_settings.Capture)
+        {
+            Owner = this
+        };
+        var accepted = ShowCaptureDialog(dialog);
+        if (!accepted)
+        {
+            return;
+        }
+
+        _settings.Capture.ActiveMonitorShortcut = dialog.MonitorShortcut;
+        _settings.Capture.RegionShortcut = dialog.RegionShortcut;
+        _settings.Capture.WindowShortcut = dialog.WindowShortcut;
+        _settings.Capture.ScrollingShortcut = dialog.ScrollingShortcut;
+        await _settingsStore.SaveAsync(_settings);
+        LoadCaptureSettings();
+        ConfigureCaptureShortcuts();
+        StatusText.Text = "Atalhos de captura salvos";
+    }
+
+    private bool ShowCaptureDialog(Window dialog)
+    {
+        var previousOpacity = ShellRoot.Opacity;
+        var previousEffect = ShellRoot.Effect;
+        try
+        {
+            ShellRoot.Opacity = 0.58;
+            ShellRoot.Effect = new System.Windows.Media.Effects.BlurEffect { Radius = 4 };
+            return dialog.ShowDialog() == true;
+        }
+        finally
+        {
+            ShellRoot.Effect = previousEffect;
+            ShellRoot.Opacity = previousOpacity;
+        }
+    }
+
     private async Task RunScrollingCaptureAsync(bool invokedByShortcut)
     {
         using var captureLease = _captureGate.TryEnter();
@@ -2414,6 +2781,7 @@ public partial class MainWindow : Window
                 StatusText.Text = string.IsNullOrWhiteSpace(result.FilePath)
                     ? "Captura longa copiada"
                     : $"Captura longa salva: {Path.GetFileName(result.FilePath)}";
+                AcceptCompletedCapture(result);
                 RefreshCaptureHistory();
                 ShowTrayBalloon(
                     3500,
@@ -2462,6 +2830,10 @@ public partial class MainWindow : Window
             {
                 ShowFromTray();
             }
+            _captureCommitInProgress = false;
+            CaptureEditorCard.IsEnabled = true;
+            _completedCaptureDocument = null;
+            CaptureInlineEditor_OnStateChanged(this, EventArgs.Empty);
         }
     }
 
@@ -2546,6 +2918,7 @@ public partial class MainWindow : Window
                 StatusText.Text = string.IsNullOrWhiteSpace(result.FilePath)
                     ? $"Captura de {type} copiada"
                     : $"Captura salva: {Path.GetFileName(result.FilePath)}";
+                AcceptCompletedCapture(result);
                 RefreshCaptureHistory();
                 ShowTrayBalloon(
                     3500,
@@ -2598,6 +2971,10 @@ public partial class MainWindow : Window
             {
                 ShowFromTray();
             }
+            _captureCommitInProgress = false;
+            CaptureEditorCard.IsEnabled = true;
+            _completedCaptureDocument = null;
+            CaptureInlineEditor_OnStateChanged(this, EventArgs.Empty);
         }
     }
 
@@ -2822,6 +3199,493 @@ public partial class MainWindow : Window
             ? value
             : fallback;
 
+    private void OpenCaptureImage_OnClick(object sender, RoutedEventArgs e)
+    {
+        var dialog = new Microsoft.Win32.OpenFileDialog
+        {
+            Title = "Abrir imagem no editor",
+            Filter = "Imagens|*.png;*.jpg;*.jpeg;*.bmp;*.gif|Todos os arquivos|*.*"
+        };
+        if (dialog.ShowDialog(this) != true)
+        {
+            return;
+        }
+
+        if (LoadCaptureWorkbenchImage(dialog.FileName, null,
+                $"Imagem · {Path.GetFileName(dialog.FileName)}"))
+        {
+            StatusText.Text = $"Imagem aberta: {Path.GetFileName(dialog.FileName)}";
+        }
+    }
+
+    private bool LoadCaptureWorkbenchImage(
+        string path,
+        CaptureRecord? record,
+        string details)
+    {
+        if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
+        {
+            return false;
+        }
+        if (_captureWorkbenchPath == path && CaptureInlineEditor.HasImage) return true;
+        if (!CanReplaceCaptureSession()) return false;
+        try
+        {
+            CaptureInlineEditor.LoadImage(path);
+            CapturePreviewEmptyPanel.Visibility = Visibility.Collapsed;
+            CaptureWorkbenchToolbar.Visibility = Visibility.Visible;
+            CaptureWorkbenchFooter.Visibility = Visibility.Visible;
+            CaptureEditorContext.Visibility = Visibility.Visible;
+            _captureMediaMode = CaptureMediaMode.Image;
+            CaptureImageMediaButton.IsChecked = true;
+            UpdateCaptureLauncherSummary();
+            CapturePreviewDetailsText.Text = details;
+            _captureWorkbenchPath = path;
+            _captureWorkbenchRecord = record;
+            UpdateCaptureWorkbenchToolState(null);
+            if (CaptureWorkbenchToolbar.IsLoaded)
+            {
+                LabMotion.PlayEntrance(CaptureWorkbenchToolbar);
+            }
+            return true;
+        }
+        catch (Exception exception) when (exception is IOException or NotSupportedException or ArgumentException or System.Runtime.InteropServices.ExternalException)
+        {
+            StatusText.Text = "Não foi possível abrir a imagem selecionada";
+            return false;
+        }
+    }
+
+    private void SelectCaptureWorkbenchTool_OnClick(object sender, RoutedEventArgs e)
+    {
+        if (!CaptureInlineEditor.HasImage)
+        {
+            MessageBox.Show("Abra uma imagem ou faça uma captura antes de editar.", "Edição rápida",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        CaptureAnnotationKind? selected = null;
+        if (sender is Button { CommandParameter: string tool } &&
+            Enum.TryParse(tool, true, out CaptureAnnotationKind parsed))
+        {
+            selected = parsed;
+        }
+        CaptureInlineEditor.SelectTool(selected);
+        UpdateCaptureWorkbenchToolState(selected);
+        StatusText.Text = selected is null
+            ? "Seleção ativada"
+            : $"{CaptureWorkbenchToolLabel(selected.Value)} ativado — arraste sobre a imagem";
+    }
+
+    private static string CaptureWorkbenchToolLabel(CaptureAnnotationKind tool) => tool switch
+    {
+        CaptureAnnotationKind.Pencil => "Caneta",
+        CaptureAnnotationKind.Highlighter => "Marca-texto",
+        CaptureAnnotationKind.Arrow => "Seta",
+        CaptureAnnotationKind.Rectangle => "Retângulo",
+        CaptureAnnotationKind.Text => "Texto",
+        CaptureAnnotationKind.Stamp => "Emoji",
+        CaptureAnnotationKind.Ellipse => "Elipse",
+        CaptureAnnotationKind.Line => "Linha",
+        CaptureAnnotationKind.Number => "Número",
+        CaptureAnnotationKind.Blur => "Desfocar",
+        CaptureAnnotationKind.Pixelate => "Pixelizar",
+        _ => "Ferramenta"
+    };
+
+    private void UpdateCaptureWorkbenchToolState(CaptureAnnotationKind? selected)
+    {
+        CaptureSelectToolButton.Tag = selected is null && !CaptureInlineEditor.IsCropTool ? "Selected" : null;
+        CapturePencilToolButton.Tag = selected == CaptureAnnotationKind.Pencil ? "Selected" : null;
+        CaptureHighlighterToolButton.Tag = selected == CaptureAnnotationKind.Highlighter ? "Selected" : null;
+        CaptureArrowToolButton.Tag = selected == CaptureAnnotationKind.Arrow ? "Selected" : null;
+        CaptureRectangleToolButton.Tag = selected == CaptureAnnotationKind.Rectangle ? "Selected" : null;
+        CaptureTextToolButton.Tag = selected == CaptureAnnotationKind.Text ? "Selected" : null;
+        CaptureStampToolButton.Tag = selected == CaptureAnnotationKind.Stamp ? "Selected" : null;
+        CaptureEllipseToolButton.Tag = selected == CaptureAnnotationKind.Ellipse ? "Selected" : null;
+        CaptureLineToolButton.Tag = selected == CaptureAnnotationKind.Line ? "Selected" : null;
+        CaptureNumberToolButton.Tag = selected == CaptureAnnotationKind.Number ? "Selected" : null;
+        CaptureBlurToolButton.Tag = selected == CaptureAnnotationKind.Blur ? "Selected" : null;
+        CapturePixelateToolButton.Tag = selected == CaptureAnnotationKind.Pixelate ? "Selected" : null;
+        CaptureCropToolButton.Tag = CaptureInlineEditor.IsCropTool ? "Selected" : null;
+    }
+
+    private void CaptureInlineEditor_OnStateChanged(object? sender, EventArgs e)
+    {
+        if (CaptureWorkbenchUndoButton is null || CaptureWorkbenchRedoButton is null) return;
+        var ink = DrawingColor.FromArgb(CaptureInlineEditor.InkArgb);
+        CaptureWorkbenchColorSwatch.Background = new SolidColorBrush(Color.FromArgb(ink.A, ink.R, ink.G, ink.B));
+        var size = CaptureInlineEditor.InkThickness.ToString("0", System.Globalization.CultureInfo.InvariantCulture);
+        var sizeItem = CaptureWorkbenchThicknessBox.Items.OfType<ComboBoxItem>().FirstOrDefault(i => i.Tag?.ToString() == size);
+        if (sizeItem is null)
+        {
+            sizeItem = new ComboBoxItem { Content = size, Tag = size };
+            var index = CaptureWorkbenchThicknessBox.Items.OfType<ComboBoxItem>().Count(i => int.Parse(i.Tag!.ToString()!) < (int)CaptureInlineEditor.InkThickness);
+            CaptureWorkbenchThicknessBox.Items.Insert(index, sizeItem);
+        }
+        CaptureWorkbenchThicknessBox.SelectedItem = sizeItem;
+        CaptureWorkbenchUndoButton.IsEnabled = CaptureInlineEditor.CanUndo;
+        CaptureWorkbenchRedoButton.IsEnabled = CaptureInlineEditor.CanRedo;
+        CaptureEditorContext.Refresh();
+        if (_captureEditorExpanded) Dispatcher.BeginInvoke(new Action(() => UpdateCaptureEditorViewport()));
+        UpdateCaptureWorkbenchToolState(CaptureInlineEditor.SelectedTool);
+        var ready = CaptureInlineEditor.HasImage && !CaptureInlineEditor.HasPendingCrop && !_captureCommitInProgress;
+        CaptureCopyImageButton.IsEnabled = ready;
+        CaptureSaveImageButton.IsEnabled = ready;
+        CaptureCompleteImageButton.IsEnabled = ready;
+        CaptureExpandEditorButton.IsEnabled = CaptureInlineEditor.HasImage;
+        CaptureDiscardChangesButton.IsEnabled = CaptureInlineEditor.HasUnsavedChanges && !_captureCommitInProgress;
+        CaptureEditorSessionText.Text = CaptureInlineEditor.Document is { } document
+            ? $"{document.Dimensions.Width} × {document.Dimensions.Height} px · {document.OperationCount} edição(ões) · " +
+              (document.HasUnsavedChanges ? "Alterações não salvas" : "Sem alterações pendentes")
+            : "Uma sessão · edição não destrutiva";
+        foreach (ComboBoxItem item in CaptureWorkbenchZoomBox.Items)
+            if (item.Tag is string value && double.TryParse(value, System.Globalization.NumberStyles.Float,
+                    System.Globalization.CultureInfo.InvariantCulture, out var zoom) && Math.Abs(zoom - CaptureInlineEditor.Zoom) < .001)
+            { CaptureWorkbenchZoomBox.SelectedItem = item; break; }
+    }
+
+    private void CaptureWorkbenchUndo_OnClick(object sender, RoutedEventArgs e) =>
+        CaptureInlineEditor.Undo();
+
+    private void CaptureWorkbenchRedo_OnClick(object sender, RoutedEventArgs e) =>
+        CaptureInlineEditor.Redo();
+
+    private void CaptureWorkbenchThickness_OnChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (CaptureWorkbenchThicknessBox?.SelectedItem is ComboBoxItem { Tag: string value } &&
+            float.TryParse(value, System.Globalization.NumberStyles.Float,
+                System.Globalization.CultureInfo.InvariantCulture, out var thickness))
+        {
+            CaptureInlineEditor?.SetThickness(thickness);
+        }
+    }
+
+    private void CycleCaptureWorkbenchColor_OnClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button anchor) CaptureInkPicker.Show(anchor, CaptureInlineEditor);
+    }
+
+    private void OpenAdvancedCaptureEditor_OnClick(object sender, RoutedEventArgs e)
+    {
+        if (!CaptureInlineEditor.HasImage)
+        {
+            MessageBox.Show("Abra uma imagem ou faça uma captura antes de editar.", "Editor avançado",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        SetCaptureEditorExpanded(!_captureEditorExpanded);
+    }
+
+    private void CaptureMoreTools_OnClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button anchor) CaptureEditorContext.ShowMoreTools(anchor);
+    }
+
+    private void CaptureCropTool_OnClick(object sender, RoutedEventArgs e) => CaptureInlineEditor.SelectCrop();
+    private void CaptureResizeTool_OnClick(object sender, RoutedEventArgs e) => CaptureEditorContext.ShowResize();
+
+    private void UpdateCaptureToolbarLayout()
+    {
+        if (CaptureOutputCommands is null || CaptureToolCommands is null) return;
+        // Full tools need their own row on smaller viewports; never hide them again.
+        var compact = CaptureWorkbenchToolbar.ActualWidth < (_captureEditorExpanded ? 1250 : 1060);
+        Grid.SetRow(CaptureOutputCommands, compact ? 1 : 0);
+        Grid.SetColumn(CaptureOutputCommands, compact ? 0 : 1);
+        Grid.SetColumnSpan(CaptureOutputCommands, compact ? 2 : 1);
+        Grid.SetColumnSpan(CaptureToolCommands, compact ? 2 : 1);
+        CaptureOutputCommands.HorizontalAlignment = compact ? HorizontalAlignment.Left : HorizontalAlignment.Right;
+    }
+
+    private void CaptureWorkbenchToolbar_OnSizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        UpdateCaptureToolbarLayout();
+    }
+
+    private void SetCaptureEditorExpanded(bool expanded)
+    {
+        if (_captureEditorExpanded == expanded) return;
+        _captureEditorExpanded = expanded;
+        CaptureMoreToolsButton.Visibility = expanded ? Visibility.Collapsed : Visibility.Visible;
+        foreach (var tool in new[] { CaptureEllipseToolButton, CaptureLineToolButton, CaptureNumberToolButton,
+                     CaptureBlurToolButton, CapturePixelateToolButton, CaptureCropToolButton, CaptureResizeToolButton })
+            tool.Visibility = expanded ? Visibility.Visible : Visibility.Collapsed;
+        UpdateCaptureToolbarLayout();
+        CaptureExpandEditorButton.Content = expanded ? "Voltar ao painel · Esc" : "Expandir editor";
+        if (expanded)
+        {
+            _capturePageVisibility.Clear();
+            _capturePageRowHeights = CapturePageLayout.RowDefinitions.Select(r => r.Height).ToArray();
+            foreach (UIElement child in CapturePageLayout.Children)
+                if (Grid.GetRow(child) != 8) { _capturePageVisibility[child] = child.Visibility; child.Visibility = Visibility.Collapsed; }
+            for (var i = 0; i < CapturePageLayout.RowDefinitions.Count; i++)
+                if (i != 8) CapturePageLayout.RowDefinitions[i].Height = new GridLength(0);
+        }
+        else
+        {
+            foreach (var pair in _capturePageVisibility) pair.Key.Visibility = pair.Value;
+            if (_capturePageRowHeights is not null)
+                for (var i = 0; i < _capturePageRowHeights.Length; i++) CapturePageLayout.RowDefinitions[i].Height = _capturePageRowHeights[i];
+        }
+        CaptureShellHeader.Visibility = CaptureShellNavigation.Visibility = expanded ? Visibility.Collapsed : Visibility.Visible;
+        ShellRoot.RowDefinitions[1].Height = new GridLength(expanded ? 0 : 66);
+        ShellRoot.RowDefinitions[2].Height = new GridLength(expanded ? 0 : 52);
+        UpdateCaptureEditorViewport(animate: true);
+        if (expanded) Dispatcher.BeginInvoke(new Action(() => UpdateCaptureEditorViewport(animate: true)), DispatcherPriority.ApplicationIdle);
+        CaptureInlineEditor.Focus();
+        CaptureInlineEditor.BringIntoView();
+    }
+
+    private void UpdateCaptureEditorViewport(bool animate = false)
+    {
+        if (CaptureEditorViewport is null) return;
+        // Desired size excludes the unused stretch space of the page. ActualHeight
+        // would count that blank area as chrome and keep the viewport at its minimum.
+        var outside = Math.Max(0, CapturePageLayout.DesiredSize.Height - CaptureEditorViewport.DesiredSize.Height);
+        var height = _captureEditorExpanded
+            ? Math.Max(240, CaptureView.ActualHeight > 0 ? CaptureView.ActualHeight - outside - 2 : Height - 330)
+            : 480;
+        if (animate && LabMotion.Allowed(CaptureEditorViewport))
+            CaptureEditorViewport.BeginAnimation(FrameworkElement.HeightProperty, new DoubleAnimation(height, TimeSpan.FromMilliseconds(220))
+            { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } });
+        else { CaptureEditorViewport.BeginAnimation(FrameworkElement.HeightProperty, null); CaptureEditorViewport.Height = height; }
+    }
+
+    private bool CanReplaceCaptureSession()
+    {
+        if (_pendingCaptureEdit is not null || _captureCommitInProgress)
+        { StatusText.Text = "Conclua ou cancele a captura atual antes de abrir outra imagem."; return false; }
+        if (!CaptureInlineEditor.HasUnsavedChanges && !CaptureInlineEditor.HasPendingCrop) return true;
+        return MessageBox.Show("Há alterações ou uma seleção de recorte pendentes. Descartá-las e abrir outra imagem?",
+            "Editor de imagem", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) == MessageBoxResult.Yes;
+    }
+
+    internal void PrepareCaptureEvidence(DrawingBitmap source, CaptureAnnotationKind tool, bool expanded)
+    {
+        ShowView(CaptureView, CaptureTabButton);
+        if (!CaptureInlineEditor.HasImage)
+        {
+            CaptureInlineEditor.LoadImage(source);
+            CaptureInlineEditor.InsertStamp("⭐", new Point(300, 180));
+        }
+        CapturePreviewEmptyPanel.Visibility = Visibility.Collapsed;
+        CaptureWorkbenchToolbar.Visibility = CaptureWorkbenchFooter.Visibility = CaptureEditorContext.Visibility = Visibility.Visible;
+        CapturePreviewDetailsText.Text = "Imagem de teste local · sessão única";
+        CaptureInlineEditor.SelectTool(tool);
+        SetCaptureEditorExpanded(expanded);
+    }
+
+    internal CaptureEditorDocument? CaptureEvidenceDocument => CaptureInlineEditor.Document;
+    internal void ResizeCaptureEvidenceViewport() => UpdateCaptureEditorViewport();
+    internal void DisposeCaptureEvidence() => CaptureInlineEditor.Dispose();
+
+    private void CaptureDiscardChanges_OnClick(object sender, RoutedEventArgs e)
+    {
+        if (MessageBox.Show("Voltar à última versão salva nesta sessão?", "Descartar alterações", MessageBoxButton.YesNo,
+                MessageBoxImage.Warning, MessageBoxResult.No) == MessageBoxResult.Yes) CaptureInlineEditor.DiscardChanges();
+    }
+
+    private async Task<CaptureImageEditResult?> EditNewCaptureInWorkbenchAsync(DrawingBitmap source, CaptureAnnotationKind initialTool)
+    {
+        if (!CanReplaceCaptureSession()) return null;
+        CaptureInlineEditor.LoadImage(source);
+        _captureWorkbenchPath = null; _captureWorkbenchRecord = null;
+        _captureMediaMode = CaptureMediaMode.Image; CaptureImageMediaButton.IsChecked = true;
+        UpdateCaptureLauncherSummary();
+        CapturePreviewEmptyPanel.Visibility = Visibility.Collapsed;
+        CaptureWorkbenchToolbar.Visibility = CaptureWorkbenchFooter.Visibility = CaptureEditorContext.Visibility = Visibility.Visible;
+        CaptureInlineEditor.SelectTool(initialTool);
+        CapturePreviewDetailsText.Text = "Nova captura · conclua para aplicar a regra";
+        _pendingCaptureEdit = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        CaptureCancelPendingButton.Visibility = Visibility.Visible;
+        ShowFromTray(); ShowView(CaptureView, CaptureTabButton); CaptureInlineEditor.BringIntoView(); CaptureInlineEditor.Focus();
+        try { return await _pendingCaptureEdit.Task; }
+        finally { _pendingCaptureEdit = null; CaptureCancelPendingButton.Visibility = Visibility.Collapsed; }
+    }
+
+    private void CaptureCancelPending_OnClick(object sender, RoutedEventArgs e)
+    {
+        _pendingCaptureEdit?.TrySetResult(null);
+        CaptureInlineEditor.Clear();
+        CapturePreviewEmptyPanel.Visibility = Visibility.Visible;
+        CaptureWorkbenchToolbar.Visibility = CaptureWorkbenchFooter.Visibility = CaptureEditorContext.Visibility = Visibility.Collapsed;
+        StatusText.Text = "Captura cancelada sem salvar";
+    }
+
+    private void AcceptCompletedCapture(CaptureRecord result)
+    {
+        _captureCommitInProgress = false;
+        if (_completedCaptureDocument is not null && ReferenceEquals(_completedCaptureDocument, CaptureInlineEditor.Document))
+        {
+            _captureWorkbenchRecord = result;
+            _captureWorkbenchPath = _captureService.ResolveFilePath(result);
+            if (!string.IsNullOrWhiteSpace(_captureWorkbenchPath)) CaptureInlineEditor.MarkSaved();
+        }
+        else if (!CaptureInlineEditor.HasUnsavedChanges && !string.IsNullOrWhiteSpace(result.FilePath))
+            LoadCaptureWorkbenchImage(_captureService.ResolveFilePath(result), result, $"{CaptureTypeLabel(result)} · {result.Width}×{result.Height}");
+        _completedCaptureDocument = null;
+        CaptureInlineEditor_OnStateChanged(this, EventArgs.Empty);
+    }
+
+    private Microsoft.Win32.SaveFileDialog CreateCapturePreviewSaveDialog(string title)
+    {
+        var sourcePath = _captureWorkbenchPath ?? "captura.png";
+        var extension = Path.GetExtension(sourcePath);
+        var jpeg = extension.Equals(".jpg", StringComparison.OrdinalIgnoreCase) ||
+                   extension.Equals(".jpeg", StringComparison.OrdinalIgnoreCase);
+        extension = jpeg ? ".jpg" : ".png";
+        return new Microsoft.Win32.SaveFileDialog
+        {
+            Title = title,
+            FileName = Path.GetFileNameWithoutExtension(sourcePath) + "-editada" + extension,
+            DefaultExt = extension,
+            Filter = jpeg
+                ? "JPEG|*.jpg|PNG|*.png"
+                : "PNG|*.png|JPEG|*.jpg"
+        };
+    }
+
+    private async Task<bool> CommitCaptureWorkbenchImageAsync(DrawingBitmap bitmap, string path)
+    {
+        _captureCommitInProgress = true;
+        CaptureEditorCard.IsEnabled = false;
+        CaptureInlineEditor_OnStateChanged(this, EventArgs.Empty);
+        try
+        {
+            var record = await _captureService.SaveEditedImageAsync(bitmap, path, _settings.Capture, _captureWorkbenchRecord);
+            _captureWorkbenchPath = path;
+            _captureWorkbenchRecord = record;
+            CaptureInlineEditor.MarkSaved();
+            CapturePreviewDetailsText.Text = $"{CaptureTypeLabel(record)} · {record.Width}×{record.Height}";
+            RefreshCaptureHistory();
+            StatusText.Text = $"Edição salva e atualizada nos Recentes: {Path.GetFileName(path)}";
+            return true;
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ArgumentException or InvalidOperationException or System.Runtime.InteropServices.ExternalException)
+        {
+            MessageBox.Show(exception.Message, "Salvar captura", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return false;
+        }
+        finally
+        {
+            _captureCommitInProgress = false;
+            CaptureEditorCard.IsEnabled = true;
+            CaptureInlineEditor_OnStateChanged(this, EventArgs.Empty);
+        }
+    }
+
+    private void CopyCapturePreview_OnClick(object sender, RoutedEventArgs e)
+    {
+        if (CaptureInlineEditor.HasPendingCrop || _captureCommitInProgress) return;
+        if (!CaptureInlineEditor.HasImage)
+        {
+            MessageBox.Show("Não há uma imagem no editor.", "Copiar",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+        using var rendered = CaptureInlineEditor.Render();
+        try
+        {
+            Clipboard.SetImage(ToBitmapSource(rendered));
+            StatusText.Text = "Imagem copiada para a área de transferência";
+        }
+        catch (System.Runtime.InteropServices.ExternalException)
+        { StatusText.Text = "A área de transferência está ocupada. Tente copiar novamente."; }
+    }
+
+    private async void SaveCapturePreview_OnClick(object sender, RoutedEventArgs e)
+    {
+        if (CaptureInlineEditor.HasPendingCrop || _captureCommitInProgress) return;
+        if (!CaptureInlineEditor.HasImage)
+        {
+            MessageBox.Show("Não há uma imagem no editor.", "Salvar",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+        var dialog = CreateCapturePreviewSaveDialog("Salvar uma cópia");
+        if (dialog.ShowDialog(this) != true)
+        {
+            return;
+        }
+        using var rendered = CaptureInlineEditor.Render();
+        await CommitCaptureWorkbenchImageAsync(rendered, dialog.FileName);
+    }
+
+    private async void CompleteCapturePreview_OnClick(object sender, RoutedEventArgs e)
+    {
+        if (CaptureInlineEditor.HasPendingCrop || _captureCommitInProgress) return;
+        if (_pendingCaptureEdit is not null)
+        {
+            _completedCaptureDocument = CaptureInlineEditor.Document;
+            _captureCommitInProgress = true;
+            CaptureEditorCard.IsEnabled = false;
+            _pendingCaptureEdit.TrySetResult(new CaptureImageEditResult(CaptureInlineEditor.Render(), CaptureEditorOutput.Default));
+            CaptureInlineEditor_OnStateChanged(this, EventArgs.Empty);
+            return;
+        }
+        if (!CaptureInlineEditor.HasImage)
+        {
+            MessageBox.Show("Abra uma imagem ou faça uma captura antes de concluir.", "Concluir",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+        using var rendered = CaptureInlineEditor.Render();
+        var saved = false;
+        if (_captureWorkbenchRecord?.MediaKind.Equals("image", StringComparison.OrdinalIgnoreCase) == true &&
+            !string.IsNullOrWhiteSpace(_captureWorkbenchPath) &&
+            File.Exists(_captureWorkbenchPath))
+        {
+            if (!await CommitCaptureWorkbenchImageAsync(rendered, _captureWorkbenchPath)) return;
+            saved = true;
+        }
+        else if (_settings.Capture.SaveAutomatically)
+        {
+            var dialog = CreateCapturePreviewSaveDialog("Salvar edição");
+            if (dialog.ShowDialog(this) != true || !await CommitCaptureWorkbenchImageAsync(rendered, dialog.FileName)) return;
+            saved = true;
+        }
+        if (_settings.Capture.CopyToClipboard)
+        {
+            try { Clipboard.SetImage(ToBitmapSource(rendered)); }
+            catch (System.Runtime.InteropServices.ExternalException)
+            { StatusText.Text = saved ? "Edição salva; a área de transferência está ocupada. Tente copiar novamente." : "A área de transferência está ocupada. Tente copiar novamente."; return; }
+        }
+        StatusText.Text = saved
+            ? "Edição concluída e atualizada nos Recentes"
+            : _settings.Capture.CopyToClipboard ? "Captura copiada; a sessão permanece disponível" : "Resultado mantido apenas na sessão — copiar e salvar estão desativados na regra";
+    }
+
+    private void CaptureWorkbenchZoom_OnChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (CaptureWorkbenchZoomBox?.SelectedItem is not ComboBoxItem { Tag: string value } ||
+            !double.TryParse(value, System.Globalization.NumberStyles.Float,
+                System.Globalization.CultureInfo.InvariantCulture, out var zoom))
+        {
+            return;
+        }
+        _captureWorkbenchZoom = zoom;
+        if (CaptureInlineEditor is not null)
+        {
+            CaptureInlineEditor.SetZoom(zoom);
+        }
+    }
+
+    private static BitmapSource ToBitmapSource(DrawingBitmap bitmap)
+    {
+        using var stream = new MemoryStream();
+        bitmap.Save(stream, System.Drawing.Imaging.ImageFormat.Png);
+        stream.Position = 0;
+        var image = new BitmapImage();
+        image.BeginInit();
+        image.CacheOption = BitmapCacheOption.OnLoad;
+        image.StreamSource = stream;
+        image.EndInit();
+        image.Freeze();
+        return image;
+    }
+
     private void CaptureFormat_OnChanged(object sender, SelectionChangedEventArgs e)
     {
         if (CaptureQualityBox is not null && CaptureFormatBox is not null)
@@ -2841,41 +3705,20 @@ public partial class MainWindow : Window
         }
 
         CaptureHistoryPanel.Children.Clear();
-        CapturePreviewImage.Source = null;
-        CapturePreviewEmptyPanel.Visibility = Visibility.Visible;
-        CapturePreviewDetailsText.Text = "Nenhuma captura realizada";
+        CaptureHistoryScroller.ScrollToLeftEnd();
 
         var mostRecent = _captureService.History.FirstOrDefault();
-        if (mostRecent is not null)
+        if (!CaptureInlineEditor.HasImage && mostRecent is not null)
         {
             var mostRecentPath = _captureService.ResolveFilePath(mostRecent);
-            CapturePreviewDetailsText.Text =
-                $"{mostRecent.CreatedAt:dd/MM/yyyy HH:mm}  ·  {mostRecent.Type}  ·  " +
-                $"{mostRecent.Width}×{mostRecent.Height}";
-            if (!mostRecent.MediaKind.Equals("video", StringComparison.OrdinalIgnoreCase) &&
+            if (mostRecent.MediaKind.Equals("image", StringComparison.OrdinalIgnoreCase) &&
                 !string.IsNullOrWhiteSpace(mostRecentPath) &&
                 File.Exists(mostRecentPath))
             {
-                try
-                {
-                    using var stream = File.Open(
-                        mostRecentPath,
-                        FileMode.Open,
-                        FileAccess.Read,
-                        FileShare.ReadWrite);
-                    var image = new BitmapImage();
-                    image.BeginInit();
-                    image.CacheOption = BitmapCacheOption.OnLoad;
-                    image.StreamSource = stream;
-                    image.EndInit();
-                    image.Freeze();
-                    CapturePreviewImage.Source = image;
-                    CapturePreviewEmptyPanel.Visibility = Visibility.Collapsed;
-                }
-                catch (IOException)
-                {
-                    // O histórico continua disponível mesmo se a miniatura não puder ser aberta.
-                }
+                LoadCaptureWorkbenchImage(
+                    mostRecentPath,
+                    mostRecent,
+                    $"{CaptureTypeLabel(mostRecent)} · {mostRecent.Width}×{mostRecent.Height}");
             }
         }
 
@@ -2888,70 +3731,310 @@ public partial class MainWindow : Window
             item.MediaKind.Equals("video", StringComparison.OrdinalIgnoreCase) ||
             filter.Equals("gif", StringComparison.OrdinalIgnoreCase) &&
             item.MediaKind.Equals("gif", StringComparison.OrdinalIgnoreCase) ||
-            item.Type.Equals(filter, StringComparison.OrdinalIgnoreCase));
+            item.Type.Equals(filter, StringComparison.OrdinalIgnoreCase))
+            .ToList();
         foreach (var item in filtered.Take(40))
         {
-            var resolvedPath = _captureService.ResolveFilePath(item);
-            var file = string.IsNullOrWhiteSpace(resolvedPath)
-                ? "Somente clipboard"
-                : Path.GetFileName(resolvedPath);
-            var row = new Grid
-            {
-                Margin = new Thickness(0, 0, 0, 7)
-            };
-            row.ColumnDefinitions.Add(new ColumnDefinition());
-            row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            var duration = item.DurationSeconds > 0
-                ? $" · {TimeSpan.FromSeconds(item.DurationSeconds):mm\\:ss}"
-                : string.Empty;
-            row.Children.Add(new TextBlock
-            {
-                Text = $"{item.CreatedAt:dd/MM HH:mm} · {item.Type} · " +
-                       $"{item.MediaKind} · {item.Width}×{item.Height}{duration} · {file}",
-                VerticalAlignment = VerticalAlignment.Center,
-                TextTrimming = TextTrimming.CharacterEllipsis,
-                Foreground = (Brush)FindResource("MutedBrush")
-            });
-            var actions = new StackPanel { Orientation = Orientation.Horizontal };
-            actions.Children.Add(HistoryButton("Abrir", item, OpenHistoryItem_OnClick));
-            actions.Children.Add(HistoryButton("Copiar", item, CopyHistoryItem_OnClick));
-            if (item.MediaKind.Equals("image", StringComparison.OrdinalIgnoreCase))
-            {
-                actions.Children.Add(HistoryButton("Editar", item, EditHistoryItem_OnClick));
-            }
-            actions.Children.Add(HistoryButton("Excluir", item, DeleteHistoryItem_OnClick));
-            Grid.SetColumn(actions, 1);
-            row.Children.Add(actions);
-            CaptureHistoryPanel.Children.Add(row);
+            CaptureHistoryPanel.Children.Add(BuildCaptureHistoryCard(item));
         }
         if (CaptureHistoryPanel.Children.Count == 0)
         {
-            CaptureHistoryPanel.Children.Add(new TextBlock
+            var empty = new Border
             {
-                Text = "As últimas capturas aparecerão aqui.",
-                Foreground = (Brush)FindResource("MutedBrush")
-            });
+                Padding = new Thickness(18),
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(9),
+                Child = new TextBlock
+                {
+                    Text = "As últimas capturas aparecerão aqui.",
+                    Foreground = (Brush)FindResource("MutedBrush")
+                }
+            };
+            empty.SetResourceReference(Border.BackgroundProperty, "Lab.panel");
+            empty.SetResourceReference(Border.BorderBrushProperty, "Lab.line");
+            CaptureHistoryPanel.Children.Add(empty);
         }
-        CaptureHistoryStatusText.Text =
-            $"{filtered.Count():N0} de {_captureService.History.Count:N0} item(ns)";
+        CaptureHistoryStatusText.Text = filtered.Count.ToString("N0");
+        Dispatcher.BeginInvoke(new Action(UpdateCaptureHistoryNavigationState));
+    }
+
+    private Border BuildCaptureHistoryCard(CaptureRecord record)
+    {
+        var path = _captureService.ResolveFilePath(record);
+        var card = new Border
+        {
+            Width = 370,
+            Height = 96,
+            Margin = new Thickness(0, 0, 12, 2),
+            Padding = new Thickness(10),
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(9),
+            ToolTip = "Selecionar no editor",
+            Tag = record,
+            Cursor = Cursors.Hand,
+            RenderTransform = new TranslateTransform(),
+            RenderTransformOrigin = new Point(.5, .5)
+        };
+        card.SetResourceReference(Border.BackgroundProperty, "Lab.panel");
+        card.SetResourceReference(Border.BorderBrushProperty, "Lab.line");
+        LabMotion.SetEntrance(card, "Page");
+        card.MouseLeftButtonUp += CaptureHistoryCard_OnClick;
+        card.MouseEnter += (_, _) =>
+        {
+            card.SetResourceReference(Border.BorderBrushProperty, "Lab.accent");
+            if (card.RenderTransform is TranslateTransform transform)
+            {
+                AnimateHistoryCard(transform, -3, card);
+            }
+        };
+        card.MouseLeave += (_, _) =>
+        {
+            card.SetResourceReference(Border.BorderBrushProperty, "Lab.line");
+            if (card.RenderTransform is TranslateTransform transform)
+            {
+                AnimateHistoryCard(transform, 0, card);
+            }
+        };
+
+        var grid = new Grid();
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(112) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition());
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+        var thumbnail = new Border
+        {
+            Margin = new Thickness(0, 0, 12, 0),
+            CornerRadius = new CornerRadius(5),
+            ClipToBounds = true
+        };
+        thumbnail.SetResourceReference(Border.BackgroundProperty, "Lab.canvas");
+        if (!record.MediaKind.Equals("video", StringComparison.OrdinalIgnoreCase) &&
+            TryLoadImage(path, out var image))
+        {
+            thumbnail.Child = new Image
+            {
+                Source = image,
+                Stretch = Stretch.UniformToFill
+            };
+        }
+        else
+        {
+            var icon = new System.Windows.Shapes.Path
+            {
+                Data = (Geometry)FindResource(record.MediaKind.Equals("video", StringComparison.OrdinalIgnoreCase)
+                    ? "Lab.Icon.Video"
+                    : "Lab.Icon.Image"),
+                Width = 26,
+                Height = 26,
+                Stretch = Stretch.Uniform,
+                StrokeThickness = 1.6,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            icon.SetResourceReference(System.Windows.Shapes.Shape.StrokeProperty, "Lab.muted");
+            thumbnail.Child = icon;
+        }
+        grid.Children.Add(thumbnail);
+
+        var title = string.IsNullOrWhiteSpace(path)
+            ? CaptureTypeLabel(record)
+            : Path.GetFileNameWithoutExtension(path);
+        var duration = record.DurationSeconds > 0
+            ? $" · {TimeSpan.FromSeconds(record.DurationSeconds):mm\\:ss}"
+            : string.Empty;
+        var copy = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+        copy.Children.Add(new TextBlock
+        {
+            Text = title,
+            FontWeight = FontWeights.SemiBold,
+            TextTrimming = TextTrimming.CharacterEllipsis,
+            MaxWidth = 170
+        });
+        copy.Children.Add(new TextBlock
+        {
+            Text = $"{CaptureTypeLabel(record)} · {record.CreatedAt:dd/MM HH:mm}{duration}",
+            Margin = new Thickness(0, 6, 0, 0),
+            Foreground = (Brush)FindResource("MutedBrush"),
+            FontSize = 11,
+            TextTrimming = TextTrimming.CharacterEllipsis,
+            MaxWidth = 180
+        });
+        Grid.SetColumn(copy, 1);
+        grid.Children.Add(copy);
+
+        var actions = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        actions.Children.Add(HistoryButton("ExternalLink", "Abrir", record, OpenHistoryItem_OnClick));
+        actions.Children.Add(HistoryButton("Copy", "Copiar", record, CopyHistoryItem_OnClick));
+        if (record.MediaKind.Equals("image", StringComparison.OrdinalIgnoreCase))
+        {
+            actions.Children.Add(HistoryButton("PenLine", "Editar", record, EditHistoryItem_OnClick));
+        }
+        actions.Children.Add(HistoryButton("X", "Excluir", record, DeleteHistoryItem_OnClick));
+        Grid.SetColumn(actions, 2);
+        grid.Children.Add(actions);
+        card.Child = grid;
+        return card;
+    }
+
+    private void CaptureHistoryCard_OnClick(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is not Border { Tag: CaptureRecord record })
+        {
+            return;
+        }
+        var path = _captureService.ResolveFilePath(record);
+        if (!record.MediaKind.Equals("image", StringComparison.OrdinalIgnoreCase))
+        {
+            if (File.Exists(path))
+            {
+                Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
+            }
+            return;
+        }
+        if (LoadCaptureWorkbenchImage(path, record,
+                $"{CaptureTypeLabel(record)} · {record.Width}×{record.Height}"))
+        {
+            CaptureInlineEditor.BringIntoView();
+            StatusText.Text = "Captura selecionada no editor";
+        }
+    }
+
+    private static string CaptureTypeLabel(CaptureRecord record) => record.MediaKind.ToLowerInvariant() switch
+    {
+        "gif" => "GIF",
+        "video" => "Vídeo MP4",
+        _ => record.Type.ToLowerInvariant() switch
+        {
+            "monitor" => "Monitor",
+            "regiao" => "Região",
+            "janela" => "Janela",
+            "rolagem" => "Captura longa",
+            _ => "Imagem"
+        }
+    };
+
+    private static bool TryLoadImage(string path, out BitmapImage? image)
+    {
+        image = null;
+        if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
+        {
+            return false;
+        }
+        try
+        {
+            using var stream = File.Open(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+            var loaded = new BitmapImage();
+            loaded.BeginInit();
+            loaded.CacheOption = BitmapCacheOption.OnLoad;
+            loaded.DecodePixelWidth = 240;
+            loaded.StreamSource = stream;
+            loaded.EndInit();
+            loaded.Freeze();
+            image = loaded;
+            return true;
+        }
+        catch (Exception exception) when (exception is IOException or NotSupportedException)
+        {
+            return false;
+        }
     }
 
     private static Button HistoryButton(
-        string label,
+        string iconKind,
+        string toolTip,
         CaptureRecord record,
         RoutedEventHandler handler)
     {
         var button = new Button
         {
-            Content = label,
             Tag = record,
-            MinWidth = 62,
-            Height = 32,
-            Margin = new Thickness(6, 0, 0, 0),
-            Padding = new Thickness(8, 3, 8, 3)
+            ToolTip = toolTip,
+            MinWidth = 28,
+            Width = 28,
+            Height = 30,
+            Margin = new Thickness(4, 0, 0, 0),
+            Padding = new Thickness(2)
         };
-        button.Click += handler;
+        button.SetResourceReference(StyleProperty, "Lab.Pilot.ToolButton");
+        var icon = new LabIcon { Kind = iconKind, Width = 15, Height = 15 };
+        icon.SetResourceReference(LabIcon.ForegroundProperty, "Lab.text");
+        button.Content = icon;
+        button.Click += (sender, args) =>
+        {
+            args.Handled = true;
+            handler(sender, args);
+        };
         return button;
+    }
+
+    private static void AnimateHistoryCard(
+        TranslateTransform transform,
+        double target,
+        FrameworkElement owner)
+    {
+        if (!SystemParameters.ClientAreaAnimation || LabMotion.GetReduced(owner))
+        {
+            transform.Y = target;
+            return;
+        }
+        transform.BeginAnimation(TranslateTransform.YProperty, new DoubleAnimation
+        {
+            To = target,
+            Duration = TimeSpan.FromMilliseconds(140),
+            EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut },
+            FillBehavior = FillBehavior.HoldEnd
+        });
+    }
+
+    private void ScrollCaptureHistoryPrevious_OnClick(object sender, RoutedEventArgs e) =>
+        ScrollCaptureHistoryBy(-Math.Max(300, CaptureHistoryScroller.ViewportWidth * .82));
+
+    private void ScrollCaptureHistoryNext_OnClick(object sender, RoutedEventArgs e) =>
+        ScrollCaptureHistoryBy(Math.Max(300, CaptureHistoryScroller.ViewportWidth * .82));
+
+    private void ScrollCaptureHistoryBy(double delta)
+    {
+        var start = CaptureHistoryScroller.HorizontalOffset;
+        var target = Math.Clamp(
+            start + delta,
+            0,
+            CaptureHistoryScroller.ScrollableWidth);
+        BeginAnimation(CaptureHistoryOffsetProperty, null);
+        if (!SystemParameters.ClientAreaAnimation || LabMotion.GetReduced(this))
+        {
+            CaptureHistoryOffset = target;
+            return;
+        }
+        CaptureHistoryOffset = start;
+        var animation = new DoubleAnimation
+        {
+            From = start,
+            To = target,
+            Duration = TimeSpan.FromMilliseconds(220),
+            EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut },
+            FillBehavior = FillBehavior.HoldEnd
+        };
+        animation.Completed += (_, _) =>
+        {
+            BeginAnimation(CaptureHistoryOffsetProperty, null);
+            CaptureHistoryOffset = target;
+        };
+        BeginAnimation(CaptureHistoryOffsetProperty, animation);
+    }
+
+    private void CaptureHistoryScroller_OnScrollChanged(object sender, ScrollChangedEventArgs e) =>
+        UpdateCaptureHistoryNavigationState();
+
+    private void UpdateCaptureHistoryNavigationState()
+    {
+        if (CaptureHistoryPreviousButton is null || CaptureHistoryNextButton is null) return;
+        CaptureHistoryPreviousButton.IsEnabled = CaptureHistoryScroller.HorizontalOffset > 1;
+        CaptureHistoryNextButton.IsEnabled =
+            CaptureHistoryScroller.HorizontalOffset < CaptureHistoryScroller.ScrollableWidth - 1;
     }
 
     private void CaptureHistoryFilter_OnChanged(object sender, SelectionChangedEventArgs e) =>
@@ -2986,7 +4069,7 @@ public partial class MainWindow : Window
         {
             var path = _captureService.ResolveFilePath(record);
             CaptureService.CopyFileToClipboard(path);
-            StatusText.Text = $"Arquivo copiado: {Path.GetFileName(path)}";
+            StatusText.Text = $"Captura copiada: {Path.GetFileName(path)}";
         }
         catch (Exception exception)
         {
@@ -2998,17 +4081,18 @@ public partial class MainWindow : Window
         }
     }
 
-    private async void EditHistoryItem_OnClick(object sender, RoutedEventArgs e)
+    private void EditHistoryItem_OnClick(object sender, RoutedEventArgs e)
     {
         if (sender is not Button { Tag: CaptureRecord record })
         {
             return;
         }
-        if (await _captureService.EditExistingAsync(record.Id, _settings.Capture, this))
+        if (LoadCaptureWorkbenchImage(_captureService.ResolveFilePath(record), record,
+                $"{CaptureTypeLabel(record)} · {record.Width}×{record.Height}"))
         {
-            StatusText.Text =
-                $"Captura atualizada: {Path.GetFileName(_captureService.ResolveFilePath(record))}";
-            RefreshCaptureHistory();
+            ShowView(CaptureView, CaptureTabButton);
+            CaptureInlineEditor.BringIntoView(); CaptureInlineEditor.Focus();
+            StatusText.Text = "Imagem aberta na sessão única de edição";
         }
     }
 
@@ -3057,6 +4141,7 @@ public partial class MainWindow : Window
 
     private async void CheckUpdates_OnClick(object sender, RoutedEventArgs e)
     {
+        if (AppPaths.IsCapturePilot) return;
         CheckUpdatesButton.IsEnabled = false;
         SettingsCheckUpdatesButton.IsEnabled = false;
         try
@@ -3097,7 +4182,7 @@ public partial class MainWindow : Window
     private void StartUpdateMonitor()
     {
         StopUpdateMonitor();
-        if (!_settings.CheckUpdatesOnStartup || _servicesDisposed)
+        if (AppPaths.IsCapturePilot || !_settings.CheckUpdatesOnStartup || _servicesDisposed)
         {
             return;
         }
@@ -3173,6 +4258,7 @@ public partial class MainWindow : Window
 
     private async Task OfferUpdateAsync(UpdateCheckResult result)
     {
+        if (AppPaths.IsCapturePilot) return;
         if (result.Release is null || Interlocked.Exchange(ref _updateOfferActive, 1) != 0)
         {
             return;
@@ -3306,8 +4392,11 @@ public partial class MainWindow : Window
         RefreshNavigation();
     }
 
-    private void MainWindow_OnSizeChanged(object sender, SizeChangedEventArgs e) =>
+    private void MainWindow_OnSizeChanged(object sender, SizeChangedEventArgs e)
+    {
         UpdateResponsiveLayout(e.NewSize.Width);
+        if (_captureEditorExpanded) UpdateCaptureEditorViewport();
+    }
 
     private void UpdateResponsiveLayout(double width)
     {
@@ -3483,6 +4572,10 @@ public partial class MainWindow : Window
         }
 
         _activeUpdateCancellation?.Cancel();
+        if (CaptureInlineEditor.HasUnsavedChanges && MessageBox.Show("Há alterações de imagem não salvas. Sair sem salvar?", "Editor de imagem",
+                MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) != MessageBoxResult.Yes)
+        { e.Cancel = true; _exitRequested = false; return; }
+        _pendingCaptureEdit?.TrySetResult(null);
         DisposeServices();
     }
 
@@ -3526,6 +4619,7 @@ public partial class MainWindow : Window
         _recordingControl?.Close();
         _recordingService?.Dispose();
         _gifRecordingSession?.Dispose();
+        CaptureInlineEditor.Dispose();
         _suggestionWindow.Close();
         _quickAccentWindow.Close();
         if (_trayIcon is not null)

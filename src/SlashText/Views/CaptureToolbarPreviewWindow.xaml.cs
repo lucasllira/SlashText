@@ -40,12 +40,12 @@ public partial class CaptureToolbarPreviewWindow : Window
 
     private void PopulateNotoEmojiCatalog()
     {
-        foreach (var emoji in NotoEmojiCatalog.Items)
+        foreach (var emoji in NotoEmojiCatalog.QuickItems)
         {
             var button = new Button
             {
                 Style = (Style)FindResource("Preview.EmojiButton"),
-                Tag = emoji == NotoEmojiCatalog.Items[0] ? "Selected" : null,
+                Tag = emoji == NotoEmojiCatalog.QuickItems[0] ? "Selected" : null,
                 ToolTip = emoji.Name,
                 Content = new Image
                 {

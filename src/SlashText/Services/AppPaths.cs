@@ -12,6 +12,7 @@ public static class AppPaths
     public static AppDataEnvironment Current => _current ??= AppDataEnvironment.Detect();
     public static DistributionMode Mode => Current.Mode;
     public static bool IsPortable => Current.IsPortable;
+    public static bool IsCapturePilot => Current.IsCapturePilot;
     public static string BaseDirectory => Current.ExecutableDirectory;
     public static string DataDirectory => Current.DataDirectory;
     public static string SnippetsFile => Path.Combine(DataDirectory, "snippets.md");

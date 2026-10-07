@@ -22,6 +22,7 @@
 
   <ItemGroup>
     <AssemblyMetadata Include="SlashDeskDistribution" Value="$(SlashDeskDistribution)" />
+    <AssemblyMetadata Include="SlashDeskCapturePilot" Value="true" Condition="'$(CapturePilotBuild)' == 'true'" />
   </ItemGroup>
 
   <ItemGroup>
@@ -33,10 +34,19 @@
     <EmbeddedResource Include="Assets\Lucide\LICENSE.txt" />
     <Resource Include="Assets\SlashDesk.png" />
     <EmbeddedResource Include="Assets\NotoEmoji\*.png" />
+    <EmbeddedResource Include="Assets\NotoEmoji\catalog.json" LogicalName="SlashText.Assets.NotoEmoji.catalog.json" />
+    <EmbeddedResource Include="Assets\NotoEmoji\catalog-assets.zip" LogicalName="SlashText.Assets.NotoEmoji.catalog-assets.zip" />
+    <EmbeddedResource Include="Assets\NotoEmoji\LICENSE.txt" />
+    <EmbeddedResource Include="Assets\NotoEmoji\UNICODE-LICENSE.txt" />
+    <EmbeddedResource Include="Assets\NotoEmoji\FLAGS-LICENSE.txt" />
+    <EmbeddedResource Include="Assets\NotoEmoji\NOTICE.md" />
     <None Update="Assets\NotoEmoji\LICENSE.txt" CopyToOutputDirectory="PreserveNewest" />
     <None Update="Assets\NotoEmoji\NOTICE.md" CopyToOutputDirectory="PreserveNewest" />
     <EmbeddedResource Include="..\..\snippets.md"
                       Link="Defaults\snippets.md"
                       LogicalName="SlashText.Defaults.snippets.md" />
   </ItemGroup>
+  <Target Name="RestoreNotoEmoji" BeforeTargets="PrepareForBuild">
+    <Exec Command="pwsh -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildProjectDirectory)\..\..\scripts\restore-noto-emoji.ps1&quot;" />
+  </Target>
 </Project>

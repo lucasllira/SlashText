@@ -11,6 +11,8 @@ using SlashText.Views;
 
 namespace SlashText.Services;
 
+public sealed record CaptureImageEditResult(Bitmap Bitmap, CaptureEditorOutput Output);
+
 public sealed class CaptureService
 {
     private const int DwmwaExtendedFrameBounds = 9;
@@ -20,6 +22,7 @@ public sealed class CaptureService
     private List<CaptureRecord> _history = [];
 
     public IReadOnlyList<CaptureRecord> History => _history;
+    public Func<Bitmap, CaptureAnnotationKind, Task<CaptureImageEditResult?>>? ImageEditor { get; set; }
     public string ResolveFilePath(CaptureRecord record) =>
         CapturePathResolver.Resolve(record, AppPaths.Current);
     public async Task LoadAsync()
@@ -178,6 +181,56 @@ public sealed class CaptureService
         await _historyStore.SaveAsync(_history);
     }
 
+    /// <summary>Commit the edited pixels and register the exact saved file, not its source.</summary>
+    public async Task<CaptureRecord> SaveEditedImageAsync(
+        Bitmap bitmap, string path, CaptureSettings settings, CaptureRecord? sourceRecord = null)
+    {
+        path = Path.GetFullPath(path);
+        var extension = Path.GetExtension(path).ToLowerInvariant();
+        if (extension is not (".png" or ".jpg" or ".jpeg"))
+        {
+            throw new ArgumentException("Salve a imagem editada em PNG ou JPEG.", nameof(path));
+        }
+        var record = _history.FirstOrDefault(item =>
+            string.Equals(ResolveFilePath(item), path, StringComparison.OrdinalIgnoreCase));
+        if (record is not null && !record.MediaKind.Equals("image", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException("Uma edição estática não pode substituir uma gravação.");
+        }
+        var temporary = path + $".editing-{Guid.NewGuid():N}";
+        try
+        {
+            if (extension is ".jpg" or ".jpeg")
+            {
+                var encoder = ImageCodecInfo.GetImageEncoders().First(item => item.FormatID == ImageFormat.Jpeg.Guid);
+                using var parameters = new EncoderParameters(1);
+                parameters.Param[0] = new EncoderParameter(
+                    System.Drawing.Imaging.Encoder.Quality, Math.Clamp(settings.JpegQuality, 1, 100));
+                bitmap.Save(temporary, encoder, parameters);
+            }
+            else bitmap.Save(temporary, ImageFormat.Png);
+            File.Move(temporary, path, overwrite: true);
+        }
+        finally
+        {
+            if (File.Exists(temporary)) File.Delete(temporary);
+        }
+        record ??= new CaptureRecord
+        {
+            CreatedAt = DateTimeOffset.Now,
+            Type = sourceRecord?.Type ?? "regiao"
+        };
+        record.FilePath = path;
+        record.PortableRelativePath = CapturePathResolver.CreatePortableRelativePath(path, AppPaths.Current);
+        record.Width = bitmap.Width;
+        record.Height = bitmap.Height;
+        _history.Remove(record);
+        _history.Insert(0, record);
+        if (_history.Count > 1000) _history.RemoveRange(1000, _history.Count - 1000);
+        await _historyStore.SaveAsync(_history);
+        return record;
+    }
+
     public async Task<bool> DeleteAsync(string id, bool deleteFile)
     {
         var record = _history.FirstOrDefault(item => item.Id == id);
@@ -231,7 +284,8 @@ public sealed class CaptureService
     public async Task<bool> EditExistingAsync(
         string id,
         CaptureSettings settings,
-        Window owner)
+        Window owner,
+        CaptureAnnotationKind initialTool = CaptureAnnotationKind.Arrow)
     {
         var record = _history.FirstOrDefault(item => item.Id == id);
         if (record is null ||
@@ -243,9 +297,10 @@ public sealed class CaptureService
         }
 
         var resolvedPath = ResolveFilePath(record);
-        using var sourceFile = new Bitmap(resolvedPath);
-        using var source = new Bitmap(sourceFile);
-        var editor = new CaptureEditorWindow(source)
+        Bitmap source;
+        using (var sourceFile = new Bitmap(resolvedPath)) source = new Bitmap(sourceFile);
+        using var sourceLifetime = source;
+        var editor = new CaptureEditorWindow(source, initialTool)
         {
             Owner = owner,
             WindowStartupLocation = WindowStartupLocation.CenterOwner
@@ -256,41 +311,61 @@ public sealed class CaptureService
         }
 
         using var edited = editor.EditedBitmap;
-        var extension = Path.GetExtension(resolvedPath);
-        var temporary = resolvedPath + ".editing";
-        if (extension.Equals(".jpg", StringComparison.OrdinalIgnoreCase) ||
-            extension.Equals(".jpeg", StringComparison.OrdinalIgnoreCase))
+        if (editor.RequestedOutput == CaptureEditorOutput.Clipboard)
         {
-            var encoder = ImageCodecInfo.GetImageEncoders()
-                .First(item => item.FormatID == ImageFormat.Jpeg.Guid);
-            using var parameters = new EncoderParameters(1);
-            parameters.Param[0] = new EncoderParameter(
-                System.Drawing.Imaging.Encoder.Quality,
-                Math.Clamp(settings.JpegQuality, 1, 100));
-            edited.Save(temporary, encoder, parameters);
+            CopyToClipboard(edited);
+            return false; // Copy is not a save and must not overwrite the original.
         }
-        else
+        var destination = resolvedPath;
+        if (editor.RequestedOutput == CaptureEditorOutput.File)
         {
-            edited.Save(temporary, ImageFormat.Png);
+            var jpeg = Path.GetExtension(resolvedPath).Equals(".jpg", StringComparison.OrdinalIgnoreCase) ||
+                       Path.GetExtension(resolvedPath).Equals(".jpeg", StringComparison.OrdinalIgnoreCase);
+            var dialog = new Microsoft.Win32.SaveFileDialog
+            {
+                Title = "Salvar uma cópia editada", FileName = Path.GetFileName(resolvedPath),
+                DefaultExt = jpeg ? ".jpg" : ".png", Filter = jpeg ? "JPEG|*.jpg|PNG|*.png" : "PNG|*.png|JPEG|*.jpg"
+            };
+            if (dialog.ShowDialog(owner) != true) return false;
+            destination = dialog.FileName;
         }
-        File.Move(temporary, resolvedPath, true);
-        record.Width = edited.Width;
-        record.Height = edited.Height;
-        await _historyStore.SaveAsync(_history);
+        await SaveEditedImageAsync(edited, destination, settings, record);
         return true;
     }
 
     public static void CopyFileToClipboard(string path)
     {
+        Clipboard.SetDataObject(CreateClipboardData(path), copy: true);
+    }
+
+    /// <summary>
+    /// Images can be pasted into editors/chats; the original file is also kept
+    /// for Explorer and for animated GIFs. Videos retain file-copy behavior.
+    /// </summary>
+    public static DataObject CreateClipboardData(string path)
+    {
         if (!File.Exists(path))
         {
             throw new FileNotFoundException("O arquivo não está mais disponível.", path);
         }
+        path = Path.GetFullPath(path);
+        var data = new DataObject();
         var collection = new System.Collections.Specialized.StringCollection
         {
             path
         };
-        Clipboard.SetFileDropList(collection);
+        data.SetFileDropList(collection);
+        var extension = Path.GetExtension(path).ToLowerInvariant();
+        if (extension is ".png" or ".jpg" or ".jpeg" or ".gif" or ".bmp" or ".tif" or ".tiff")
+        {
+            using var stream = File.OpenRead(path);
+            var decoder = BitmapDecoder.Create(
+                stream, BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.OnLoad);
+            var image = decoder.Frames[0];
+            image.Freeze();
+            data.SetImage(image);
+        }
+        return data;
     }
 
     public async Task<CaptureRecord?> ProcessEditedRegionAsync(
@@ -671,21 +746,25 @@ public sealed class CaptureService
         {
             if (openEditor)
             {
-                var editor = new CaptureEditorWindow(captured, initialTool);
-                if (owner is { IsVisible: true })
+                CaptureEditorOutput editorOutput;
+                if (ImageEditor is not null)
                 {
-                    editor.Owner = owner;
-                    editor.WindowStartupLocation =
-                        WindowStartupLocation.CenterOwner;
+                    var result = await ImageEditor(captured, initialTool);
+                    if (result is null) return null;
+                    output = result.Bitmap;
+                    editorOutput = result.Output;
                 }
-                if (editor.ShowDialog() != true ||
-                    editor.EditedBitmap is null)
+                else
                 {
-                    return null;
+                    // Legacy fallback for isolated callers; production shell uses one document.
+                    var editor = new CaptureEditorWindow(captured, initialTool);
+                    if (owner is { IsVisible: true })
+                    { editor.Owner = owner; editor.WindowStartupLocation = WindowStartupLocation.CenterOwner; }
+                    if (editor.ShowDialog() != true || editor.EditedBitmap is null) return null;
+                    output = editor.EditedBitmap;
+                    editorOutput = editor.RequestedOutput;
                 }
-
-                output = editor.EditedBitmap;
-                switch (editor.RequestedOutput)
+                switch (editorOutput)
                 {
                     case CaptureEditorOutput.Clipboard:
                         save = false;

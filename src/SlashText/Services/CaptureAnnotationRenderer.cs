@@ -32,8 +32,22 @@ public sealed class CaptureAnnotation
     public float Opacity { get; init; } = 1;
     public float Size { get; init; } = 32;
     public bool Bold { get; init; } = true;
+    public bool Italic { get; init; }
+    public string FontFamily { get; init; } = "Segoe UI";
+    public int PrivacyStrength { get; init; }
     public string Alignment { get; init; } = "Left";
     public string Text { get; init; } = string.Empty;
+    public CaptureStampImage? StampImage { get; init; }
+
+    public CaptureAnnotation Transform(double offsetX, double offsetY, double scaleX = 1, double scaleY = 1) => new()
+    {
+        Kind = Kind, Start = new((Start.X + offsetX) * scaleX, (Start.Y + offsetY) * scaleY),
+        End = new((End.X + offsetX) * scaleX, (End.Y + offsetY) * scaleY),
+        Points = Points.Select(p => new System.Windows.Point((p.X + offsetX) * scaleX, (p.Y + offsetY) * scaleY)).ToList(),
+        Argb = Argb, OutlineArgb = OutlineArgb, FillArgb = FillArgb, Thickness = Thickness * (float)((scaleX + scaleY) / 2),
+        Opacity = Opacity, Size = Size * (float)((scaleX + scaleY) / 2), Bold = Bold, Italic = Italic,
+        FontFamily = FontFamily, PrivacyStrength = PrivacyStrength, Alignment = Alignment, Text = Text, StampImage = StampImage
+    };
 
     public bool HasVisibleShapeStyle =>
         FillArgb.HasValue || OutlineArgb.HasValue ||
@@ -55,24 +69,30 @@ public static class CaptureAnnotationRenderer
             return output;
         }
 
-        var scaleX = source.Width / previewWidth;
-        var scaleY = source.Height / previewHeight;
-        foreach (var annotation in annotations.Where(item =>
-                     item.Kind is CaptureAnnotationKind.Blur or CaptureAnnotationKind.Pixelate))
-        {
-            ApplyPrivacyEffect(output, annotation, scaleX, scaleY);
-        }
-        using var graphics = Graphics.FromImage(output);
-        graphics.SmoothingMode = SmoothingMode.AntiAlias;
-        graphics.TextRenderingHint =
-            System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
+        try { Apply(output, annotations, previewWidth, previewHeight); return output; }
+        catch { output.Dispose(); throw; }
+    }
 
-        foreach (var annotation in annotations.Where(item =>
-                     item.Kind is not CaptureAnnotationKind.Blur and not CaptureAnnotationKind.Pixelate))
+    // Only the document owns this bitmap. Applying an append in place avoids
+    // copying the entire capture and decoding all previous stamps again.
+    internal static void Apply(Bitmap output, IReadOnlyList<CaptureAnnotation> annotations,
+        double previewWidth, double previewHeight)
+    {
+        if (previewWidth <= 0 || previewHeight <= 0) return;
+        var scaleX = output.Width / previewWidth;
+        var scaleY = output.Height / previewHeight;
+        foreach (var annotation in annotations)
         {
+            if (annotation.Kind is CaptureAnnotationKind.Blur or CaptureAnnotationKind.Pixelate)
+            {
+                ApplyPrivacyEffect(output, annotation, scaleX, scaleY);
+                continue;
+            }
+            using var graphics = Graphics.FromImage(output);
+            graphics.SmoothingMode = SmoothingMode.AntiAlias;
+            graphics.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
             Draw(graphics, annotation, scaleX, scaleY);
         }
-        return output;
     }
 
     private static void ApplyPrivacyEffect(
@@ -89,7 +109,9 @@ public static class CaptureAnnotationRenderer
         {
             return;
         }
-        var divisor = annotation.Kind == CaptureAnnotationKind.Pixelate ? 18 : 7;
+        var divisor = annotation.PrivacyStrength > 0
+            ? Math.Clamp(annotation.PrivacyStrength, 6, 40)
+            : annotation.Kind == CaptureAnnotationKind.Pixelate ? 18 : 7;
         var smallWidth = Math.Max(1, region.Width / divisor);
         var smallHeight = Math.Max(1, region.Height / divisor);
         using var small = new Bitmap(smallWidth, smallHeight);
@@ -168,13 +190,22 @@ public static class CaptureAnnotationRenderer
                 break;
             case CaptureAnnotationKind.Text:
                 using (var font = new Font(
-                           "Segoe UI",
+                           string.IsNullOrWhiteSpace(annotation.FontFamily) ? "Segoe UI" : annotation.FontFamily,
                            Math.Max(11f, annotation.Size * (float)scaleY),
-                           annotation.Bold ? FontStyle.Bold : FontStyle.Regular,
+                           (annotation.Bold ? FontStyle.Bold : FontStyle.Regular) | (annotation.Italic ? FontStyle.Italic : FontStyle.Regular),
                            GraphicsUnit.Pixel))
                 using (var brush = new SolidBrush(color))
                 {
-                    graphics.DrawString(annotation.Text, font, brush, start);
+                    using var format = new StringFormat
+                    {
+                        Alignment = annotation.Alignment switch
+                        {
+                            "Center" => StringAlignment.Center,
+                            "Right" => StringAlignment.Far,
+                            _ => StringAlignment.Near
+                        }
+                    };
+                    graphics.DrawString(annotation.Text, font, brush, start, format);
                 }
                 break;
             case CaptureAnnotationKind.Number:
@@ -216,12 +247,15 @@ public static class CaptureAnnotationRenderer
     {
         var pixels = Math.Max(12, (int)Math.Ceiling(
             annotation.Size * ((scaleX + scaleY) / 2d)));
-        using var stamp = NotoEmojiCatalog.CreateBitmap(annotation.Text);
+        using var stamp = annotation.StampImage?.CreateBitmap() ?? NotoEmojiCatalog.CreateBitmap(annotation.Text);
+        var fit = pixels / (float)Math.Max(stamp.Width, stamp.Height);
+        var width = stamp.Width * fit;
+        var height = stamp.Height * fit;
         var destination = new RectangleF(
-            (float)(center.X - pixels / 2d),
-            (float)(center.Y - pixels / 2d),
-            pixels,
-            pixels);
+            center.X - width / 2,
+            center.Y - height / 2,
+            width,
+            height);
         graphics.InterpolationMode = InterpolationMode.HighQualityBicubic;
         graphics.PixelOffsetMode = PixelOffsetMode.HighQuality;
         graphics.DrawImage(stamp, destination);
