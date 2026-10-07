@@ -25,7 +25,7 @@ internal sealed class ScreenHelpHighlighter : Adorner
         var highlight = new ScreenHelpHighlighter(target, layer); layer.Add(highlight); highlight._timer.Start(); return highlight;
     }
     internal void Remove()
-    { _timer.Stop(); AdornedElement.Unloaded -= TargetUnloaded; BeginAnimation(OpacityProperty, null); _layer.Remove(this); }
+    { _timer.Stop(); ((FrameworkElement)AdornedElement).Unloaded -= TargetUnloaded; BeginAnimation(OpacityProperty, null); _layer.Remove(this); }
     private void TargetUnloaded(object sender, RoutedEventArgs e) => Remove();
     protected override void OnRender(DrawingContext context)
     {
