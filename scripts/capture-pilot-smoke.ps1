@@ -14,6 +14,7 @@ $emojiPicker = Get-Content 'src/SlashText/Views/CaptureEmojiPicker.cs' -Raw
 $captureService = Get-Content 'src/SlashText/Services/CaptureService.cs' -Raw
 $contextPanel = Get-Content 'src/SlashText/Views/CaptureEditorContextPanel.cs' -Raw
 $document = Get-Content 'src/SlashText/Services/CaptureEditorDocument.cs' -Raw
+$stampCatalog = Get-Content 'src/SlashText/Services/CaptureStampCatalog.cs' -Raw
 
 [xml]$null = $xaml
 [xml]$null = $app
@@ -198,8 +199,9 @@ foreach ($label in @(
     }
 }
 if ($inlineEditor.Contains('FontFamily = new FontFamily("Segoe UI Emoji")') -or
-    -not $contextPanel.Contains('NotoEmojiCatalog.CreateImageSource(item.Value)') -or
-    -not $emojiPicker.Contains('matches = Search(search.Text, category.SelectedItem as string)') -or
+    -not $contextPanel.Contains('CaptureStampCatalog.Current.CreateImageSource(item.Value)') -or
+    -not $emojiPicker.Contains('Search(search.Text, selectedCategory)') -or
+    -not $stampCatalog.Contains('NotoEmojiCatalog.CreateImageSource(value)') -or
     -not $advancedEditor.Contains('CaptureEmojiPicker.Show(this)')) {
     throw 'Os editores precisam compartilhar catálogo e assets Noto na prévia e exportação.'
 }

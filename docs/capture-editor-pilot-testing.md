@@ -45,9 +45,9 @@ Não existe reposicionamento/edição individual de objetos já inseridos nesta 
 - Repetir o caso relatado: imagem 2560×2317, pelo menos 61 emotes e desfoques sobrepostos. Comparar resposta ao inserir novas anotações, trocar ferramenta, expandir e desfazer. Salvar/copiar precisam preservar a mesma composição. Desfoques grandes e reconstrução após desfazer ainda dependem do tamanho/CPU; o benchmark do runner não aprova fluidez física.
 - A prévia agora transfere pixels sem comprimir PNG. O documento mantém **um** bitmap de cache, aplica novos comandos incrementalmente e invalida o cache quando undo/descartar altera o prefixo. Fonte/undo/checkpoint não são achatados; exportação devolve cópia independente.
 
-### Próxima etapa da #63: overlay/barra de seleção
+### Etapa da #63: overlay/barra de seleção
 
-Já pertence à #63; não está implementada por este ajuste de cor/desempenho. Antes de encerrar o piloto:
+Pertence à #63. A implementação está no novo candidato descrito abaixo; os testes físicos e a aprovação permanecem pendentes. Antes de encerrar o piloto:
 1. Inventariar os handlers de `RegionCaptureWindow` e a barra nativa, usando contrato fixado e o print de referência Snipping Tool.
 2. Provar seleção por arraste, mover e **reduzir/ampliar a área pelas alças**, cancelar e finalizar. Coordenadas de imagem/desktop, DPI e monitores devem permanecer corretos.
 3. Harmonizar barra flutuante, ícones, popups de propriedades e animações; permitir anotações rápidas **antes** de finalizar a captura real. Reutilizar componentes/renderer quando as coordenadas e lifecycle permitirem; não substituir por desktop fictício do Lab.

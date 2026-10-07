@@ -203,6 +203,7 @@ public partial class DesignGalleryWindow : Window
             "PASS: interactive theme transition, tabs, validation, switch interruption/rest position, ComboBox and Popup resources, entrance clocks, reduced motion.\n" +
             "16 offscreen PNGs: 1440x900 and 980x680 DIP at 100/125/150/200%. This is NOT a physical mixed-monitor test.\n" +
             "6 capture PNGs: advanced editor, capture rule and shortcuts in Light/Dark; primary fill and text contrast verified.\n" +
+            "Additional native evidence: floating bar normal/compact and custom emoji collection in Light/Dark; contrast, real selection geometry and custom import/select/remove exercised.\n" +
             "Manual pending: hover/pressed/focus, Windows theme event, actual DPI/monitors, fonts, visual approval.\n");
     }
 
@@ -428,6 +429,14 @@ public partial class DesignGalleryWindow : Window
         Require(editor.InkArgb == System.Drawing.Color.FromArgb(232, 78, 96).ToArgb() &&
             ReferenceEquals(document, editor.Document) && document!.OperationCount == 0,
             "Custom color applies to future annotations without altering history");
+        var red = Descendants(picker).OfType<TextBox>().Single(b => b.Name == "InkRed");
+        var green = Descendants(picker).OfType<TextBox>().Single(b => b.Name == "InkGreen");
+        var blue = Descendants(picker).OfType<TextBox>().Single(b => b.Name == "InkBlue");
+        red.Text = "12"; green.Text = "34"; blue.Text = "56"; apply.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        Require(editor.InkArgb == System.Drawing.Color.FromArgb(12, 34, 56).ToArgb(), "Typed RGB values apply correctly");
+        red.Text = "300"; apply.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        Require(editor.InkArgb == System.Drawing.Color.FromArgb(12, 34, 56).ToArgb(), "Invalid RGB preserves selected color");
+        hex.Text = "#E84E60"; apply.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); Layout();
         Require(picker.Background.ToString() == (theme == "Dark" ? "#FF242424" : "#FFFFFFFF"), "Ink picker background follows theme");
         foreach (var control in Descendants(picker).OfType<Control>().Where(c => c is Button or TextBox or Slider))
         {
@@ -450,12 +459,13 @@ public partial class DesignGalleryWindow : Window
         window.SetSelectionForEvidence(new Rect(120, 80, 640, 360));
         var toolbar = window.ToolbarForEvidence;
         LabMotion.SetReduced(toolbar, true);
-        foreach (var compact in new[] { false, true })
+        foreach (var width in new[] { 920, 440, 260 })
         {
+            var compact = width != 920;
+            var height = width == 260 ? 190 : 88;
             window.SetDensityForEvidence(compact);
-            var width = compact ? 440 : 920;
-            var size = new Size(width, 88);
-            var host = new Border { Child = toolbar, Padding = new Thickness(12), Width = width, Height = 88 };
+            var size = new Size(width, height);
+            var host = new Border { Child = toolbar, Padding = new Thickness(12), Width = width, Height = height };
             host.SetResourceReference(Border.BackgroundProperty, "Lab.canvas");
             host.Measure(size); host.Arrange(new Rect(size)); host.UpdateLayout();
             foreach (var button in Descendants(toolbar).OfType<System.Windows.Controls.Primitives.ButtonBase>().Where(b => b.IsVisible || b.Visibility == Visibility.Visible))
@@ -466,11 +476,13 @@ public partial class DesignGalleryWindow : Window
                     "Floating bar buttons fit normal/compact viewport without clipping");
             }
             Require(toolbar.Background.ToString() == (theme == "Dark" ? "#FF181818" : "#FFFFFFFF"), "Floating bar follows Lab theme");
-            var capture = Descendants(toolbar).OfType<Button>().Single(b => b.Content is string text && text == "Capturar");
+            var capture = Descendants(toolbar).OfType<Button>().Single(b => System.Windows.Automation.AutomationProperties.GetName(b) == "Capturar conforme configuração");
             Require(capture.Background.ToString() == (theme == "Dark" ? "#FF74D1E5" : "#FF337C8F"), "Floating bar primary color matches approved capture screen");
-            var bitmap = new RenderTargetBitmap(width, 88, 96, 96, PixelFormats.Pbgra32); bitmap.Render(host);
+            Require(Descendants(capture).OfType<TextBlock>().Single(t => t.Text == "Capturar").Foreground.ToString() ==
+                (theme == "Dark" ? "#FF082126" : "#FFFFFFFF"), "Floating capture label keeps on-accent contrast");
+            var bitmap = new RenderTargetBitmap(width, height, 96, 96, PixelFormats.Pbgra32); bitmap.Render(host);
             var png = new PngBitmapEncoder(); png.Frames.Add(BitmapFrame.Create(bitmap));
-            using var file = File.Create(Path.Combine(_smokeOutput!, $"capture-overlay-bar-{theme}-{(compact ? "compact" : "normal")}.png")); png.Save(file);
+            using var file = File.Create(Path.Combine(_smokeOutput!, $"capture-overlay-bar-{theme}-{(width == 260 ? "narrow" : compact ? "compact" : "normal")}.png")); png.Save(file);
             host.Child = null;
         }
         window.SetDensityForEvidence(false);

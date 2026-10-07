@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
+using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
@@ -230,7 +231,7 @@ public sealed class RegionCaptureWindow : Window
             ShowActivated = false,
             Topmost = true,
             Opacity = 0,
-            Content = _toolbar
+            Content = _pilotVisuals ? new Border { Padding = new Thickness(8), Child = _toolbar } : _toolbar
         };
         _toolbarWindow.DpiChanged += (_, _) => RequestToolbarPosition();
         _toolbarWindow.PreviewKeyDown += OnPreviewKeyDown;
@@ -257,8 +258,8 @@ public sealed class RegionCaptureWindow : Window
 
     private Border BuildPilotToolbar()
     {
-        var tools = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
-        _toolbarLayout = new Grid { Height = 44 };
+        var tools = new WrapPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+        _toolbarLayout = new Grid { MinHeight = 44 };
         _toolbarLayout.Children.Add(tools);
         tools.Children.Add(BuildCaptureSplitButton());
         _captureSeparator = Separator(); tools.Children.Add(_captureSeparator);
@@ -423,7 +424,11 @@ public sealed class RegionCaptureWindow : Window
         return _previewDocument.Render(pending is null ? null : Transform(pending));
     }
 
-    internal Border ToolbarForEvidence { get { _toolbarWindow.Content = null; return _toolbar; } }
+    internal Border ToolbarForEvidence
+    {
+        get { if (_toolbarWindow.Content is Border frame && ReferenceEquals(frame.Child, _toolbar)) frame.Child = null;
+            _toolbarWindow.Content = null; return _toolbar; }
+    }
     internal FrameworkElement StampPanelForEvidence() => BuildPilotStampContext();
     internal void SetSelectionForEvidence(Rect selection)
     {
@@ -573,6 +578,10 @@ public sealed class RegionCaptureWindow : Window
         AutomationProperties.SetName(menu, "Abrir opções de captura");
         if (_pilotVisuals)
         {
+            var label = new TextBlock { Text = "Capturar" };
+            label.SetBinding(TextBlock.ForegroundProperty, new Binding("Foreground")
+                { RelativeSource = new RelativeSource(RelativeSourceMode.FindAncestor, typeof(Button), 1) });
+            capture.Content = label;
             var chevron = new LabIcon { Kind = "ChevronDown", Width = 14, Height = 14 };
             chevron.SetResourceReference(LabIcon.ForegroundProperty, "Lab.on"); menu.Content = chevron;
             menu.Width = 30; menu.Padding = new Thickness(4);
@@ -1027,6 +1036,8 @@ public sealed class RegionCaptureWindow : Window
         HideContextWindow(reactivateOverlay: false);
         _contextAnchor = anchor;
         content.MaxWidth = Math.Max(200, _activeMonitor.WorkAreaPixels.Width / Math.Max(1, _activeMonitor.DpiScaleX) - 48);
+        if (content is StackPanel stack)
+            foreach (var child in stack.Children.OfType<FrameworkElement>()) child.MaxWidth = Math.Max(160, content.MaxWidth - 28);
         var scaleY = Math.Max(1, _activeMonitor.DpiScaleY);
         var maximumHeightDips = Math.Max(
             180,
@@ -1036,7 +1047,7 @@ public sealed class RegionCaptureWindow : Window
             Content = content,
             VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
             HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
-            MaxHeight = maximumHeightDips
+            MaxHeight = maximumHeightDips - (_pilotVisuals ? 18 : 0)
         };
         var border = new Border
         {
@@ -1067,7 +1078,7 @@ public sealed class RegionCaptureWindow : Window
             Width = width,
             MaxHeight = maximumHeightDips,
             Opacity = SystemParameters.ClientAreaAnimation ? 0 : 1,
-            Content = border
+            Content = _pilotVisuals ? new Border { Padding = new Thickness(8), Child = border } : border
         };
         _contextWindow.PreviewKeyDown += (_, args) =>
         {
@@ -1941,7 +1952,8 @@ public sealed class RegionCaptureWindow : Window
         _activeMonitor = monitor;
         var marginPixels = Math.Max(1, 12 * monitor.DpiScaleX);
         var maximumWidthPixels = Math.Max(1, monitor.WorkAreaPixels.Width - (marginPixels * 2));
-        var maximumWidthDips = maximumWidthPixels / monitor.DpiScaleX;
+        var framePadding = _pilotVisuals ? 16d : 0d;
+        var maximumWidthDips = Math.Max(1, maximumWidthPixels / monitor.DpiScaleX - framePadding);
 
         // A faixa normal mede cerca de 640 DIPs. Em áreas menores, comandos
         // secundários migram para um overflow explícito; nunca são cortados.
@@ -1964,7 +1976,7 @@ public sealed class RegionCaptureWindow : Window
         _toolbarLayout.Width = Math.Max(1, finalWidthDips -
             _toolbar.Padding.Left - _toolbar.Padding.Right -
             _toolbar.BorderThickness.Left - _toolbar.BorderThickness.Right);
-        _toolbarWindow.Width = finalWidthDips;
+        _toolbarWindow.Width = finalWidthDips + framePadding;
         var entering = !_toolbarWindow.IsVisible;
         _toolbarWindow.Opacity = 1;
         if (!_toolbarWindow.IsVisible)
@@ -1974,8 +1986,8 @@ public sealed class RegionCaptureWindow : Window
         _toolbarWindow.UpdateLayout();
 
         var finalDips = new Size(
-            Math.Max(1, _toolbar.ActualWidth),
-            Math.Max(1, _toolbar.ActualHeight));
+            Math.Max(1, _toolbar.ActualWidth + framePadding),
+            Math.Max(1, _toolbar.ActualHeight + framePadding));
         var finalPixels = new Size(
             Math.Ceiling(finalDips.Width * monitor.DpiScaleX),
             Math.Ceiling(finalDips.Height * monitor.DpiScaleY));
@@ -1983,7 +1995,7 @@ public sealed class RegionCaptureWindow : Window
             selectionPixels,
             monitor.WorkAreaPixels,
             finalPixels,
-            naturalDips.Width * monitor.DpiScaleX,
+            (naturalDips.Width + framePadding) * monitor.DpiScaleX,
             dpiScale: Math.Max(monitor.DpiScaleX, monitor.DpiScaleY));
         _toolbarBoundsPixels = placement.Bounds;
 
