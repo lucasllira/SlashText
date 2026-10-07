@@ -46,7 +46,9 @@ public sealed class ScreenHelpWindow : Window
         root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         var header = new DockPanel { Margin = new Thickness(24, 22, 24, 14) };
-        var close = ActionButton("Fechar ajuda", "X", Close); close.Width = 38; close.Content = HelpGlyph("X", 18);
+        var close = ActionButton("Fechar ajuda", "X", Close); close.Width = 38; close.Height = 38;
+        close.Padding = new Thickness(8); close.VerticalAlignment = VerticalAlignment.Top;
+        var closeGlyph = HelpGlyph("X", 18); closeGlyph.Margin = new Thickness(0); close.Content = closeGlyph;
         DockPanel.SetDock(close, Dock.Right); header.Children.Add(close);
         var title = new StackPanel(); title.Children.Add(Text(definition.Title, 23, true));
         title.Children.Add(Text(definition.Subtitle, 12, muted: true)); header.Children.Add(title); root.Children.Add(header);
@@ -150,6 +152,7 @@ public sealed class ScreenHelpWindow : Window
         {
             var row = new Grid { Margin = new Thickness(0, 0, 0, 9) }; row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(40) }); row.ColumnDefinitions.Add(new ColumnDefinition());
             var badge = new Border { CornerRadius = new CornerRadius(14), Width = 28, Height = 28, VerticalAlignment = VerticalAlignment.Top, Child = Text((i + 1).ToString(), 12, true) };
+            if (badge.Child is TextBlock number) { number.HorizontalAlignment = HorizontalAlignment.Center; number.Margin = new Thickness(0); }
             badge.SetResourceReference(BackgroundProperty, "Lab.tint"); row.Children.Add(badge);
             var instruction = Text(topic.Steps[i], 13); Grid.SetColumn(instruction, 1); row.Children.Add(instruction); _detail.Children.Add(row);
         }
@@ -199,7 +202,9 @@ public sealed class ScreenHelpWindow : Window
             {
                 var selection = new Border { Width = 196, Height = 70, BorderThickness = new Thickness(2), CornerRadius = new CornerRadius(3) };
                 selection.SetResourceReference(BorderBrushProperty, "Lab.accent");
-                var content = new Grid(); content.Children.Add(Text("Uma área para suas ideias", 13, true));
+                var content = new Grid();
+                var idea = Text("Uma área para suas ideias", 11, true); idea.HorizontalAlignment = HorizontalAlignment.Center; idea.Margin = new Thickness(10, 0, 10, 0);
+                content.Children.Add(idea);
                 foreach (var (x, y) in new[] { (0,0), (1,0), (2,0), (0,1), (2,1), (0,2), (1,2), (2,2) })
                 {
                     var handle = new Border { Width = 7, Height = 7, CornerRadius = new CornerRadius(3.5), BorderThickness = new Thickness(1),
@@ -235,6 +240,9 @@ public sealed class ScreenHelpWindow : Window
             animation.KeyFrames.Add(new EasingDoubleKeyFrame(20, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(550)), new CubicEase { EasingMode = EasingMode.EaseInOut }));
             animation.KeyFrames.Add(new EasingDoubleKeyFrame(0, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(1200)), new CubicEase { EasingMode = EasingMode.EaseInOut }));
             move.BeginAnimation(TranslateTransform.XProperty, animation);
+            if (_animated is Border selection)
+                selection.BeginAnimation(WidthProperty, new DoubleAnimation(196, 164, TimeSpan.FromMilliseconds(600))
+                { AutoReverse = true, FillBehavior = FillBehavior.Stop });
         }
     }
 }

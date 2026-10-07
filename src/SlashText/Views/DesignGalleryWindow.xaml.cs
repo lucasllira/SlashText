@@ -463,10 +463,12 @@ public partial class DesignGalleryWindow : Window
         foreach (var width in new[] { 920, 440, 260 })
         {
             var compact = width != 920;
-            var height = width == 260 ? 290 : 170;
             window.SetDensityForEvidence(compact);
-            var size = new Size(width, height);
-            var host = new Border { Child = toolbar, Padding = new Thickness(12), Width = width, Height = height };
+            toolbar.VerticalAlignment = VerticalAlignment.Top;
+            var host = new Border { Child = toolbar, Padding = new Thickness(12), Width = width };
+            host.Measure(new Size(width, double.PositiveInfinity));
+            var height = (int)Math.Ceiling(host.DesiredSize.Height);
+            var size = new Size(width, height); host.Height = height;
             host.SetResourceReference(Border.BackgroundProperty, "Lab.canvas");
             host.Measure(size); host.Arrange(new Rect(size)); host.UpdateLayout();
             foreach (var button in Descendants(toolbar).OfType<System.Windows.Controls.Primitives.ButtonBase>().Where(b => b.IsVisible || b.Visibility == Visibility.Visible))
@@ -477,6 +479,11 @@ public partial class DesignGalleryWindow : Window
                     "Floating bar buttons fit normal/compact viewport without clipping");
             }
             Require(toolbar.Background.ToString() == (theme == "Dark" ? "#FF181818" : "#FFFFFFFF"), "Floating bar follows Lab theme");
+            foreach (var control in Descendants(toolbar).OfType<Control>().Where(c => c.IsVisible))
+            {
+                var point = control.TranslatePoint(new Point(), host);
+                Require(point.Y >= 0 && point.Y + control.ActualHeight <= height + 1, "Grouped toolbar controls fit vertically");
+            }
             var capture = Descendants(toolbar).OfType<Button>().Single(b => System.Windows.Automation.AutomationProperties.GetName(b) == "Capturar conforme configuração");
             Require(capture.Background.ToString() == (theme == "Dark" ? "#FF74D1E5" : "#FF337C8F"), "Floating bar primary color matches approved capture screen");
             Require(Descendants(capture).OfType<TextBlock>().Single(t => t.Text == "Capturar").Foreground.ToString() ==
@@ -527,6 +534,8 @@ public partial class DesignGalleryWindow : Window
             window.SearchForEvidence("zzzz-no-resource"); Require(window.ResultCount == 0, "Help shows empty search result");
             window.SearchForEvidence(""); window.OpenTopic("region");
             host.Measure(size); host.Arrange(new Rect(size)); host.UpdateLayout();
+            var close = Descendants(surface).OfType<Button>().Single(b => System.Windows.Automation.AutomationProperties.GetName(b) == "Fechar ajuda");
+            Require(Descendants(close).OfType<LabIcon>().Single().ActualWidth >= 16, "Help close icon remains visible");
             Require(surface.Background.ToString() == (theme == "Dark" ? "#FF181818" : "#FFFFFFFF"), "Help follows current theme");
             foreach (var topic in content.Topics)
             { window.OpenTopic(topic.Id); host.Measure(size); host.Arrange(new Rect(size)); host.UpdateLayout(); }
