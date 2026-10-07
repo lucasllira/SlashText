@@ -996,7 +996,7 @@ public sealed class RegionCaptureWindow : Window
         {
             _selectMode = false; _tool = tool;
             UpdateToolSelection();
-            ShowToolContext(tool);
+            if (_pilotVisuals || tool == CaptureAnnotationKind.Stamp) ShowToolContext(tool);
         };
         return button;
     }

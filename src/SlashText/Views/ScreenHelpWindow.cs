@@ -46,7 +46,7 @@ public sealed class ScreenHelpWindow : Window
         root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         var header = new DockPanel { Margin = new Thickness(24, 22, 24, 14) };
-        var close = ActionButton("Fechar ajuda", "X", Close); close.Width = 38; close.Content = Icon("X", 18);
+        var close = ActionButton("Fechar ajuda", "X", Close); close.Width = 38; close.Content = HelpGlyph("X", 18);
         DockPanel.SetDock(close, Dock.Right); header.Children.Add(close);
         var title = new StackPanel(); title.Children.Add(Text(definition.Title, 23, true));
         title.Children.Add(Text(definition.Subtitle, 12, muted: true)); header.Children.Add(title); root.Children.Add(header);
@@ -173,14 +173,14 @@ public sealed class ScreenHelpWindow : Window
         var card = new Border { Child = content, Padding = new Thickness(14), BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(8) };
         card.SetResourceReference(BackgroundProperty, "Lab.panel"); card.SetResourceReference(BorderBrushProperty, "Lab.line"); return card;
     }
-    private static LabIcon Icon(string name, double size)
+    private static LabIcon HelpGlyph(string name, double size)
     { var icon = new LabIcon { Kind = name, Width = size, Height = size, Margin = new Thickness(0, 0, 8, 0) }; icon.SetResourceReference(LabIcon.ForegroundProperty, "Lab.text"); return icon; }
     private Button ActionButton(string label, string icon, Action action, bool primary = false)
     {
         var button = new Button { ToolTip = label }; button.SetResourceReference(StyleProperty, primary ? "Lab.Pilot.PrimaryButton" : "Lab.Button");
         AutomationProperties.SetName(button, label);
         var row = new StackPanel { Orientation = Orientation.Horizontal };
-        var glyph = Icon(icon, 16); glyph.SetBinding(LabIcon.ForegroundProperty, new System.Windows.Data.Binding("Foreground") { Source = button }); row.Children.Add(glyph);
+        var glyph = HelpGlyph(icon, 16); glyph.SetBinding(LabIcon.ForegroundProperty, new System.Windows.Data.Binding("Foreground") { Source = button }); row.Children.Add(glyph);
         var text = Text(label, 12); text.MaxWidth = 170; text.SetBinding(TextBlock.ForegroundProperty, new System.Windows.Data.Binding("Foreground") { Source = button }); row.Children.Add(text);
         button.Content = row; button.Click += (_, _) => action(); return button;
     }
@@ -219,7 +219,7 @@ public sealed class ScreenHelpWindow : Window
                     "shape" => new[] { "Forma", "Contorno", "Preencher" }, _ => new[] { "Ferramenta", "Cor", "Desenhar" } };
                 for (var i = 0; i < 3; i++)
                 {
-                    var cell = new StackPanel(); cell.Children.Add(Icon(i == 0 ? icon : i == 1 ? "SlidersHorizontal" : "Check", 23)); cell.Children.Add(Text(labels[i], 10, true));
+                    var cell = new StackPanel(); cell.Children.Add(HelpGlyph(i == 0 ? icon : i == 1 ? "SlidersHorizontal" : "Check", 23)); cell.Children.Add(Text(labels[i], 10, true));
                     var box = Card(cell); box.Width = 96; box.Height = 68; box.Padding = new Thickness(9); box.Margin = new Thickness(0, 0, 6, 0); row.Children.Add(box);
                 }
                 Canvas.SetLeft(row, 14); Canvas.SetTop(row, 35); canvas.Children.Add(row); _animated = row;
