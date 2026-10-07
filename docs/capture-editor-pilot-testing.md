@@ -100,3 +100,13 @@ Use imagens/capturas de teste, não arquivos únicos importantes. Repita em Clar
 
 ### Evidências e limites
 A galeria automatizada usa os componentes reais para registrar a barra normal/compacta e Meus emojis em Claro/Preto. Testes verificam importação, transparência, persistência, remoção sem invalidar o documento, clipboard e geometria das oito alças. O Windows físico ainda precisa validar mouse/teclado, foco dos popups, fluidez e monitores/DPI mistos; snapshots não substituem essa aprovação. A #63 permanece aberta até esse teste.
+
+### Organização da barra e guia visual — etapa final da Captura
+
+- A barra nativa agora separa **Área / Anotar / Privacidade / Histórico / Finalizar**. Os grupos permanecem juntos quando falta largura; em modo compacto, **Mais opções e ferramentas** mantém o acesso. Formas reúne retângulo/elipse/linha/seta/número; limpar marcações é uma ação com nome dentro de Mais opções.
+- A faixa inferior acompanha a ferramenta: cor/RGB, espessura/opacidade, tipo de forma, fonte/tamanho, catálogo/tamanho de emoji ou intensidade de privacidade. Alterações afetam próximas inserções. Mais propriedades continuam disponíveis em popups. Verificar texto/emoji, formas preenchidas, numeração, desfoque/pixelização e copiar/salvar após mudar intensidade. Setas/Enter em combos/sliders/botões não devem concluir a captura acidentalmente.
+- **?** ao lado de Regra de captura abre o **Guia da Captura**, também acessível no cabeçalho do editor expandido. Guia offline, busca sem acentos, capítulos, ilustrações vetoriais locais e exemplos animados por “Repetir exemplo”, sem operações reais de captura/gravação.
+- O guia usa as combinações atuais de Monitor/Região/Janela/Longa. Alterar um atalho, reabrir e conferir a explicação. Buscar “regiao”, “RGB”, “PNG”, “GIF”; limpar busca; testar busca sem resultado. Percorrer os capítulos, rolar conteúdo, Tab/Shift+Tab, Ctrl+F, Enter na busca e Esc.
+- **Mostrar na tela** fecha a ajuda e destaca temporariamente um controle. Não clica, inicia captura, troca mídia/ferramenta nem altera uma sessão. Se o recurso estiver oculto em vídeo/GIF ou no modo expandido, o guia indica o contexto de imagem/painel em vez de forçar mudança de modo. Conferir que o documento, undo/checkpoint e mídia selecionada foram preservados.
+- Claro/Preto/Windows, janela de ajuda pequena, teclado, zoom/DPI e reduzir movimentos: título/busca/capítulos permanecem acessíveis. Animações demonstrativas não rodam continuamente nem quando movimento está reduzido.
+- O componente de ajuda e seu contrato de conteúdo são reutilizáveis; Atalhos/Acento Rápido receberão conteúdo nas próprias issues. Nenhuma outra tela foi migrada nesta etapa.

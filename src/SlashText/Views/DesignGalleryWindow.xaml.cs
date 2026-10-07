@@ -160,6 +160,7 @@ public partial class DesignGalleryWindow : Window
             CaptureInkPickerEvidence(theme);
             CaptureOverlayEvidence(theme);
             CaptureCustomEmojiEvidence(theme);
+            CaptureHelpEvidence(theme);
             foreach (var size in new[] { new Size(1440,900), new Size(980,680) })
             {
                 // A fresh, never-shown visual has no runner work-area layout cached by an HWND.
@@ -462,7 +463,7 @@ public partial class DesignGalleryWindow : Window
         foreach (var width in new[] { 920, 440, 260 })
         {
             var compact = width != 920;
-            var height = width == 260 ? 190 : 88;
+            var height = width == 260 ? 290 : 170;
             window.SetDensityForEvidence(compact);
             var size = new Size(width, height);
             var host = new Border { Child = toolbar, Padding = new Thickness(12), Width = width, Height = height };
@@ -498,6 +499,45 @@ public partial class DesignGalleryWindow : Window
         using (var after = window.RenderForEvidence())
             Require(after.Width == 640 && after.Height == 360 && after.GetPixel(160, 110).G < 10 &&
                 after.GetPixel(200, 130).G > 240, "Moving the crop preserves drawings at their desktop positions");
+        var privacyTool = Descendants(toolbar).OfType<System.Windows.Controls.Primitives.ToggleButton>()
+            .Single(b => System.Windows.Automation.AutomationProperties.GetName(b) == "Pixelizar");
+        privacyTool.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+        var intensity = Descendants(toolbar).OfType<Slider>().Single(s => System.Windows.Automation.AutomationProperties.GetName(s) == "Intensidade");
+        intensity.Value = 32;
+        var mark = window.FinishDragForEvidence(new Point(10, 10), new Point(100, 80));
+        Require(mark.Kind == Services.CaptureAnnotationKind.Pixelate && mark.PrivacyStrength == 32,
+            "Contextual intensity is captured in the actual output command");
+        window.Close();
+    }
+
+    private void CaptureHelpEvidence(string theme)
+    {
+        var settings = new Models.CaptureSettings { RegionShortcut = "F10", ActiveMonitorShortcut = "F11" };
+        var content = CaptureHelpContent.Create(settings);
+        Require(content.Topics.Single(t => t.Id == "region").Shortcut == "F10", "Help uses actual configured shortcuts");
+        Require(content.Topics.All(t => TryFindResource("Lab.Icon." + t.Icon) is Geometry), "Help icons resolve to local vectors");
+        var window = new ScreenHelpWindow(content);
+        var surface = window.HelpSurface; window.Content = null; LabMotion.SetReduced(surface, true);
+        foreach (var width in new[] { 1040, 620 })
+        {
+            var size = new Size(width, 740); var host = new Border { Child = surface, Width = width, Height = size.Height };
+            host.Measure(size); host.Arrange(new Rect(size)); host.UpdateLayout();
+            window.SearchForEvidence("regiao");
+            Require(window.ResultCount > 0, "Help search ignores Portuguese accents");
+            window.SearchForEvidence("zzzz-no-resource"); Require(window.ResultCount == 0, "Help shows empty search result");
+            window.SearchForEvidence(""); window.OpenTopic("region");
+            host.Measure(size); host.Arrange(new Rect(size)); host.UpdateLayout();
+            Require(surface.Background.ToString() == (theme == "Dark" ? "#FF181818" : "#FFFFFFFF"), "Help follows current theme");
+            foreach (var topic in content.Topics)
+            { window.OpenTopic(topic.Id); host.Measure(size); host.Arrange(new Rect(size)); host.UpdateLayout(); }
+            window.OpenTopic("region"); host.Measure(size); host.Arrange(new Rect(size)); host.UpdateLayout();
+            var bitmap = new RenderTargetBitmap(width, 740, 96, 96, PixelFormats.Pbgra32); bitmap.Render(host);
+            var png = new PngBitmapEncoder(); png.Frames.Add(BitmapFrame.Create(bitmap));
+            using (var file = File.Create(Path.Combine(_smokeOutput!, $"capture-help-{theme}-{width}.png"))) png.Save(file);
+            var highlight = Descendants(surface).OfType<Button>().Single(b => System.Windows.Automation.AutomationProperties.GetName(b) == "Mostrar na tela");
+            if (width == 620) { highlight.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); Require(window.RequestedTarget == "CaptureRegionModeButton", "Help returns a highlight request without executing capture"); }
+            host.Child = null;
+        }
         window.Close();
     }
 

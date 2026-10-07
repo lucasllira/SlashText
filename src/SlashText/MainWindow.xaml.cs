@@ -2607,6 +2607,32 @@ public partial class MainWindow : Window
         }
     }
 
+    private ScreenHelpHighlighter? _captureHelpHighlight;
+
+    private void OpenCaptureHelp_OnClick(object sender, RoutedEventArgs e)
+    {
+        _captureHelpHighlight?.Remove(); _captureHelpHighlight = null;
+        var guide = new ScreenHelpWindow(CaptureHelpContent.Create(_settings.Capture)) { Owner = this };
+        LabMotion.SetReduced(guide, LabMotion.GetReduced(this));
+        if (sender is Button button && button != CaptureHelpButton) guide.OpenTopic("zoom");
+        ShowCaptureDialog(guide);
+        if (guide.RequestedTarget is not { } name) return;
+        if (FindName(name) is not FrameworkElement target) return;
+        // Do not switch media, select tools or discard a session just to reveal help.
+        if (!target.IsVisible)
+        {
+            StatusText.Text = "Este recurso aparece no painel de imagem. Sua sessão foi preservada.";
+            target = _captureEditorExpanded ? CaptureExpandEditorButton : CaptureImageMediaButton;
+        }
+        else StatusText.Text = "Recurso destacado: " + (System.Windows.Automation.AutomationProperties.GetName(target) is { Length: > 0 } label ? label : guide.Title);
+        target.BringIntoView();
+        Dispatcher.BeginInvoke(new Action(() =>
+        {
+            if (!target.IsVisible) return;
+            target.Focus(); _captureHelpHighlight = ScreenHelpHighlighter.Show(target);
+        }), DispatcherPriority.Loaded);
+    }
+
     private async void FocusCaptureRule_OnClick(object sender, RoutedEventArgs e)
     {
         if (!TryReadCaptureSettings(out var currentError))
