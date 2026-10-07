@@ -59,7 +59,13 @@ public sealed class CaptureWorkbenchEditor : UserControl, IDisposable
     public bool TextBold { get; set; }
     public bool TextItalic { get; set; }
     public string TextAlignment { get; set; } = "Left";
-    public string SelectedStamp { get; set; } = "👍";
+    private string _selectedStamp = "👍";
+    private CaptureStampImage? _selectedStampImage;
+    public string SelectedStamp
+    {
+        get => _selectedStamp;
+        set { var asset = CaptureStampCatalog.Current.GetImage(value); _selectedStamp = value; _selectedStampImage = asset; }
+    }
     public float StampSize { get; set; } = 48;
     public int PrivacyStrength { get; set; } = 16;
     public int? ShapeFill { get; set; }
@@ -202,8 +208,9 @@ public sealed class CaptureWorkbenchEditor : UserControl, IDisposable
     }
     public void InsertStamp(string value, Point center, float size = 48)
     {
-        if (!NotoEmojiCatalog.TryGet(value, out _)) throw new ArgumentException("Emoji não disponível.", nameof(value));
-        InsertAnnotation(new CaptureAnnotation { Kind = CaptureAnnotationKind.Stamp, Start = Clamp(center), End = Clamp(center), Text = value, Size = size });
+        var asset = value == _selectedStamp && _selectedStampImage is not null ? _selectedStampImage : CaptureStampCatalog.Current.GetImage(value);
+        if (asset is null && !NotoEmojiCatalog.TryGet(value, out _)) throw new ArgumentException("Emoji não disponível.", nameof(value));
+        InsertAnnotation(new CaptureAnnotation { Kind = CaptureAnnotationKind.Stamp, Start = Clamp(center), End = Clamp(center), Text = value, Size = size, StampImage = asset });
     }
 
     private void PointerDown(object sender, MouseButtonEventArgs e)

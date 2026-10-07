@@ -295,7 +295,7 @@ public sealed class CaptureEditorWindow : Window
         {
             var value = CaptureEmojiPicker.Show(this);
             if (value is not null) Add(new CaptureAnnotation { Kind = CaptureAnnotationKind.Stamp,
-                Start = _start, End = _start, Text = value, Size = 42 });
+                Start = _start, End = _start, Text = value, StampImage = CaptureStampCatalog.Current.GetImage(value), Size = 42 });
             return;
         }
         if (_tool == CaptureAnnotationKind.Text)
@@ -520,7 +520,7 @@ public sealed class CaptureEditorWindow : Window
                 _overlay.Children.Add(text);
                 break;
             case CaptureAnnotationKind.Stamp:
-                var stamp = new Image { Source = NotoEmojiCatalog.CreateImageSource(annotation.Text),
+                var stamp = new Image { Source = annotation.StampImage?.CreateImageSource() ?? NotoEmojiCatalog.CreateImageSource(annotation.Text),
                     Width = annotation.Size, Height = annotation.Size, Stretch = Stretch.Uniform };
                 Canvas.SetLeft(stamp, annotation.Start.X - annotation.Size / 2);
                 Canvas.SetTop(stamp, annotation.Start.Y - annotation.Size / 2);

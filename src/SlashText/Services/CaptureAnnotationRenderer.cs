@@ -37,6 +37,17 @@ public sealed class CaptureAnnotation
     public int PrivacyStrength { get; init; }
     public string Alignment { get; init; } = "Left";
     public string Text { get; init; } = string.Empty;
+    public CaptureStampImage? StampImage { get; init; }
+
+    public CaptureAnnotation Transform(double offsetX, double offsetY, double scaleX = 1, double scaleY = 1) => new()
+    {
+        Kind = Kind, Start = new((Start.X + offsetX) * scaleX, (Start.Y + offsetY) * scaleY),
+        End = new((End.X + offsetX) * scaleX, (End.Y + offsetY) * scaleY),
+        Points = Points.Select(p => new System.Windows.Point((p.X + offsetX) * scaleX, (p.Y + offsetY) * scaleY)).ToList(),
+        Argb = Argb, OutlineArgb = OutlineArgb, FillArgb = FillArgb, Thickness = Thickness * (float)((scaleX + scaleY) / 2),
+        Opacity = Opacity, Size = Size * (float)((scaleX + scaleY) / 2), Bold = Bold, Italic = Italic,
+        FontFamily = FontFamily, PrivacyStrength = PrivacyStrength, Alignment = Alignment, Text = Text, StampImage = StampImage
+    };
 
     public bool HasVisibleShapeStyle =>
         FillArgb.HasValue || OutlineArgb.HasValue ||
@@ -236,7 +247,7 @@ public static class CaptureAnnotationRenderer
     {
         var pixels = Math.Max(12, (int)Math.Ceiling(
             annotation.Size * ((scaleX + scaleY) / 2d)));
-        using var stamp = NotoEmojiCatalog.CreateBitmap(annotation.Text);
+        using var stamp = annotation.StampImage?.CreateBitmap() ?? NotoEmojiCatalog.CreateBitmap(annotation.Text);
         var fit = pixels / (float)Math.Max(stamp.Width, stamp.Height);
         var width = stamp.Width * fit;
         var height = stamp.Height * fit;

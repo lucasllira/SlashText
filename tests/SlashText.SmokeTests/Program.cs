@@ -401,6 +401,7 @@ try
         try
         {
             CaptureEditorPerformanceChecks.Run();
+            CaptureCustomStampChecks.Run();
             using var bitmap = new System.Drawing.Bitmap(800, 400);
             using (var graphics = System.Drawing.Graphics.FromImage(bitmap))
             {

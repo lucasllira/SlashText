@@ -77,3 +77,26 @@ Use imagens/capturas de teste, não arquivos únicos importantes. Repita em Clar
 4. Manter #63 aberta e PR #72 em rascunho enquanto houver gates de Captura/overlay pendentes. Não publicar 3.3.0 nem migrar outras telas antes da aprovação.
 5. A janela legada fica como fallback interno/rollback nesta fase; sua retirada física só acontece depois da paridade aprovada. O fluxo principal da Captura usa o editor unificado.
 6. Editor temporal de vídeo/GIF: outra etapa, explicitamente fora deste candidato.
+
+## Meus emojis e barra nativa — etapa da issue #63
+
+### Meus emojis
+1. Na ferramenta Emotes, abra **Ver todos → Meus emojis → Adicionar imagem**. Importe PNG transparente e JPEG; o nome inicial vem do arquivo.
+2. Selecione o item, ajuste o tamanho e insira na captura. Compare prévia, Copiar e Salvar.
+3. Apague o arquivo de origem e reinicie o piloto: a coleção deve continuar disponível. Os dados ficam em `SlashDeskPilotData/capture-emotes`, separados dos assets de atalhos.
+4. Remova um item da coleção com uma imagem editada ainda aberta. As marcações já inseridas, desfazer/refazer e a exportação devem permanecer iguais.
+5. Cancele o seletor de arquivos e tente um arquivo inválido. Não deve surgir item nem operação na imagem. GIF animado não faz parte desta etapa.
+6. A importação aceita até 16 MB/16 megapixels e normaliza uma cópia para no máximo 512 px no lado maior. Preserve a pasta inteira do piloto para manter a coleção.
+
+### Barra de captura do piloto
+1. Faça uma captura de **Região** por Novo, atalho e bandeja. O desktop deve permanecer congelado durante a seleção.
+2. Use **Selecionar** para mover a área. Arraste as oito alças para reduzir/expandir a região. Nenhuma borda deve inverter ou sair da área virtual. Setas movem a seleção; Shift+setas acelera; foco em uma alça + setas redimensiona.
+3. Troque para Caneta, Marca-texto, Formas, Seta, Texto, Número e Emotes. Formas oferece retângulo/elipse/linha/seta e opções de preenchimento/contorno. Mais ferramentas oferece Desfocar/Pixelizar e instrumentos que migram para o menu em monitores estreitos.
+4. Cores/RGB usa a mesma faixa de cores da tela de Captura. Verifique texto/fonte, tamanho, opacidade, espessura, Sem cor, numeração, catálogo Noto e Meus emojis.
+5. Alterar a região conserva as anotações na posição do conteúdo do desktop: reduzir a seleção recorta as marcas, e expandir novamente as revela. **R/refazer seleção** inicia outra seleção e limpa o histórico anterior, como antes.
+6. Desfaça/refaça e use o menu Capturar → Copiar/Salvar ou Capturar conforme configuração. A composição final deve corresponder à prévia, inclusive transparência, desfoque e pixelização. Edição de vídeo/GIF permanece fora deste fluxo.
+7. Esc fecha primeiro o popup; outro Esc cancela. Texto em edição deve aceitar suas próprias teclas. Cancelar não salva nem copia nada.
+8. Teste em Claro/Preto/Windows, animações do Windows desativadas, cantos, taskbar nas bordas, monitores à esquerda/acima e DPI 100/150/200%. A barra deve se reposicionar sem piscar; popups não podem cortar controles. Em largura insuficiente, use Mais ferramentas.
+
+### Evidências e limites
+A galeria automatizada usa os componentes reais para registrar a barra normal/compacta e Meus emojis em Claro/Preto. Testes verificam importação, transparência, persistência, remoção sem invalidar o documento, clipboard e geometria das oito alças. O Windows físico ainda precisa validar mouse/teclado, foco dos popups, fluidez e monitores/DPI mistos; snapshots não substituem essa aprovação. A #63 permanece aberta até esse teste.

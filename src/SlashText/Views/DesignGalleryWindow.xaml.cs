@@ -158,6 +158,8 @@ public partial class DesignGalleryWindow : Window
             Require(Descendants(FormatCombo).OfType<TextBlock>().Any(t => t.Text == "PNG — imagem" && t.Foreground.ToString() == expected), "Combo selection label must follow theme");
             await CaptureEditorEvidence(theme);
             CaptureInkPickerEvidence(theme);
+            CaptureOverlayEvidence(theme);
+            CaptureCustomEmojiEvidence(theme);
             foreach (var size in new[] { new Size(1440,900), new Size(980,680) })
             {
                 // A fresh, never-shown visual has no runner work-area layout cached by an HWND.
@@ -437,6 +439,91 @@ public partial class DesignGalleryWindow : Window
         var image = new RenderTargetBitmap((int)size.Width, (int)size.Height, 96, 96, PixelFormats.Pbgra32); image.Render(host);
         var png = new PngBitmapEncoder(); png.Frames.Add(BitmapFrame.Create(image));
         using var file = File.Create(Path.Combine(_smokeOutput!, $"capture-ink-picker-{theme}.png")); png.Save(file);
+    }
+
+    private void CaptureOverlayEvidence(string theme)
+    {
+        using var source = new System.Drawing.Bitmap(1000, 700);
+        using (var g = System.Drawing.Graphics.FromImage(source))
+        { g.Clear(System.Drawing.Color.White); g.FillRectangle(System.Drawing.Brushes.LightGray, 0, 0, 1000, 70); }
+        var window = new RegionCaptureWindow(source, pilotVisuals: true);
+        window.SetSelectionForEvidence(new Rect(120, 80, 640, 360));
+        var toolbar = window.ToolbarForEvidence;
+        LabMotion.SetReduced(toolbar, true);
+        foreach (var compact in new[] { false, true })
+        {
+            window.SetDensityForEvidence(compact);
+            var width = compact ? 440 : 920;
+            var size = new Size(width, 88);
+            var host = new Border { Child = toolbar, Padding = new Thickness(12), Width = width, Height = 88 };
+            host.SetResourceReference(Border.BackgroundProperty, "Lab.canvas");
+            host.Measure(size); host.Arrange(new Rect(size)); host.UpdateLayout();
+            foreach (var button in Descendants(toolbar).OfType<System.Windows.Controls.Primitives.ButtonBase>().Where(b => b.IsVisible || b.Visibility == Visibility.Visible))
+            {
+                if (button.ActualWidth == 0) continue;
+                var location = button.TranslatePoint(new Point(), host);
+                Require(location.X >= 0 && location.X + button.ActualWidth <= width,
+                    "Floating bar buttons fit normal/compact viewport without clipping");
+            }
+            Require(toolbar.Background.ToString() == (theme == "Dark" ? "#FF181818" : "#FFFFFFFF"), "Floating bar follows Lab theme");
+            var capture = Descendants(toolbar).OfType<Button>().Single(b => b.Content is string text && text == "Capturar");
+            Require(capture.Background.ToString() == (theme == "Dark" ? "#FF74D1E5" : "#FF337C8F"), "Floating bar primary color matches approved capture screen");
+            var bitmap = new RenderTargetBitmap(width, 88, 96, 96, PixelFormats.Pbgra32); bitmap.Render(host);
+            var png = new PngBitmapEncoder(); png.Frames.Add(BitmapFrame.Create(bitmap));
+            using var file = File.Create(Path.Combine(_smokeOutput!, $"capture-overlay-bar-{theme}-{(compact ? "compact" : "normal")}.png")); png.Save(file);
+            host.Child = null;
+        }
+        window.SetDensityForEvidence(false);
+        var caneta = Descendants(toolbar).OfType<System.Windows.Controls.Primitives.ToggleButton>()
+            .Single(b => System.Windows.Automation.AutomationProperties.GetName(b) == "Caneta");
+        caneta.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+        Require(caneta.IsChecked == true, "Floating tool click changes the real overlay mode");
+        window.AddForEvidence(new Services.CaptureAnnotation { Kind = Services.CaptureAnnotationKind.Rectangle,
+            Start = new Point(195, 125), End = new Point(205, 135), FillArgb = System.Drawing.Color.Red.ToArgb(), OutlineArgb = null });
+        using (var before = window.RenderForEvidence())
+            Require(before.GetPixel(200, 130).R > 240 && before.GetPixel(200, 130).G < 10, "Overlay preview and export share raster composition");
+        window.MoveForEvidence(new Vector(40, 20));
+        using (var after = window.RenderForEvidence())
+            Require(after.Width == 640 && after.Height == 360 && after.GetPixel(160, 110).G < 10 &&
+                after.GetPixel(200, 130).G > 240, "Moving the crop preserves drawings at their desktop positions");
+        window.Close();
+    }
+
+    private void CaptureCustomEmojiEvidence(string theme)
+    {
+        var directory = Path.Combine(_smokeOutput!, "custom-emoji-probe-" + theme);
+        Directory.CreateDirectory(directory);
+        try
+        {
+            var catalog = new Services.CaptureStampCatalog(Path.Combine(directory, "collection"));
+            var imagePath = Path.Combine(directory, "Selo do projeto.png");
+            using (var sample = new System.Drawing.Bitmap(160, 100))
+            {
+                using var g = System.Drawing.Graphics.FromImage(sample); g.Clear(System.Drawing.Color.Transparent);
+                g.FillEllipse(System.Drawing.Brushes.DarkCyan, 4, 4, 152, 92);
+                using var font = new System.Drawing.Font("Segoe UI", 32, System.Drawing.FontStyle.Bold);
+                g.DrawString("SD", font, System.Drawing.Brushes.White, 42, 22); sample.Save(imagePath, System.Drawing.Imaging.ImageFormat.Png);
+            }
+            var value = catalog.Import(imagePath); string? chosen = null;
+            var picker = CaptureEmojiPicker.CreateContent(v => chosen = v, () => { }, catalog);
+            LabMotion.SetReduced(picker, true);
+            var host = new Border { Child = picker, Width = 900, Height = 560 };
+            host.SetResourceReference(Border.BackgroundProperty, "Lab.raised");
+            var size = new Size(900, 560);
+            void Layout() { host.Measure(size); host.Arrange(new Rect(size)); host.UpdateLayout(); }
+            Layout();
+            var category = Descendants(picker).OfType<ComboBox>().Single(); category.SelectedItem = Services.CaptureStampCatalog.CustomCategory; Layout();
+            var item = Descendants(picker).OfType<Button>().Single(b => System.Windows.Automation.AutomationProperties.GetName(b) == "Selo do projeto");
+            item.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Require(chosen == value, "Custom collection can select a local image stamp");
+            var bitmap = new RenderTargetBitmap(900, 560, 96, 96, PixelFormats.Pbgra32); bitmap.Render(host);
+            var png = new PngBitmapEncoder(); png.Frames.Add(BitmapFrame.Create(bitmap));
+            using (var file = File.Create(Path.Combine(_smokeOutput!, $"capture-custom-emojis-{theme}.png"))) png.Save(file);
+            var remove = Descendants(picker).OfType<Button>().Single(b => b.Content is string label && label == "Remover");
+            remove.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); Layout();
+            Require(catalog.Items.Count == 0 && Descendants(picker).OfType<TextBlock>().Any(t => t.Text == "Nenhum emote encontrado."), "Custom removal updates collection and empty state");
+        }
+        finally { Directory.Delete(directory, recursive: true); }
     }
 
     private static IEnumerable<DependencyObject> Descendants(DependencyObject parent)

@@ -76,13 +76,13 @@ public sealed class CaptureEditorContextPanel : UserControl
             };
             var buttons = new Dictionary<string, Button>();
             var quick = NotoEmojiCatalog.QuickItems.AsEnumerable();
-            if (!quick.Any(i => i.Value == _editor.SelectedStamp) && NotoEmojiCatalog.TryGet(_editor.SelectedStamp, out var current))
+            if (!quick.Any(i => i.Value == _editor.SelectedStamp) && CaptureStampCatalog.Current.TryGet(_editor.SelectedStamp, out var current))
                 quick = new[] { current }.Concat(quick);
             foreach (var item in quick)
             {
                 var button = new Button
                 {
-                    Content = new Image { Source = NotoEmojiCatalog.CreateImageSource(item.Value), Width = 26, Height = 26 },
+                    Content = new Image { Source = CaptureStampCatalog.Current.CreateImageSource(item.Value), Width = 26, Height = 26 },
                     ToolTip = item.Name, Width = 38, Height = 40, MinWidth = 38, MinHeight = 40, Padding = new Thickness(3),
                     Margin = new Thickness(0, 4, 3, 4), VerticalAlignment = VerticalAlignment.Center,
                     Tag = item.Value == _editor.SelectedStamp ? "Selected" : null

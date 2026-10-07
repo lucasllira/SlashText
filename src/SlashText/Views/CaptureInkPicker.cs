@@ -35,7 +35,10 @@ public static class CaptureInkPicker
         argb = 0; return false;
     }
 
-    internal static Border CreateContent(CaptureWorkbenchEditor editor)
+    internal static Border CreateContent(CaptureWorkbenchEditor editor) => CreateContent(
+        () => editor.InkArgb, editor.SetColor, () => editor.InkThickness, editor.SetThickness);
+
+    internal static Border CreateContent(Func<int> getInk, Action<int> setInk, Func<float> getThickness, Action<float> setThickness)
     {
         var panel = new StackPanel { Margin = new Thickness(14) };
         var border = new Border { Width = 700, CornerRadius = new CornerRadius(10), BorderThickness = new Thickness(1), Child = panel };
@@ -101,14 +104,14 @@ public static class CaptureInkPicker
         }
         void Refresh()
         {
-            var c = System.Drawing.Color.FromArgb(editor.InkArgb);
-            preview.Stroke = new SolidColorBrush(Color.FromRgb(c.R, c.G, c.B)); preview.StrokeThickness = editor.InkThickness;
-            sizeValue.Text = $"{editor.InkThickness:0} px"; SetFields(editor.InkArgb); error.Visibility = Visibility.Collapsed;
+            var c = System.Drawing.Color.FromArgb(getInk());
+            preview.Stroke = new SolidColorBrush(Color.FromRgb(c.R, c.G, c.B)); preview.StrokeThickness = getThickness();
+            sizeValue.Text = $"{getThickness():0} px"; SetFields(getInk()); error.Visibility = Visibility.Collapsed;
             foreach (var item in rings)
             {
-                if (item.Argb == editor.InkArgb) item.Ring.SetResourceReference(Border.BorderBrushProperty, "Lab.accent");
+                if (item.Argb == getInk()) item.Ring.SetResourceReference(Border.BorderBrushProperty, "Lab.accent");
                 else item.Ring.BorderBrush = Brushes.Transparent;
-                System.Windows.Automation.AutomationProperties.SetItemStatus(item.Button, item.Argb == editor.InkArgb ? "Selecionada" : "");
+                System.Windows.Automation.AutomationProperties.SetItemStatus(item.Button, item.Argb == getInk() ? "Selecionada" : "");
             }
         }
         foreach (var item in Colors)
@@ -123,7 +126,7 @@ public static class CaptureInkPicker
                 ToolTip = $"{item.Name} · #{item.Hex}", Tag = argb };
             button.SetResourceReference(FrameworkElement.StyleProperty, "Lab.Pilot.ToolButton");
             System.Windows.Automation.AutomationProperties.SetName(button, item.Name);
-            button.Click += (_, _) => { editor.SetColor(argb); Refresh(); };
+            button.Click += (_, _) => { setInk(argb); Refresh(); };
             rings.Add((argb, ring, button)); colors.Children.Add(button);
         }
         Button Arrow(bool forward)
@@ -153,7 +156,7 @@ public static class CaptureInkPicker
             int argb;
             if (!(hexEdited ? TryParseHex(hex.Text, out argb) : ReadRgb(out argb)))
             { error.Visibility = Visibility.Visible; return; }
-            editor.SetColor(argb); Refresh();
+            setInk(argb); Refresh();
         }
         apply.Click += (_, _) => Apply();
         fields.PreviewKeyDown += (_, e) => { if (e.Key == Key.Enter) { Apply(); e.Handled = true; } };
@@ -161,11 +164,11 @@ public static class CaptureInkPicker
         foreach (var width in new[] { GridLength.Auto, new GridLength(1, GridUnitType.Star), GridLength.Auto, GridLength.Auto })
             sizeRow.ColumnDefinitions.Add(new ColumnDefinition { Width = width });
         var sizeLabel = Label("Espessura"); sizeLabel.Margin = new Thickness(0, 0, 10, 0); sizeRow.Children.Add(sizeLabel);
-        var slider = new Slider { Name = "InkThickness", Minimum = 1, Maximum = 24, Value = editor.InkThickness,
+        var slider = new Slider { Name = "InkThickness", Minimum = 1, Maximum = 24, Value = getThickness(),
             TickFrequency = 1, IsSnapToTickEnabled = true, SmallChange = 1, LargeChange = 4, MinWidth = 70 };
         slider.SetResourceReference(FrameworkElement.StyleProperty, "Lab.Pilot.InkSlider");
         System.Windows.Automation.AutomationProperties.SetName(slider, "Espessura do traço em pixels");
-        slider.ValueChanged += (_, _) => { editor.SetThickness((float)slider.Value); Refresh(); };
+        slider.ValueChanged += (_, _) => { setThickness((float)slider.Value); Refresh(); };
         Grid.SetColumn(slider, 1); sizeRow.Children.Add(slider);
         Grid.SetColumn(sizeValue, 2); sizeValue.Margin = new Thickness(10, 0, 10, 0); sizeRow.Children.Add(sizeValue);
         Grid.SetColumn(preview, 3); sizeRow.Children.Add(preview); panel.Children.Add(sizeRow);

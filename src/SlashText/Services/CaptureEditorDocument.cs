@@ -54,7 +54,7 @@ public sealed class CaptureEditorDocument : IDisposable
             Argb = value.Argb, OutlineArgb = value.OutlineArgb, FillArgb = value.FillArgb,
             Thickness = value.Thickness, Opacity = value.Opacity, Size = value.Size,
             Bold = value.Bold, Italic = value.Italic, Alignment = value.Alignment,
-            FontFamily = value.FontFamily, Text = value.Text, PrivacyStrength = value.PrivacyStrength
+            FontFamily = value.FontFamily, Text = value.Text, PrivacyStrength = value.PrivacyStrength, StampImage = value.StampImage
         }));
     }
 
