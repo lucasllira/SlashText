@@ -120,15 +120,18 @@ public static class CaptureEmojiPicker
         var help = new TextBlock { Text = "PNG/JPEG · cópia local · até 16 MB", VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(12, 0, 0, 0) };
         help.SetResourceReference(TextBlock.ForegroundProperty, "Lab.muted");
         importRow.Children.Add(import); importRow.Children.Add(help);
+        panel.Children.Remove(caption);
         var heading = new StackPanel(); heading.Children.Add(caption); heading.Children.Add(importRow); heading.Children.Add(message);
-        panel.Children.Remove(caption); Grid.SetRow(heading, 1); panel.Children.Add(heading);
+        Grid.SetRow(heading, 1); panel.Children.Add(heading);
         void ShowError(string text) { message.Text = text; }
-        import.Click += (_, _) =>
+        import.Click += async (_, _) =>
         {
             var picker = new Microsoft.Win32.OpenFileDialog { Title = "Adicionar aos meus emojis", Filter = "Imagens PNG/JPEG|*.png;*.jpg;*.jpeg", Multiselect = false };
             if (picker.ShowDialog(Window.GetWindow(panel)) != true) return;
-            try { catalog.Import(picker.FileName); message.Text = ""; search.Text = ""; category.SelectedItem = CaptureStampCatalog.CustomCategory; Rebuild(); }
+            import.IsEnabled = false;
+            try { await Task.Run(() => catalog.Import(picker.FileName)); message.Text = ""; search.Text = ""; category.SelectedItem = CaptureStampCatalog.CustomCategory; Rebuild(); }
             catch (Exception error) { ShowError("Não foi possível importar: " + error.Message); }
+            finally { import.IsEnabled = true; }
         };
         previous = ActionButton("Anterior", () => { if (page > 0) { page--; RenderPage(); } });
         next = ActionButton("Próxima", () => { if ((page + 1) * PageSize < matches.Count) { page++; RenderPage(); } });

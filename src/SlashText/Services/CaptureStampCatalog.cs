@@ -20,8 +20,10 @@ public sealed class CaptureStampImage
     }
     public BitmapSource CreateImageSource()
     {
-        using var bitmap = CreateBitmap();
-        return CaptureBitmapSource.Create(bitmap);
+        using var stream = new MemoryStream(_png, writable: false);
+        var image = new BitmapImage(); image.BeginInit();
+        image.CacheOption = BitmapCacheOption.OnLoad; image.DecodePixelWidth = 64;
+        image.StreamSource = stream; image.EndInit(); image.Freeze(); return image;
     }
 }
 

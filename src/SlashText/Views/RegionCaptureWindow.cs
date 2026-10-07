@@ -169,6 +169,15 @@ public sealed class RegionCaptureWindow : Window
         };
         Canvas.SetLeft(help, 24);
         Canvas.SetTop(help, 24);
+        if (_pilotVisuals)
+        {
+            help.SetResourceReference(Border.BackgroundProperty, "Lab.panel");
+            help.SetResourceReference(Border.BorderBrushProperty, "Lab.line-strong");
+            ((TextBlock)help.Child).SetResourceReference(TextBlock.ForegroundProperty, "Lab.text");
+            foreach (var shade in _shades) shade.Fill = new SolidColorBrush(Color.FromArgb(145, 0, 0, 0));
+            _sizeBadge.SetResourceReference(Border.BackgroundProperty, "Lab.panel");
+            _sizeBadge.SetResourceReference(Border.BorderBrushProperty, "Lab.line-strong");
+        }
         _canvas.Children.Add(help);
         _canvas.Children.Add(_selection);
 
@@ -205,6 +214,7 @@ public sealed class RegionCaptureWindow : Window
             FontFamily = new FontFamily("Cascadia Mono, Consolas"),
             FontSize = 12
         };
+        if (_pilotVisuals) ((TextBlock)_sizeBadge.Child).SetResourceReference(TextBlock.ForegroundProperty, "Lab.text");
         _canvas.Children.Add(_sizeBadge);
 
         _toolbar = BuildToolbar();
@@ -288,7 +298,7 @@ public sealed class RegionCaptureWindow : Window
         {
             "CaptureIconArrow" => "ArrowUpRight", "CaptureIconPencil" => "PenLine", "CaptureIconHighlighter" => "Highlighter",
             "CaptureIconShapes" => "Square", "CaptureIconText" => "Type", "CaptureIconNumber" => "Hash",
-            "CaptureIconEmoji" => "Smile", "CaptureIconEraser" => "Eraser", "CaptureIconUndo" => "Undo2",
+            "CaptureIconEmoji" => "Smile", "CaptureIconEraser" => "Trash2", "CaptureIconUndo" => "Undo2",
             "CaptureIconRedo" => "Redo2", "CaptureIconReselect" => "ScanLine", "CaptureIconClose" => "X",
             "CaptureIconPalette" => "Palette", _ => "MoreHorizontal"
         }, Width = 20, Height = 20, IsHitTestVisible = false
@@ -1357,7 +1367,7 @@ public sealed class RegionCaptureWindow : Window
             End = end,
             Points = [.. _pencilPoints],
             Argb = _color,
-            OutlineArgb = _outlineArgb ?? _color,
+            OutlineArgb = _tool is CaptureAnnotationKind.Rectangle or CaptureAnnotationKind.Ellipse ? _outlineArgb : _outlineArgb ?? _color,
             FillArgb = _fillArgb,
             Thickness = _thickness,
             Opacity = _tool == CaptureAnnotationKind.Highlighter
@@ -1383,7 +1393,7 @@ public sealed class RegionCaptureWindow : Window
             End = end,
             Points = [.. _pencilPoints],
             Argb = _color,
-            OutlineArgb = _outlineArgb ?? _color,
+            OutlineArgb = _tool is CaptureAnnotationKind.Rectangle or CaptureAnnotationKind.Ellipse ? _outlineArgb : _outlineArgb ?? _color,
             FillArgb = _fillArgb,
             Thickness = _thickness,
             Opacity = _tool == CaptureAnnotationKind.Highlighter
