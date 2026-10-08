@@ -1233,7 +1233,7 @@ public partial class MainWindow : Window
     {
         if (ContentEditor is not null)
             foreach (var block in ContentEditor.Document.Blocks.OfType<BlockUIContainer>())
-                if (block.Child is Border codeBorder) ShortcutCodeBlockView.Attach(codeBorder);
+                ShortcutCodeBlockView.AttachBlock(block);
         RefreshShortcutDraftState();
         RefreshShortcutFormatting();
         UpdatePreview();

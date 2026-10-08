@@ -29,7 +29,7 @@ internal static class ShortcutCodeBlockView
         var actions = new StackPanel { Orientation = Orientation.Horizontal }; DockPanel.SetDock(actions, Dock.Right); header.Children.Add(actions);
         actions.Children.Add(Tool("CodeCollapse", "Recolher código", "ChevronUp"));
         actions.Children.Add(Tool("CodeCopy", "Copiar código", "Copy"));
-        var edit = Tool("CodeEdit", "Editar bloco de código", "Pencil"); edit.Visibility = editable ? Visibility.Visible : Visibility.Collapsed; actions.Children.Add(edit);
+        var edit = Tool("CodeEdit", "Editar bloco de código", "PenLine"); edit.Visibility = editable ? Visibility.Visible : Visibility.Collapsed; actions.Children.Add(edit);
         var title = new TextBlock { Text = ShortcutCodeEditor.Label(content.Language), FontSize = 12, FontWeight = FontWeights.SemiBold, VerticalAlignment = VerticalAlignment.Center }; title.SetResourceReference(TextBlock.ForegroundProperty, "Lab.text");
         header.Children.Add(title);
         var surface = new Border { Child = header, BorderThickness = new Thickness(0, 0, 0, 1) }; surface.SetResourceReference(Border.BackgroundProperty, "Lab.raised"); surface.SetResourceReference(Border.BorderBrushProperty, "Lab.line"); layout.Children.Add(surface);
@@ -42,13 +42,34 @@ internal static class ShortcutCodeBlockView
         root.SetResourceReference(Border.BorderBrushProperty, "Lab.line"); root.SetResourceReference(Border.BackgroundProperty, "Lab.input"); AutomationProperties.SetName(root, "Bloco de código " + title.Text);
         Attach(root); return root;
     }
+    internal static BlockUIContainer CreateBlock(CodeBlockContent content, bool editable = true)
+    {
+        var view = Create(content, editable);
+        return new BlockUIContainer(view) { Tag = view.Tag, Margin = new Thickness(0, 6, 0, 6) };
+    }
+    internal static Border? GetView(BlockUIContainer block) => block.Child switch
+    { Border view when Read(view) is not null => view, Grid placeholder => placeholder.Children.OfType<Border>().FirstOrDefault(view => Read(view) is not null), _ => null };
+    internal static bool TryRead(BlockUIContainer block, out CodeBlockContent content)
+    {
+        var state = ReadTag(block.Tag); content = state is null ? new CodeBlockContent("text", "") : new CodeBlockContent(state.Language, state.Code); return state is not null;
+    }
+    internal static void AttachBlock(BlockUIContainer block)
+    {
+        if (GetView(block) is { } view) { Attach(view); return; }
+        // WPF can substitute an empty Grid for UI it cannot deserialize. Block.Tag is a
+        // native text-element property restored independently, so source cannot be lost.
+        // Populate inside that Grid, without replacing Child or creating extra text undo units.
+        if (block.Child is Grid placeholder && ReadTag(block.Tag) is { } state)
+            placeholder.Children.Add(Create(new CodeBlockContent(state.Language, state.Code), state.Editable));
+    }
     internal static bool TryRead(Border border, out CodeBlockContent content)
     {
         var state = Read(border); content = state is null ? new CodeBlockContent("text", "") : new CodeBlockContent(state.Language, state.Code); return state is not null;
     }
-    private static State? Read(Border border)
+    private static State? Read(Border border) => ReadTag(border.Tag);
+    private static State? ReadTag(object? value)
     {
-        if (border.Tag is not string tag || !tag.StartsWith(Prefix, StringComparison.Ordinal)) return null;
+        if (value is not string tag || !tag.StartsWith(Prefix, StringComparison.Ordinal)) return null;
         try { return JsonSerializer.Deserialize<State>(tag[Prefix.Length..]); }
         catch (JsonException) { return null; }
     }

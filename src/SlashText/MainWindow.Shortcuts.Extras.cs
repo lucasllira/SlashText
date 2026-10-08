@@ -142,10 +142,10 @@ public partial class MainWindow
         ContentEditor.BeginChange();
         try
         {
-            var block = new BlockUIContainer(ShortcutCodeBlockView.Create(content)) { Margin = new Thickness(0, 6, 0, 6) };
+            var block = ShortcutCodeBlockView.CreateBlock(content);
             if (existing is not null)
             {
-                var old = ContentEditor.Document.Blocks.OfType<BlockUIContainer>().Single(item => ReferenceEquals(item.Child, existing));
+                var old = ContentEditor.Document.Blocks.OfType<BlockUIContainer>().Single(item => ReferenceEquals(ShortcutCodeBlockView.GetView(item), existing));
                 ContentEditor.Document.Blocks.InsertBefore(old, block); ContentEditor.Document.Blocks.Remove(old);
             }
             else

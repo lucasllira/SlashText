@@ -21,7 +21,7 @@ internal static partial class ShortcutsWorkspaceSmoke
         var fixture = new Snippet { Name = "Exemplo de código", Trigger = "/codigo", Category = "Desenvolvimento", Format = SnippetFormat.Markdown, Content = "Antes Depois" };
         var other = new Snippet { Name = "Outro atalho", Trigger = "/outro", Content = "Outro" };
         var literal = "// {{nome}} e {{tab}} são literais\nconst meu_valor = 2 * 3;\n\tconsole.log(\"<tag> &amp; ```\");\n  ";
-        Border Block() => (Border)((RichTextBox)window.FindName("ContentEditor")).Document.Blocks.OfType<BlockUIContainer>().Single().Child;
+        Border Block() => ShortcutCodeBlockView.GetView(((RichTextBox)window.FindName("ContentEditor")).Document.Blocks.OfType<BlockUIContainer>().Single())!;
         string Raw() { Require(ShortcutCodeBlockView.TryRead(Block(), out var data), "Code metadata survives native undo"); return data.Code; }
         try
         {
