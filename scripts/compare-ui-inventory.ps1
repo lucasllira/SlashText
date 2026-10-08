@@ -9,6 +9,7 @@ $viewsPath = Join-Path $root 'src/SlashText/Views'
 $baseline = Get-Content $baselinePath -Raw | ConvertFrom-Json
 $xaml = Get-Content $xamlPath -Raw
 $code = Get-Content $codePath -Raw
+Get-ChildItem (Join-Path $PSScriptRoot '../src/SlashText') -Filter 'MainWindow.*.cs' | ForEach-Object { $code += "`n" + (Get-Content $_.FullName -Raw) }
 
 $currentControls = [regex]::Matches(
     $xaml,

@@ -1,0 +1,41 @@
+namespace SlashText.Views;
+
+public static class ShortcutsHelpContent
+{
+    public static ScreenHelpDefinition Create() => new("Como usar Atalhos", "Crie uma vez, organize e reutilize seus textos — guia local.",
+    [
+        new("create", "COMEÇAR", "Criar e salvar", "Plus", "Transforme um texto que você repete em um atalho.",
+            ["Clique em Novo atalho e escolha um nome.", "Defina um comando começando com /, como /boasvindas, e a categoria.", "Preencha o conteúdo, confira a prévia e clique em Salvar."],
+            "Salve antes de trocar de atalho. A confirmação de descarte permite voltar sem perder o rascunho.", "ShortcutNewButton", Demo: "snippet"),
+        new("expand", "COMEÇAR", "Usar em outro aplicativo", "Keyboard", "O monitor insere seus textos onde você estiver digitando.",
+            ["Mantenha o monitoramento ativo e abra um aplicativo de texto.", "Digite o comando / do atalho salvo.", "Use a tecla de confirmação configurada ou a sugestão, quando disponível."],
+            "Comandos legados incompatíveis ficam preservados; revise-os para usar /. : e ? não são gatilhos.", "TriggerBox", Demo: "snippet"),
+        new("organize", "ENCONTRAR E ORGANIZAR", "Busca, categorias e mais usados", "Search", "Localize um atalho pelo nome, comando, categoria ou conteúdo.",
+            ["Digite na busca; o × limpa o texto pesquisado.", "Escolha uma categoria ou Todos.", "Mais usados mostra atalhos com uso registrado, em ordem de frequência."],
+            "Busca e filtros não alteram o conteúdo em edição. Limpar filtros recupera a lista completa.", "SearchBox", Demo: "workspace"),
+        new("panels", "ENCONTRAR E ORGANIZAR", "Ajustar os três painéis", "PanelRight", "Reserve mais espaço para a lista, o editor ou as variáveis.",
+            ["Arraste um divisor entre os painéis.", "Com o divisor em foco, use ←/→; Home ou clique duplo restaura a largura padrão.", "O botão no topo do editor oculta ou mostra as variáveis sem apagar o rascunho."],
+            "Em uma janela menor, a formatação quebra em linhas e o editor pode ser rolado. Tab dentro do conteúdo insere uma tabulação; Ctrl+Tab move o foco.", "ShortcutLeftDivider", Demo: "workspace"),
+        new("format", "EDITAR", "Texto simples e formatado", "Type", "Escolha o formato conforme o aplicativo onde vai inserir o texto.",
+            ["Texto simples preserva palavras e quebras de linha.", "Texto formatado oferece fontes, tamanhos, negrito, itálico, sublinhado, cores e marca-texto.", "Selecione o trecho antes de aplicar a formatação e confira a prévia."],
+            "A barra de formatação aparece somente no formato correspondente. Os recursos reais de texto rico são preservados.", "FormatBox", Demo: "format"),
+        new("structure", "EDITAR", "Listas, tabelas e parágrafos", "Grid2X2", "Organize informações dentro de um texto formatado.",
+            ["Use listas com marcadores ou números.", "Tabela insere uma estrutura no conteúdo.", "Use alinhamento à esquerda, centro ou direita para o parágrafo selecionado."],
+            "Os controles continuam acessíveis por rolagem e quebra de linha, inclusive no tamanho mínimo.", "FormattingToolbar", Demo: "format"),
+        new("images", "EDITAR", "Imagens e links", "Image", "Inclua referências visuais ou endereços em seus textos.",
+            ["Selecione Texto formatado e posicione o cursor.", "Imagem permite escolher um arquivo; o app copia o recurso para seus dados locais.", "Link permite inserir ou associar um endereço ao trecho selecionado."],
+            "Preserve a pasta de dados inteira, incluindo assets, ao mover o app ou seus atalhos.", "FormattingToolbar", Demo: "format"),
+        new("variables", "VARIÁVEIS", "Campos e navegação", "PanelRight", "Deixe o texto pronto para receber valores diferentes a cada uso.",
+            ["Posicione o cursor no conteúdo ou selecione o trecho a substituir.", "Clique em {{nome}}, {{campo|padrão}} ou {{tab}} no painel de variáveis.", "Confira a prévia; os campos preenchíveis serão solicitados ao expandir de verdade."],
+            "O separador real do valor sugerido é |. {{tab}} avança o foco no aplicativo de destino.", "ShortcutVariablesPanel", Demo: "variable"),
+        new("dates", "VARIÁVEIS", "Datas, cálculos e sistema", "Clock3", "Use os valores automáticos do mecanismo real do SlashDesk.",
+            ["Insira data, hora, partes da data ou usuário pelo painel.", "{{data:+7d}} calcula sete dias à frente; d, m e y aceitam sinais + ou −.", "Confira o resultado atualizado na prévia."],
+            "A prévia usa valores ilustrativos para campos preenchíveis; a expansão usa o valor que você informar.", "ShortcutPreviewExpander", Demo: "variable"),
+        new("import", "DADOS E SEGURANÇA", "Importar sem começar do zero", "Upload", "Traga atalhos do SlashDesk, Text Blaze ou Espanso.",
+            ["Em Configurações, escolha a origem da importação.", "Clique em Importar e selecione o arquivo correspondente.", "Confira conflitos e avisos antes de confirmar; o estado anterior é salvo em backup."],
+            "A importação não usa dados simulados do Visual Lab. Cancele para preservar os atalhos atuais.", "ShortcutImportButton", Demo: "snippet"),
+        new("draft", "DADOS E SEGURANÇA", "Rascunho, exclusão e modo protegido", "ShieldCheck", "O indicador no editor distingue o conteúdo salvo das alterações pendentes.",
+            ["Salvar valida o comando e conflitos; erros mantêm o rascunho.", "Trocar de atalho, criar outro, importar ou sair pede confirmação quando há alterações.", "Excluir pede confirmação. Uma falha de leitura de snippets.md bloqueia as gravações até restaurar um backup válido."],
+            "Fechar para a bandeja conserva o rascunho em memória. Para preservar após sair, use Salvar.", "ShortcutSaveButton", Demo: "snippet")
+    ]);
+}

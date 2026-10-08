@@ -1,0 +1,55 @@
+using System;
+using System.Linq;
+using System.Threading.Tasks;
+using System.Windows;
+using System.Windows.Documents;
+using SlashText.Models;
+using SlashText.Services;
+
+namespace SlashText;
+
+public partial class MainWindow
+{
+    // Used only by the unshown smoke fixture. Normal startup never assigns this decision.
+    private bool? _shortcutDiscardDecisionForEvidence;
+
+    internal void PrepareShortcutsEvidence(double width, Snippet[] snippets)
+    {
+        Width = width; _shortcutDraftBaseline = null; _selected = null;
+        ReplaceList(snippets);
+        SelectSnippet(snippets[0]);
+        ShowView(ShortcutsView, ShortcutsTabButton);
+        UpdateResponsiveLayout(width);
+        StatusText.Text = "Piloto Atalhos · dados ilustrativos de teste";
+    }
+
+    internal bool ShortcutsDraftDirtyForEvidence => HasUnsavedShortcutDraft;
+    internal string ShortcutContentForEvidence => ReadShortcutDraft()[4];
+    internal Guid? SelectedShortcutForEvidence => _selected?.Id;
+    internal Task<bool> SaveShortcutForEvidence() => TrySaveShortcutAsync();
+
+    internal void SelectShortcutForEvidence(Snippet snippet, bool allowDiscard)
+    {
+        _shortcutDiscardDecisionForEvidence = allowDiscard;
+        try { SelectSnippet(snippet); }
+        finally { _shortcutDiscardDecisionForEvidence = null; }
+    }
+
+    internal void InsertVariableForEvidence(string token)
+    {
+        var caret = ContentEditor.Document.ContentEnd.GetInsertionPosition(LogicalDirection.Backward);
+        ContentEditor.Selection.Select(caret, caret);
+        VariableChip_OnClick(new System.Windows.Controls.Button { Tag = token }, new RoutedEventArgs());
+        UpdatePreview();
+    }
+
+    internal void SetVariablesVisibleForEvidence(bool visible) => SetShortcutVariablesVisible(visible);
+    internal void SetShortcutProtectedForEvidence(bool value) { _snippetStorageAvailable = !value; RefreshShortcutDraftState(); }
+    internal string ShortcutPreviewForEvidence => new TextRange(PreviewDocument.ContentStart, PreviewDocument.ContentEnd).Text;
+
+    internal void DisposeShortcutsEvidence()
+    {
+        _shortcutsHelpHighlight?.Remove();
+        DisposeCaptureEvidence();
+    }
+}

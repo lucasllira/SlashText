@@ -29,6 +29,29 @@ jobs:
       - name: Build
         run: dotnet build SlashText.sln --configuration Release --no-restore -p:Platform=x64
 
+      - name: Shortcuts workspace real WPF smoke
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem src/SlashText/bin -Recurse -Filter SlashDesk.exe | Select-Object -First 1
+          if (-not $exe) { throw 'Build executable not found' }
+          $output = Join-Path $PWD 'shortcuts-evidence'
+          $process = Start-Process -FilePath $exe.FullName -ArgumentList "--shortcuts-workspace-smoke `"$output`"" -PassThru
+          if (-not $process.WaitForExit(180000)) { $process.Kill(); throw 'Shortcuts smoke timed out' }
+          if ($process.ExitCode -ne 0) {
+            if (Test-Path "$output/failure.txt") { Get-Content "$output/failure.txt" }
+            throw "Shortcuts smoke failed: $($process.ExitCode)"
+          }
+          if (-not (Test-Path "$output/result.txt")) { throw 'Shortcuts smoke produced no result' }
+          Get-Content "$output/result.txt"
+
+      - name: Upload shortcuts workspace evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: SlashDesk-shortcuts-workspace-evidence
+          path: shortcuts-evidence/
+          if-no-files-found: warn
+
       - name: Visual foundation contract and gallery smoke
         shell: pwsh
         run: |
@@ -191,6 +214,42 @@ jobs:
           if ($pilotSmoke.ExitCode -ne 0) { throw "Pilot startup failed: $($pilotSmoke.ExitCode)" }
           if (-not (Test-Path (Join-Path $pilotProbe 'SlashDeskPilotData/snippets.md'))) { throw 'Pilot metadata/data isolation absent' }
           if (Test-Path (Join-Path $pilotProbe 'SlashDeskData')) { throw 'Pilot created the official portable data directory' }
+
+      - name: Publish isolated shortcuts pilot
+        run: >
+          dotnet publish src/SlashText/SlashText.csproj
+          --configuration Release
+          -p:Platform=x64
+          -p:PublishProfile=Portable
+          -p:ShortcutsPilotBuild=true
+          --no-restore
+          --output publish-shortcuts-pilot
+
+      - name: Package and validate isolated shortcuts pilot
+        shell: pwsh
+        run: |
+          New-Item shortcuts-pilot-package -ItemType Directory -Force | Out-Null
+          Copy-Item publish-shortcuts-pilot/SlashDesk.exe shortcuts-pilot-package/SlashDesk.exe
+          Copy-Item docs/shortcuts-workspace-pilot-testing.md shortcuts-pilot-package/LEIA-ANTES.md
+          Set-Content -Path shortcuts-pilot-package/Abrir-Piloto-Atalhos.cmd -Encoding ascii -Value '@echo off', 'start "" "%~dp0SlashDesk.exe"'
+          $probe = Join-Path $env:RUNNER_TEMP 'SlashDesk Atalhos piloto çã'
+          New-Item "$probe/SlashDeskData" -ItemType Directory -Force | Out-Null
+          Set-Content "$probe/SlashDeskData/snippets.md" 'official-data-sentinel' -NoNewline
+          $before = (Get-FileHash "$probe/SlashDeskData/snippets.md").Hash
+          Copy-Item publish-shortcuts-pilot/SlashDesk.exe "$probe/SlashDesk.exe"
+          $smoke = Start-Process -FilePath "$probe/SlashDesk.exe" -ArgumentList '--portable-smoke' -Wait -PassThru
+          if ($smoke.ExitCode -ne 0) { throw "Shortcuts pilot startup failed: $($smoke.ExitCode)" }
+          if (-not (Test-Path "$probe/SlashDeskPilotData/snippets.md")) { throw 'Shortcuts pilot data isolation absent' }
+          if ($before -ne (Get-FileHash "$probe/SlashDeskData/snippets.md").Hash) { throw 'Shortcuts pilot modified official data' }
+          if ((Get-ChildItem "$probe/SlashDeskData" -Force).Count -ne 1) { throw 'Shortcuts pilot created official data files' }
+          Get-FileHash shortcuts-pilot-package/SlashDesk.exe -Algorithm SHA256
+
+      - name: Upload shortcuts pilot candidate
+        uses: actions/upload-artifact@v4
+        with:
+          name: SlashDesk-3.3.0-shortcuts-pilot-win-x64
+          path: shortcuts-pilot-package/
+          if-no-files-found: error
 
       - name: Upload visual foundation gallery
         uses: actions/upload-artifact@v4
