@@ -119,6 +119,9 @@ internal static partial class ShortcutsWorkspaceSmoke
             Require(await window.SaveShortcutForEvidence(), "Duplicate saves");
             var reopened = await new SnippetMarkdownRepository().LoadAsync(); var copy = reopened.Single(s => s.Trigger == "/codigo_copia");
             Require(copy.Id != fixture.Id && copy.Content == saved.Content && !copy.IsFavorite && !copy.IsPinned && reopened.Single(s => s.Id == fixture.Id).Content == saved.Content, "Duplicate has independent identity and leaves original unchanged");
+            // Reopening the data reloads the actual navigation list, not just a detached
+            // repository object: Save uses the selected object from that list.
+            window.PrepareShortcutsEvidence(root.ActualWidth, reopened.ToArray());
             window.SelectShortcutForEvidence(copy, true);
             editor.CaretPosition = editor.Document.ContentEnd.GetInsertionPosition(LogicalDirection.Backward); editor.Selection.Select(editor.CaretPosition, editor.CaretPosition);
             window.InsertEmojiForEvidence("😀"); window.InsertEmojiForEvidence("❤️");
