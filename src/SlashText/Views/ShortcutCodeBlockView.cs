@@ -47,10 +47,14 @@ internal static class ShortcutCodeBlockView
         var view = Create(content, editable);
         return new BlockUIContainer(view) { Tag = view.Tag, Margin = new Thickness(0, 6, 0, 6) };
     }
-    internal static Border? GetView(BlockUIContainer block) => block.Child switch
-    { Border view when view.Child is Border nested && Read(nested) is not null => nested,
-      Border view when Read(view) is not null => view,
-      Grid placeholder => placeholder.Children.OfType<Border>().FirstOrDefault(view => Read(view) is not null), _ => null };
+    internal static Border? GetView(BlockUIContainer block) => FindView(block.Child);
+    private static Border? FindView(UIElement? element)
+    {
+        if (element is Border border && Read(border) is not null) return FindView(border.Child) ?? border;
+        if (element is Grid grid)
+            foreach (UIElement child in grid.Children) if (FindView(child) is { } found) return found;
+        return null;
+    }
     internal static bool TryRead(BlockUIContainer block, out CodeBlockContent content)
     {
         var state = ReadTag(block.Tag); content = state is null ? new CodeBlockContent("text", "") : new CodeBlockContent(state.Language, state.Code); return state is not null;
