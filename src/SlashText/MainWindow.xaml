@@ -256,7 +256,7 @@
                                         <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="16"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
                                         <StackPanel><TextBlock Text="Comando" Style="{StaticResource Lab.Shortcuts.Label}"/><TextBox x:Name="TriggerBox" Style="{StaticResource Lab.Field}" TextChanged="EditorField_OnTextChanged" AutomationProperties.Name="Comando do atalho"/></StackPanel>
                                         <StackPanel Grid.Column="2"><TextBlock Text="Categoria" Style="{StaticResource Lab.Shortcuts.Label}"/>
-                                            <ComboBox x:Name="CategoryBox" Style="{StaticResource Lab.Combo}" IsEditable="False" SelectionChanged="ShortcutCategory_OnSelectionChanged" AutomationProperties.Name="Categoria do atalho">
+                                            <ComboBox x:Name="CategoryBox" Style="{StaticResource Lab.Combo}" IsEditable="False" MaxDropDownHeight="360" SelectionChanged="ShortcutCategory_OnSelectionChanged" AutomationProperties.Name="Categoria do atalho">
                                                 <ComboBox.ItemTemplate>
                                                     <DataTemplate>
                                                         <StackPanel Orientation="Horizontal">
