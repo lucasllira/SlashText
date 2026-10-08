@@ -51,7 +51,7 @@
             <Border x:Name="Surface" Background="{TemplateBinding Background}" CornerRadius="4" Padding="{TemplateBinding Padding}">
                 <Grid>
                     <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                    <ContentPresenter TextElement.Foreground="{TemplateBinding Foreground}" VerticalAlignment="Center"/>
+                    <lab:LabContentPresenter TextElement.Foreground="{TemplateBinding Foreground}" VerticalAlignment="Center"/>
                     <lab:LabIcon Kind="Plus" Width="12" Height="12" Grid.Column="1" Margin="6,0,0,0" Foreground="{DynamicResource Lab.muted}"/>
                 </Grid>
             </Border>

@@ -3,6 +3,7 @@ using System.Linq;
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
+using System.Windows.Data;
 using System.Windows.Media;
 using System.Windows.Input;
 using System.Windows.Threading;
@@ -72,6 +73,7 @@ public partial class MainWindow
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         var icon = new LabIcon { Kind = "FolderOpen", Width = 16, Height = 16, Margin = new Thickness(0, 0, 9, 0) }; row.Children.Add(icon);
         var name = new TextBlock { Text = label, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center };
+        name.SetBinding(TextBlock.ForegroundProperty, new Binding("Foreground") { RelativeSource = new RelativeSource(RelativeSourceMode.FindAncestor, typeof(Button), 1) });
         Grid.SetColumn(name, 1); row.Children.Add(name);
         var number = new TextBlock { Text = count.ToString(), FontSize = 11, Margin = new Thickness(8, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
         number.SetResourceReference(TextBlock.ForegroundProperty, "Lab.muted"); Grid.SetColumn(number, 2); row.Children.Add(number);

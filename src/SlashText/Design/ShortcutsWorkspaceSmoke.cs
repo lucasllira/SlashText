@@ -54,6 +54,12 @@ internal static class ShortcutsWorkspaceSmoke
                     var element = (FrameworkElement)window.FindName(name);
                     Require(element.ActualWidth > 0 && element.ActualHeight > 0, "Measured control: " + name);
                 }
+                foreach (var action in new[] { "ShortcutNewButton", "ShortcutSaveButton" })
+                {
+                    var button = (Button)window.FindName(action);
+                    var label = ((StackPanel)button.Content).Children.OfType<TextBlock>().Single();
+                    Require(label.Foreground.ToString() == button.Foreground.ToString(), "Primary authored label follows on-accent color: " + action);
+                }
                 SaveImage(host, output, $"shortcuts-{theme}-plain-{size.Width}", size, 1);
                 var nameBox = (TextBox)window.FindName("NameBox"); nameBox.Text += " (rascunho)";
                 Require(window.ShortcutsDraftDirtyForEvidence, "Metadata edits mark the draft dirty");
