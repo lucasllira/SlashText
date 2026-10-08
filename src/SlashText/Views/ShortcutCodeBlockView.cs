@@ -48,14 +48,27 @@ internal static class ShortcutCodeBlockView
         return new BlockUIContainer(view) { Tag = view.Tag, Margin = new Thickness(0, 6, 0, 6) };
     }
     internal static Border? GetView(BlockUIContainer block) => block.Child switch
-    { Border view when Read(view) is not null => view, Grid placeholder => placeholder.Children.OfType<Border>().FirstOrDefault(view => Read(view) is not null), _ => null };
+    { Border view when view.Child is Border nested && Read(nested) is not null => nested,
+      Border view when Read(view) is not null => view,
+      Grid placeholder => placeholder.Children.OfType<Border>().FirstOrDefault(view => Read(view) is not null), _ => null };
     internal static bool TryRead(BlockUIContainer block, out CodeBlockContent content)
     {
         var state = ReadTag(block.Tag); content = state is null ? new CodeBlockContent("text", "") : new CodeBlockContent(state.Language, state.Code); return state is not null;
     }
     internal static void AttachBlock(BlockUIContainer block)
     {
-        if (GetView(block) is { } view) { Attach(view); return; }
+        if (GetView(block) is { } view)
+        {
+            if (Attachments.TryGetValue(view, out _)) return;
+            // Undo serializes style/template objects. Restore the inner presentation and
+            // live handlers from source, without touching the text undo tree.
+            if (ReadTag(block.Tag) is { } restored)
+            {
+                view.Child = Create(new CodeBlockContent(restored.Language, restored.Code), restored.Editable);
+                view.BorderThickness = new Thickness(0); view.Padding = new Thickness(0); view.Background = Brushes.Transparent;
+            }
+            return;
+        }
         // WPF can substitute an empty Grid for UI it cannot deserialize. Block.Tag is a
         // native text-element property restored independently, so source cannot be lost.
         // Populate inside that Grid, without replacing Child or creating extra text undo units.

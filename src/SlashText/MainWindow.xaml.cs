@@ -134,6 +134,7 @@ public partial class MainWindow : Window
         InitializeComponent();
         InitializeShortcutFormatting();
         ContentEditor.AddHandler(ShortcutCodeBlockView.EditRequestedEvent, new RoutedEventHandler(EditCodeBlock_OnRequested));
+        ShortcutEditorPanel.SizeChanged += (_, _) => { if (_shortcutEditorExpanded) UpdateShortcutEditorHeight(); };
         CaptureInlineEditor.StateChanged += CaptureInlineEditor_OnStateChanged;
         CaptureEditorContext.Attach(CaptureInlineEditor);
         CaptureInlineEditor.SaveCopyRequested += (_, _) => SaveCapturePreview_OnClick(this, new RoutedEventArgs());

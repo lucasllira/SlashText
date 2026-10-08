@@ -230,10 +230,8 @@
                             </Grid>
                             <GridSplitter x:Name="ShortcutLeftDivider" Grid.Column="1" Style="{StaticResource WorkspaceColumnSplitter}" ResizeBehavior="PreviousAndNext" AutomationProperties.Name="Redimensionar lista de atalhos e editor" ToolTip="Arraste. ←/→ ajusta; Home ou clique duplo restaura." PreviewKeyDown="ShortcutSplitter_OnPreviewKeyDown" MouseDoubleClick="ShortcutSplitter_OnMouseDoubleClick" DragStarted="ShortcutSplitter_OnDragStarted" DragCompleted="ShortcutSplitter_OnDragCompleted"/>
                             <Grid x:Name="ShortcutEditorPanel" Grid.Column="2">
-                                <Grid.RowDefinitions><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-                                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                                <StackPanel Margin="20">
-                                    <DockPanel Margin="0,0,0,12">
+                                <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                                    <DockPanel x:Name="ShortcutEditorActions" Margin="20,20,20,0">
                                         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
                                         <Button x:Name="ShortcutActionsButton" Style="{StaticResource Lab.Shortcuts.Tool}" Margin="0,0,5,0" Click="ShortcutActions_OnClick" ToolTip="Duplicar, favoritar ou fixar" AutomationProperties.Name="Opções do atalho"><lab:LabIcon Kind="MoreHorizontal" Width="18" Height="18"/></Button>
                                         <Button x:Name="ShortcutExpandEditorButton" Style="{StaticResource Lab.Shortcuts.Ghost}" Margin="0,0,5,0" Click="ToggleShortcutEditor_OnClick" ToolTip="Expandir ou recolher o editor" AutomationProperties.Name="Expandir ou recolher o editor"><StackPanel Orientation="Horizontal"><lab:LabIcon x:Name="ShortcutExpandEditorIcon" Kind="Maximize2" Width="16" Height="16" Margin="0,0,6,0"/><TextBlock x:Name="ShortcutExpandEditorText" Text="Expandir editor" FontSize="12" VerticalAlignment="Center" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Button}}}"/></StackPanel></Button>
@@ -246,6 +244,9 @@
                                             <TextBlock x:Name="ShortcutSaveStateText" Text="Tudo salvo" FontSize="12" VerticalAlignment="Center" Foreground="{DynamicResource Lab.green}" AutomationProperties.LiveSetting="Polite"/>
                                         </StackPanel>
                                     </DockPanel>
+                                <ScrollViewer x:Name="ShortcutEditorScroll" Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                                <StackPanel Margin="20">
+
                                     <StackPanel x:Name="ShortcutMetadataPanel">
                                     <StackPanel Margin="0,0,0,14">
                                         <TextBlock Text="Nome" Style="{StaticResource Lab.Shortcuts.Label}"/>
@@ -298,7 +299,7 @@
                                                                 <Button x:Name="ShortcutUnderlineButton" Style="{StaticResource Lab.Shortcuts.RibbonTool}" ToolTip="Sublinhado (Ctrl+U)" AutomationProperties.Name="Sublinhado (Ctrl+U)" Click="Underline_OnClick"><lab:LabIcon Kind="Underline" Width="18" Height="18"/></Button>
                                                                 <Button x:Name="ShortcutTextColorButton" Style="{StaticResource Lab.Shortcuts.RibbonTool}" ToolTip="Cor do texto" AutomationProperties.Name="Cor do texto" Click="Color_OnClick"><lab:LabIcon Kind="Palette" Width="18" Height="18"/></Button>
                                                                 <Button x:Name="ShortcutHighlightButton" Style="{StaticResource Lab.Shortcuts.RibbonTool}" ToolTip="Marca-texto" AutomationProperties.Name="Marca-texto" Click="Highlight_OnClick"><lab:LabIcon Kind="Highlighter" Width="18" Height="18"/></Button>
-                                                                <Button x:Name="ShortcutCodeButton" Style="{StaticResource Lab.Shortcuts.Ghost}" Height="34" Padding="7,5" ToolTip="Inserir bloco de código" AutomationProperties.Name="Inserir bloco de código" Click="InsertCodeBlock_OnClick"><StackPanel Orientation="Horizontal"><lab:LabIcon Kind="CodeXml" Width="16" Height="16" Margin="0,0,6,0"/><TextBlock Text="Código" FontSize="12" VerticalAlignment="Center" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Button}}}"/></StackPanel></Button>
+
                                                             </StackPanel>
                                                         </StackPanel>
                                                     </WrapPanel>
@@ -321,6 +322,7 @@
                                                                 <Button Style="{StaticResource Lab.Shortcuts.Ghost}" Height="34" Margin="0,0,4,0" Padding="7,5" ToolTip="Inserir link" AutomationProperties.Name="Inserir link" Click="Link_OnClick"><StackPanel Orientation="Horizontal"><lab:LabIcon Kind="Link" Width="16" Height="16" Margin="0,0,6,0"/><TextBlock Text="Link" FontSize="12" VerticalAlignment="Center" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Button}}}"/></StackPanel></Button>
                                                                 <Button Style="{StaticResource Lab.Shortcuts.Ghost}" Height="34" Margin="0,0,4,0" Padding="7,5" ToolTip="Inserir imagem" AutomationProperties.Name="Inserir imagem" Click="Image_OnClick"><StackPanel Orientation="Horizontal"><lab:LabIcon Kind="Image" Width="16" Height="16" Margin="0,0,6,0"/><TextBlock Text="Imagem" FontSize="12" VerticalAlignment="Center" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Button}}}"/></StackPanel></Button>
                                                                 <Button Style="{StaticResource Lab.Shortcuts.Ghost}" Height="34" Margin="0,0,4,0" Padding="7,5" ToolTip="Inserir tabela" AutomationProperties.Name="Inserir tabela" Click="Table_OnClick"><StackPanel Orientation="Horizontal"><lab:LabIcon Kind="Grid2X2" Width="16" Height="16" Margin="0,0,6,0"/><TextBlock Text="Tabela" FontSize="12" VerticalAlignment="Center" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Button}}}"/></StackPanel></Button>
+                                                                <Button x:Name="ShortcutCodeButton" Style="{StaticResource Lab.Shortcuts.Ghost}" Height="34" Padding="7,5" ToolTip="Inserir bloco de código" AutomationProperties.Name="Inserir bloco de código" Click="InsertCodeBlock_OnClick"><StackPanel Orientation="Horizontal"><lab:LabIcon Kind="CodeXml" Width="16" Height="16" Margin="0,0,6,0"/><TextBlock Text="Código" FontSize="12" VerticalAlignment="Center" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Button}}}"/></StackPanel></Button>
                                                             </StackPanel>
                                                         </StackPanel>
                                                     </WrapPanel>
@@ -345,7 +347,7 @@
 
                                 </StackPanel>
                                 </ScrollViewer>
-                                    <Grid Grid.Row="1" Margin="20,12,20,16">
+                                    <Grid Grid.Row="2" Margin="20,12,20,16">
                                         <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                                         <Button x:Name="ShortcutDeleteButton" Style="{StaticResource Lab.Button}" HorizontalAlignment="Left" Foreground="{DynamicResource Lab.error}" Click="DeleteSnippet_OnClick"><StackPanel Orientation="Horizontal"><lab:LabIcon Kind="Trash2" Width="16" Height="16" Margin="0,0,7,0"/><TextBlock Text="Excluir" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Button}}}"/></StackPanel></Button>
                                         <Button x:Name="ShortcutSaveButton" Grid.Column="1" Style="{StaticResource Lab.Pilot.PrimaryButton}" Click="SaveSnippet_OnClick"><StackPanel Orientation="Horizontal"><lab:LabIcon Kind="Save" Width="16" Height="16" Margin="0,0,7,0"/><TextBlock Text="Salvar" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Button}}}"/></StackPanel></Button>

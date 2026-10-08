@@ -16,7 +16,7 @@ internal static partial class ShortcutsWorkspaceSmoke
         foreach (var language in ShortcutCodeEditor.Languages)
             Require((ShortcutCodeEditor.Definition(language.Id, theme != "Light") is not null) == (language.Resource is not null), "Bundled syntax: " + language.Id);
         var window = new MainWindow(captureEvidence: true);
-        var root = (FrameworkElement)window.Content; window.Content = null;
+        var root = (FrameworkElement)window.Content; window.Content = null; LabMotion.SetReduced(root, true);
         var owner = new Window { Width = 1440, Height = 900, Content = root, ShowInTaskbar = false };
         var fixture = new Snippet { Name = "Exemplo de código", Trigger = "/codigo", Category = "Desenvolvimento", Format = SnippetFormat.Markdown, Content = "Antes Depois" };
         var other = new Snippet { Name = "Outro atalho", Trigger = "/outro", Content = "Outro" };
@@ -26,6 +26,7 @@ internal static partial class ShortcutsWorkspaceSmoke
         try
         {
             window.PrepareShortcutsEvidence(1440, [fixture, other]); owner.Show(); owner.UpdateLayout();
+            window.PrepareShortcutsEvidence(root.ActualWidth, [fixture, other]); window.Height = root.ActualHeight; owner.UpdateLayout();
             await Application.Current.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
             var editor = (RichTextBox)window.FindName("ContentEditor");
             var paragraph = (Paragraph)editor.Document.Blocks.FirstBlock;
@@ -54,6 +55,7 @@ internal static partial class ShortcutsWorkspaceSmoke
             Require(window.ShortcutContentForEvidence == content, "Collapsing a block does not edit its source");
             var preview = (Expander)window.FindName("ShortcutPreviewExpander"); preview.IsExpanded = true;
             window.ExpandShortcutForEvidence(true); owner.UpdateLayout();
+            await Application.Current.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle); owner.UpdateLayout();
             Require(((FrameworkElement)window.FindName("ShortcutSidebarPanel")).Visibility == Visibility.Collapsed && Math.Abs(((FrameworkElement)window.FindName("ShortcutEditorPanel")).ActualWidth - ((FrameworkElement)window.FindName("ShortcutWorkspaceGrid")).ActualWidth) < 2, $"Expanded editor occupies actual workspace (editor={editor.ActualWidth}, panel={((FrameworkElement)window.FindName("ShortcutEditorPanel")).ActualWidth}, workspace={((FrameworkElement)window.FindName("ShortcutWorkspaceGrid")).ActualWidth})");
             Require(window.ShortcutContentForEvidence == content, "Expansion preserves draft including code");
             SaveImage(root, output, $"shortcuts-code-expanded-{theme}", new Size(root.ActualWidth, root.ActualHeight), 1);
@@ -72,6 +74,10 @@ internal static partial class ShortcutsWorkspaceSmoke
             Require(saved.IsFavorite && saved.IsPinned && CodeBlockMarkdown.Read(saved.Content).Single().Content.Code == edited, "Save preserves code and preferences");
             window.SelectShortcutForEvidence(saved, true); Require(Raw() == edited && !window.ShortcutsDraftDirtyForEvidence, "Reopen reconstructs editable block exactly");
             owner.UpdateLayout(); SaveImage(root, output, $"shortcuts-code-{theme}", new Size(root.ActualWidth, root.ActualHeight), 1);
+            window.ExpandShortcutForEvidence(true); owner.UpdateLayout();
+            await Application.Current.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle); owner.UpdateLayout();
+            SaveImage(root, output, $"shortcuts-code-saved-expanded-{theme}", new Size(root.ActualWidth, root.ActualHeight), 1);
+            window.ExpandShortcutForEvidence(false); owner.UpdateLayout();
             var beforeDuplicate = File.ReadAllBytes(AppPaths.SnippetsFile);
             window.DuplicateShortcutForEvidence();
             Require(window.SelectedShortcutForEvidence is null && window.ShortcutsDraftDirtyForEvidence && window.ShortcutContentForEvidence == saved.Content, "Duplicate creates editable unsaved draft with all rich content");

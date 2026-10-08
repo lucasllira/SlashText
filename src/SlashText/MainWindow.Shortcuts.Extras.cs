@@ -116,8 +116,14 @@ public partial class MainWindow
         UpdateResponsiveLayout(ActualWidth > 0 ? ActualWidth : Width);
         if (!expanded) ContentEditor.Height = 200;
         LabMotion.PlayEntrance(ShortcutEditorPanel); ContentEditor.Focus();
+        if (expanded) Dispatcher.BeginInvoke(new Action(() => { UpdateShortcutEditorHeight(); ShortcutEditorScroll.ScrollToTop(); }), System.Windows.Threading.DispatcherPriority.Loaded);
     }
-    private void UpdateShortcutEditorHeight() => ContentEditor.Height = Math.Clamp((ActualHeight > 0 ? ActualHeight : Height) - 365, 240, 740);
+    private void UpdateShortcutEditorHeight()
+    {
+        var height = ShortcutEditorPanel.ActualHeight > 0 ? ShortcutEditorPanel.ActualHeight : (ActualHeight > 0 ? ActualHeight : Height) - 190;
+        var toolbar = FormattingToolbar.Visibility == Visibility.Visible ? FormattingToolbar.ActualHeight : 0;
+        ContentEditor.Height = Math.Clamp(height - ShortcutEditorActions.ActualHeight - toolbar - 150, 120, 740);
+    }
 
     private void InsertCodeBlock_OnClick(object sender, RoutedEventArgs e) => OpenCodeBlock(null);
     private void EditCodeBlock_OnRequested(object sender, RoutedEventArgs e)
