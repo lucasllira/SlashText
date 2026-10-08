@@ -106,7 +106,7 @@ internal static partial class ShortcutsWorkspaceSmoke
             Require(await window.SaveShortcutForEvidence(), "Code persists with real main Save");
             var saved = (await new SnippetMarkdownRepository().LoadAsync()).Single(s => s.Id == fixture.Id);
             Require(saved.IsFavorite && saved.IsPinned && CodeBlockMarkdown.Read(saved.Content).Single().Content.Code == edited, "Save preserves code and preferences");
-            window.SelectShortcutForEvidence(saved, true); Require(Raw() == edited && !window.ShortcutsDraftDirtyForEvidence, "Reopen reconstructs editable block exactly");
+            window.SelectShortcutForEvidence(saved, true); Require(Raw() == edited && window.ShortcutContentForEvidence == saved.Content && !window.ShortcutsDraftDirtyForEvidence, "Reopen reconstructs code and empty surrounding paragraphs exactly");
             owner.UpdateLayout(); SaveImage(root, output, $"shortcuts-code-{theme}", new Size(root.ActualWidth, root.ActualHeight), 1);
             window.ExpandShortcutForEvidence(true); owner.UpdateLayout();
             await Application.Current.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle); owner.UpdateLayout();
@@ -125,10 +125,15 @@ internal static partial class ShortcutsWorkspaceSmoke
             var withEmoji = window.ShortcutContentForEvidence;
             Require(ShortcutEmojiAssets.Pattern().Matches(withEmoji).Count == 2 && RichTextMarkdownConverter.ToHtml(withEmoji).Contains("width:28px", StringComparison.Ordinal), "Google emojis render inline and export at emoji size");
             editor.Undo(); editor.Redo(); Require(window.ShortcutContentForEvidence == withEmoji, "Emoji source survives native undo/redo");
+            using (var customBitmap = NotoEmojiCatalog.CreateBitmap("😀")) customBitmap.Save(Path.Combine(output, "custom-shortcut-emoji.png"), System.Drawing.Imaging.ImageFormat.Png);
+            var custom = CaptureStampCatalog.Current.Import(Path.Combine(output, "custom-shortcut-emoji.png"), "Meu emoji de teste");
+            window.InsertEmojiForEvidence(custom); CaptureStampCatalog.Current.Remove(custom);
+            withEmoji = window.ShortcutContentForEvidence;
+            Require(ShortcutEmojiAssets.Pattern().Matches(withEmoji).Count == 3, "Custom image copies into shortcut before collection removal");
             Require(await window.SaveShortcutForEvidence(), "Emoji shortcut saves");
             var emojiSaved = (await new SnippetMarkdownRepository().LoadAsync()).Single(s => s.Id == copy.Id);
             window.SelectShortcutForEvidence(emojiSaved, true);
-            Require(window.ShortcutContentForEvidence == withEmoji && editor.Document.Blocks.OfType<Paragraph>().SelectMany(p => p.Inlines.OfType<InlineUIContainer>()).Count(i => i.Child is Image) == 2, "Google emoji images reopen inline");
+            Require(window.ShortcutContentForEvidence == withEmoji && editor.Document.Blocks.OfType<Paragraph>().SelectMany(p => p.Inlines.OfType<InlineUIContainer>()).Count(i => i.Child is Image) == 3, "Google emoji images reopen inline");
             var proseHtml = RichTextMarkdownConverter.ToHtml("Antes " + ShortcutEmojiAssets.Pattern().Match(withEmoji).Value + " Depois");
             Require(proseHtml.Contains("Antes ", StringComparison.Ordinal) && proseHtml.Contains(" Depois", StringComparison.Ordinal) && proseHtml.Contains("data:image/png;base64,", StringComparison.Ordinal), "Emoji HTML preserves surrounding prose");
             window.ExpandShortcutForEvidence(true); owner.UpdateLayout(); SaveImage(root, output, $"shortcuts-emoji-expanded-{theme}", new Size(root.ActualWidth, root.ActualHeight), 1);

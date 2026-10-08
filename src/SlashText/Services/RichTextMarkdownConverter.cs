@@ -130,8 +130,13 @@ public static partial class RichTextMarkdownConverter
             {
                 var text = normalized[position..span.Start];
                 if (position > 0 && text.StartsWith('\n')) text = text[1..];
-                if (text.EndsWith('\n')) text = text[..^1];
-                if (text.Length > 0) AddMarkdownBlocks(document, text, format, includeImages);
+                if (text.Length > 0)
+                {
+                    if (text.EndsWith('\n')) text = text[..^1];
+                    // A paragraph before the fence may be intentionally empty. Keep it
+                    // distinct from the separator between two adjacent code blocks.
+                    AddMarkdownBlocks(document, text, format, includeImages);
+                }
                 document.Blocks.Add(ShortcutCodeBlockView.CreateBlock(span.Content, editable: !includeImages));
                 position = span.Start + span.Length;
             }

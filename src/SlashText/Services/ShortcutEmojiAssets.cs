@@ -70,7 +70,12 @@ internal static partial class ShortcutEmojiAssets
     internal static void Restore(InlineUIContainer inline)
     {
         if (!TryRead(inline, out var token) || inline.Child is Image { Source: not null }) return;
-        if (CreateInline(token) is { } restored) { var image = restored.Child; restored.Child = null; inline.Child = image; }
+        if (CreateInline(token) is not { } restored) return;
+        var image = (Image)restored.Child; restored.Child = null;
+        // Restore presentation inside the native UI, without adding text undo units.
+        if (inline.Child is Grid placeholder) { if (placeholder.Children.Count == 0) placeholder.Children.Add(image); }
+        else if (inline.Child is Image existing)
+        { existing.Source = image.Source; existing.Width = image.Width; existing.Height = image.Height; existing.ToolTip = image.ToolTip; }
     }
     [GeneratedRegex(@"!\[(?<alt>Emoji: [^\]]*)\]\(assets/(?<file>emote-[0-9a-f]{64}\.png)\)")]
     internal static partial Regex Pattern();
