@@ -249,7 +249,7 @@
                                     </Grid>
                                     <StackPanel Margin="0,0,0,14">
                                         <TextBlock Text="Formato" Style="{StaticResource Lab.Shortcuts.Label}"/>
-                                        <ComboBox x:Name="FormatBox" Style="{StaticResource Lab.ComboBox}" SelectionChanged="FormatBox_OnSelectionChanged" SelectedIndex="0" AutomationProperties.Name="Formato do conteúdo">
+                                        <ComboBox x:Name="FormatBox" Style="{StaticResource Lab.Combo}" SelectionChanged="FormatBox_OnSelectionChanged" SelectedIndex="0" AutomationProperties.Name="Formato do conteúdo">
                                             <ComboBoxItem Content="Texto simples"/><ComboBoxItem Content="Texto formatado"/>
                                         </ComboBox>
                                     </StackPanel>
@@ -257,7 +257,7 @@
                                     <WrapPanel>
                                         <TextBlock Text="Texto" VerticalAlignment="Center" Width="76"
                                                    Foreground="{DynamicResource MutedBrush}"/>
-                                        <ComboBox Style="{StaticResource Lab.ComboBox}" x:Name="FontFamilyBox"
+                                        <ComboBox Style="{StaticResource Lab.Combo}" x:Name="FontFamilyBox"
                                               Width="132"
                                               MinHeight="34"
                                               Margin="0,0,6,6"
@@ -270,7 +270,7 @@
                                         <ComboBoxItem Content="Georgia" Tag="Georgia"/>
                                         <ComboBoxItem Content="Consolas" Tag="Consolas"/>
                                         </ComboBox>
-                                        <ComboBox Style="{StaticResource Lab.ComboBox}" x:Name="FontSizeBox"
+                                        <ComboBox Style="{StaticResource Lab.Combo}" x:Name="FontSizeBox"
                                               Width="68"
                                               MinHeight="34"
                                               Margin="0,0,6,6"
