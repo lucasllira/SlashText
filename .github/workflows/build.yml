@@ -36,10 +36,15 @@ jobs:
           $exe = Get-ChildItem src/SlashText/bin -Recurse -Filter SlashDesk.exe | Select-Object -First 1
           if (-not $exe) { throw 'Build executable not found' }
           $output = Join-Path $PWD 'shortcuts-evidence'
-          $process = Start-Process -FilePath $exe.FullName -ArgumentList "--shortcuts-workspace-smoke `"$output`"" -PassThru
+          $stderr = Join-Path $PWD 'shortcuts-stderr.txt'
+          $stdout = Join-Path $PWD 'shortcuts-stdout.txt'
+          $process = Start-Process -FilePath $exe.FullName -ArgumentList "--shortcuts-workspace-smoke `"$output`"" -RedirectStandardError $stderr -RedirectStandardOutput $stdout -PassThru
           if (-not $process.WaitForExit(180000)) { $process.Kill(); throw 'Shortcuts smoke timed out' }
           if ($process.ExitCode -ne 0) {
             if (Test-Path "$output/failure.txt") { Get-Content "$output/failure.txt" }
+            if (Test-Path $stderr) { Get-Content $stderr }
+            if (Test-Path $stdout) { Get-Content $stdout }
+            Get-WinEvent -FilterHashtable @{ LogName = 'Application'; StartTime = (Get-Date).AddMinutes(-5) } -ErrorAction SilentlyContinue | Where-Object { $_.ProviderName -in '.NET Runtime', 'Application Error' } | Select-Object -First 3 -ExpandProperty Message
             throw "Shortcuts smoke failed: $($process.ExitCode)"
           }
           if (-not (Test-Path "$output/result.txt")) { throw 'Shortcuts smoke produced no result' }
@@ -64,6 +69,9 @@ jobs:
           if (-not $process.WaitForExit(90000)) { $process.Kill(); throw 'Gallery smoke timed out' }
           if ($process.ExitCode -ne 0) {
             if (Test-Path "$output/failure.txt") { Get-Content "$output/failure.txt" }
+            if (Test-Path $stderr) { Get-Content $stderr }
+            if (Test-Path $stdout) { Get-Content $stdout }
+            Get-WinEvent -FilterHashtable @{ LogName = 'Application'; StartTime = (Get-Date).AddMinutes(-5) } -ErrorAction SilentlyContinue | Where-Object { $_.ProviderName -in '.NET Runtime', 'Application Error' } | Select-Object -First 3 -ExpandProperty Message
             throw "Gallery smoke failed: $($process.ExitCode)"
           }
           if (-not (Test-Path "$output/result.txt")) { throw 'Gallery smoke produced no result' }
