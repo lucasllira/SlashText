@@ -122,27 +122,27 @@ public partial class MainWindow
     private void InsertCodeBlock_OnClick(object sender, RoutedEventArgs e) => OpenCodeBlock(null);
     private void EditCodeBlock_OnRequested(object sender, RoutedEventArgs e)
     {
-        if (e.OriginalSource is ShortcutCodeBlockView view) { e.Handled = true; OpenCodeBlock(view); }
+        if (e.OriginalSource is Border view && ShortcutCodeBlockView.TryRead(view, out _)) { e.Handled = true; OpenCodeBlock(view); }
     }
-    private void OpenCodeBlock(ShortcutCodeBlockView? view)
+    private void OpenCodeBlock(Border? view)
     {
         if (view is null && ContentEditor.CaretPosition.Paragraph is { Parent: not FlowDocument })
         { StatusText.Text = "Posicione o cursor fora de listas e tabelas para inserir um bloco de código."; return; }
         var start = ContentEditor.Selection.Start; var end = ContentEditor.Selection.End;
-        var dialog = new ShortcutCodeBlockWindow(view?.CodeContent) { Owner = this };
+        var dialog = new ShortcutCodeBlockWindow(view is not null && ShortcutCodeBlockView.TryRead(view, out var previous) ? previous : null) { Owner = this };
         LabMotion.SetReduced(dialog, LabMotion.GetReduced(this)); dialog.EnableBackdrop();
         if (!ShowCaptureDialog(dialog) || dialog.Result is null) return;
         ContentEditor.Focus(); ContentEditor.Selection.Select(start, end);
         ApplyCodeBlock(dialog.Result, view);
     }
-    private void ApplyCodeBlock(CodeBlockContent content, ShortcutCodeBlockView? existing = null)
+    private void ApplyCodeBlock(CodeBlockContent content, Border? existing = null)
     {
         if (existing is null && ContentEditor.CaretPosition.Paragraph is { Parent: not FlowDocument })
         { StatusText.Text = "Posicione o cursor fora de listas e tabelas para inserir um bloco de código."; return; }
         ContentEditor.BeginChange();
         try
         {
-            var block = new BlockUIContainer(new ShortcutCodeBlockView { CodeText = content.Code, CodeLanguage = content.Language }) { Margin = new Thickness(0, 6, 0, 6) };
+            var block = new BlockUIContainer(ShortcutCodeBlockView.Create(content)) { Margin = new Thickness(0, 6, 0, 6) };
             if (existing is not null)
             {
                 var old = ContentEditor.Document.Blocks.OfType<BlockUIContainer>().Single(item => ReferenceEquals(item.Child, existing));

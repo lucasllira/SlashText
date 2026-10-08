@@ -21,7 +21,8 @@ internal static partial class ShortcutsWorkspaceSmoke
         var fixture = new Snippet { Name = "Exemplo de código", Trigger = "/codigo", Category = "Desenvolvimento", Format = SnippetFormat.Markdown, Content = "Antes Depois" };
         var other = new Snippet { Name = "Outro atalho", Trigger = "/outro", Content = "Outro" };
         var literal = "// {{nome}} e {{tab}} são literais\nconst meu_valor = 2 * 3;\n\tconsole.log(\"<tag> &amp; ```\");\n  ";
-        ShortcutCodeBlockView Block() => (ShortcutCodeBlockView)((RichTextBox)window.FindName("ContentEditor")).Document.Blocks.OfType<BlockUIContainer>().Single().Child;
+        Border Block() => (Border)((RichTextBox)window.FindName("ContentEditor")).Document.Blocks.OfType<BlockUIContainer>().Single().Child;
+        string Raw() { Require(ShortcutCodeBlockView.TryRead(Block(), out var data), "Code metadata survives native undo"); return data.Code; }
         try
         {
             window.PrepareShortcutsEvidence(1440, [fixture, other]); owner.Show(); owner.UpdateLayout();
@@ -35,14 +36,21 @@ internal static partial class ShortcutsWorkspaceSmoke
             Require(CodeBlockMarkdown.Read(window.ShortcutContentForEvidence).Single().Content.Code == literal, "Inserted code remains literal");
             Require(window.ShortcutContentForEvidence.Contains("Antes", StringComparison.Ordinal) && window.ShortcutContentForEvidence.Contains("Depois", StringComparison.Ordinal), "Code insertion preserves surrounding prose");
             editor.Undo(); Require(window.ShortcutContentForEvidence == initial, "Undo removes inserted block without losing prose");
-            editor.Redo(); Require(Block().CodeText == literal, "Redo restores raw dependency properties of embedded code");
+            editor.Redo(); Require(Raw() == literal, "Redo restores literal code metadata");
             var edited = literal + "\nconsole.log(meu_valor);";
             window.InsertCodeForEvidence(new CodeBlockContent("javascript", edited), Block());
-            Require(Block().CodeText == edited, "Edit replaces only code block");
-            editor.Undo(); Require(Block().CodeText == literal, "Undo restores previous code");
-            editor.Redo(); Require(Block().CodeText == edited, "Redo restores edited code");
+            Require(Raw() == edited, "Edit replaces only code block");
+            editor.Undo(); Require(Raw() == literal, "Undo restores previous code");
+            editor.Redo(); Require(Raw() == edited, "Redo restores edited code");
+            var copyCode = (Button)ShortcutCodeBlockView.Find(Block(), "CodeCopy")!;
+            copyCode.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Require(Clipboard.GetText() == edited, "Code copy copies exact source after native redo");
+            var editRequested = false;
+            Block().AddHandler(ShortcutCodeBlockView.EditRequestedEvent, new RoutedEventHandler((_, args) => { editRequested = true; args.Handled = true; }));
+            ((Button)ShortcutCodeBlockView.Find(Block(), "CodeEdit")!).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Require(editRequested, "Edit remains interactive after native redo");
             var content = window.ShortcutContentForEvidence;
-            Block().SetExpanded(false); Block().SetExpanded(true);
+            ShortcutCodeBlockView.SetExpanded(Block(), false); ShortcutCodeBlockView.SetExpanded(Block(), true);
             Require(window.ShortcutContentForEvidence == content, "Collapsing a block does not edit its source");
             var preview = (Expander)window.FindName("ShortcutPreviewExpander"); preview.IsExpanded = true;
             window.ExpandShortcutForEvidence(true); owner.UpdateLayout();
@@ -62,7 +70,7 @@ internal static partial class ShortcutsWorkspaceSmoke
             Require(await window.SaveShortcutForEvidence(), "Code persists with real main Save");
             var saved = (await new SnippetMarkdownRepository().LoadAsync()).Single(s => s.Id == fixture.Id);
             Require(saved.IsFavorite && saved.IsPinned && CodeBlockMarkdown.Read(saved.Content).Single().Content.Code == edited, "Save preserves code and preferences");
-            window.SelectShortcutForEvidence(saved, true); Require(Block().CodeText == edited && !window.ShortcutsDraftDirtyForEvidence, "Reopen reconstructs editable block exactly");
+            window.SelectShortcutForEvidence(saved, true); Require(Raw() == edited && !window.ShortcutsDraftDirtyForEvidence, "Reopen reconstructs editable block exactly");
             owner.UpdateLayout(); SaveImage(root, output, $"shortcuts-code-{theme}", new Size(root.ActualWidth, root.ActualHeight), 1);
             var beforeDuplicate = File.ReadAllBytes(AppPaths.SnippetsFile);
             window.DuplicateShortcutForEvidence();

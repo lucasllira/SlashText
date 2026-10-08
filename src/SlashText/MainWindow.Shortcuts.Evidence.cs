@@ -59,7 +59,7 @@ public partial class MainWindow
         ContentEditor.Selection.Start, ContentEditor.Selection.End);
 
     internal void ExpandShortcutForEvidence(bool expanded) => SetShortcutEditorExpanded(expanded);
-    internal void InsertCodeForEvidence(CodeBlockContent content, SlashText.Views.ShortcutCodeBlockView? existing = null) => ApplyCodeBlock(content, existing);
+    internal void InsertCodeForEvidence(CodeBlockContent content, Border? existing = null) => ApplyCodeBlock(content, existing);
     internal Task<bool> FlagShortcutForEvidence(bool favorite) => SetShortcutFlagAsync(_selected!, favorite);
     internal void DuplicateShortcutForEvidence()
     {

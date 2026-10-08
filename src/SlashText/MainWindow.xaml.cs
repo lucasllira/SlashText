@@ -1231,6 +1231,9 @@ public partial class MainWindow : Window
 
     private void ContentEditor_OnTextChanged(object sender, TextChangedEventArgs e)
     {
+        if (ContentEditor is not null)
+            foreach (var block in ContentEditor.Document.Blocks.OfType<BlockUIContainer>())
+                if (block.Child is Border codeBorder) ShortcutCodeBlockView.Attach(codeBorder);
         RefreshShortcutDraftState();
         RefreshShortcutFormatting();
         UpdatePreview();

@@ -42,8 +42,8 @@ public static partial class RichTextMarkdownConverter
                         ? ApplyParagraphAlignment(paragraphText, paragraph.TextAlignment)
                         : paragraphText);
                     break;
-                case BlockUIContainer { Child: ShortcutCodeBlockView codeView }:
-                    lines.Add(format == SnippetFormat.Markdown ? CodeBlockMarkdown.Write(codeView.CodeContent) : codeView.CodeText);
+                case BlockUIContainer { Child: Border codeView } when ShortcutCodeBlockView.TryRead(codeView, out var codeContent):
+                    lines.Add(format == SnippetFormat.Markdown ? CodeBlockMarkdown.Write(codeContent) : codeContent.Code);
                     break;
                 case System.Windows.Documents.List list:
                     SerializeList(lines, list, format);
@@ -132,11 +132,7 @@ public static partial class RichTextMarkdownConverter
                 if (position > 0 && text.StartsWith('\n')) text = text[1..];
                 if (text.EndsWith('\n')) text = text[..^1];
                 if (text.Length > 0) AddMarkdownBlocks(document, text, format, includeImages);
-                document.Blocks.Add(new BlockUIContainer(new ShortcutCodeBlockView
-                {
-                    CodeText = span.Content.Code, CodeLanguage = span.Content.Language,
-                    IsEditable = !includeImages
-                }) { Margin = new Thickness(0, 6, 0, 6) });
+                document.Blocks.Add(new BlockUIContainer(ShortcutCodeBlockView.Create(span.Content, editable: !includeImages)) { Margin = new Thickness(0, 6, 0, 6) });
                 position = span.Start + span.Length;
             }
             var remainder = normalized[position..];
