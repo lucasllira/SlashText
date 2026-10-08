@@ -14,7 +14,7 @@ using SlashText.Views;
 namespace SlashText.Design;
 
 /// <summary>Real WPF editor fixture; no tray, hooks, updater or user data.</summary>
-internal static class ShortcutsWorkspaceSmoke
+internal static partial class ShortcutsWorkspaceSmoke
 {
     internal static async Task RunAsync(string output)
     {
@@ -132,6 +132,8 @@ internal static class ShortcutsWorkspaceSmoke
             SaveImage(confirmationSurface, output, $"shortcuts-delete-{theme}", confirmationSize, 1); confirm.Close();
             CheckOwnedModals(theme, output);
             await CheckTypographyAsync(theme, output);
+            await CheckExtrasAsync(theme, output);
+            checks.Add($"{theme}: code literal save/reopen, insert/edit undo/redo, themed code modal, expansion, duplicate, favorite/pin persistence and filters OK");
             checks.Add($"{theme}: native editor font selection/caret typing, ordered sizes, palette RGB validation and rich save/reopen OK");
             checks.Add($"{theme}: real owned modal layout, default cancel, inside/outside dismissal and no snippet changes OK");
         }

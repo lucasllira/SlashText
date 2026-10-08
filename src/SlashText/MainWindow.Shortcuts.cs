@@ -106,8 +106,15 @@ public partial class MainWindow
     {
         var selected = ReferenceEquals(snippet, _selected);
         var content = new StackPanel();
+        var badges = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right };
+        foreach (var kind in new[] { snippet.IsFavorite ? "Star" : null, snippet.IsPinned ? "Pin" : null }.Where(kind => kind is not null))
+        {
+            var badge = new LabIcon { Kind = kind!, Width = 14, Height = 14, Margin = new Thickness(4, 0, 0, 0) };
+            badge.SetResourceReference(LabIcon.ForegroundProperty, "Lab.accent-text"); badges.Children.Add(badge);
+        }
+        var commandRow = new DockPanel(); DockPanel.SetDock(badges, Dock.Right); commandRow.Children.Add(badges); content.Children.Add(commandRow);
         var command = new TextBlock { Text = snippet.Trigger, FontFamily = new FontFamily("Cascadia Mono, Consolas"), FontSize = 12, TextTrimming = TextTrimming.CharacterEllipsis };
-        command.SetResourceReference(TextBlock.ForegroundProperty, "Lab.accent-text"); content.Children.Add(command);
+        command.SetResourceReference(TextBlock.ForegroundProperty, "Lab.accent-text"); commandRow.Children.Add(command);
         var name = new TextBlock { Text = snippet.Name, FontSize = 14, FontWeight = FontWeights.SemiBold, TextTrimming = TextTrimming.CharacterEllipsis, Margin = new Thickness(0, 5, 0, 0) };
         name.SetResourceReference(TextBlock.ForegroundProperty, "Lab.text"); content.Children.Add(name);
         var excerpt = snippet.Content.Replace('\r', ' ').Replace('\n', ' ');
@@ -122,6 +129,7 @@ public partial class MainWindow
         button.SetResourceReference(StyleProperty, "Lab.Shortcuts.Item");
         AutomationProperties.SetName(button, $"{snippet.Name}, comando {snippet.Trigger}, categoria {snippet.Category}" + (selected ? ", selecionado" : ""));
         button.Click += (_, _) => SelectSnippet(snippet);
+        button.PreviewMouseRightButtonUp += (_, e) => { e.Handled = true; ShowShortcutActions(button, snippet); };
         return button;
     }
 

@@ -68,3 +68,14 @@ A issue permanece aberta até aprovação visual e funcional do piloto.
 - Cor do texto e Marca-texto abrem a paleta no estilo da Captura, com cores principais, navegação horizontal e RGB/hexadecimal no final. Não há janela nativa de cores.
 - Selecione um trecho, escolha uma cor e confira que somente esse trecho muda. RGB inválido (por exemplo 300) deve mostrar validação sem aplicar. Esc ou clique fora fecha a paleta.
 - Salve e reabra o atalho para conferir fonte, tamanho, cor e marca-texto.
+
+## Complementos de Atalhos — expandir, duplicar, favoritos/fixados e código
+
+- **Expandir editor:** editar um rascunho, expandir, redimensionar a janela e recolher. Confirmar que conteúdo, formatação e estado de rascunho foram mantidos e que lista/variáveis/prévia voltaram ao estado anterior. Salvar continua acessível.
+- **Duplicar:** abrir Opções do atalho (três pontos) ou botão direito na lista, escolher Duplicar, alterar nome/comando e salvar. Conferir original intacto, ID distinto, comando sem conflito, conteúdo rico/imagens/código preservados. Duplicação não grava até Salvar.
+- **Favoritos/fixados:** marcar/desmarcar pelo menu. Favoritos e Fixados filtram separadamente; fixados aparecem primeiro entre os resultados da busca/categoria. Fechar/reabrir e importar/exportar snippets.md deve conservar as preferências. Alterar uma preferência com um rascunho em edição não salva nem descarta esse rascunho.
+- **Código:** selecionar Texto formatado, posicionar o cursor fora de listas/tabelas, clicar em Código junto a Link/Imagem/Tabela. Escolher linguagem, colar código e usar Salvar bloco. O bloco aparece no conteúdo e na prévia; o lápis abre a edição, recolher não altera o conteúdo, Copiar copia só o código. Salvar o atalho grava tudo.
+- Testar texto antes/depois do bloco e vários blocos, undo/redo de inserção e edição, cancelar popup, código longo, sintaxe nos três temas e popup na janela mínima.
+- Usar código com `_`, `*`, `<tags>`, aspas, tabs/espaços, linhas vazias, crases e `{{nome}}`/`{{tab}}`. Salvar/reabrir, copiar e expandir devem preservar esses caracteres; somente as variáveis fora do código são resolvidas.
+- O realce de sintaxe não executa nem reformata o código. O app de destino pode ignorar a aparência HTML, mas deve receber o código literal no formato de texto simples.
+- AvalonEdit 6.3.1.120 (MIT) é incorporado ao executável; licença em Assets/AvalonEdit/LICENSE.txt. Não há download de recursos em tempo de uso.

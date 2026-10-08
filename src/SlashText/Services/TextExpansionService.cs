@@ -25,7 +25,7 @@ public sealed class TextExpansionService
     public bool IsExpanding => _singleFlight.IsActive;
 
     public IReadOnlyList<TemplateField> GetFillableFields(Snippet snippet) =>
-        _templateEngine.GetFillableFields(snippet.Content);
+        _templateEngine.GetFillableFields(snippet.Content, literalCodeBlocks: snippet.Format == SnippetFormat.Markdown);
 
     public Task<int> ExpandAsync(
         Snippet snippet,
@@ -46,7 +46,7 @@ public sealed class TextExpansionService
             throw new ExpansionBusyException();
         }
 
-        var rendered = _templateEngine.Render(snippet.Content, values);
+        var rendered = _templateEngine.Render(snippet.Content, values, literalCodeBlocks: snippet.Format == SnippetFormat.Markdown);
         var plan = ExpansionPlan.Create(rendered);
         var insertedCharacters = plan.Sum(step =>
             snippet.Format == SnippetFormat.Markdown

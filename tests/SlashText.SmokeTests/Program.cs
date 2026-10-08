@@ -947,12 +947,28 @@ try
             "# backup legado",
         "backup schema 1 continua restaurável");
 
-    var code = "Antes\n```powershell\nGet-Date\n```\nDepois";
+    var literalCode = "  a_b * 2 <tag> &amp; {{nome}} {{tab}}\n\t```\n  final  \n";
+    var fencedCode = CodeBlockMarkdown.Write(new CodeBlockContent("javascript", literalCode));
+    var code = "Antes\n" + fencedCode + "\nDepois";
+    var parsedCode = CodeBlockMarkdown.Read(code).Single();
+    Require(parsedCode.Content.Code == literalCode && parsedCode.Content.Language == "javascript", "Código preserva espaços, símbolos, variáveis e crases dentro de cerca mais longa");
+    Require(RichTextMarkdownConverter.ToPlainText(code) == "Antes\n" + literalCode + "\nDepois", "Fallback do código é literal, sem remover Markdown nem decodificar entidades");
+    Require(RichTextMarkdownConverter.ToHtml(code).Contains(System.Net.WebUtility.HtmlEncode(literalCode), StringComparison.Ordinal), "HTML codifica código sem remover espaços nem interpretar tags");
+    Require(engine.GetFillableFields("{{fora}}\n" + fencedCode, literalCodeBlocks: true).Select(f => f.Name).SequenceEqual(new[] { "fora" }), "Somente variáveis fora do código são solicitadas");
+    Require(engine.Render("{{fora}}\n" + fencedCode, new Dictionary<string, string> { ["fora"] = "Valor", ["nome"] = "não substituir" }, literalCodeBlocks: true) == "Valor\n" + fencedCode, "Expansão não substitui variáveis nem tabulação do código");
+    Require(engine.Render("{{nome}}", new Dictionary<string, string> { ["nome"] = "Texto normal" }) == "Texto normal", "Texto simples mantém variáveis existentes");
+    foreach (var payload in new[] { "", "\n", "\t espaços  ", "\r\nlinha\r\nfim\r\n", "~~~\n````\n" })
+        Require(CodeBlockMarkdown.Read(CodeBlockMarkdown.Write(new CodeBlockContent("text", payload))).Single().Content.Code == CodeBlockMarkdown.Normalize(payload), "Cerca de código roundtrip literal");
+    var flagged = new Snippet { Name = "Código favorito", Trigger = "/codigo", Format = SnippetFormat.Markdown, Content = code, IsFavorite = true, IsPinned = true };
+    var codeRepository = new SnippetMarkdownRepository(Path.Combine(root, "code-fixture.md"), Path.Combine(root, "code-backups"));
+    await codeRepository.SaveAsync([flagged]);
+    var reopenedCode = (await codeRepository.LoadAsync()).Single();
+    Require(reopenedCode.Content == code && reopenedCode.IsFavorite && reopenedCode.IsPinned, "Código, favorito e fixado persistem juntos em snippets.md");
     Require(
         RichTextMarkdownConverter.ToHtml(code).Contains("<pre", StringComparison.Ordinal),
         "bloco de código HTML");
     Require(
-        RichTextMarkdownConverter.ToPlainText(code).Contains("Get-Date", StringComparison.Ordinal),
+        RichTextMarkdownConverter.ToPlainText(code).Contains("a_b", StringComparison.Ordinal),
         "fallback de código em texto simples");
     var rich = """
                <p align="center"><span style="font-family:Arial;font-size:16px;background-color:#FFF176">Título</span></p>

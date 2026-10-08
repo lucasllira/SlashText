@@ -8,6 +8,7 @@ using System.Windows.Documents;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using SlashText.Models;
+using SlashText.Views;
 using RichTextBox = System.Windows.Controls.RichTextBox;
 
 namespace SlashText.Services;
@@ -41,6 +42,9 @@ public static partial class RichTextMarkdownConverter
                         ? ApplyParagraphAlignment(paragraphText, paragraph.TextAlignment)
                         : paragraphText);
                     break;
+                case BlockUIContainer { Child: ShortcutCodeBlockView codeView }:
+                    lines.Add(format == SnippetFormat.Markdown ? CodeBlockMarkdown.Write(codeView.CodeContent) : codeView.CodeText);
+                    break;
                 case System.Windows.Documents.List list:
                     SerializeList(lines, list, format);
                     break;
@@ -53,10 +57,12 @@ public static partial class RichTextMarkdownConverter
         return string.Join("\n", lines).TrimEnd();
     }
 
-    public static string ToPlainText(string markdown)
+    public static string ToPlainText(string markdown) => CodeBlockMarkdown.Transform(markdown,
+        ToPlainTextOutsideCode, span => span.Content.Code);
+
+    private static string ToPlainTextOutsideCode(string markdown)
     {
         var value = markdown;
-        value = CodeFencePattern().Replace(value, match => match.Groups["code"].Value.TrimEnd());
         value = ImagePattern().Replace(value, match => $"[Imagem: {match.Groups["alt"].Value}]");
         value = RichSpanPattern().Replace(value, match => match.Groups["text"].Value);
         value = ParagraphPattern().Replace(value, match => match.Groups["text"].Value);
@@ -80,15 +86,14 @@ public static partial class RichTextMarkdownConverter
     public static string ToHtml(string markdown)
     {
         var codeBlocks = new List<string>();
-        markdown = CodeFencePattern().Replace(markdown, match =>
+        markdown = CodeBlockMarkdown.Transform(markdown, value => value, span =>
         {
-            var language = WebUtility.HtmlEncode(match.Groups["language"].Value);
-            var code = WebUtility.HtmlEncode(match.Groups["code"].Value.TrimEnd());
+            var language = WebUtility.HtmlEncode(span.Content.Language);
+            var code = WebUtility.HtmlEncode(span.Content.Code);
             codeBlocks.Add(
                 $"<pre style=\"background:#151821;color:#F4F6FB;padding:12px;border-radius:8px;" +
-                $"font-family:Consolas,monospace;white-space:pre-wrap\"><code data-language=\"{language}\">{code}</code></pre>");
-            var prefix = match.Value.StartsWith('\n') ? "\n" : string.Empty;
-            return $"{prefix}\u001E_CODE_{codeBlocks.Count - 1}_\u001E";
+                $"font-family:Consolas,monospace;white-space:pre\"><code data-language=\"{language}\">{code}</code></pre>");
+            return $"\u001E_CODE_{codeBlocks.Count - 1}_\u001E";
         });
 
         return "<div style=\"font-family:'Segoe UI',sans-serif;font-size:11pt\">" +
@@ -118,6 +123,27 @@ public static partial class RichTextMarkdownConverter
         SnippetFormat format,
         bool includeImages)
     {
+        if (format == SnippetFormat.Markdown && CodeBlockMarkdown.Read(normalized) is { Count: > 0 } spans)
+        {
+            var position = 0;
+            foreach (var span in spans)
+            {
+                var text = normalized[position..span.Start];
+                if (position > 0 && text.StartsWith('\n')) text = text[1..];
+                if (text.EndsWith('\n')) text = text[..^1];
+                if (text.Length > 0) AddMarkdownBlocks(document, text, format, includeImages);
+                document.Blocks.Add(new BlockUIContainer(new ShortcutCodeBlockView
+                {
+                    CodeText = span.Content.Code, CodeLanguage = span.Content.Language,
+                    IsEditable = !includeImages
+                }) { Margin = new Thickness(0, 6, 0, 6) });
+                position = span.Start + span.Length;
+            }
+            var remainder = normalized[position..];
+            if (remainder.StartsWith('\n')) remainder = remainder[1..];
+            if (remainder.Length > 0) AddMarkdownBlocks(document, remainder, format, includeImages);
+            return;
+        }
         var lines = normalized.Split('\n');
         for (var index = 0; index < lines.Length; index++)
         {

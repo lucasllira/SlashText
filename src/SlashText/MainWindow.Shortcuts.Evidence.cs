@@ -58,6 +58,18 @@ public partial class MainWindow
         highlight ? TextElement.BackgroundProperty : TextElement.ForegroundProperty,
         ContentEditor.Selection.Start, ContentEditor.Selection.End);
 
+    internal void ExpandShortcutForEvidence(bool expanded) => SetShortcutEditorExpanded(expanded);
+    internal void InsertCodeForEvidence(CodeBlockContent content, SlashText.Views.ShortcutCodeBlockView? existing = null) => ApplyCodeBlock(content, existing);
+    internal Task<bool> FlagShortcutForEvidence(bool favorite) => SetShortcutFlagAsync(_selected!, favorite);
+    internal void DuplicateShortcutForEvidence()
+    {
+        _shortcutDiscardDecisionForEvidence = true;
+        try { DuplicateShortcut(_selected!); }
+        finally { _shortcutDiscardDecisionForEvidence = null; }
+    }
+    internal void FilterShortcutForEvidence(bool favorite, bool pinned)
+    { _showShortcutFavorites = favorite; _showShortcutPinned = pinned; _showMostUsed = false; RefreshNavigation(); }
+
     internal void DisposeShortcutsEvidence()
     {
         _shortcutsHelpHighlight?.Remove();

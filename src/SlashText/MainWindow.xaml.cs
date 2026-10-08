@@ -133,6 +133,7 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         InitializeShortcutFormatting();
+        ContentEditor.AddHandler(ShortcutCodeBlockView.EditRequestedEvent, new RoutedEventHandler(EditCodeBlock_OnRequested));
         CaptureInlineEditor.StateChanged += CaptureInlineEditor_OnStateChanged;
         CaptureEditorContext.Attach(CaptureInlineEditor);
         CaptureInlineEditor.SaveCopyRequested += (_, _) => SaveCapturePreview_OnClick(this, new RoutedEventArgs());
@@ -755,6 +756,8 @@ public partial class MainWindow : Window
                 item.Category.Equals(_selectedCategory, StringComparison.CurrentCultureIgnoreCase));
         }
 
+        if (_showShortcutFavorites) filtered = filtered.Where(item => item.IsFavorite);
+        if (_showShortcutPinned) filtered = filtered.Where(item => item.IsPinned);
         if (_showMostUsed)
         {
             filtered = filtered
@@ -769,7 +772,7 @@ public partial class MainWindow : Window
             filtered = filtered.OrderBy(item => item.Trigger, StringComparer.CurrentCultureIgnoreCase);
         }
 
-        var visible = filtered.ToList();
+        var visible = filtered.OrderByDescending(item => item.IsPinned).ToList();
 
         CategoriesPanel.Children.Clear();
         CategoriesPanel.Children.Add(CreateCategoryButton(null, "Todos", _snippets.Count));
@@ -788,7 +791,7 @@ public partial class MainWindow : Window
             hint.SetResourceReference(TextBlock.ForegroundProperty, "Lab.muted"); empty.Children.Add(hint);
             var action = new Button { Content = _snippets.Count == 0 ? "Criar atalho" : "Limpar filtros" };
             action.SetResourceReference(StyleProperty, "Lab.Button");
-            action.Click += (_, _) => { if (_snippets.Count == 0) BeginNewSnippet(); else { _selectedCategory = null; _showMostUsed = false; SearchBox.Clear(); RefreshNavigation(); } };
+            action.Click += (_, _) => { if (_snippets.Count == 0) BeginNewSnippet(); else { _selectedCategory = null; _showMostUsed = false; _showShortcutFavorites = false; _showShortcutPinned = false; SearchBox.Clear(); RefreshNavigation(); } };
             empty.Children.Add(action); SnippetListPanel.Children.Add(empty);
         }
         else
@@ -806,19 +809,21 @@ public partial class MainWindow : Window
 
     private void RefreshMostUsed()
     {
-        ApplyDisplayFilterState(DisplayAllButton, !_showMostUsed);
+        ApplyDisplayFilterState(DisplayAllButton, !_showMostUsed && !_showShortcutFavorites && !_showShortcutPinned);
+        ApplyDisplayFilterState(DisplayFavoritesButton, _showShortcutFavorites);
+        ApplyDisplayFilterState(DisplayPinnedButton, _showShortcutPinned);
         ApplyDisplayFilterState(DisplayMostUsedButton, _showMostUsed);
     }
 
     private void DisplayAll_OnClick(object sender, RoutedEventArgs e)
     {
-        _showMostUsed = false;
+        _showMostUsed = false; _showShortcutFavorites = false; _showShortcutPinned = false;
         RefreshNavigation();
     }
 
     private void DisplayMostUsed_OnClick(object sender, RoutedEventArgs e)
     {
-        _showMostUsed = true;
+        _showMostUsed = true; _showShortcutFavorites = false; _showShortcutPinned = false;
         RefreshNavigation();
     }
 
@@ -835,6 +840,7 @@ public partial class MainWindow : Window
         if (ReferenceEquals(snippet, _selected) || !CanDiscardShortcutDraft()) return;
         _loadingShortcutDraft = true;
         _selected = snippet;
+        _shortcutDuplicateSource = null;
         NameBox.Text = snippet.Name;
         TriggerBox.Text = snippet.Trigger;
         CategoryBox.Text = snippet.Category;
@@ -853,9 +859,10 @@ public partial class MainWindow : Window
     private void NewSnippet_OnClick(object sender, RoutedEventArgs e) =>
         BeginNewSnippet();
 
-    private void BeginNewSnippet()
+    private void BeginNewSnippet(bool discardAlreadyConfirmed = false)
     {
-        if (!CanDiscardShortcutDraft()) return;
+        if (!discardAlreadyConfirmed && !CanDiscardShortcutDraft()) return;
+        _shortcutDuplicateSource = null;
         _loadingShortcutDraft = true;
         _selected = null;
         NameBox.Clear();
@@ -892,8 +899,9 @@ public partial class MainWindow : Window
             Category = string.IsNullOrWhiteSpace(CategoryBox.Text) ? "Geral" : CategoryBox.Text.Trim(),
             Content = RichTextMarkdownConverter.Save(ContentEditor, format),
             Format = format,
-            Enabled = previous?.Enabled ?? true,
-            ConfirmKeys = previous?.ConfirmKeys.ToList() ?? ["Enter", "Tab", "Space"]
+            Enabled = previous?.Enabled ?? _shortcutDuplicateSource?.Enabled ?? true,
+            IsFavorite = previous?.IsFavorite ?? false, IsPinned = previous?.IsPinned ?? false,
+            ConfirmKeys = previous?.ConfirmKeys.ToList() ?? _shortcutDuplicateSource?.ConfirmKeys.ToList() ?? ["Enter", "Tab", "Space"]
         };
 
         if (!TriggerRule.TryValidate(candidate.Trigger, out var triggerError))
@@ -1242,14 +1250,14 @@ public partial class MainWindow : Window
 
         var format = FormatBox.SelectedIndex == 1 ? SnippetFormat.Markdown : SnippetFormat.Plain;
         var content = RichTextMarkdownConverter.Save(ContentEditor, format);
-        var rendered = new TemplateEngine().Render(content, PreviewValues(content));
+        var rendered = new TemplateEngine().Render(content, PreviewValues(content, format), literalCodeBlocks: format == SnippetFormat.Markdown);
         RichTextMarkdownConverter.BuildPreview(PreviewDocument, rendered, format);
     }
 
-    private static IReadOnlyDictionary<string, string> PreviewValues(string template)
+    private static IReadOnlyDictionary<string, string> PreviewValues(string template, SnippetFormat format)
     {
         var engine = new TemplateEngine();
-        return engine.GetFillableFields(template)
+        return engine.GetFillableFields(template, literalCodeBlocks: format == SnippetFormat.Markdown)
             .ToDictionary(
                 item => item.Name,
                 item => item.DefaultValue ?? $"[{item.Name}]",
@@ -4352,14 +4360,15 @@ public partial class MainWindow : Window
         Grid.SetColumn(ShortcutSidebarPanel, 0);
         Grid.SetColumnSpan(ShortcutSidebarPanel, 1);
         Grid.SetRow(ShortcutEditorPanel, 0);
-        Grid.SetColumn(ShortcutEditorPanel, 2);
-        Grid.SetColumnSpan(ShortcutEditorPanel, 1);
+        Grid.SetColumn(ShortcutEditorPanel, _shortcutEditorExpanded ? 0 : 2);
+        Grid.SetColumnSpan(ShortcutEditorPanel, _shortcutEditorExpanded ? 5 : 1);
         Grid.SetRow(ShortcutVariablesPanel, 0);
         Grid.SetColumn(ShortcutVariablesPanel, 4);
         Grid.SetColumnSpan(ShortcutVariablesPanel, 1);
 
-        ShortcutLeftDivider.Visibility = Visibility.Visible;
-        ShortcutRightDivider.Visibility = _shortcutVariablesVisible ? Visibility.Visible : Visibility.Collapsed;
+        ShortcutLeftDivider.Visibility = _shortcutEditorExpanded ? Visibility.Collapsed : Visibility.Visible;
+        ShortcutRightDivider.Visibility = !_shortcutEditorExpanded && _shortcutVariablesVisible ? Visibility.Visible : Visibility.Collapsed;
+        if (_shortcutEditorExpanded) UpdateShortcutEditorHeight();
         NormalizeShortcutColumns(width, bandChanged);
     }
 
