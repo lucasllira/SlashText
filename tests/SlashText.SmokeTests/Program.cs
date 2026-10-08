@@ -963,12 +963,15 @@ try
     Require(renamedShare.Single().Trigger == "/slashdesk" && renamedShare.Single().IsFavorite && (await shareRepository.LoadAsync()).Single().Content == ShortcutShareMessage.Content, "Somente comando do texto inicial intacto é atualizado");
     defaultShare.Content += " personalizado";
     await shareRepository.SaveAsync([defaultShare]); var personalizedBytes = await File.ReadAllBytesAsync(Path.Combine(root, "share-default.md"));
-    Require((await ShortcutShareMessage.RenameUntouchedDefaultAsync(shareRepository, await shareRepository.LoadAsync())).Single().Trigger == "/ola" && personalizedBytes.SequenceEqual(await File.ReadAllBytesAsync(Path.Combine(root, "share-default.md"))), "Texto personalizado não é migrado");
+    var personalizedResult = await ShortcutShareMessage.RenameUntouchedDefaultAsync(shareRepository, await shareRepository.LoadAsync());
+    var personalizedAfter = await File.ReadAllBytesAsync(Path.Combine(root, "share-default.md"));
+    Require(personalizedResult.Single().Trigger == "/ola" && personalizedBytes.SequenceEqual(personalizedAfter), "Texto personalizado não é migrado");
     defaultShare.Content = ShortcutShareMessage.Content;
     await shareRepository.SaveAsync([defaultShare, new Snippet { Name = "Meu", Trigger = "/slashdesk", Content = "meu conteúdo" }]);
     var conflictedBytes = await File.ReadAllBytesAsync(Path.Combine(root, "share-default.md"));
     await ShortcutShareMessage.RenameUntouchedDefaultAsync(shareRepository, await shareRepository.LoadAsync());
-    Require(conflictedBytes.SequenceEqual(await File.ReadAllBytesAsync(Path.Combine(root, "share-default.md"))), "Comando /slashdesk existente não é substituído");
+    var conflictedAfter = await File.ReadAllBytesAsync(Path.Combine(root, "share-default.md"));
+    Require(conflictedBytes.SequenceEqual(conflictedAfter), "Comando /slashdesk existente não é substituído");
 
     var literalCode = "  a_b * 2 <tag> &amp; {{nome}} {{tab}}\n\t```\n  final  \n";
     var fencedCode = CodeBlockMarkdown.Write(new CodeBlockContent("javascript", literalCode));
