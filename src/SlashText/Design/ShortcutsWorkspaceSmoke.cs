@@ -141,7 +141,7 @@ internal static partial class ShortcutsWorkspaceSmoke
         File.WriteAllLines(Path.Combine(output, "result.txt"), checks);
     }
 
-    private static void SaveImage(FrameworkElement visual, string output, string name, Size size, double scale)
+    private static void SaveImage(Visual visual, string output, string name, Size size, double scale)
     {
         var bitmap = new RenderTargetBitmap((int)(size.Width * scale), (int)(size.Height * scale), 96 * scale, 96 * scale, PixelFormats.Pbgra32);
         bitmap.Render(visual); var encoder = new PngBitmapEncoder(); encoder.Frames.Add(BitmapFrame.Create(bitmap));
@@ -225,7 +225,13 @@ internal static partial class ShortcutsWorkspaceSmoke
                         $"Font control has room for full label and descenders: {box.Name}, {stage}");
                 }
                 var strip = (FrameworkElement)fonts.Parent;
-                SaveImage(strip, output, $"shortcuts-font-controls-{stage}-{theme}", new Size(strip.ActualWidth, strip.ActualHeight), 1);
+                var stripSize = new Size(strip.ActualWidth, strip.ActualHeight);
+                // Rasterizing an attached child directly includes its layout offset.
+                // Map its local bounds to the image so the evidence itself is not cut.
+                var drawing = new DrawingVisual();
+                using (var context = drawing.RenderOpen())
+                    context.DrawRectangle(new VisualBrush(strip) { Stretch = Stretch.Fill }, null, new Rect(stripSize));
+                SaveImage(drawing, output, $"shortcuts-font-controls-{stage}-{theme}", stripSize, 1);
             }
             void SelectText()
             {
