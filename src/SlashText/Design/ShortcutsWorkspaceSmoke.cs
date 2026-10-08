@@ -252,8 +252,13 @@ internal static class ShortcutsWorkspaceSmoke
             var saved = (await new SnippetMarkdownRepository().LoadAsync()).Single(s => s.Trigger == "/fontes");
             window.SelectShortcutForEvidence(saved, true); SelectText();
             Require(editor.Selection.GetPropertyValue(TextElement.FontFamilyProperty) is FontFamily reopened && reopened.Source == "Consolas", "Chosen font survives save/reopen");
-            Require(editor.Selection.GetPropertyValue(TextElement.BackgroundProperty) is SolidColorBrush reopenedBg && reopenedBg.Color == Color.FromRgb(255, 216, 0), "Highlight survives save/reopen");
+            // Background on a loaded Span is rendered by the span, but is not an inherited
+            // Run property. Verify the actual loaded element and the lossless serialized draft.
+            var reopenedSpan = ((Paragraph)editor.Document.Blocks.FirstBlock).Inlines.OfType<Span>().Single();
+            Require(reopenedSpan.Background is SolidColorBrush reopenedBg && reopenedBg.Color == Color.FromRgb(255, 216, 0)
+                && window.ShortcutContentForEvidence == saved.Content, "Highlight and all rich properties survive save/reopen");
             editor.Selection.Text = ""; ChooseFont("Georgia");
+            Require(fonts.SelectedItem is ComboBoxItem { Tag: "Georgia" }, "Empty editor keeps the font chosen before typing");
             TextCompositionManager.StartComposition(new TextComposition(InputManager.Current, editor, "Texto novo"));
             SelectText();
             Require(editor.Selection.Text == "Texto novo", "Native text composition inserts text after choosing an empty-editor font");
