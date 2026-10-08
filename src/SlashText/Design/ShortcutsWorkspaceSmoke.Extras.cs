@@ -54,7 +54,7 @@ internal static partial class ShortcutsWorkspaceSmoke
             Require(window.ShortcutContentForEvidence == content, "Collapsing a block does not edit its source");
             var preview = (Expander)window.FindName("ShortcutPreviewExpander"); preview.IsExpanded = true;
             window.ExpandShortcutForEvidence(true); owner.UpdateLayout();
-            Require(((FrameworkElement)window.FindName("ShortcutSidebarPanel")).Visibility == Visibility.Collapsed && editor.ActualWidth > 1100, "Expanded editor occupies workspace");
+            Require(((FrameworkElement)window.FindName("ShortcutSidebarPanel")).Visibility == Visibility.Collapsed && Math.Abs(((FrameworkElement)window.FindName("ShortcutEditorPanel")).ActualWidth - ((FrameworkElement)window.FindName("ShortcutWorkspaceGrid")).ActualWidth) < 2, $"Expanded editor occupies actual workspace (editor={editor.ActualWidth}, panel={((FrameworkElement)window.FindName("ShortcutEditorPanel")).ActualWidth}, workspace={((FrameworkElement)window.FindName("ShortcutWorkspaceGrid")).ActualWidth})");
             Require(window.ShortcutContentForEvidence == content, "Expansion preserves draft including code");
             SaveImage(root, output, $"shortcuts-code-expanded-{theme}", new Size(root.ActualWidth, root.ActualHeight), 1);
             window.ExpandShortcutForEvidence(false); owner.UpdateLayout();
