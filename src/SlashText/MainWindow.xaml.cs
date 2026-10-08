@@ -1029,65 +1029,26 @@ public partial class MainWindow : Window
             return;
         }
 
-        ContentEditor.Selection.ApplyPropertyValue(
-            TextElement.FontFamilyProperty,
-            new FontFamily(font));
-        ContentEditor.Focus();
+        ApplyShortcutFormatting(TextElement.FontFamilyProperty, new FontFamily(font));
     }
 
     private void FontSizeBox_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (_syncShortcutFormatting || ContentEditor is null ||
             FontSizeBox?.SelectedItem is not ComboBoxItem { Tag: string sizeText } ||
-            !double.TryParse(
-                sizeText,
-                System.Globalization.NumberStyles.Float,
-                System.Globalization.CultureInfo.InvariantCulture,
-                out var size))
-        {
-            return;
-        }
-
-        ContentEditor.Selection.ApplyPropertyValue(TextElement.FontSizeProperty, size);
-        ContentEditor.Focus();
+            !double.TryParse(sizeText, System.Globalization.NumberStyles.Float,
+                System.Globalization.CultureInfo.InvariantCulture, out var size)) return;
+        ApplyShortcutFormatting(TextElement.FontSizeProperty, size);
     }
 
     private void Color_OnClick(object sender, RoutedEventArgs e)
     {
-        using var picker = new Forms.ColorDialog
-        {
-            FullOpen = true,
-            Color = System.Drawing.Color.FromArgb(24, 32, 43)
-        };
-        if (picker.ShowDialog() != Forms.DialogResult.OK)
-        {
-            return;
-        }
-
-        var color = picker.Color;
-        ContentEditor.Selection.ApplyPropertyValue(
-            TextElement.ForegroundProperty,
-            new SolidColorBrush(System.Windows.Media.Color.FromRgb(color.R, color.G, color.B)));
-        ContentEditor.Focus();
+        if (sender is Button anchor) ShowShortcutColorPicker(anchor, TextElement.ForegroundProperty);
     }
 
     private void Highlight_OnClick(object sender, RoutedEventArgs e)
     {
-        using var picker = new Forms.ColorDialog
-        {
-            FullOpen = true,
-            Color = System.Drawing.Color.FromArgb(255, 235, 59)
-        };
-        if (picker.ShowDialog() != Forms.DialogResult.OK)
-        {
-            return;
-        }
-
-        var color = picker.Color;
-        ContentEditor.Selection.ApplyPropertyValue(
-            TextElement.BackgroundProperty,
-            new SolidColorBrush(System.Windows.Media.Color.FromRgb(color.R, color.G, color.B)));
-        ContentEditor.Focus();
+        if (sender is Button anchor) ShowShortcutColorPicker(anchor, TextElement.BackgroundProperty);
     }
 
     private void Bullets_OnClick(object sender, RoutedEventArgs e) =>

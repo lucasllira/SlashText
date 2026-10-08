@@ -59,3 +59,12 @@ Gera evidências Claro/Preto/Windows em 1440×900 e 980×680, com rasterização
 Rasterização não substitui teste físico de DPI, posicionamento de monitores, entrada global ou interação manual.
 
 A issue permanece aberta até aprovação visual e funcional do piloto.
+
+## Fonte, tamanho e cores (08/10/2026)
+
+- Selecione um trecho de texto formatado. Troque a fonte para Georgia ou Consolas e o tamanho para 24. Confira conteúdo e prévia, salve e abra novamente.
+- Apague o conteúdo, escolha uma fonte antes de digitar e escreva uma frase. A fonte deve ser mantida.
+- O tamanho 10,5 pt corresponde aos 14 pixels padrão do editor. Valores encontrados no conteúdo são inseridos na ordem numérica da lista, sem alterar o texto existente.
+- Cor do texto e Marca-texto abrem a paleta no estilo da Captura, com cores principais, navegação horizontal e RGB/hexadecimal no final. Não há janela nativa de cores.
+- Selecione um trecho, escolha uma cor e confira que somente esse trecho muda. RGB inválido (por exemplo 300) deve mostrar validação sem aplicar. Esc ou clique fora fecha a paleta.
+- Salve e reabra o atalho para conferir fonte, tamanho, cor e marca-texto.

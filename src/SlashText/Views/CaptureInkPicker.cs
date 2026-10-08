@@ -38,10 +38,14 @@ public static class CaptureInkPicker
     internal static Border CreateContent(CaptureWorkbenchEditor editor) => CreateContent(
         () => editor.InkArgb, editor.SetColor, () => editor.InkThickness, editor.SetThickness);
 
-    internal static Border CreateContent(Func<int> getInk, Action<int> setInk, Func<float> getThickness, Action<float> setThickness)
+    internal static Border CreateColorContent(Func<int> getInk, Action<int> setInk, string title) =>
+        CreateContent(getInk, setInk, () => 4, _ => { }, colorOnly: true, title: title);
+
+    internal static Border CreateContent(Func<int> getInk, Action<int> setInk, Func<float> getThickness, Action<float> setThickness,
+        bool colorOnly = false, string title = "Cores")
     {
         var panel = new StackPanel { Margin = new Thickness(14) };
-        var border = new Border { Width = 700, CornerRadius = new CornerRadius(10), BorderThickness = new Thickness(1), Child = panel };
+        var border = new Border { Width = colorOnly ? 560 : 700, CornerRadius = new CornerRadius(10), BorderThickness = new Thickness(1), Child = panel };
         border.SetResourceReference(Border.BackgroundProperty, "Lab.raised");
         border.SetResourceReference(Border.BorderBrushProperty, "Lab.line-strong");
         border.SetResourceReference(System.Windows.Documents.TextElement.ForegroundProperty, "Lab.text");
@@ -54,7 +58,7 @@ public static class CaptureInkPicker
         foreach (var width in new[] { GridLength.Auto, GridLength.Auto, new GridLength(1, GridUnitType.Star), GridLength.Auto, GridLength.Auto })
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = width });
         void Place(UIElement control, int column) { Grid.SetColumn(control, column); row.Children.Add(control); }
-        var label = Label("Cores"); label.Margin = new Thickness(0, 0, 10, 0); Place(label, 0);
+        var label = Label(title); label.Margin = new Thickness(0, 0, 10, 0); Place(label, 0);
         var colors = new StackPanel { Name = "InkPalette", Orientation = Orientation.Horizontal };
         var scroll = new ScrollViewer { Content = colors, Height = 44, Margin = new Thickness(0, 0, 4, 0),
             HorizontalScrollBarVisibility = ScrollBarVisibility.Hidden, VerticalScrollBarVisibility = ScrollBarVisibility.Disabled };
@@ -171,9 +175,9 @@ public static class CaptureInkPicker
         slider.ValueChanged += (_, _) => { setThickness((float)slider.Value); Refresh(); };
         Grid.SetColumn(slider, 1); sizeRow.Children.Add(slider);
         Grid.SetColumn(sizeValue, 2); sizeValue.Margin = new Thickness(10, 0, 10, 0); sizeRow.Children.Add(sizeValue);
-        Grid.SetColumn(preview, 3); sizeRow.Children.Add(preview); panel.Children.Add(sizeRow);
+        Grid.SetColumn(preview, 3); sizeRow.Children.Add(preview); if (!colorOnly) panel.Children.Add(sizeRow);
         var hint = Label("Aplica às próximas anotações."); hint.FontSize = 11; hint.Margin = new Thickness(0, 4, 0, 0);
-        hint.SetResourceReference(TextBlock.ForegroundProperty, "Lab.muted"); panel.Children.Add(hint);
+        hint.SetResourceReference(TextBlock.ForegroundProperty, "Lab.muted"); if (!colorOnly) panel.Children.Add(hint);
         Refresh(); LabMotion.SetEntrance(border, "Popup"); return border;
     }
 

@@ -3,6 +3,8 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Media;
+using System.Windows.Input;
+using System.Globalization;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using SlashText.Models;
@@ -129,6 +131,8 @@ internal static class ShortcutsWorkspaceSmoke
             Require(ModalBackdrop.IsOutside(confirmationSurface, new Point(-10, 30)) && !ModalBackdrop.IsOutside(confirmationSurface, new Point(50, 50)), "Background dismissal only targets points outside the surface");
             SaveImage(confirmationSurface, output, $"shortcuts-delete-{theme}", confirmationSize, 1); confirm.Close();
             CheckOwnedModals(theme, output);
+            await CheckTypographyAsync(theme, output);
+            checks.Add($"{theme}: native editor font selection/caret typing, ordered sizes, palette RGB validation and rich save/reopen OK");
             checks.Add($"{theme}: real owned modal layout, default cancel, inside/outside dismissal and no snippet changes OK");
         }
         File.WriteAllLines(Path.Combine(output, "result.txt"), checks);
@@ -186,6 +190,85 @@ internal static class ShortcutsWorkspaceSmoke
             Require(before.SequenceEqual(File.ReadAllBytes(AppPaths.SnippetsFile)), "Dismissing help/confirmation leaves snippet storage untouched");
         }
         finally { owner.Close(); }
+    }
+
+    private static async Task CheckTypographyAsync(string theme, string output)
+    {
+        var window = new MainWindow(captureEvidence: true);
+        var root = (FrameworkElement)window.Content; window.Content = null;
+        var owner = new Window { Width = 980, Height = 680, Content = root, ShowInTaskbar = false };
+        try
+        {
+            window.PrepareShortcutsEvidence(980, [new Snippet { Name = "Teste de fontes", Trigger = "/fontes",
+                Category = "Geral", Format = SnippetFormat.Markdown, Content = "Texto de teste" }]);
+            owner.Show(); owner.UpdateLayout();
+            await Application.Current.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
+            var editor = (RichTextBox)window.FindName("ContentEditor");
+            var fonts = (ComboBox)window.FindName("FontFamilyBox");
+            var sizes = (ComboBox)window.FindName("FontSizeBox");
+            void SelectText()
+            {
+                editor.Focus();
+                var paragraph = (Paragraph)editor.Document.Blocks.FirstBlock;
+                editor.Selection.Select(paragraph.ContentStart.GetInsertionPosition(LogicalDirection.Forward),
+                    paragraph.ContentEnd.GetInsertionPosition(LogicalDirection.Backward));
+            }
+            void ChooseFont(string name)
+            {
+                fonts.Focus(); fonts.SelectedItem = fonts.Items.OfType<ComboBoxItem>().Single(item => Equals(item.Tag, name));
+            }
+            SelectText(); ChooseFont("Consolas");
+            Require(editor.Selection.GetPropertyValue(TextElement.FontFamilyProperty) is FontFamily family && family.Source == "Consolas",
+                "Font chooser applies the selected text font despite focus transfer");
+            Require(fonts.SelectedItem is ComboBoxItem { Tag: "Consolas" }, "Font chooser stays in sync after applying");
+            sizes.Focus(); sizes.SelectedItem = sizes.Items.OfType<ComboBoxItem>().Single(item => Equals(item.Content, "24"));
+            Require(editor.Selection.GetPropertyValue(TextElement.FontSizeProperty) is double size && Math.Abs(size - 32) < .01, "24 points converts to 32 WPF units");
+            var ordered = sizes.Items.OfType<ComboBoxItem>().Select(item => double.Parse((string)item.Tag, CultureInfo.InvariantCulture)).ToArray();
+            Require(ordered.SequenceEqual(ordered.OrderBy(n => n)) && ordered.Any(n => Math.Abs(n - 14) < .01), "Current 10.5-point size appears in numerical order");
+            var palette = window.ShortcutColorContentForEvidence(false);
+            palette.Measure(new Size(560, 200)); palette.Arrange(new Rect(0, 0, 560, 200)); palette.UpdateLayout();
+            ((Button)Find(palette, "OpenInkRgb")!).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            var hex = (TextBox)Find(palette, "InkHex")!; var apply = (Button)Find(palette, "ApplyInkHex")!;
+            hex.Text = "#137B53"; apply.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Require(editor.Selection.GetPropertyValue(TextElement.ForegroundProperty) is SolidColorBrush ink && ink.Color == Color.FromRgb(19, 123, 83), "Custom hex targets the preserved selected text");
+            var content = window.ShortcutContentForEvidence;
+            hex.Text = "#oops"; apply.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Require(window.ShortcutContentForEvidence == content, "Invalid hex never changes the rich draft");
+            var red = (TextBox)Find(palette, "InkRed")!; red.Text = "300"; apply.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Require(window.ShortcutContentForEvidence == content, "RGB above 255 never changes the rich draft");
+            red.Text = "100"; ((TextBox)Find(palette, "InkGreen")!).Text = "90"; ((TextBox)Find(palette, "InkBlue")!).Text = "80";
+            apply.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Require(editor.Selection.GetPropertyValue(TextElement.ForegroundProperty) is SolidColorBrush rgb && rgb.Color == Color.FromRgb(100, 90, 80), "Valid RGB applies to selection");
+            var highlight = window.ShortcutColorContentForEvidence(true);
+            highlight.Measure(new Size(560, 200)); highlight.Arrange(new Rect(0, 0, 560, 200)); highlight.UpdateLayout();
+            var swatches = (StackPanel)Find(highlight, "InkPalette")!;
+            swatches.Children.OfType<Button>().Single(button => Equals(button.ToolTip, "Amarelo · #FFD800")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Require(editor.Selection.GetPropertyValue(TextElement.BackgroundProperty) is SolidColorBrush bg && bg.Color == Color.FromRgb(255, 216, 0), "Highlight palette applies the selected swatch");
+            LabMotion.SetReduced(palette, true);
+            var paletteSize = new Size(560, 166); palette.Measure(paletteSize); palette.Arrange(new Rect(paletteSize)); palette.UpdateLayout();
+            SaveImage(palette, output, $"shortcuts-color-{theme}", paletteSize, 1);
+            Require(Find(palette, "InkThickness") is null, "Text palette does not expose annotation thickness");
+            Require(await window.SaveShortcutForEvidence(), "Typography and colors save through real repository");
+            var saved = (await new SnippetMarkdownRepository().LoadAsync()).Single(s => s.Trigger == "/fontes");
+            window.SelectShortcutForEvidence(saved, true); SelectText();
+            Require(editor.Selection.GetPropertyValue(TextElement.FontFamilyProperty) is FontFamily reopened && reopened.Source == "Consolas", "Chosen font survives save/reopen");
+            Require(editor.Selection.GetPropertyValue(TextElement.BackgroundProperty) is SolidColorBrush reopenedBg && reopenedBg.Color == Color.FromRgb(255, 216, 0), "Highlight survives save/reopen");
+            editor.Selection.Text = ""; ChooseFont("Georgia");
+            TextCompositionManager.StartComposition(new TextComposition(InputManager.Current, editor, "Texto novo"));
+            SelectText();
+            Require(editor.Selection.Text == "Texto novo", "Native text composition inserts text after choosing an empty-editor font");
+            Require(editor.Selection.GetPropertyValue(TextElement.FontFamilyProperty) is FontFamily typed && typed.Source == "Georgia", "Font chosen before typing formats newly entered text");
+            owner.UpdateLayout(); SaveImage(root, output, $"shortcuts-typography-{theme}", new Size(root.ActualWidth, root.ActualHeight), 1);
+        }
+        finally { owner.Close(); window.DisposeShortcutsEvidence(); window.Close(); }
+    }
+
+    private static FrameworkElement? Find(DependencyObject parent, string name)
+    {
+        if (parent is FrameworkElement element && element.Name == name) return element;
+        for (var i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
+            if (Find(VisualTreeHelper.GetChild(parent, i), name) is { } found) return found;
+        return null;
     }
 
     private static void Require(bool condition, string message)

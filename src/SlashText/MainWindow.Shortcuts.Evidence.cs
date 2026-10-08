@@ -3,6 +3,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Documents;
+using System.Windows.Controls;
 using SlashText.Models;
 using SlashText.Services;
 
@@ -52,6 +53,10 @@ public partial class MainWindow
     {
         _settings = await _settingsStore.LoadAsync(); ResetShortcutDraftBaseline(); RefreshNavigation();
     }
+
+    internal Border ShortcutColorContentForEvidence(bool highlight) => CreateShortcutColorContent(
+        highlight ? TextElement.BackgroundProperty : TextElement.ForegroundProperty,
+        ContentEditor.Selection.Start, ContentEditor.Selection.End);
 
     internal void DisposeShortcutsEvidence()
     {

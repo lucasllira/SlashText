@@ -230,7 +230,10 @@ public partial class MainWindow
                 if (sizeItem is null)
                 {
                     sizeItem = new ComboBoxItem { Content = (fontSize * .75).ToString("0.#", System.Globalization.CultureInfo.InvariantCulture), Tag = fontSize.ToString(System.Globalization.CultureInfo.InvariantCulture) };
-                    FontSizeBox.Items.Add(sizeItem);
+                    var index = FontSizeBox.Items.OfType<ComboBoxItem>().Count(item =>
+                        double.TryParse(item.Tag as string, System.Globalization.NumberStyles.Float,
+                            System.Globalization.CultureInfo.InvariantCulture, out var n) && n < fontSize);
+                    FontSizeBox.Items.Insert(index, sizeItem);
                 }
                 FontSizeBox.SelectedItem = sizeItem;
             }
@@ -245,6 +248,51 @@ public partial class MainWindow
         }
         finally { _syncShortcutFormatting = false; }
     }
+    private void ApplyShortcutFormatting(DependencyProperty property, object value,
+        TextPointer? start = null, TextPointer? end = null)
+    {
+        // Focus first: activating the RichTextBox after applying caret formatting can reset it.
+        // Suppress selection/text feedback until the requested property has finished changing.
+        _syncShortcutFormatting = true;
+        try
+        {
+            ContentEditor.Focus();
+            if (start is not null && end is not null) ContentEditor.Selection.Select(start, end);
+            ContentEditor.Selection.ApplyPropertyValue(property, value);
+        }
+        finally { _syncShortcutFormatting = false; }
+        RefreshShortcutFormatting();
+    }
+
+    private Border CreateShortcutColorContent(DependencyProperty property, TextPointer start, TextPointer end)
+    {
+        var brush = ContentEditor.Selection.GetPropertyValue(property) as SolidColorBrush;
+        var initial = brush?.Color ?? (property == TextElement.BackgroundProperty ? Colors.Yellow : Colors.Black);
+        var current = unchecked((int)0xFF000000) | initial.R << 16 | initial.G << 8 | initial.B;
+        return CaptureInkPicker.CreateColorContent(() => current, argb =>
+        {
+            current = argb;
+            var color = System.Drawing.Color.FromArgb(argb);
+            ApplyShortcutFormatting(property, new SolidColorBrush(Color.FromRgb(color.R, color.G, color.B)), start, end);
+        }, property == TextElement.BackgroundProperty ? "Marca-texto" : "Cor do texto");
+    }
+
+    private void ShowShortcutColorPicker(Button anchor, DependencyProperty property)
+    {
+        var start = ContentEditor.Selection.Start; var end = ContentEditor.Selection.End;
+        var content = CreateShortcutColorContent(property, start, end);
+        content.MaxWidth = Math.Max(320, Math.Min(Width - 48, SystemParameters.WorkArea.Width - 48));
+        var scroll = new ScrollViewer { Content = content,
+            MaxHeight = Math.Max(240, SystemParameters.WorkArea.Height - 48),
+            VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled };
+        var popup = new Popup { PlacementTarget = anchor, Placement = PlacementMode.Bottom,
+            StaysOpen = false, AllowsTransparency = true, VerticalOffset = 6, Child = scroll };
+        LabMotion.SetReduced(content, LabMotion.GetReduced(this));
+        content.PreviewKeyDown += (_, e) => { if (e.Key == Key.Escape) { popup.IsOpen = false; e.Handled = true; } };
+        popup.Opened += (_, _) => { LabMotion.PlayEntrance(content); content.MoveFocus(new TraversalRequest(FocusNavigationDirection.First)); };
+        popup.Closed += (_, _) => ContentEditor.Focus(); popup.IsOpen = true;
+    }
+
     private void ShortcutUndo_OnClick(object sender, RoutedEventArgs e) { ContentEditor.Undo(); ContentEditor.Focus(); RefreshShortcutFormatting(); }
     private void ShortcutRedo_OnClick(object sender, RoutedEventArgs e) { ContentEditor.Redo(); ContentEditor.Focus(); RefreshShortcutFormatting(); }
     private void ShortcutJustify_OnClick(object sender, RoutedEventArgs e) => EditingCommands.AlignJustify.Execute(null, ContentEditor);
