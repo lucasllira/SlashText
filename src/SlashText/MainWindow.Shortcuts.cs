@@ -70,7 +70,7 @@ public partial class MainWindow
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         row.ColumnDefinitions.Add(new ColumnDefinition());
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        var icon = new LabIcon { Kind = "FolderOpen", Size = 16, Margin = new Thickness(0, 0, 9, 0) }; row.Children.Add(icon);
+        var icon = new LabIcon { Kind = "FolderOpen", Width = 16, Height = 16, Margin = new Thickness(0, 0, 9, 0) }; row.Children.Add(icon);
         var name = new TextBlock { Text = label, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center };
         Grid.SetColumn(name, 1); row.Children.Add(name);
         var number = new TextBlock { Text = count.ToString(), FontSize = 11, Margin = new Thickness(8, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
