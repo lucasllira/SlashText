@@ -25,6 +25,7 @@ public partial class MainWindow
     private double _shortcutVariablesWidth = 280;
     private ScreenHelpHighlighter? _shortcutsHelpHighlight;
     private bool _syncShortcutFormatting;
+    private const string CurrentTextSizeItem = "SlashDesk.CurrentTextSize";
     private string[] ReadShortcutDraft() =>
     [
         NameBox.Text, TriggerBox.Text, SelectedShortcutCategory, FormatBox.SelectedIndex.ToString(),
@@ -174,12 +175,27 @@ public partial class MainWindow
             var font = selection.GetPropertyValue(TextElement.FontFamilyProperty) as FontFamily;
             FontFamilyBox.SelectedItem = FontFamilyBox.Items.OfType<ComboBoxItem>().FirstOrDefault(item => string.Equals(item.Tag as string, font?.Source, StringComparison.OrdinalIgnoreCase));
             var size = selection.GetPropertyValue(TextElement.FontSizeProperty);
+            // Keep standard whole-point choices stable. An explicit imported/saved
+            // size is a readout of the current selection, not another preset.
+            var currentSize = size is double current ? current : double.NaN;
+            foreach (var item in FontSizeBox.Items.OfType<ComboBoxItem>()
+                         .Where(item => item.Uid == CurrentTextSizeItem &&
+                             (!double.TryParse(item.Tag as string, System.Globalization.NumberStyles.Float,
+                                 System.Globalization.CultureInfo.InvariantCulture, out var existing) ||
+                              Math.Abs(existing - currentSize) >= .05 || double.IsNaN(currentSize))).ToArray())
+                FontSizeBox.Items.Remove(item);
             if (size is double fontSize)
             {
                 var sizeItem = FontSizeBox.Items.OfType<ComboBoxItem>().FirstOrDefault(item => double.TryParse(item.Tag as string, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var n) && Math.Abs(n - fontSize) < .05);
                 if (sizeItem is null)
                 {
-                    sizeItem = new ComboBoxItem { Content = (fontSize * .75).ToString("0.#", System.Globalization.CultureInfo.InvariantCulture), Tag = fontSize.ToString(System.Globalization.CultureInfo.InvariantCulture) };
+                    sizeItem = new ComboBoxItem
+                    {
+                        Content = (fontSize * .75).ToString("0.#", System.Globalization.CultureInfo.GetCultureInfo("pt-BR")),
+                        Tag = fontSize.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                        Uid = CurrentTextSizeItem, IsEnabled = false,
+                        ToolTip = "Tamanho existente no texto. Escolha um tamanho da lista para alterar."
+                    };
                     var index = FontSizeBox.Items.OfType<ComboBoxItem>().Count(item =>
                         double.TryParse(item.Tag as string, System.Globalization.NumberStyles.Float,
                             System.Globalization.CultureInfo.InvariantCulture, out var n) && n < fontSize);

@@ -64,7 +64,8 @@ A issue permanece aberta até aprovação visual e funcional do piloto.
 
 - Selecione um trecho de texto formatado. Troque a fonte para Georgia ou Consolas e o tamanho para 24. Confira conteúdo e prévia, salve e abra novamente.
 - Apague o conteúdo, escolha uma fonte antes de digitar e escreva uma frase. A fonte deve ser mantida.
-- O tamanho 10,5 pt corresponde aos 14 pixels padrão do editor. Valores encontrados no conteúdo são inseridos na ordem numérica da lista, sem alterar o texto existente.
+- Padrão de leitura/digitação e prévia: **12 pt (16 unidades WPF)** para texto sem tamanho explícito. As opções normais são inteiras. Tamanhos explicitamente salvos/importados, como 10,5 pt, são preservados e exibidos como valor atual, sem virar um preset selecionável. Ao escolher outro tamanho, o valor personalizado deixa a lista.
+- Seletores Fonte/Tamanho usam altura de 38 px; Tamanho tem largura de 84 px para não cortar números decimais. Conferir texto completo/descendentes nos três temas e DPI físico. Aumentar o padrão visual não grava nem altera conteúdo já salvo.
 - Cor do texto e Marca-texto abrem a paleta no estilo da Captura, com cores principais, navegação horizontal e RGB/hexadecimal no final. Não há janela nativa de cores.
 - Selecione um trecho, escolha uma cor e confira que somente esse trecho muda. RGB inválido (por exemplo 300) deve mostrar validação sem aplicar. Esc ou clique fora fecha a paleta.
 - Salve e reabra o atalho para conferir fonte, tamanho, cor e marca-texto.

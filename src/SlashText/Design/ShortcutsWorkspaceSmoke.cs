@@ -209,6 +209,24 @@ internal static partial class ShortcutsWorkspaceSmoke
             var editor = (RichTextBox)window.FindName("ContentEditor");
             var fonts = (ComboBox)window.FindName("FontFamilyBox");
             var sizes = (ComboBox)window.FindName("FontSizeBox");
+            var typographyFixture = new Snippet { Name = "Teste de fontes", Trigger = "/fontes",
+                Category = "Geral", Format = SnippetFormat.Markdown, Content = "Texto de teste" };
+            void AssertReadableFontControls(string stage)
+            {
+                owner.UpdateLayout();
+                foreach (var box in new[] { fonts, sizes })
+                {
+                    var label = ((ComboBoxItem)box.SelectedItem).Content.ToString()!;
+                    var presenter = (FrameworkElement)box.Template.FindName("Selection", box);
+                    var text = new FormattedText(label, CultureInfo.GetCultureInfo("pt-BR"), box.FlowDirection,
+                        new Typeface(box.FontFamily, box.FontStyle, box.FontWeight, box.FontStretch),
+                        box.FontSize, Brushes.Black, VisualTreeHelper.GetDpi(box).PixelsPerDip);
+                    Require(presenter.ActualHeight + .5 >= text.Height && presenter.ActualWidth + .5 >= text.WidthIncludingTrailingWhitespace,
+                        $"Font control has room for full label and descenders: {box.Name}, {stage}");
+                }
+                var strip = (FrameworkElement)fonts.Parent;
+                SaveImage(strip, output, $"shortcuts-font-controls-{stage}-{theme}", new Size(strip.ActualWidth, strip.ActualHeight), 1);
+            }
             void SelectText()
             {
                 editor.Focus();
@@ -220,14 +238,35 @@ internal static partial class ShortcutsWorkspaceSmoke
             {
                 fonts.Focus(); fonts.SelectedItem = fonts.Items.OfType<ComboBoxItem>().Single(item => Equals(item.Tag, name));
             }
-            SelectText(); ChooseFont("Consolas");
+            SelectText();
+            Require(editor.Selection.GetPropertyValue(TextElement.FontSizeProperty) is double initialSize && Math.Abs(initialSize - 16) < .01 &&
+                sizes.SelectedItem is ComboBoxItem { Content: "12" }, "Unstyled text defaults to readable 12 points");
+            Require(!window.ShortcutsDraftDirtyForEvidence && Math.Abs(((FlowDocument)window.FindName("PreviewDocument")).FontSize - 16) < .01,
+                "Default display size matches preview without rewriting a saved snippet");
+            AssertReadableFontControls("default");
+            var legacy = new Snippet { Name = "Tamanho anterior", Trigger = "/legado", Format = SnippetFormat.Markdown,
+                Content = "<span style=\"font-size:14px\">Texto anterior</span>" };
+            window.PrepareShortcutsEvidence(root.ActualWidth, [legacy]); SelectText();
+            Require(editor.Selection.GetPropertyValue(TextElement.FontSizeProperty) is double legacySize && Math.Abs(legacySize - 14) < .01 &&
+                sizes.SelectedItem is ComboBoxItem { Content: "10,5", IsEnabled: false }, "Explicit 10.5-point text is preserved and shown as current value, not a preset");
+            Require(!window.ShortcutsDraftDirtyForEvidence, "Opening a fractional legacy size does not dirty it");
+            AssertReadableFontControls("legacy");
+            Require(await window.SaveShortcutForEvidence(), "Legacy size saves without rounding");
+            var legacyList = (await new SnippetMarkdownRepository().LoadAsync()).ToArray();
+            window.PrepareShortcutsEvidence(root.ActualWidth, legacyList); SelectText();
+            Require(editor.Selection.GetPropertyValue(TextElement.FontSizeProperty) is double reopenedLegacy && Math.Abs(reopenedLegacy - 14) < .01,
+                "Explicit fractional legacy size survives real save/reopen");
+            window.PrepareShortcutsEvidence(root.ActualWidth, [typographyFixture]); SelectText();
+            Require(sizes.Items.OfType<ComboBoxItem>().All(item => item.IsEnabled), "Leaving legacy text removes its readout from the normal size choices");
+            ChooseFont("Consolas");
             Require(editor.Selection.GetPropertyValue(TextElement.FontFamilyProperty) is FontFamily family && family.Source == "Consolas",
                 "Font chooser applies the selected text font despite focus transfer");
             Require(fonts.SelectedItem is ComboBoxItem { Tag: "Consolas" }, "Font chooser stays in sync after applying");
             sizes.Focus(); sizes.SelectedItem = sizes.Items.OfType<ComboBoxItem>().Single(item => Equals(item.Content, "24"));
             Require(editor.Selection.GetPropertyValue(TextElement.FontSizeProperty) is double size && Math.Abs(size - 32) < .01, "24 points converts to 32 WPF units");
             var ordered = sizes.Items.OfType<ComboBoxItem>().Select(item => double.Parse((string)item.Tag, CultureInfo.InvariantCulture)).ToArray();
-            Require(ordered.SequenceEqual(ordered.OrderBy(n => n)) && ordered.Any(n => Math.Abs(n - 14) < .01), "Current 10.5-point size appears in numerical order");
+            Require(ordered.SequenceEqual(ordered.OrderBy(n => n)) && sizes.Items.OfType<ComboBoxItem>().All(item => item.IsEnabled) &&
+                sizes.Items.OfType<ComboBoxItem>().All(item => int.TryParse(item.Content.ToString(), out _)), "Normal size choices stay ordered whole points with no stale fractional preset");
             var palette = window.ShortcutColorContentForEvidence(false);
             palette.Measure(new Size(560, 200)); palette.Arrange(new Rect(0, 0, 560, 200)); palette.UpdateLayout();
             ((Button)Find(palette, "OpenInkRgb")!).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));

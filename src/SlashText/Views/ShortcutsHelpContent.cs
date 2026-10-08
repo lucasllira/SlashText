@@ -17,7 +17,7 @@ public static class ShortcutsHelpContent
             ["Arraste um divisor entre os painéis.", "Com o divisor em foco, use ←/→; Home ou clique duplo restaura a largura padrão.", "O botão no topo do editor oculta ou mostra as variáveis sem apagar o rascunho."],
             "Em uma janela menor, a formatação quebra em linhas e o editor pode ser rolado. Tab dentro do conteúdo insere uma tabulação; Ctrl+Tab move o foco.", "ShortcutLeftDivider", Demo: "workspace"),
         new("format", "EDITAR", "Texto simples e formatado", "Type", "Escolha o formato conforme o aplicativo onde vai inserir o texto.",
-            ["Texto simples preserva palavras e quebras de linha.", "Texto formatado oferece fontes, tamanhos, negrito, itálico, sublinhado, cores e marca-texto.", "Selecione o trecho antes de aplicar a formatação e confira a prévia."],
+            ["Texto simples preserva palavras e quebras de linha.", "Texto formatado oferece fontes, tamanhos, negrito, itálico, sublinhado, cores e marca-texto.", "Selecione o trecho antes de aplicar a formatação e confira a prévia. O padrão é 12 pontos; tamanhos explícitos anteriores são preservados."],
             "A barra organiza fonte, estilo, parágrafo e inserção. Mostra o estilo do trecho selecionado; Desfazer/Refazer usam Ctrl+Z/Ctrl+Y. O olho acompanha a prévia aberta ou fechada.", "FormatBox", Demo: "format"),
         new("structure", "EDITAR", "Listas, tabelas e parágrafos", "Grid2X2", "Organize informações dentro de um texto formatado.",
             ["Use listas com marcadores ou números.", "Tabela insere uma estrutura no conteúdo.", "Use alinhamento à esquerda, centro, direita ou justificado para o parágrafo selecionado."],
