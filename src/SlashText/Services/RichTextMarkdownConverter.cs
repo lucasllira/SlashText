@@ -63,7 +63,16 @@ public static partial class RichTextMarkdownConverter
     private static string ToPlainTextOutsideCode(string markdown)
     {
         var value = markdown;
-        value = ImagePattern().Replace(value, match => $"[Imagem: {match.Groups["alt"].Value}]");
+        value = ImagePattern().Replace(value, match =>
+        {
+            var alt = match.Groups["alt"].Value;
+            // Noto artwork is retained in HTML; a text-only target needs the Unicode
+            // sequence, including variation selectors, skin tones and joined emoji.
+            if (ShortcutEmojiAssets.Pattern().IsMatch(match.Value) &&
+                alt.StartsWith("Emoji: ", StringComparison.Ordinal) &&
+                NotoEmojiCatalog.TryGet(alt[7..], out _)) return alt[7..];
+            return $"[Imagem: {alt}]";
+        });
         value = RichSpanPattern().Replace(value, match => match.Groups["text"].Value);
         value = ParagraphPattern().Replace(value, match => match.Groups["text"].Value);
         value = LinkPattern().Replace(value, match => match.Groups["text"].Value);

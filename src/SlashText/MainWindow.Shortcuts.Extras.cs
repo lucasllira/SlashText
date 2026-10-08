@@ -97,7 +97,7 @@ public partial class MainWindow
         }
         var trigger = Candidate(suffix);
         while (TriggerRule.ConflictsWith(trigger, _snippets.Select(item => item.Trigger))) trigger = Candidate(++suffix);
-        NameBox.Text = source.Name + " (cópia)"; TriggerBox.Text = trigger; CategoryBox.Text = source.Category;
+        NameBox.Text = source.Name + " (cópia)"; TriggerBox.Text = trigger; SelectShortcutCategory(source.Category);
         FormatBox.SelectedIndex = source.Format == SnippetFormat.Markdown ? 1 : 0;
         RichTextMarkdownConverter.Load(ContentEditor, source.Content, source.Format);
         RefreshShortcutDraftState(); UpdatePreview(); NameBox.Focus(); NameBox.SelectAll();
@@ -192,7 +192,7 @@ public partial class MainWindow
         BeginNewSnippet(discardAlreadyConfirmed: true);
         var trigger = "/slashdesk"; var suffix = 2;
         while (TriggerRule.ConflictsWith(trigger, _snippets.Select(item => item.Trigger))) trigger = "/slashdesk" + suffix++;
-        NameBox.Text = "Divulgar SlashDesk"; TriggerBox.Text = trigger; CategoryBox.Text = "Geral";
+        NameBox.Text = "Divulgar SlashDesk"; TriggerBox.Text = trigger; SelectShortcutCategory("Geral");
         FormatBox.SelectedIndex = 0; RichTextMarkdownConverter.Load(ContentEditor, ShortcutShareMessage.Content, SnippetFormat.Plain);
         RefreshShortcutDraftState(); UpdatePreview();
     }

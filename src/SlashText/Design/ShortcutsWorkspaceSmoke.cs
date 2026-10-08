@@ -73,17 +73,17 @@ internal static partial class ShortcutsWorkspaceSmoke
                 preview.IsExpanded = false; Layout(); Require(eye.Kind == "EyeClosed", "Collapsed preview closes its eye");
                 preview.IsExpanded = true; Layout(); Require(eye.Kind == "Eye", "Expanded preview opens its eye");
                 var nameBox = (TextBox)window.FindName("NameBox"); nameBox.Text += " (rascunho)";
-                window.SetCategoryIconForEvidence("Mail");
+                window.SelectCategoryForEvidence("Mensagens");
                 Require(window.ShortcutsDraftDirtyForEvidence, "Metadata edits mark the draft dirty");
                 window.SelectShortcutForEvidence(fixtures[1], allowDiscard: false);
-                Require(window.SelectedShortcutForEvidence == fixtures[0].Id && nameBox.Text.EndsWith("(rascunho)", StringComparison.Ordinal) && window.CategoryIconForEvidence == "Mail", "Cancelled navigation preserves selection, text and pending category icon");
+                Require(window.SelectedShortcutForEvidence == fixtures[0].Id && nameBox.Text.EndsWith("(rascunho)", StringComparison.Ordinal) && window.CategoryIconForEvidence == "Mail", "Cancelled navigation preserves selection, text and pending category choice");
                 window.SelectShortcutForEvidence(fixtures[1], allowDiscard: true); Layout();
                 Require(!window.ShortcutsDraftDirtyForEvidence && window.SelectedShortcutForEvidence == fixtures[1].Id, "Confirmed discard loads the requested snippet");
-                Require(window.CategoryIconForEvidence == "FolderOpen", "Confirmed discard clears the pending category decoration");
+                Require(window.CategoryIconForEvidence == "Briefcase" && window.CategoryNameForEvidence == "Trabalho", "Confirmed discard restores saved category and fixed icon");
                 var before = window.ShortcutContentForEvidence;
                 Require(before.Contains("assets/fixture.png", StringComparison.Ordinal) && before.Contains("font-family", StringComparison.Ordinal), "Rich content retains images and font styling");
                 window.InsertVariableForEvidence("{{hora}}");
-                window.SetCategoryIconForEvidence("Briefcase");
+                window.SelectCategoryForEvidence("Trabalho");
                 Require(window.ShortcutsDraftDirtyForEvidence && window.ShortcutContentForEvidence.Contains("{{hora}}", StringComparison.Ordinal), "Variable chip inserts at the real editor caret");
                 Require(!window.ShortcutPreviewForEvidence.Contains("{{hora}}", StringComparison.Ordinal), "Variable insertion updates the real preview");
                 Require(await window.SaveShortcutForEvidence(), "Real async save succeeds");
@@ -91,10 +91,11 @@ internal static partial class ShortcutsWorkspaceSmoke
                 Require(saved.Content == window.ShortcutContentForEvidence && saved.Format == SnippetFormat.Markdown, "Saved/reopened rich content is identical");
                 Require(originalAsset.SequenceEqual(File.ReadAllBytes(imagePath)), "Rich editor save does not alter image bytes");
                 Require(!window.ShortcutsDraftDirtyForEvidence, "Successful save resets the draft indicator");
-                var settings = await new JsonFileStore<AppSettings>(AppPaths.SettingsFile).LoadAsync();
-                Require(settings.ShortcutCategoryIcons["Trabalho"] == "Briefcase", "Category icon persists in optional settings, without changing snippet format");
-                await window.ReloadCategoryIconsForEvidence();
-                Require(window.CategoryIconForEvidence == "Briefcase" && !window.ShortcutsDraftDirtyForEvidence, "Category icon reopens as a saved preference");
+                Require(saved.Category == "Trabalho" && window.CategoryIconForEvidence == "Briefcase", "Category choice persists in snippet metadata with its fixed icon");
+                var categories = (ComboBox)window.FindName("CategoryBox");
+                Require(!categories.IsEditable && categories.Items.OfType<ShortcutCategory>().Select(c => c.Name).SequenceEqual(new[] { "Geral", "Outros", "Trabalho", "Estudos", "Mensagens", "Documentos", "Código", "Comandos" }), "Only eight ordered fixed categories, with no Favorites category");
+                Require(((StackPanel)window.FindName("CategoriesPanel")).Children.Count == 9, "All eight sidebar categories plus Todos remain available");
+                foreach (var category in ShortcutCategories.All) Require(window.TryFindResource("Lab.Icon." + category.Icon) is Geometry, "Category icon exists: " + category.Name);
                 Layout();
                 foreach (var scale in new[] { 1d, 1.25d, 1.5d, 2d }) SaveImage(host, output, $"shortcuts-{theme}-rich-{size.Width}", size, scale);
                 var variables = (FrameworkElement)window.FindName("ShortcutVariablesPanel"); var editor = (FrameworkElement)window.FindName("ShortcutEditorPanel");
@@ -114,7 +115,7 @@ internal static partial class ShortcutsWorkspaceSmoke
                 window.SetShortcutProtectedForEvidence(false);
                 foreach (var topic in ShortcutsHelpContent.Create().Topics)
                     Require(topic.Target is null || window.FindName(topic.Target) is FrameworkElement, "Help target exists: " + topic.Id);
-                checks.Add($"{theme} {size}: plain/rich save/reopen, category icon persistence/discard, preview eye, caret, image preservation, search clear states, variable panel, protected mode, help targets OK");
+                checks.Add($"{theme} {size}: plain/rich save/reopen, fixed category selection/save/discard, preview eye, caret, image preservation, search clear states, variable panel, protected mode, help targets OK");
                 window.DisposeShortcutsEvidence(); window.Close();
             }
             var guide = new ScreenHelpWindow(ShortcutsHelpContent.Create());

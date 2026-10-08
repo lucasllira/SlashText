@@ -256,12 +256,17 @@
                                         <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="16"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
                                         <StackPanel><TextBlock Text="Comando" Style="{StaticResource Lab.Shortcuts.Label}"/><TextBox x:Name="TriggerBox" Style="{StaticResource Lab.Field}" TextChanged="EditorField_OnTextChanged" AutomationProperties.Name="Comando do atalho"/></StackPanel>
                                         <StackPanel Grid.Column="2"><TextBlock Text="Categoria" Style="{StaticResource Lab.Shortcuts.Label}"/>
-                                            <Grid>
-                                                <TextBox x:Name="CategoryBox" Style="{StaticResource Lab.Field}" Padding="11,9,46,9" TextChanged="EditorField_OnTextChanged" AutomationProperties.Name="Categoria do atalho"/>
-                                                <Button x:Name="ShortcutCategoryIconButton" Style="{StaticResource Lab.Shortcuts.Ghost}" Width="34" Height="30" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,5,0" Click="ChooseShortcutCategoryIcon_OnClick" ToolTip="Escolher ícone da categoria; use Salvar para aplicar" AutomationProperties.Name="Escolher ícone da categoria">
-                                                    <lab:LabIcon x:Name="ShortcutCategoryIcon" Kind="FolderOpen" Width="18" Height="18"/>
-                                                </Button>
-                                            </Grid>
+                                            <ComboBox x:Name="CategoryBox" Style="{StaticResource Lab.Combo}" IsEditable="False" SelectionChanged="ShortcutCategory_OnSelectionChanged" AutomationProperties.Name="Categoria do atalho">
+                                                <ComboBox.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <StackPanel Orientation="Horizontal">
+                                                            <lab:LabIcon Kind="{Binding Icon}" Width="17" Height="17" Margin="0,0,9,0" VerticalAlignment="Center"/>
+                                                            <TextBlock Text="{Binding Name}" VerticalAlignment="Center"/>
+                                                        </StackPanel>
+                                                    </DataTemplate>
+                                                </ComboBox.ItemTemplate>
+                                            </ComboBox>
+                                            <TextBlock x:Name="ShortcutLegacyCategoryHint" Visibility="Collapsed" TextWrapping="Wrap" FontSize="11" Foreground="{DynamicResource Lab.muted}" Margin="0,6,0,0"/>
                                         </StackPanel>
                                     </Grid>
                                     <StackPanel Margin="0,0,0,14">

@@ -23,7 +23,7 @@ Capturas novas usam o destino do piloto quando ainda não há preferências. Se 
 | Texto simples | Quebras de linha e variáveis permanecem após salvar, sair e reabrir. |
 | Texto formatado | Barra agrupada em fonte/tamanho, estilo/cores, parágrafo/listas e inserção. Fontes instaladas, B/I/U, cores, marca-texto, imagens, links, listas, tabelas e alinhamento (inclusive justificar) continuam disponíveis. Selecione um trecho: estilo e fonte acompanham a seleção; salvar/reabrir preserva o resultado. Desfazer/Refazer funcionam. |
 | Prévia | Recolher fecha o olho; expandir abre o olho e conserva o conteúdo. |
-| Ícones de categoria | Clique na pastinha no campo Categoria, escolha um dos oito ícones e salve. Todos os atalhos com essa categoria mostram o mesmo ícone na lista. Sair/reabrir preserva a escolha; trocar sem salvar e cancelar preserva a escolha pendente. Descartar a restaura. |
+| Categorias fixas | Lista suspensa não editável: Geral, Outros, Trabalho, Estudos, Mensagens, Documentos, Código e Comandos, com ícone antes do nome. Escolher é um rascunho até Salvar; cancelar descarte mantém a escolha, descartar restaura a categoria salva. Favoritos continua como marcação/filtro independente. |
 | Variáveis | Posicionar cursor ou selecionar trecho; clicar no token insere/substitui nessa posição. Prévia usa o mecanismo real. |
 | Busca e categorias | Nome, comando, categoria e conteúdo filtram a lista; Todos/Mais usados usam dados reais. Estado vazio permite limpar filtros/criar. O × fica dentro do campo, aparece somente com texto e limpa a busca. |
 | Rascunho | Editar sem salvar e clicar em outro atalho, Novo ou Importar: Cancelar mantém texto e seleção. Descartar alterações permite continuar. Escape ou clique fora também cancela. |
@@ -48,13 +48,13 @@ Escolha a origem da importação em Configurações antes de usar Importar na te
 - Mantém os limites e áreas de interação dos divisores aprovados na #54, com restauração por teclado/mouse.
 - Mantém filtros Todos/Mais usados explícitos e a origem real de importação. A prévia pode ser recolhida.
 - A ajuda visual reutiliza a mesma janela da Captura com 11 tópicos próprios.
-- Ícones de categoria são opcionais, armazenados em `settings.json` e incluídos no backup completo. Importação/exportação apenas de `snippets.md` mantém conteúdo e nomes, mas não transporta os ícones. Não altera o formato dos atalhos. Se só a preferência visual falhar ao gravar, o status informa que o atalho foi salvo e pede repetir a escolha do ícone.
+- Categorias novas são escolhidas dentre as oito opções fixas. Todas aparecem na barra lateral, mesmo sem atalhos. Categorias antigas desconhecidas aparecem em Outros com aviso no editor; ler/abrir/importar não regrava o dado original. Salvar organiza esse atalho na categoria escolhida. Preferências antigas de ícones são preservadas no arquivo, mas a interface usa ícones fixos.
 - Sem edição temporal de vídeo/GIF, alterações de armazenamento ou release nesta etapa.
 
 ## Evidência automatizada e limites
 
 `--shortcuts-workspace-smoke <pasta>` usa uma fixture WPF sem hooks/bandeja/updater e dados temporários dentro da pasta de evidência.
-Verifica rascunho e cancelamento (inclusive ícone pendente), inserção real de variável/prévia, salvar/reabrir texto simples/rico/imagem, persistência do ícone, olho da prévia, botão de limpar busca, filtro vazio, painel de variáveis e modo protegido.
+Verifica rascunho e cancelamento (inclusive categoria pendente), inserção real de variável/prévia, salvar/reabrir texto simples/rico/imagem, persistência da categoria, olho da prévia, botão de limpar busca, filtro vazio, painel de variáveis e modo protegido.
 Gera evidências Claro/Preto/Windows em 1440×900 e 980×680, com rasterização 100/125/150/200%.
 Rasterização não substitui teste físico de DPI, posicionamento de monitores, entrada global ou interação manual.
 
@@ -84,5 +84,11 @@ A issue permanece aberta até aprovação visual e funcional do piloto.
 
 - Expandir editor mostra a prévia abaixo. Arrastar a alça inferior de conteúdo/prévia aumenta ou diminui cada campo; com foco na alça, ↑/↓ ajustam e Home restaura. Ações e Salvar ficam fixos; rolagem mantém o conteúdo longo acessível. As alturas são mantidas na sessão e cada modo tem sua altura.
 - Clicar fisicamente no lápis de um bloco no conteúdo deve abrir Editar bloco de código com a linguagem/fonte correta. Alterar e Salvar bloco substitui somente aquele bloco; cancelar e undo/redo preservam o conteúdo. Testar depois de salvar/reabrir e de repetir undo/redo. A prévia é somente leitura.
-- Emojis fica ao lado de Código em Texto formatado. Reutiliza busca, categorias, paginação e Meus emojis do catálogo Noto da Captura. Inserir entre palavras, salvar/reabrir, desfazer/refazer, copiar/expandir em aplicativo que aceite HTML/imagens. PNG próprio em assets conserva o visual; mover os dados requer a pasta inteira. Remover uma imagem da coleção de Meus emojis não remove a cópia no atalho. Apps somente texto recebem o texto alternativo.
+- Emojis fica ao lado de Código em Texto formatado. Reutiliza busca, categorias, paginação e Meus emojis do catálogo Noto da Captura. Inserir entre palavras, salvar/reabrir, desfazer/refazer, copiar/expandir em aplicativo que aceite HTML/imagens. PNG próprio em assets conserva o visual; mover os dados requer a pasta inteira. Remover uma imagem da coleção de Meus emojis não remove a cópia no atalho. Apps somente texto recebem Unicode dos emojis do Google (incluindo tons de pele, sequências e bandeiras), sem [Imagem: Emoji: ...]. Meus emojis feitos de imagens próprias conservam descrição textual, pois não têm um caractere Unicode correspondente.
 - A mensagem inicial dos dados novos divulga o app com o link oficial releases/latest. Dados existentes não são sobrescritos. Para incluir nos seus dados anteriores, três pontos → Divulgar SlashDesk cria um rascunho novo com /slashdesk (ou comando livre numerado). Conferir conteúdo e salvar.
+
+### Refinamento: emojis em texto simples e categorias fixas
+
+- Expanda um atalho com emojis no Bloco de Notas: deve inserir os caracteres. Em apps compatíveis com HTML, o desenho Noto permanece como imagem incorporada. Código com tokens de imagem continua literal.
+- A mensagem inicial de divulgação usa `/slashdesk`. Um `/ola` inicial ainda intacto do piloto anterior é renomeado somente se seu ID, nome e conteúdo forem os padrões e `/slashdesk` estiver livre. Texto personalizado ou comando em conflito não é substituído. O menu Divulgar SlashDesk cria um rascunho independente.
+- Teste cada categoria, salvamento/reabertura, descarte e favoritos; uma categoria antiga como Desenvolvimento aparece em Outros, sem alteração no arquivo até Salvar.

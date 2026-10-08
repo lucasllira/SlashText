@@ -132,6 +132,8 @@ public partial class MainWindow : Window
     internal MainWindow(bool captureEvidence)
     {
         InitializeComponent();
+        CategoryBox.ItemsSource = ShortcutCategories.All;
+        SelectShortcutCategory("Geral");
         InitializeShortcutFormatting();
         ShortcutEditorPanel.SizeChanged += (_, _) => { if (_shortcutEditorExpanded) UpdateShortcutEditorHeight(); };
         CaptureInlineEditor.StateChanged += CaptureInlineEditor_OnStateChanged;
@@ -268,6 +270,8 @@ public partial class MainWindow : Window
             _snippetStorageAvailable = await startup.RunAsync(
                 "Atalhos",
                 async () => loaded = await _repository.LoadAsync());
+            if (_snippetStorageAvailable)
+                loaded = await ShortcutShareMessage.RenameUntouchedDefaultAsync(_repository, loaded);
             ReplaceList(loaded);
 
             startup.Run(
@@ -747,13 +751,14 @@ public partial class MainWindow : Window
                 item.Name.Contains(query, StringComparison.CurrentCultureIgnoreCase) ||
                 item.Trigger.Contains(query, StringComparison.OrdinalIgnoreCase) ||
                 item.Category.Contains(query, StringComparison.CurrentCultureIgnoreCase) ||
+                ShortcutCategories.Resolve(item.Category).Name.Contains(query, StringComparison.CurrentCultureIgnoreCase) ||
                 item.Content.Contains(query, StringComparison.CurrentCultureIgnoreCase));
         }
 
         if (!string.IsNullOrWhiteSpace(_selectedCategory))
         {
             filtered = filtered.Where(item =>
-                item.Category.Equals(_selectedCategory, StringComparison.CurrentCultureIgnoreCase));
+                ShortcutCategories.Resolve(item.Category).Name.Equals(_selectedCategory, StringComparison.OrdinalIgnoreCase));
         }
 
         if (_showShortcutFavorites) filtered = filtered.Where(item => item.IsFavorite);
@@ -776,11 +781,10 @@ public partial class MainWindow : Window
 
         CategoriesPanel.Children.Clear();
         CategoriesPanel.Children.Add(CreateCategoryButton(null, "Todos", _snippets.Count));
-        foreach (var group in _snippets
-                     .GroupBy(item => string.IsNullOrWhiteSpace(item.Category) ? "Geral" : item.Category)
-                     .OrderBy(item => item.Key, StringComparer.CurrentCultureIgnoreCase))
+        foreach (var category in ShortcutCategories.All)
         {
-            CategoriesPanel.Children.Add(CreateCategoryButton(group.Key, group.Key, group.Count()));
+            var count = _snippets.Count(item => ShortcutCategories.Resolve(item.Category).Name == category.Name);
+            CategoriesPanel.Children.Add(CreateCategoryButton(category.Name, category.Name, count));
         }
 
         SnippetListPanel.Children.Clear();
@@ -843,7 +847,7 @@ public partial class MainWindow : Window
         _shortcutDuplicateSource = null;
         NameBox.Text = snippet.Name;
         TriggerBox.Text = snippet.Trigger;
-        CategoryBox.Text = snippet.Category;
+        SelectShortcutCategory(snippet.Category);
         FormatBox.SelectedIndex = snippet.Format == SnippetFormat.Markdown ? 1 : 0;
         RichTextMarkdownConverter.Load(ContentEditor, snippet.Content, snippet.Format);
         StatusText.Text = snippet.HasLegacyIncompatibleTrigger
@@ -867,7 +871,7 @@ public partial class MainWindow : Window
         _selected = null;
         NameBox.Clear();
         TriggerBox.Text = "/";
-        CategoryBox.Text = "Geral";
+        SelectShortcutCategory("Geral");
         FormatBox.SelectedIndex = 0;
         RichTextMarkdownConverter.Load(ContentEditor, string.Empty, SnippetFormat.Plain);
         StatusText.Text = "Novo atalho";
@@ -889,14 +893,13 @@ public partial class MainWindow : Window
 
         if (_shortcutOperationInProgress) return false;
         var previous = _selected;
-        var categoryIcon = CurrentShortcutCategoryIcon;
         var format = FormatBox.SelectedIndex == 1 ? SnippetFormat.Markdown : SnippetFormat.Plain;
         var candidate = new Snippet
         {
             Id = previous?.Id ?? Guid.NewGuid(),
             Name = NameBox.Text.Trim(),
             Trigger = TriggerBox.Text.Trim(),
-            Category = string.IsNullOrWhiteSpace(CategoryBox.Text) ? "Geral" : CategoryBox.Text.Trim(),
+            Category = SelectedShortcutCategory,
             Content = RichTextMarkdownConverter.Save(ContentEditor, format),
             Format = format,
             Enabled = previous?.Enabled ?? _shortcutDuplicateSource?.Enabled ?? true,
@@ -935,12 +938,12 @@ public partial class MainWindow : Window
             }
 
             _selected = candidate;
-            var categoryIconSaved = await SaveShortcutCategoryIconAsync(candidate.Category, categoryIcon);
             _keyboardHook.UpdateSnippets(_snippets);
             RefreshNavigation();
             RefreshStatistics();
             ResetShortcutDraftBaseline();
-            StatusText.Text = categoryIconSaved ? $"Salvo em {AppPaths.SnippetsFile}" : "Atalho salvo; não foi possível salvar o ícone da categoria. Tente escolhê-lo e salvar novamente.";
+            ShortcutLegacyCategoryHint.Visibility = Visibility.Collapsed;
+            StatusText.Text = $"Salvo em {AppPaths.SnippetsFile}";
             return true;
         }
         catch (Exception exception)
@@ -1244,7 +1247,7 @@ public partial class MainWindow : Window
 
     private void EditorField_OnTextChanged(object sender, TextChangedEventArgs e)
     {
-        RefreshShortcutCategoryIcon(); RefreshShortcutDraftState();
+        RefreshShortcutDraftState();
     }
 
     private void UpdatePreview()
