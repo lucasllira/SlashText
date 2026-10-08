@@ -11,6 +11,12 @@ internal static class ModalBackdrop
     internal static bool IsOutside(FrameworkElement surface, Point point) =>
         !new Rect(0, 0, surface.ActualWidth, surface.ActualHeight).Contains(point);
 
+    internal static bool DismissAt(FrameworkElement surface, Point point, Action dismiss)
+    {
+        if (!IsOutside(surface, point)) return false;
+        dismiss(); return true;
+    }
+
     internal static void Attach(Window dialog, FrameworkElement surface, Action dismiss)
     {
         if (dialog.Owner is not { IsVisible: true, Content: FrameworkElement ownerRoot } owner ||
@@ -29,8 +35,10 @@ internal static class ModalBackdrop
         background.Children.Add(surface);
         background.PreviewMouseDown += (_, e) =>
         {
-            if (e.ChangedButton != MouseButton.Left || !IsOutside(surface, e.GetPosition(surface))) return;
-            e.Handled = true; dismiss();
+            if (e.ChangedButton == MouseButton.Left && IsOutside(surface, e.GetPosition(surface)))
+            {
+                e.Handled = true; DismissAt(surface, e.GetPosition(surface), dismiss);
+            }
         };
         dialog.Content = background;
         dialog.WindowStartupLocation = WindowStartupLocation.Manual;

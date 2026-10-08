@@ -128,6 +128,8 @@ internal static class ShortcutsWorkspaceSmoke
             Require(confirm.CancelButton.IsDefault && !confirm.AcceptButton.IsDefault, "Confirmation defaults to cancelling, never deleting");
             Require(ModalBackdrop.IsOutside(confirmationSurface, new Point(-10, 30)) && !ModalBackdrop.IsOutside(confirmationSurface, new Point(50, 50)), "Background dismissal only targets points outside the surface");
             SaveImage(confirmationSurface, output, $"shortcuts-delete-{theme}", confirmationSize, 1); confirm.Close();
+            CheckOwnedModals(theme, output);
+            checks.Add($"{theme}: real owned modal layout, default cancel, inside/outside dismissal and no snippet changes OK");
         }
         File.WriteAllLines(Path.Combine(output, "result.txt"), checks);
     }
@@ -137,6 +139,53 @@ internal static class ShortcutsWorkspaceSmoke
         var bitmap = new RenderTargetBitmap((int)(size.Width * scale), (int)(size.Height * scale), 96 * scale, 96 * scale, PixelFormats.Pbgra32);
         bitmap.Render(visual); var encoder = new PngBitmapEncoder(); encoder.Frames.Add(BitmapFrame.Create(bitmap));
         using var file = File.Create(Path.Combine(output, $"{name}-{scale * 100:0}.png")); encoder.Save(file);
+    }
+
+    private static void CheckOwnedModals(string theme, string output)
+    {
+        // Exercise the actual Window ownership/ShowDialog path, not only detached rasterized cards.
+        var before = File.ReadAllBytes(AppPaths.SnippetsFile);
+        var ownerRoot = new Grid(); ownerRoot.SetResourceReference(Grid.BackgroundProperty, "Lab.bg");
+        var owner = new Window { Width = 980, Height = 680, Content = ownerRoot, ShowInTaskbar = false, WindowStartupLocation = WindowStartupLocation.CenterScreen };
+        owner.Show(); owner.UpdateLayout();
+        try
+        {
+            var dialog = new ShortcutConfirmationWindow("Excluir atalho?", "Este atalho será removido da sua lista.", "Resposta de boas-vindas\n/ola · Geral", "Excluir atalho") { Owner = owner };
+            LabMotion.SetReduced(dialog, true); dialog.EnableBackdrop();
+            Exception? failure = null;
+            dialog.Loaded += (_, _) => dialog.Dispatcher.BeginInvoke(new Action(() =>
+            {
+                try
+                {
+                    dialog.UpdateLayout();
+                    Require(dialog.Content is Grid && Math.Abs(dialog.Width - ownerRoot.ActualWidth) < 1, "Modal backdrop covers its real owner client area");
+                    SaveImage((FrameworkElement)dialog.Content, output, $"shortcuts-delete-owned-{theme}", new Size(dialog.Width, dialog.Height), 1);
+                    Require(!ModalBackdrop.DismissAt(dialog.Surface, new Point(40, 40), dialog.Close), "Clicking inside keeps the confirmation open");
+                    dialog.CancelButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                }
+                catch (Exception exception) { failure = exception; dialog.Close(); }
+            }), DispatcherPriority.ApplicationIdle);
+            Require(dialog.ShowDialog() != true, "Default cancel never accepts deletion");
+            if (failure is not null) throw new InvalidOperationException("Owned confirmation smoke failed", failure);
+
+            var guide = new ScreenHelpWindow(ShortcutsHelpContent.Create()) { Owner = owner };
+            LabMotion.SetReduced(guide, true); guide.EnableBackdrop();
+            guide.Loaded += (_, _) => guide.Dispatcher.BeginInvoke(new Action(() =>
+            {
+                try
+                {
+                    guide.UpdateLayout();
+                    Require(guide.Content is Grid && guide.HelpSurface.ActualHeight <= ownerRoot.ActualHeight - 32, "Help fits the actual owner height");
+                    SaveImage((FrameworkElement)guide.Content, output, $"shortcuts-help-owned-{theme}", new Size(guide.Width, guide.Height), 1);
+                    Require(ModalBackdrop.DismissAt(guide.HelpSurface, new Point(-10, 30), guide.Close), "Outside dismissal closes the real help modal");
+                }
+                catch (Exception exception) { failure = exception; guide.Close(); }
+            }), DispatcherPriority.ApplicationIdle);
+            Require(guide.ShowDialog() != true, "Read-only help dismissal is not a write confirmation");
+            if (failure is not null) throw new InvalidOperationException("Owned help smoke failed", failure);
+            Require(before.SequenceEqual(File.ReadAllBytes(AppPaths.SnippetsFile)), "Dismissing help/confirmation leaves snippet storage untouched");
+        }
+        finally { owner.Close(); }
     }
 
     private static void Require(bool condition, string message)
