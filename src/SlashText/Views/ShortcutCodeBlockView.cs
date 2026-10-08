@@ -18,7 +18,7 @@ internal static class ShortcutCodeBlockView
 {
     private const string Prefix = "SlashDesk.Code:";
     private sealed record State(string Language, string Code, bool Editable);
-    private sealed class Attached { internal string? Theme; }
+    private sealed class Attached { internal string? Theme; internal Action<Border>? Edit; }
     private static readonly ConditionalWeakTable<Border, Attached> Attachments = new();
     internal static readonly RoutedEvent EditRequestedEvent = EventManager.RegisterRoutedEvent("ShortcutCodeEditRequested", RoutingStrategy.Bubble, typeof(RoutedEventHandler), typeof(Border));
 
@@ -59,16 +59,17 @@ internal static class ShortcutCodeBlockView
     {
         var state = ReadTag(block.Tag); content = state is null ? new CodeBlockContent("text", "") : new CodeBlockContent(state.Language, state.Code); return state is not null;
     }
-    internal static void AttachBlock(BlockUIContainer block)
+    internal static void AttachBlock(BlockUIContainer block, Action<Border>? edit = null)
     {
         if (GetView(block) is { } view)
         {
-            if (Attachments.TryGetValue(view, out _)) return;
+            if (Attachments.TryGetValue(view, out var live)) { live.Edit = edit; return; }
             // Undo serializes style/template objects. Restore the inner presentation and
             // live handlers from source, without touching the text undo tree.
             if (ReadTag(block.Tag) is { } restored)
             {
                 view.Child = Create(new CodeBlockContent(restored.Language, restored.Code), restored.Editable);
+                Attachments.GetValue((Border)view.Child, _ => new Attached()).Edit = edit;
                 view.BorderThickness = new Thickness(0); view.Padding = new Thickness(0); view.Background = Brushes.Transparent;
             }
             return;
@@ -77,7 +78,10 @@ internal static class ShortcutCodeBlockView
         // native text-element property restored independently, so source cannot be lost.
         // Populate inside that Grid, without replacing Child or creating extra text undo units.
         if (block.Child is Grid placeholder && ReadTag(block.Tag) is { } state)
-            placeholder.Children.Add(Create(new CodeBlockContent(state.Language, state.Code), state.Editable));
+        {
+            var restored = Create(new CodeBlockContent(state.Language, state.Code), state.Editable);
+            Attachments.GetValue(restored, _ => new Attached()).Edit = edit; placeholder.Children.Add(restored);
+        }
     }
     internal static bool TryRead(Border border, out CodeBlockContent content)
     {
@@ -100,7 +104,9 @@ internal static class ShortcutCodeBlockView
             try { Clipboard.SetText(state.Code); ((Button)Find(border, "CodeCopy")!).ToolTip = "Código copiado"; }
             catch (System.Runtime.InteropServices.ExternalException) { ((Button)Find(border, "CodeCopy")!).ToolTip = "Tente copiar novamente"; }
         };
-        ((Button)Find(border, "CodeEdit")!).Click += (_, _) => { if (state.Editable) border.RaiseEvent(new RoutedEventArgs(EditRequestedEvent, border)); };
+        ((Button)Find(border, "CodeEdit")!).Click += (_, _) => { if (!state.Editable) return;
+            var args = new RoutedEventArgs(EditRequestedEvent, border); border.RaiseEvent(args);
+            if (!args.Handled) attached.Edit?.Invoke(border); };
         void Highlight()
         {
             var color = (border.Background as SolidColorBrush)?.Color ?? Colors.White; var dark = color.R + color.G + color.B < 384;

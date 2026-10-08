@@ -60,6 +60,8 @@ public partial class MainWindow
 
     internal void ExpandShortcutForEvidence(bool expanded) => SetShortcutEditorExpanded(expanded);
     internal void InsertCodeForEvidence(CodeBlockContent content, Border? existing = null) => ApplyCodeBlock(content, existing);
+    internal void InsertEmojiForEvidence(string value) => InsertShortcutEmoji(value);
+    internal void ShareShortcutForEvidence() => CreateShareShortcut();
     internal Task<bool> FlagShortcutForEvidence(bool favorite) => SetShortcutFlagAsync(_selected!, favorite);
     internal void DuplicateShortcutForEvidence()
     {

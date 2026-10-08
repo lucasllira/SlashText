@@ -1,6 +1,7 @@
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Documents;
 using System.Windows.Threading;
 using SlashText.Models;
@@ -50,6 +51,33 @@ internal static partial class ShortcutsWorkspaceSmoke
             Block().AddHandler(ShortcutCodeBlockView.EditRequestedEvent, new RoutedEventHandler((_, args) => { editRequested = true; args.Handled = true; }));
             ((Button)ShortcutCodeBlockView.Find(Block(), "CodeEdit")!).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
             Require(editRequested, "Edit remains interactive after native redo");
+            Require(editor.IsDocumentEnabled, "Code actions accept document input");
+            Exception? editFailure = null; var editOpened = false;
+            var editTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(80) };
+            editTimer.Tick += (_, _) =>
+            {
+                var popup = Application.Current.Windows.OfType<ShortcutCodeBlockWindow>().FirstOrDefault(w => w.IsVisible);
+                if (popup is null) return;
+                editTimer.Stop(); editOpened = true;
+                try
+                {
+                    Require(popup.Title == "Editar bloco de código" && popup.CodeEditor.Text == edited, "Live edit opens the selected block");
+                    popup.CodeEditor.Text = edited + "\n// edição pelo botão"; popup.SaveButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                }
+                catch (Exception ex) { editFailure = ex; popup.Close(); }
+            };
+            // Invoke the production callback on the real button, not a replacement handler.
+            window.SelectShortcutForEvidence(other, true); window.SelectShortcutForEvidence(fixture, true);
+            window.InsertCodeForEvidence(new CodeBlockContent("javascript", edited));
+            var editButton = (Button)ShortcutCodeBlockView.Find(Block(), "CodeEdit")!;
+            var timeout = new DispatcherTimer { Interval = TimeSpan.FromSeconds(5) };
+            timeout.Tick += (_, _) => { timeout.Stop(); foreach (var popup in Application.Current.Windows.OfType<ShortcutCodeBlockWindow>().Where(w => w.IsVisible).ToArray()) popup.Close(); };
+            editTimer.Start(); timeout.Start(); editButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); editTimer.Stop(); timeout.Stop();
+            if (editFailure is not null) throw new InvalidOperationException("Real code Edit", editFailure);
+            Require(editOpened && Raw() == edited + "\n// edição pelo botão", "Production Edit saves back into the same block");
+            editor.Undo(); Require(Raw() == edited, "Undo real popup edit");
+            editor.Redo(); Require(Raw() == edited + "\n// edição pelo botão", "Redo real popup edit");
+            edited += "\n// edição pelo botão";
             var content = window.ShortcutContentForEvidence;
             ShortcutCodeBlockView.SetExpanded(Block(), false); ShortcutCodeBlockView.SetExpanded(Block(), true);
             Require(window.ShortcutContentForEvidence == content, "Collapsing a block does not edit its source");
@@ -57,7 +85,13 @@ internal static partial class ShortcutsWorkspaceSmoke
             window.ExpandShortcutForEvidence(true); owner.UpdateLayout();
             await Application.Current.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle); owner.UpdateLayout();
             Require(((FrameworkElement)window.FindName("ShortcutSidebarPanel")).Visibility == Visibility.Collapsed && Math.Abs(((FrameworkElement)window.FindName("ShortcutEditorPanel")).ActualWidth - ((FrameworkElement)window.FindName("ShortcutWorkspaceGrid")).ActualWidth) < 2, $"Expanded editor occupies actual workspace (editor={editor.ActualWidth}, panel={((FrameworkElement)window.FindName("ShortcutEditorPanel")).ActualWidth}, workspace={((FrameworkElement)window.FindName("ShortcutWorkspaceGrid")).ActualWidth})");
-            Require(window.ShortcutContentForEvidence == content, "Expansion preserves draft including code");
+            Require(window.ShortcutContentForEvidence == content && preview.Visibility == Visibility.Visible && preview.IsExpanded, "Expansion preserves draft and shows preview below editor");
+            var editorGrip = (Thumb)window.FindName("ShortcutEditorHeightGrip"); var previewGrip = (Thumb)window.FindName("ShortcutPreviewHeightGrip");
+            var oldHeight = editor.Height; var previewBorder = (Border)window.FindName("PreviewBorder"); var oldPreviewHeight = previewBorder.Height;
+            editorGrip.RaiseEvent(new DragDeltaEventArgs(0, 60)); previewGrip.RaiseEvent(new DragDeltaEventArgs(0, 48));
+            Require(editor.Height == oldHeight + 60 && previewBorder.Height == oldPreviewHeight + 48, "Both fields grow independently");
+            editorGrip.RaiseEvent(new DragDeltaEventArgs(0, -24)); previewGrip.RaiseEvent(new DragDeltaEventArgs(0, -20));
+            owner.UpdateLayout(); Require(editor.Height == oldHeight + 36 && previewBorder.Height == oldPreviewHeight + 28 && window.ShortcutContentForEvidence == content, "Resize down/up preserves rich draft");
             SaveImage(root, output, $"shortcuts-code-expanded-{theme}", new Size(root.ActualWidth, root.ActualHeight), 1);
             window.ExpandShortcutForEvidence(false); owner.UpdateLayout();
             Require(preview.IsExpanded && ((FrameworkElement)window.FindName("ShortcutSidebarPanel")).Visibility == Visibility.Visible, "Collapse restores panels and prior preview state");
@@ -85,6 +119,25 @@ internal static partial class ShortcutsWorkspaceSmoke
             Require(await window.SaveShortcutForEvidence(), "Duplicate saves");
             var reopened = await new SnippetMarkdownRepository().LoadAsync(); var copy = reopened.Single(s => s.Trigger == "/codigo_copia");
             Require(copy.Id != fixture.Id && copy.Content == saved.Content && !copy.IsFavorite && !copy.IsPinned && reopened.Single(s => s.Id == fixture.Id).Content == saved.Content, "Duplicate has independent identity and leaves original unchanged");
+            window.SelectShortcutForEvidence(copy, true);
+            editor.CaretPosition = editor.Document.ContentEnd.GetInsertionPosition(LogicalDirection.Backward); editor.Selection.Select(editor.CaretPosition, editor.CaretPosition);
+            window.InsertEmojiForEvidence("😀"); window.InsertEmojiForEvidence("❤️");
+            var withEmoji = window.ShortcutContentForEvidence;
+            Require(ShortcutEmojiAssets.Pattern().Matches(withEmoji).Count == 2 && RichTextMarkdownConverter.ToHtml(withEmoji).Contains("width:28px", StringComparison.Ordinal), "Google emojis render inline and export at emoji size");
+            editor.Undo(); editor.Redo(); Require(window.ShortcutContentForEvidence == withEmoji, "Emoji source survives native undo/redo");
+            Require(await window.SaveShortcutForEvidence(), "Emoji shortcut saves");
+            var emojiSaved = (await new SnippetMarkdownRepository().LoadAsync()).Single(s => s.Id == copy.Id);
+            window.SelectShortcutForEvidence(emojiSaved, true);
+            Require(window.ShortcutContentForEvidence == withEmoji && editor.Document.Blocks.OfType<Paragraph>().SelectMany(p => p.Inlines.OfType<InlineUIContainer>()).Count(i => i.Child is Image) == 2, "Google emoji images reopen inline");
+            var proseHtml = RichTextMarkdownConverter.ToHtml("Antes " + ShortcutEmojiAssets.Pattern().Match(withEmoji).Value + " Depois");
+            Require(proseHtml.Contains("Antes ", StringComparison.Ordinal) && proseHtml.Contains(" Depois", StringComparison.Ordinal) && proseHtml.Contains("data:image/png;base64,", StringComparison.Ordinal), "Emoji HTML preserves surrounding prose");
+            window.ExpandShortcutForEvidence(true); owner.UpdateLayout(); SaveImage(root, output, $"shortcuts-emoji-expanded-{theme}", new Size(root.ActualWidth, root.ActualHeight), 1);
+            window.ExpandShortcutForEvidence(false);
+            window.ShareShortcutForEvidence();
+            Require(window.SelectedShortcutForEvidence is null && window.ShortcutContentForEvidence == ShortcutShareMessage.Content && window.ShortcutsDraftDirtyForEvidence, "Share message creates a new draft without modifying existing shortcut");
+            Require(await window.SaveShortcutForEvidence(), "Share message saves");
+            var sharing = (await new SnippetMarkdownRepository().LoadAsync()).Single(s => s.Trigger == "/slashdesk");
+            Require(sharing.Content.Contains("https://github.com/lucasllira/SlashText/releases/latest", StringComparison.Ordinal), "Share message uses official latest release link");
             window.SetShortcutProtectedForEvidence(true); Require(!await window.FlagShortcutForEvidence(true), "Protected storage cannot modify favorite"); window.SetShortcutProtectedForEvidence(false);
             owner.Width = 980; owner.Height = 680; window.PrepareShortcutsEvidence(980, reopened.ToArray()); owner.UpdateLayout();
             SaveImage(root, output, $"shortcuts-code-narrow-{theme}", new Size(root.ActualWidth, root.ActualHeight), 1);

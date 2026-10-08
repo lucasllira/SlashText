@@ -19,6 +19,11 @@ public partial class MainWindow
     private bool _showShortcutPinned;
     private bool _shortcutEditorExpanded;
     private bool _shortcutPreviewBeforeExpansion;
+    private double _shortcutNormalEditorHeight = 200;
+    private double _shortcutNormalPreviewHeight = 130;
+    private double _shortcutExpandedEditorHeight = 280;
+    private double _shortcutExpandedPreviewHeight = 180;
+    private bool _shortcutExpandedHeightChosen;
 
     private void DisplayFavorites_OnClick(object sender, RoutedEventArgs e)
     { _showShortcutFavorites = true; _showShortcutPinned = false; _showMostUsed = false; RefreshNavigation(); }
@@ -32,9 +37,9 @@ public partial class MainWindow
         var surface = new Border { Child = panel, Width = 248, CornerRadius = new CornerRadius(9), BorderThickness = new Thickness(1) };
         surface.SetResourceReference(Border.BackgroundProperty, "Lab.panel"); surface.SetResourceReference(Border.BorderBrushProperty, "Lab.line-strong");
         var popup = new Popup { Child = surface, PlacementTarget = anchor, Placement = PlacementMode.Bottom, VerticalOffset = 6, AllowsTransparency = true, StaysOpen = false };
-        void Action(string label, string icon, Func<Task> action)
+        void Action(string label, string icon, Func<Task> action, bool requiresSelection = true)
         {
-            var button = new Button { HorizontalContentAlignment = HorizontalAlignment.Left, Padding = new Thickness(10, 9, 10, 9), IsEnabled = snippet is not null && _snippetStorageAvailable && !_shortcutOperationInProgress };
+            var button = new Button { HorizontalContentAlignment = HorizontalAlignment.Left, Padding = new Thickness(10, 9, 10, 9), IsEnabled = (!requiresSelection || snippet is not null) && _snippetStorageAvailable && !_shortcutOperationInProgress };
             button.SetResourceReference(StyleProperty, "Lab.Shortcuts.Item"); AutomationProperties.SetName(button, label);
             var content = new StackPanel { Orientation = Orientation.Horizontal };
             content.Children.Add(new LabIcon { Kind = icon, Width = 17, Height = 17, Margin = new Thickness(0, 0, 9, 0) });
@@ -44,6 +49,7 @@ public partial class MainWindow
         Action("Duplicar atalho", "Copy", () => { DuplicateShortcut(snippet!); return Task.CompletedTask; });
         Action(snippet?.IsFavorite == true ? "Remover dos favoritos" : "Adicionar aos favoritos", "Star", () => SetShortcutFlagAsync(snippet!, favorite: true));
         Action(snippet?.IsPinned == true ? "Desafixar do topo" : "Fixar no topo", "Pin", () => SetShortcutFlagAsync(snippet!, favorite: false));
+        Action("Divulgar SlashDesk", "Link", () => { CreateShareShortcut(); return Task.CompletedTask; }, requiresSelection: false);
         LabMotion.SetEntrance(surface, "Popup"); LabMotion.SetReduced(surface, LabMotion.GetReduced(this));
         surface.PreviewKeyDown += (_, args) => { if (args.Key == Key.Escape) { popup.IsOpen = false; args.Handled = true; } };
         popup.Opened += (_, _) => { LabMotion.PlayEntrance(surface); surface.MoveFocus(new TraversalRequest(FocusNavigationDirection.First)); };
@@ -101,7 +107,12 @@ public partial class MainWindow
     private void SetShortcutEditorExpanded(bool expanded)
     {
         if (_shortcutEditorExpanded == expanded) return;
-        if (expanded) _shortcutPreviewBeforeExpansion = ShortcutPreviewExpander.IsExpanded;
+        if (expanded)
+        {
+            _shortcutPreviewBeforeExpansion = ShortcutPreviewExpander.IsExpanded;
+            _shortcutNormalEditorHeight = ContentEditor.Height; _shortcutNormalPreviewHeight = PreviewBorder.Height;
+        }
+        else { _shortcutExpandedEditorHeight = ContentEditor.Height; _shortcutExpandedPreviewHeight = PreviewBorder.Height; }
         _shortcutEditorExpanded = expanded;
         ShortcutSidebarPanel.Visibility = expanded ? Visibility.Collapsed : Visibility.Visible;
         ShortcutVariablesPanel.Visibility = !expanded && _shortcutVariablesVisible ? Visibility.Visible : Visibility.Collapsed;
@@ -109,12 +120,13 @@ public partial class MainWindow
         ShortcutHero.Visibility = expanded ? Visibility.Collapsed : Visibility.Visible;
         ShortcutHeroGap.Height = new GridLength(expanded ? 0 : 24);
         ShortcutVariablesToggleButton.Visibility = expanded ? Visibility.Collapsed : Visibility.Visible;
-        ShortcutPreviewExpander.IsExpanded = !expanded && _shortcutPreviewBeforeExpansion;
-        ShortcutPreviewExpander.Visibility = expanded ? Visibility.Collapsed : Visibility.Visible;
+        ShortcutPreviewExpander.IsExpanded = expanded || _shortcutPreviewBeforeExpansion;
+        ShortcutPreviewExpander.Visibility = Visibility.Visible;
+        ContentEditor.Height = expanded ? _shortcutExpandedEditorHeight : _shortcutNormalEditorHeight;
+        PreviewBorder.Height = expanded ? _shortcutExpandedPreviewHeight : _shortcutNormalPreviewHeight;
         ShortcutExpandEditorText.Text = expanded ? "Recolher editor" : "Expandir editor";
         ShortcutExpandEditorIcon.Kind = expanded ? "Minimize2" : "Maximize2";
         UpdateResponsiveLayout(ActualWidth > 0 ? ActualWidth : Width);
-        if (!expanded) ContentEditor.Height = 200;
         LabMotion.PlayEntrance(ShortcutEditorPanel); ContentEditor.Focus();
         if (expanded) Dispatcher.BeginInvoke(new Action(() => { UpdateShortcutEditorHeight(); ShortcutEditorScroll.ScrollToTop(); }), System.Windows.Threading.DispatcherPriority.Loaded);
     }
@@ -122,20 +134,76 @@ public partial class MainWindow
     {
         var height = ShortcutEditorPanel.ActualHeight > 0 ? ShortcutEditorPanel.ActualHeight : (ActualHeight > 0 ? ActualHeight : Height) - 190;
         var toolbar = FormattingToolbar.Visibility == Visibility.Visible ? FormattingToolbar.ActualHeight : 0;
-        ContentEditor.Height = Math.Clamp(height - ShortcutEditorActions.ActualHeight - toolbar - 150, 120, 740);
+        if (!_shortcutExpandedHeightChosen)
+            ContentEditor.Height = Math.Clamp(height - ShortcutEditorActions.ActualHeight - toolbar - PreviewBorder.Height - 170, 140, 740);
+    }
+
+
+    private void ResizeShortcutField_OnDragDelta(object sender, DragDeltaEventArgs e)
+    {
+        ResizeShortcutField((Thumb)sender, e.VerticalChange); e.Handled = true;
+    }
+    private void ResizeShortcutField_OnPreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key is not (Key.Up or Key.Down or Key.Home)) return;
+        var thumb = (Thumb)sender;
+        if (e.Key == Key.Home)
+        {
+            if (Equals(thumb.Tag, "Editor")) ContentEditor.Height = _shortcutEditorExpanded ? 280 : 200;
+            else PreviewBorder.Height = _shortcutEditorExpanded ? 180 : 130;
+            if (_shortcutEditorExpanded) _shortcutExpandedHeightChosen = true;
+        }
+        else ResizeShortcutField(thumb, e.Key == Key.Up ? -24 : 24);
+        e.Handled = true;
+    }
+    private void ResizeShortcutField(Thumb thumb, double delta)
+    {
+        var field = Equals(thumb.Tag, "Editor") ? (FrameworkElement)ContentEditor : PreviewBorder;
+        field.Height = Math.Clamp(field.Height + delta, Equals(thumb.Tag, "Editor") ? 120 : 96, 1200);
+        if (_shortcutEditorExpanded) _shortcutExpandedHeightChosen = true;
+    }
+
+    private void ShortcutEmoji_OnClick(object sender, RoutedEventArgs e)
+    {
+        var start = ContentEditor.Selection.Start; var end = ContentEditor.Selection.End;
+        var value = CaptureEmojiPicker.Show(Window.GetWindow(ContentEditor) ?? this);
+        if (value is null) return;
+        ContentEditor.Focus(); ContentEditor.Selection.Select(start, end);
+        try { InsertShortcutEmoji(value); }
+        catch (Exception error) when (error is System.IO.IOException or ArgumentException or InvalidOperationException)
+        { StatusText.Text = "Não foi possível inserir o emoji. Tente novamente."; AppDiagnosticLog.Write("shortcuts.emoji.failed", ("exceptionType", error.GetType().Name)); }
+    }
+    private void InsertShortcutEmoji(string value)
+    {
+        var token = ShortcutEmojiAssets.Save(value);
+        ContentEditor.BeginChange();
+        try
+        {
+            ContentEditor.Selection.Text = "";
+            var inline = ShortcutEmojiAssets.CreateInline(token, ContentEditor.CaretPosition)!;
+            ContentEditor.CaretPosition = inline.ElementEnd.GetInsertionPosition(LogicalDirection.Forward);
+        }
+        finally { ContentEditor.EndChange(); }
+        RefreshShortcutDraftState(); UpdatePreview();
+    }
+    private void CreateShareShortcut()
+    {
+        if (!_snippetStorageAvailable || !CanDiscardShortcutDraft()) return;
+        BeginNewSnippet(discardAlreadyConfirmed: true);
+        var trigger = "/slashdesk"; var suffix = 2;
+        while (TriggerRule.ConflictsWith(trigger, _snippets.Select(item => item.Trigger))) trigger = "/slashdesk" + suffix++;
+        NameBox.Text = "Divulgar SlashDesk"; TriggerBox.Text = trigger; CategoryBox.Text = "Geral";
+        FormatBox.SelectedIndex = 0; RichTextMarkdownConverter.Load(ContentEditor, ShortcutShareMessage.Content, SnippetFormat.Plain);
+        RefreshShortcutDraftState(); UpdatePreview();
     }
 
     private void InsertCodeBlock_OnClick(object sender, RoutedEventArgs e) => OpenCodeBlock(null);
-    private void EditCodeBlock_OnRequested(object sender, RoutedEventArgs e)
-    {
-        if (e.OriginalSource is Border view && ShortcutCodeBlockView.TryRead(view, out _)) { e.Handled = true; OpenCodeBlock(view); }
-    }
     private void OpenCodeBlock(Border? view)
     {
         if (view is null && ContentEditor.CaretPosition.Paragraph is { Parent: not FlowDocument })
         { StatusText.Text = "Posicione o cursor fora de listas e tabelas para inserir um bloco de código."; return; }
         var start = ContentEditor.Selection.Start; var end = ContentEditor.Selection.End;
-        var dialog = new ShortcutCodeBlockWindow(view is not null && ShortcutCodeBlockView.TryRead(view, out var previous) ? previous : null) { Owner = this };
+        var dialog = new ShortcutCodeBlockWindow(view is not null && ShortcutCodeBlockView.TryRead(view, out var previous) ? previous : null) { Owner = Window.GetWindow(ContentEditor) ?? this };
         LabMotion.SetReduced(dialog, LabMotion.GetReduced(this)); dialog.EnableBackdrop();
         if (!ShowCaptureDialog(dialog) || dialog.Result is null) return;
         ContentEditor.Focus(); ContentEditor.Selection.Select(start, end);

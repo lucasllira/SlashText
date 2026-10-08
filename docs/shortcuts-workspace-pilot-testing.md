@@ -71,7 +71,7 @@ A issue permanece aberta até aprovação visual e funcional do piloto.
 
 ## Complementos de Atalhos — expandir, duplicar, favoritos/fixados e código
 
-- **Expandir editor:** editar um rascunho, expandir, redimensionar a janela e recolher. Confirmar que conteúdo, formatação e estado de rascunho foram mantidos e que lista/variáveis/prévia voltaram ao estado anterior. Salvar continua acessível.
+- **Expandir editor:** editar um rascunho, expandir, redimensionar a janela e recolher. Confirmar que conteúdo, formatação e estado de rascunho foram mantidos e que lista/variáveis voltaram ao estado anterior. A prévia fica abaixo durante a expansão. Salvar continua acessível.
 - **Duplicar:** abrir Opções do atalho (três pontos) ou botão direito na lista, escolher Duplicar, alterar nome/comando e salvar. Conferir original intacto, ID distinto, comando sem conflito, conteúdo rico/imagens/código preservados. Duplicação não grava até Salvar.
 - **Favoritos/fixados:** marcar/desmarcar pelo menu. Favoritos e Fixados filtram separadamente; fixados aparecem primeiro entre os resultados da busca/categoria. Fechar/reabrir e importar/exportar snippets.md deve conservar as preferências. Alterar uma preferência com um rascunho em edição não salva nem descarta esse rascunho.
 - **Código:** selecionar Texto formatado, posicionar o cursor fora de listas/tabelas, clicar em Código junto a Link/Imagem/Tabela. Escolher linguagem, colar código e usar Salvar bloco. O bloco aparece no conteúdo e na prévia; o lápis abre a edição, recolher não altera o conteúdo, Copiar copia só o código. Salvar o atalho grava tudo.
@@ -79,3 +79,10 @@ A issue permanece aberta até aprovação visual e funcional do piloto.
 - Usar código com `_`, `*`, `<tags>`, aspas, tabs/espaços, linhas vazias, crases e `{{nome}}`/`{{tab}}`. Salvar/reabrir, copiar e expandir devem preservar esses caracteres; somente as variáveis fora do código são resolvidas.
 - O realce de sintaxe não executa nem reformata o código. O app de destino pode ignorar a aparência HTML, mas deve receber o código literal no formato de texto simples.
 - AvalonEdit 6.3.1.120 (MIT) é incorporado ao executável; licença em Assets/AvalonEdit/LICENSE.txt. Não há download de recursos em tempo de uso.
+
+## Revisão — prévia expandida, alturas, editar código, emojis e divulgação
+
+- Expandir editor mostra a prévia abaixo. Arrastar a alça inferior de conteúdo/prévia aumenta ou diminui cada campo; com foco na alça, ↑/↓ ajustam e Home restaura. Ações e Salvar ficam fixos; rolagem mantém o conteúdo longo acessível. As alturas são mantidas na sessão e cada modo tem sua altura.
+- Clicar fisicamente no lápis de um bloco no conteúdo deve abrir Editar bloco de código com a linguagem/fonte correta. Alterar e Salvar bloco substitui somente aquele bloco; cancelar e undo/redo preservam o conteúdo. Testar depois de salvar/reabrir e de repetir undo/redo. A prévia é somente leitura.
+- Emojis fica ao lado de Código em Texto formatado. Reutiliza busca, categorias, paginação e Meus emojis do catálogo Noto da Captura. Inserir entre palavras, salvar/reabrir, desfazer/refazer, copiar/expandir em aplicativo que aceite HTML/imagens. PNG próprio em assets conserva o visual; mover os dados requer a pasta inteira. Remover uma imagem da coleção de Meus emojis não remove a cópia no atalho. Apps somente texto recebem o texto alternativo.
+- A mensagem inicial dos dados novos divulga o app com o link oficial releases/latest. Dados existentes não são sobrescritos. Para incluir nos seus dados anteriores, três pontos → Divulgar SlashDesk cria um rascunho novo com /slashdesk (ou comando livre numerado). Conferir conteúdo e salvar.

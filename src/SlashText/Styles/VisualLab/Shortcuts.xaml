@@ -1,6 +1,20 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                     xmlns:lab="clr-namespace:SlashText.Design">
+    <Style x:Key="Lab.Shortcuts.HeightGrip" TargetType="Thumb">
+        <Setter Property="Height" Value="16"/><Setter Property="Cursor" Value="SizeNS"/><Setter Property="Focusable" Value="True"/>
+        <Setter Property="ToolTip" Value="Arraste para ajustar a altura. ↑/↓ ajustam; Home restaura."/>
+        <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Thumb">
+            <Border x:Name="GripSurface" Background="Transparent" CornerRadius="4">
+                <Border x:Name="Grip" Width="38" Height="3" CornerRadius="2" Background="{DynamicResource Lab.line-strong}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Border>
+            <ControlTemplate.Triggers>
+                <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Grip" Property="Background" Value="{DynamicResource Lab.accent}"/></Trigger>
+                <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="GripSurface" Property="Background" Value="{DynamicResource Lab.tint}"/><Setter TargetName="Grip" Property="Background" Value="{DynamicResource Lab.accent}"/></Trigger>
+                <Trigger Property="IsDragging" Value="True"><Setter TargetName="Grip" Property="Background" Value="{DynamicResource Lab.accent}"/></Trigger>
+            </ControlTemplate.Triggers>
+        </ControlTemplate></Setter.Value></Setter>
+    </Style>
     <!-- Issue #64: scoped styles, same tokens/motion as the approved capture pilot. -->
     <Style x:Key="Lab.Shortcuts.Label" TargetType="TextBlock" BasedOn="{StaticResource Lab.Metadata}">
         <Setter Property="FontSize" Value="14"/>

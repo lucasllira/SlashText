@@ -133,7 +133,6 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         InitializeShortcutFormatting();
-        ContentEditor.AddHandler(ShortcutCodeBlockView.EditRequestedEvent, new RoutedEventHandler(EditCodeBlock_OnRequested));
         ShortcutEditorPanel.SizeChanged += (_, _) => { if (_shortcutEditorExpanded) UpdateShortcutEditorHeight(); };
         CaptureInlineEditor.StateChanged += CaptureInlineEditor_OnStateChanged;
         CaptureEditorContext.Attach(CaptureInlineEditor);
@@ -1233,8 +1232,11 @@ public partial class MainWindow : Window
     private void ContentEditor_OnTextChanged(object sender, TextChangedEventArgs e)
     {
         if (ContentEditor is not null)
+        {
             foreach (var block in ContentEditor.Document.Blocks.OfType<BlockUIContainer>())
-                ShortcutCodeBlockView.AttachBlock(block);
+                ShortcutCodeBlockView.AttachBlock(block, view => OpenCodeBlock(view));
+            ShortcutEmojiAssets.RestoreDocument(ContentEditor.Document);
+        }
         RefreshShortcutDraftState();
         RefreshShortcutFormatting();
         UpdatePreview();
