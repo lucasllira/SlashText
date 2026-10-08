@@ -259,9 +259,13 @@ internal static class ShortcutsWorkspaceSmoke
                 && window.ShortcutContentForEvidence == saved.Content, "Highlight and all rich properties survive save/reopen");
             editor.Selection.Text = ""; ChooseFont("Georgia");
             Require(fonts.SelectedItem is ComboBoxItem { Tag: "Georgia" }, "Empty editor keeps the font chosen before typing");
-            TextCompositionManager.StartComposition(new TextComposition(InputManager.Current, editor, "Texto novo"));
+            editor.RaiseEvent(new TextCompositionEventArgs(Keyboard.PrimaryDevice,
+                new TextComposition(InputManager.Current, editor, "Texto novo"))
+                { RoutedEvent = TextCompositionManager.TextInputEvent });
+            await Application.Current.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
             SelectText();
-            Require(editor.Selection.Text == "Texto novo", "Native text composition inserts text after choosing an empty-editor font");
+            Require(editor.Selection.Text.TrimEnd('\r', '\n') == "Texto novo",
+                "WPF TextInput inserts text after choosing an empty-editor font: " + editor.Selection.Text.Replace("\r", "<CR>").Replace("\n", "<LF>"));
             Require(editor.Selection.GetPropertyValue(TextElement.FontFamilyProperty) is FontFamily typed && typed.Source == "Georgia", "Font chosen before typing formats newly entered text");
             owner.UpdateLayout(); SaveImage(root, output, $"shortcuts-typography-{theme}", new Size(root.ActualWidth, root.ActualHeight), 1);
         }
