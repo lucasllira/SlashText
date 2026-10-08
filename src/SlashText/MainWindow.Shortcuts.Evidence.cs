@@ -46,6 +46,12 @@ public partial class MainWindow
     internal void SetVariablesVisibleForEvidence(bool visible) => SetShortcutVariablesVisible(visible);
     internal void SetShortcutProtectedForEvidence(bool value) { _snippetStorageAvailable = !value; RefreshShortcutDraftState(); }
     internal string ShortcutPreviewForEvidence => new TextRange(PreviewDocument.ContentStart, PreviewDocument.ContentEnd).Text;
+    internal void SetCategoryIconForEvidence(string kind) => SetShortcutCategoryIcon(kind);
+    internal string CategoryIconForEvidence => CurrentShortcutCategoryIcon;
+    internal async Task ReloadCategoryIconsForEvidence()
+    {
+        _settings = await _settingsStore.LoadAsync(); ResetShortcutDraftBaseline(); RefreshNavigation();
+    }
 
     internal void DisposeShortcutsEvidence()
     {

@@ -132,6 +132,7 @@ public partial class MainWindow : Window
     internal MainWindow(bool captureEvidence)
     {
         InitializeComponent();
+        InitializeShortcutFormatting();
         CaptureInlineEditor.StateChanged += CaptureInlineEditor_OnStateChanged;
         CaptureEditorContext.Attach(CaptureInlineEditor);
         CaptureInlineEditor.SaveCopyRequested += (_, _) => SaveCapturePreview_OnClick(this, new RoutedEventArgs());
@@ -737,6 +738,7 @@ public partial class MainWindow : Window
 
         var query = SearchBox.Text.Trim();
         if (ShortcutSearchHint is not null) ShortcutSearchHint.Visibility = query.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
+        if (ShortcutSearchClearButton is not null) ShortcutSearchClearButton.Visibility = SearchBox.Text.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
         IEnumerable<Snippet> filtered = _snippets;
         if (!string.IsNullOrWhiteSpace(query))
         {
@@ -880,6 +882,7 @@ public partial class MainWindow : Window
 
         if (_shortcutOperationInProgress) return false;
         var previous = _selected;
+        var categoryIcon = CurrentShortcutCategoryIcon;
         var format = FormatBox.SelectedIndex == 1 ? SnippetFormat.Markdown : SnippetFormat.Plain;
         var candidate = new Snippet
         {
@@ -924,11 +927,12 @@ public partial class MainWindow : Window
             }
 
             _selected = candidate;
+            var categoryIconSaved = await SaveShortcutCategoryIconAsync(candidate.Category, categoryIcon);
             _keyboardHook.UpdateSnippets(_snippets);
             RefreshNavigation();
             RefreshStatistics();
             ResetShortcutDraftBaseline();
-            StatusText.Text = $"Salvo em {AppPaths.SnippetsFile}";
+            StatusText.Text = categoryIconSaved ? $"Salvo em {AppPaths.SnippetsFile}" : "Atalho salvo; não foi possível salvar o ícone da categoria. Tente escolhê-lo e salvar novamente.";
             return true;
         }
         catch (Exception exception)
@@ -960,11 +964,10 @@ public partial class MainWindow : Window
             return;
         }
 
-        if (MessageBox.Show(
-                $"Excluir o atalho {_selected.Trigger}?",
-                "SlashDesk",
-                MessageBoxButton.YesNo,
-                MessageBoxImage.Question) != MessageBoxResult.Yes)
+        var confirmation = new ShortcutConfirmationWindow("Excluir atalho?", "Este atalho será removido da sua lista.",
+            $"{_selected.Name}\n{_selected.Trigger} · {_selected.Category}", "Excluir atalho") { Owner = this };
+        LabMotion.SetReduced(confirmation, LabMotion.GetReduced(this)); confirmation.EnableBackdrop();
+        if (!ShowCaptureDialog(confirmation))
         {
             return;
         }
@@ -1020,7 +1023,7 @@ public partial class MainWindow : Window
 
     private void FontFamilyBox_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (ContentEditor is null ||
+        if (_syncShortcutFormatting || ContentEditor is null ||
             FontFamilyBox?.SelectedItem is not ComboBoxItem { Tag: string font })
         {
             return;
@@ -1034,7 +1037,7 @@ public partial class MainWindow : Window
 
     private void FontSizeBox_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (ContentEditor is null ||
+        if (_syncShortcutFormatting || ContentEditor is null ||
             FontSizeBox?.SelectedItem is not ComboBoxItem { Tag: string sizeText } ||
             !double.TryParse(
                 sizeText,
@@ -1260,10 +1263,14 @@ public partial class MainWindow : Window
     private void ContentEditor_OnTextChanged(object sender, TextChangedEventArgs e)
     {
         RefreshShortcutDraftState();
+        RefreshShortcutFormatting();
         UpdatePreview();
     }
 
-    private void EditorField_OnTextChanged(object sender, TextChangedEventArgs e) => RefreshShortcutDraftState();
+    private void EditorField_OnTextChanged(object sender, TextChangedEventArgs e)
+    {
+        RefreshShortcutCategoryIcon(); RefreshShortcutDraftState();
+    }
 
     private void UpdatePreview()
     {
@@ -2578,6 +2585,7 @@ public partial class MainWindow : Window
         var guide = new ScreenHelpWindow(CaptureHelpContent.Create(_settings.Capture)) { Owner = this };
         LabMotion.SetReduced(guide, LabMotion.GetReduced(this));
         if (sender is Button button && button != CaptureHelpButton) guide.OpenTopic("zoom");
+        guide.EnableBackdrop();
         ShowCaptureDialog(guide);
         if (guide.RequestedTarget is not { } name) return;
         if (FindName(name) is not FrameworkElement target) return;

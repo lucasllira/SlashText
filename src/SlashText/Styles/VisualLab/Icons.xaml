@@ -42,7 +42,7 @@
 <Geometry x:Key="Lab.Icon.ScrollText">M15 12h-5 M15 8h-5 M19 17V5a2 2 0 0 0-2-2H4 M8 21h12a2 2 0 0 0 2-2v-1a1 1 0 0 0-1-1H11a1 1 0 0 0-1 1v1a2 2 0 1 1-4 0V5a2 2 0 1 0-4 0v2a1 1 0 0 0 1 1h3</Geometry>
 <Geometry x:Key="Lab.Icon.Search">m21 21-4.34-4.34 M3.0,11.0 A8.0,8.0 0 1 0 19.0,11.0 A8.0,8.0 0 1 0 3.0,11.0</Geometry>
 <Geometry x:Key="Lab.Icon.Settings">M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915 M9.0,12.0 A3.0,3.0 0 1 0 15.0,12.0 A3.0,3.0 0 1 0 9.0,12.0</Geometry>
-<Geometry x:Key="Lab.Icon.ShieldCheck">M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z m9 12 2 2 4-4</Geometry>
+<Geometry x:Key="Lab.Icon.ShieldCheck">M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z M9 12l2 2 4-4</Geometry>
 <Geometry x:Key="Lab.Icon.SlidersHorizontal">M10 5H3 M12 19H3 M14 3v4 M16 17v4 M21 12h-9 M21 19h-5 M21 5h-7 M8 10v4 M8 12H3</Geometry>
 <Geometry x:Key="Lab.Icon.Smile">M15 10V9 M16.472 15a6 6 0 01-8.943 0 M9 10V9 M2.0,12.0 A10.0,10.0 0 1 0 22.0,12.0 A10.0,10.0 0 1 0 2.0,12.0</Geometry>
 <Geometry x:Key="Lab.Icon.Square">M5.0,3.0 H19.0 Q21.0,3.0 21.0,5.0 V19.0 Q21.0,21.0 19.0,21.0 H5.0 Q3.0,21.0 3.0,19.0 V5.0 Q3.0,3.0 5.0,3.0 Z</Geometry>
@@ -63,4 +63,21 @@
 <!-- CircleHelp: local vector with the same 24px viewport as the icon family. -->
 <Geometry x:Key="Lab.Icon.CircleHelp">M2,12 A10,10 0 1 0 22,12 A10,10 0 1 0 2,12 M9.1,9 A3,3 0 0 1 14.9,10 C14.9,12 12,12 12,14 M12,17 L12.01,17</Geometry>
 <Geometry x:Key="Lab.Icon.Eye">M2,12 C6,4 18,4 22,12 C18,20 6,20 2,12 M9,12 A3,3 0 1 0 15,12 A3,3 0 1 0 9,12</Geometry>
+<!-- Local line icons share the same 24px viewport and stroke as the foundation. -->
+<Geometry x:Key="Lab.Icon.EyeClosed">M3 8c3 8 15 8 18 0 M5 12l-2 3 M9 15l-1 4 M15 15l1 4 M19 12l2 3</Geometry>
+<Geometry x:Key="Lab.Icon.Briefcase">M3 7h18v13H3z M8 7V4h8v3 M3 12c6 3 12 3 18 0 M10 12h4v4h-4z</Geometry>
+<Geometry x:Key="Lab.Icon.Mail">M3 5h18v14H3z M3 6l9 7 9-7</Geometry>
+<Geometry x:Key="Lab.Icon.BookOpen">M12 6c-3-2-6-2-9-1v14c3-1 6-1 9 1 3-2 6-2 9-1V5c-3-1-6-1-9 1z M12 6v14</Geometry>
+<Geometry x:Key="Lab.Icon.Star">M12 3l3 6 7 1-5 5 1 7-6-3-6 3 1-7-5-5 7-1z</Geometry>
+<Geometry x:Key="Lab.Icon.CodeXml">M7 6l-5 6 5 6 M17 6l5 6-5 6 M14 3l-4 18</Geometry>
+<Geometry x:Key="Lab.Icon.Bold">M6 4h7a4 4 0 0 1 0 8H6z M6 12h8a4 4 0 0 1 0 8H6z</Geometry>
+<Geometry x:Key="Lab.Icon.Italic">M19 4H9 M15 4 9 20 M15 20H5</Geometry>
+<Geometry x:Key="Lab.Icon.Underline">M6 3v8a6 6 0 0 0 12 0V3 M4 21h16</Geometry>
+<Geometry x:Key="Lab.Icon.AlignLeft">M3 5h18 M3 10h12 M3 15h18 M3 20h12</Geometry>
+<Geometry x:Key="Lab.Icon.AlignCenter">M3 5h18 M6 10h12 M3 15h18 M6 20h12</Geometry>
+<Geometry x:Key="Lab.Icon.AlignRight">M3 5h18 M9 10h12 M3 15h18 M9 20h12</Geometry>
+<Geometry x:Key="Lab.Icon.AlignJustify">M3 5h18 M3 10h18 M3 15h18 M3 20h18</Geometry>
+<Geometry x:Key="Lab.Icon.List">M8 6h13 M8 12h13 M8 18h13 M3 6h.01 M3 12h.01 M3 18h.01</Geometry>
+<Geometry x:Key="Lab.Icon.ListOrdered">M9 6h12 M9 12h12 M9 18h12 M3 3h1v5 M3 8h2 M2 12c0-3 4-3 4 0l-4 5h4 M2 20h4</Geometry>
+<Geometry x:Key="Lab.Icon.Link">M10 13a4 4 0 0 0 6 0l4-4a4 4 0 0 0-6-6l-2 2 M14 11a4 4 0 0 0-6 0l-4 4a4 4 0 0 0 6 6l2-2</Geometry>
 </ResourceDictionary>

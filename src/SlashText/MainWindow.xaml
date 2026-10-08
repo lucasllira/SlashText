@@ -205,7 +205,9 @@
                                         <TextBox x:Name="SearchBox" Style="{StaticResource Lab.Field}" Padding="32,9,28,9" TextChanged="SearchBox_OnTextChanged" ToolTip="Buscar por nome, conteúdo, /atalho ou categoria" AutomationProperties.Name="Buscar atalhos"/>
                                         <lab:LabIcon Kind="Search" Width="16" Height="16" Margin="11,0,0,0" HorizontalAlignment="Left" IsHitTestVisible="False" Foreground="{DynamicResource Lab.muted}"/>
                                         <TextBlock x:Name="ShortcutSearchHint" Text="Buscar atalhos" Margin="33,0,0,0" FontSize="12" Foreground="{DynamicResource Lab.muted}" VerticalAlignment="Center" IsHitTestVisible="False"/>
-                                        <Button Style="{StaticResource Lab.Shortcuts.Tool}" Content="×" Padding="3" MinWidth="22" MinHeight="22" HorizontalAlignment="Right" Margin="0,0,3,0" Click="ClearShortcutSearch_OnClick" ToolTip="Limpar busca" AutomationProperties.Name="Limpar busca"/>
+                                        <Button x:Name="ShortcutSearchClearButton" Style="{StaticResource Lab.Shortcuts.Ghost}" Width="28" Height="28" Visibility="Collapsed" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,5,0" Click="ClearShortcutSearch_OnClick" ToolTip="Limpar busca" AutomationProperties.Name="Limpar busca">
+                                            <lab:LabIcon Kind="X" Width="14" Height="14"/>
+                                        </Button>
                                     </Grid>
                                     <StackPanel Grid.Row="2">
                                         <TextBlock Text="CATEGORIAS" Style="{StaticResource SidebarSectionTitle}" Foreground="{DynamicResource Lab.muted}" Margin="0,0,0,8"/>
@@ -245,7 +247,14 @@
                                     <Grid Margin="0,0,0,14">
                                         <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="16"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
                                         <StackPanel><TextBlock Text="Comando" Style="{StaticResource Lab.Shortcuts.Label}"/><TextBox x:Name="TriggerBox" Style="{StaticResource Lab.Field}" TextChanged="EditorField_OnTextChanged" AutomationProperties.Name="Comando do atalho"/></StackPanel>
-                                        <StackPanel Grid.Column="2"><TextBlock Text="Categoria" Style="{StaticResource Lab.Shortcuts.Label}"/><TextBox x:Name="CategoryBox" Style="{StaticResource Lab.Field}" TextChanged="EditorField_OnTextChanged" AutomationProperties.Name="Categoria do atalho"/></StackPanel>
+                                        <StackPanel Grid.Column="2"><TextBlock Text="Categoria" Style="{StaticResource Lab.Shortcuts.Label}"/>
+                                            <Grid>
+                                                <TextBox x:Name="CategoryBox" Style="{StaticResource Lab.Field}" Padding="11,9,46,9" TextChanged="EditorField_OnTextChanged" AutomationProperties.Name="Categoria do atalho"/>
+                                                <Button x:Name="ShortcutCategoryIconButton" Style="{StaticResource Lab.Shortcuts.Ghost}" Width="34" Height="30" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,5,0" Click="ChooseShortcutCategoryIcon_OnClick" ToolTip="Escolher ícone da categoria; use Salvar para aplicar" AutomationProperties.Name="Escolher ícone da categoria">
+                                                    <lab:LabIcon x:Name="ShortcutCategoryIcon" Kind="FolderOpen" Width="18" Height="18"/>
+                                                </Button>
+                                            </Grid>
+                                        </StackPanel>
                                     </Grid>
                                     <StackPanel Margin="0,0,0,14">
                                         <TextBlock Text="Formato" Style="{StaticResource Lab.Shortcuts.Label}"/>
@@ -253,105 +262,71 @@
                                             <ComboBoxItem Content="Texto simples"/><ComboBoxItem Content="Texto formatado"/>
                                         </ComboBox>
                                     </StackPanel>
-                                <StackPanel x:Name="FormattingToolbar"  Visibility="Collapsed">
-                                    <WrapPanel>
-                                        <TextBlock Text="Texto" VerticalAlignment="Center" Width="76"
-                                                   Foreground="{DynamicResource MutedBrush}"/>
-                                        <ComboBox Style="{StaticResource Lab.Combo}" x:Name="FontFamilyBox"
-                                              Width="132"
-                                              MinHeight="34"
-                                              Margin="0,0,6,6"
-                                              ToolTip="Fonte"
-                                              SelectedIndex="0"
-                                              SelectionChanged="FontFamilyBox_OnSelectionChanged">
-                                        <ComboBoxItem Content="Segoe UI" Tag="Segoe UI"/>
-                                        <ComboBoxItem Content="Arial" Tag="Arial"/>
-                                        <ComboBoxItem Content="Calibri" Tag="Calibri"/>
-                                        <ComboBoxItem Content="Georgia" Tag="Georgia"/>
-                                        <ComboBoxItem Content="Consolas" Tag="Consolas"/>
-                                        </ComboBox>
-                                        <ComboBox Style="{StaticResource Lab.Combo}" x:Name="FontSizeBox"
-                                              Width="68"
-                                              MinHeight="34"
-                                              Margin="0,0,6,6"
-                                              ToolTip="Tamanho da fonte"
-                                              SelectedIndex="2"
-                                              SelectionChanged="FontSizeBox_OnSelectionChanged">
-                                        <ComboBoxItem Content="9" Tag="12"/>
-                                        <ComboBoxItem Content="10" Tag="13.333"/>
-                                        <ComboBoxItem Content="11" Tag="14.667"/>
-                                        <ComboBoxItem Content="12" Tag="16"/>
-                                        <ComboBoxItem Content="14" Tag="18.667"/>
-                                        <ComboBoxItem Content="16" Tag="21.333"/>
-                                        <ComboBoxItem Content="18" Tag="24"/>
-                                        <ComboBoxItem Content="24" Tag="32"/>
-                                        </ComboBox>
-                                        <Button Content="B" FontWeight="Bold"
-                                            Style="{StaticResource Lab.Shortcuts.Tool}"
-                                            ToolTip="Negrito" Click="Bold_OnClick"/>
-                                    <Button Content="I" FontStyle="Italic"
-                                            Style="{StaticResource Lab.Shortcuts.Tool}"
-                                            ToolTip="Itálico" Click="Italic_OnClick"/>
-                                    <Button Content="U"
-                                            Style="{StaticResource Lab.Shortcuts.Tool}"
-                                            ToolTip="Sublinhado" Click="Underline_OnClick"/>
-                                    <Button Content="Cor"
-                                            Style="{StaticResource Lab.Shortcuts.Tool}"
-                                            ToolTip="Cor do texto" Click="Color_OnClick"/>
-                                        <Button Content="Marca-texto"
-                                            Style="{StaticResource Lab.Shortcuts.Tool}"
-                                            ToolTip="Cor de destaque do texto"
-                                            Click="Highlight_OnClick"/>
-                                    </WrapPanel>
-                                    <WrapPanel>
-                                        <TextBlock Text="Inserir" VerticalAlignment="Center" Width="76"
-                                                   Foreground="{DynamicResource MutedBrush}"/>
-                                        <Button Content="Link"
-                                            Style="{StaticResource Lab.Shortcuts.Tool}"
-                                            ToolTip="Inserir hiperlink" Click="Link_OnClick"/>
-                                    <Button Content="Imagem"
-                                            Style="{StaticResource Lab.Shortcuts.Tool}"
-                                            ToolTip="Adicionar imagem ao atalho" Click="Image_OnClick"/>
-                                    <Button Content="• Lista"
-                                            Style="{StaticResource Lab.Shortcuts.Tool}"
-                                            ToolTip="Lista com marcadores"
-                                            Click="Bullets_OnClick"/>
-                                        <Button Content="1. Lista"
-                                            Style="{StaticResource Lab.Shortcuts.Tool}"
-                                            ToolTip="Lista numerada"
-                                            Click="Numbering_OnClick"/>
-                                        <Button Content="Tabela"
-                                            Style="{StaticResource Lab.Shortcuts.Tool}"
-                                            ToolTip="Inserir tabela"
-                                            Click="Table_OnClick"/>
-                                    </WrapPanel>
-                                    <WrapPanel>
-                                        <TextBlock Text="Parágrafo" VerticalAlignment="Center" Width="76"
-                                                   Foreground="{DynamicResource MutedBrush}"/>
-                                        <Button Content="≡ Esq."
-                                            Style="{StaticResource Lab.Shortcuts.Tool}"
-                                            ToolTip="Alinhar à esquerda"
-                                            Click="AlignLeft_OnClick"/>
-                                    <Button Content="≡ Centro"
-                                            Style="{StaticResource Lab.Shortcuts.Tool}"
-                                            ToolTip="Centralizar"
-                                            Click="AlignCenter_OnClick"/>
-                                    <Button Content="≡ Dir."
-                                            Style="{StaticResource Lab.Shortcuts.Tool}"
-                                            ToolTip="Alinhar à direita"
-                                            Click="AlignRight_OnClick"/>
-                                    </WrapPanel>
-                                </StackPanel>
-
-
-                                    <TextBlock Text="Conteúdo" Style="{StaticResource Lab.Shortcuts.Label}" Margin="0,14,0,7"/>
-                                    <Border BorderBrush="{DynamicResource Lab.line}" BorderThickness="1" CornerRadius="5" Background="{DynamicResource Lab.input}">
-                                        <RichTextBox x:Name="ContentEditor" Height="200" Background="Transparent" Foreground="{DynamicResource Lab.text}" CaretBrush="{DynamicResource Lab.text}" SelectionBrush="{DynamicResource Lab.accent}" SelectionOpacity="0.25" BorderThickness="0" TextChanged="ContentEditor_OnTextChanged" PreviewKeyDown="ShortcutContent_OnPreviewKeyDown" AcceptsTab="True" Padding="11,9" VerticalScrollBarVisibility="Auto" FontFamily="Segoe UI" FontSize="14" AutomationProperties.Name="Conteúdo do atalho">
+                                    <TextBlock Text="Conteúdo" Style="{StaticResource Lab.Shortcuts.Label}" Margin="0,2,0,7"/>
+                                    <Border BorderBrush="{DynamicResource Lab.line}" BorderThickness="1" CornerRadius="7" Background="{DynamicResource Lab.input}">
+                                        <StackPanel>
+                                            <StackPanel x:Name="FormattingToolbar" Visibility="Collapsed" Background="{DynamicResource Lab.raised}">
+                                                <StackPanel Margin="12">
+                                                    <DockPanel>
+                                                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                                                            <Button x:Name="ShortcutUndoButton" Style="{StaticResource Lab.Shortcuts.RibbonTool}" ToolTip="Desfazer (Ctrl+Z)" AutomationProperties.Name="Desfazer (Ctrl+Z)" Click="ShortcutUndo_OnClick"><lab:LabIcon Kind="Undo2" Width="18" Height="18"/></Button>
+                                                            <Button x:Name="ShortcutRedoButton" Style="{StaticResource Lab.Shortcuts.RibbonTool}" ToolTip="Refazer (Ctrl+Y)" AutomationProperties.Name="Refazer (Ctrl+Y)" Click="ShortcutRedo_OnClick"><lab:LabIcon Kind="Redo2" Width="18" Height="18"/></Button>
+                                                        </StackPanel>
+                                                        <TextBlock Text="Formatação" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" Foreground="{DynamicResource Lab.text}"/>
+                                                    </DockPanel>
+                                                    <WrapPanel>
+                                                        <StackPanel Margin="0,8,16,0">
+                                                            <TextBlock Text="FONTE E TAMANHO" Style="{StaticResource Lab.Shortcuts.RibbonLabel}"/>
+                                                            <StackPanel Orientation="Horizontal">
+                                                                <ComboBox x:Name="FontFamilyBox" Style="{StaticResource Lab.Combo}" Width="156" MinHeight="34" Height="34" Margin="0,0,6,0" SelectedIndex="0" ToolTip="Fonte do texto selecionado" AutomationProperties.Name="Fonte" SelectionChanged="FontFamilyBox_OnSelectionChanged"><ComboBoxItem Content="Segoe UI" Tag="Segoe UI"/><ComboBoxItem Content="Arial" Tag="Arial"/><ComboBoxItem Content="Calibri" Tag="Calibri"/><ComboBoxItem Content="Georgia" Tag="Georgia"/><ComboBoxItem Content="Consolas" Tag="Consolas"/></ComboBox>
+                                                                <ComboBox x:Name="FontSizeBox" Style="{StaticResource Lab.Combo}" Width="64" MinHeight="34" Height="34" SelectedIndex="2" ToolTip="Tamanho da fonte em pontos" AutomationProperties.Name="Tamanho da fonte" SelectionChanged="FontSizeBox_OnSelectionChanged"><ComboBoxItem Content="9" Tag="12"/><ComboBoxItem Content="10" Tag="13.333"/><ComboBoxItem Content="11" Tag="14.667"/><ComboBoxItem Content="12" Tag="16"/><ComboBoxItem Content="14" Tag="18.667"/><ComboBoxItem Content="16" Tag="21.333"/><ComboBoxItem Content="18" Tag="24"/><ComboBoxItem Content="24" Tag="32"/><ComboBoxItem Content="36" Tag="48"/></ComboBox>
+                                                            </StackPanel>
+                                                        </StackPanel>
+                                                        <StackPanel Margin="0,8,0,0">
+                                                            <TextBlock Text="ESTILO E CORES" Style="{StaticResource Lab.Shortcuts.RibbonLabel}"/>
+                                                            <StackPanel Orientation="Horizontal">
+                                                                <Button x:Name="ShortcutBoldButton" Style="{StaticResource Lab.Shortcuts.RibbonTool}" ToolTip="Negrito (Ctrl+B)" AutomationProperties.Name="Negrito (Ctrl+B)" Click="Bold_OnClick"><lab:LabIcon Kind="Bold" Width="18" Height="18"/></Button>
+                                                                <Button x:Name="ShortcutItalicButton" Style="{StaticResource Lab.Shortcuts.RibbonTool}" ToolTip="Itálico (Ctrl+I)" AutomationProperties.Name="Itálico (Ctrl+I)" Click="Italic_OnClick"><lab:LabIcon Kind="Italic" Width="18" Height="18"/></Button>
+                                                                <Button x:Name="ShortcutUnderlineButton" Style="{StaticResource Lab.Shortcuts.RibbonTool}" ToolTip="Sublinhado (Ctrl+U)" AutomationProperties.Name="Sublinhado (Ctrl+U)" Click="Underline_OnClick"><lab:LabIcon Kind="Underline" Width="18" Height="18"/></Button>
+                                                                <Button x:Name="ShortcutTextColorButton" Style="{StaticResource Lab.Shortcuts.RibbonTool}" ToolTip="Cor do texto" AutomationProperties.Name="Cor do texto" Click="Color_OnClick"><lab:LabIcon Kind="Palette" Width="18" Height="18"/></Button>
+                                                                <Button x:Name="ShortcutHighlightButton" Style="{StaticResource Lab.Shortcuts.RibbonTool}" ToolTip="Marca-texto" AutomationProperties.Name="Marca-texto" Click="Highlight_OnClick"><lab:LabIcon Kind="Highlighter" Width="18" Height="18"/></Button>
+                                                            </StackPanel>
+                                                        </StackPanel>
+                                                    </WrapPanel>
+                                                    <Border Height="1" Background="{DynamicResource Lab.line}" Margin="0,12,0,0"/>
+                                                    <WrapPanel>
+                                                        <StackPanel Margin="0,10,16,0">
+                                                            <TextBlock Text="PARÁGRAFO E LISTAS" Style="{StaticResource Lab.Shortcuts.RibbonLabel}"/>
+                                                            <StackPanel Orientation="Horizontal">
+                                                                <Button x:Name="ShortcutAlignLeftButton" Style="{StaticResource Lab.Shortcuts.RibbonTool}" ToolTip="Alinhar à esquerda" AutomationProperties.Name="Alinhar à esquerda" Click="AlignLeft_OnClick"><lab:LabIcon Kind="AlignLeft" Width="18" Height="18"/></Button>
+                                                                <Button x:Name="ShortcutAlignCenterButton" Style="{StaticResource Lab.Shortcuts.RibbonTool}" ToolTip="Centralizar" AutomationProperties.Name="Centralizar" Click="AlignCenter_OnClick"><lab:LabIcon Kind="AlignCenter" Width="18" Height="18"/></Button>
+                                                                <Button x:Name="ShortcutAlignRightButton" Style="{StaticResource Lab.Shortcuts.RibbonTool}" ToolTip="Alinhar à direita" AutomationProperties.Name="Alinhar à direita" Click="AlignRight_OnClick"><lab:LabIcon Kind="AlignRight" Width="18" Height="18"/></Button>
+                                                                <Button x:Name="ShortcutAlignJustifyButton" Style="{StaticResource Lab.Shortcuts.RibbonTool}" ToolTip="Justificar" AutomationProperties.Name="Justificar" Click="ShortcutJustify_OnClick"><lab:LabIcon Kind="AlignJustify" Width="18" Height="18"/></Button>
+                                                                <Button x:Name="ShortcutBulletsButton" Style="{StaticResource Lab.Shortcuts.RibbonTool}" ToolTip="Lista com marcadores" AutomationProperties.Name="Lista com marcadores" Click="Bullets_OnClick"><lab:LabIcon Kind="List" Width="18" Height="18"/></Button>
+                                                                <Button x:Name="ShortcutNumberingButton" Style="{StaticResource Lab.Shortcuts.RibbonTool}" ToolTip="Lista numerada" AutomationProperties.Name="Lista numerada" Click="Numbering_OnClick"><lab:LabIcon Kind="ListOrdered" Width="18" Height="18"/></Button>
+                                                            </StackPanel>
+                                                        </StackPanel>
+                                                        <StackPanel Margin="0,10,0,0">
+                                                            <TextBlock Text="INSERIR" Style="{StaticResource Lab.Shortcuts.RibbonLabel}"/>
+                                                            <StackPanel Orientation="Horizontal">
+                                                                <Button Style="{StaticResource Lab.Shortcuts.Ghost}" Height="34" Margin="0,0,4,0" Padding="7,5" ToolTip="Inserir link" AutomationProperties.Name="Inserir link" Click="Link_OnClick"><StackPanel Orientation="Horizontal"><lab:LabIcon Kind="Link" Width="16" Height="16" Margin="0,0,6,0"/><TextBlock Text="Link" FontSize="12" VerticalAlignment="Center" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Button}}}"/></StackPanel></Button>
+                                                                <Button Style="{StaticResource Lab.Shortcuts.Ghost}" Height="34" Margin="0,0,4,0" Padding="7,5" ToolTip="Inserir imagem" AutomationProperties.Name="Inserir imagem" Click="Image_OnClick"><StackPanel Orientation="Horizontal"><lab:LabIcon Kind="Image" Width="16" Height="16" Margin="0,0,6,0"/><TextBlock Text="Imagem" FontSize="12" VerticalAlignment="Center" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Button}}}"/></StackPanel></Button>
+                                                                <Button Style="{StaticResource Lab.Shortcuts.Ghost}" Height="34" Margin="0,0,4,0" Padding="7,5" ToolTip="Inserir tabela" AutomationProperties.Name="Inserir tabela" Click="Table_OnClick"><StackPanel Orientation="Horizontal"><lab:LabIcon Kind="Grid2X2" Width="16" Height="16" Margin="0,0,6,0"/><TextBlock Text="Tabela" FontSize="12" VerticalAlignment="Center" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Button}}}"/></StackPanel></Button>
+                                                            </StackPanel>
+                                                        </StackPanel>
+                                                    </WrapPanel>
+                                                </StackPanel>
+                                                <Border Height="1" Background="{DynamicResource Lab.line}"/>
+                                            </StackPanel>
+                                        <RichTextBox x:Name="ContentEditor" Height="200" Background="Transparent" Foreground="{DynamicResource Lab.text}" CaretBrush="{DynamicResource Lab.text}" SelectionBrush="{DynamicResource Lab.accent}" SelectionOpacity="0.25" BorderThickness="0" TextChanged="ContentEditor_OnTextChanged" SelectionChanged="ShortcutContent_OnSelectionChanged" PreviewKeyDown="ShortcutContent_OnPreviewKeyDown" AcceptsTab="True" Padding="11,9" VerticalScrollBarVisibility="Auto" FontFamily="Segoe UI" FontSize="14" AutomationProperties.Name="Conteúdo do atalho">
                                             <FlowDocument PagePadding="0" Foreground="{DynamicResource Lab.text}"/>
                                         </RichTextBox>
+                                        </StackPanel>
                                     </Border>
                                     <Expander x:Name="ShortcutPreviewExpander" IsExpanded="True" Margin="0,16,0,0">
-                                        <Expander.Header><StackPanel Orientation="Horizontal"><lab:LabIcon Kind="Eye" Width="16" Height="16" Margin="0,0,8,0"/><TextBlock Text="Prévia do resultado" FontSize="12" Foreground="{DynamicResource Lab.muted}"/></StackPanel></Expander.Header>
+                                        <Expander.Header><StackPanel Orientation="Horizontal"><lab:LabIcon x:Name="ShortcutPreviewEye" Width="16" Height="16" Margin="0,0,8,0">
+                                            <lab:LabIcon.Style><Style TargetType="lab:LabIcon"><Setter Property="Kind" Value="EyeClosed"/><Style.Triggers><DataTrigger Binding="{Binding IsExpanded, ElementName=ShortcutPreviewExpander}" Value="True"><Setter Property="Kind" Value="Eye"/></DataTrigger></Style.Triggers></Style></lab:LabIcon.Style>
+                                        </lab:LabIcon><TextBlock Text="Prévia do resultado" FontSize="12" Foreground="{DynamicResource Lab.muted}"/></StackPanel></Expander.Header>
                                         <Border x:Name="PreviewBorder" Height="130" Background="{DynamicResource Lab.input}" BorderBrush="{DynamicResource Lab.line}" BorderThickness="1" CornerRadius="5" Margin="0,10,0,0" Padding="11,9">
                                             <FlowDocumentScrollViewer x:Name="PreviewViewer" IsToolBarVisible="False" VerticalScrollBarVisibility="Auto" Background="Transparent" Foreground="{DynamicResource Lab.text}" AutomationProperties.Name="Prévia do resultado">
                                                 <FlowDocument x:Name="PreviewDocument" PagePadding="0" FontFamily="{StaticResource Lab.Font}" FontSize="14" Foreground="{DynamicResource Lab.text}"/>
@@ -430,7 +405,10 @@
                                 </Expander>
 
                                     <Border Style="{StaticResource SubtlePanel}" Background="Transparent" Padding="0" Margin="0,20,0,0">
-                                        <DockPanel><lab:LabIcon DockPanel.Dock="Left" Kind="ShieldCheck" Width="18" Height="18" Margin="0,0,8,0" Foreground="{DynamicResource Lab.accent-text}"/><TextBlock Text="Seus textos ficam neste computador." Style="{StaticResource Lab.Metadata}" Foreground="{DynamicResource Lab.accent-text}" TextWrapping="Wrap"/></DockPanel>
+                                        <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="18"/><ColumnDefinition Width="8"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                            <lab:LabIcon x:Name="ShortcutLocalDataIcon" Kind="ShieldCheck" Width="18" Height="18" VerticalAlignment="Center" Foreground="{DynamicResource Lab.accent-text}"/>
+                                            <TextBlock Grid.Column="2" Text="Seus textos ficam neste computador." Style="{StaticResource Lab.Metadata}" VerticalAlignment="Center" Foreground="{DynamicResource Lab.accent-text}" TextWrapping="Wrap"/>
+                                        </Grid>
                                     </Border>
                                 </StackPanel>
                             </ScrollViewer>

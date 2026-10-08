@@ -21,14 +21,16 @@ Capturas novas usam o destino do piloto quando ainda não há preferências. Se 
 |---|---|
 | Novo atalho | Nome, comando `/teste`, categoria e conteúdo podem ser preenchidos. Salvar cria um atalho real. |
 | Texto simples | Quebras de linha e variáveis permanecem após salvar, sair e reabrir. |
-| Texto formatado | Fontes, tamanho, B/I/U, cores, marca-texto, imagens, links, listas, tabelas e alinhamento continuam disponíveis. Salvar/reabrir preserva o resultado. |
+| Texto formatado | Barra agrupada em fonte/tamanho, estilo/cores, parágrafo/listas e inserção. Fontes instaladas, B/I/U, cores, marca-texto, imagens, links, listas, tabelas e alinhamento (inclusive justificar) continuam disponíveis. Selecione um trecho: estilo e fonte acompanham a seleção; salvar/reabrir preserva o resultado. Desfazer/Refazer funcionam. |
+| Prévia | Recolher fecha o olho; expandir abre o olho e conserva o conteúdo. |
+| Ícones de categoria | Clique na pastinha no campo Categoria, escolha um dos oito ícones e salve. Todos os atalhos com essa categoria mostram o mesmo ícone na lista. Sair/reabrir preserva a escolha; trocar sem salvar e cancelar preserva a escolha pendente. Descartar a restaura. |
 | Variáveis | Posicionar cursor ou selecionar trecho; clicar no token insere/substitui nessa posição. Prévia usa o mecanismo real. |
-| Busca e categorias | Nome, comando, categoria e conteúdo filtram a lista; Todos/Mais usados usam dados reais. Estado vazio permite limpar filtros/criar. |
-| Rascunho | Editar sem salvar e clicar em outro atalho, Novo ou Importar: escolher Não mantém texto e seleção. Escolher Sim permite descartar. |
+| Busca e categorias | Nome, comando, categoria e conteúdo filtram a lista; Todos/Mais usados usam dados reais. Estado vazio permite limpar filtros/criar. O × fica dentro do campo, aparece somente com texto e limpa a busca. |
+| Rascunho | Editar sem salvar e clicar em outro atalho, Novo ou Importar: Cancelar mantém texto e seleção. Descartar alterações permite continuar. Escape ou clique fora também cancela. |
 | Divisores | Arrastar; Tab até o divisor e usar setas; Home ou clique duplo restaura. Botão de variáveis oculta/mostra o painel sem apagar conteúdo. |
-| Ajuda `?` | Busca, tópicos, demonstrações e Mostrar na tela funcionam. A indicação não muda formato ou rascunho. |
+| Ajuda `?` | Busca, tópicos, demonstrações e Mostrar na tela (fixo no rodapé) funcionam. A indicação não muda formato ou rascunho. Clique fora do cartão fecha sem acionar os controles atrás; Escape/X/Entendi também fecham. |
 | Comando inválido/duplicado | Erro mantém o conteúdo atual; `:` e `?` não passam a ser gatilhos. Legados incompatíveis são preservados. |
-| Exclusão/importação | Confirmações/cancelamento preservam dados; importação real usa a origem selecionada em Configurações e cria backup. |
+| Exclusão/importação | Exclusão usa uma janela com o tema do app e identifica o atalho. Cancelar/Escape/clique fora mantêm o atalho e rascunho; Enter prioriza Cancelar. Só Excluir atalho confirma. Importação real usa a origem selecionada em Configurações e cria backup. |
 | Uso fora do app | Digitar `/teste` em um aplicativo de texto e confirmar usa o atalho salvo. Acento Rápido continua nos campos internos. |
 | Temas e tamanho | Claro, Preto e Windows; janela normal/mínima, teclado e DPI do seu monitor. Nenhuma ferramenta deve ficar inacessível. |
 | Reinício | Salvar, sair e reabrir: conteúdo e imagens permanecem. Fechar para bandeja mantém o rascunho somente em memória. |
@@ -46,12 +48,13 @@ Escolha a origem da importação em Configurações antes de usar Importar na te
 - Mantém os limites e áreas de interação dos divisores aprovados na #54, com restauração por teclado/mouse.
 - Mantém filtros Todos/Mais usados explícitos e a origem real de importação. A prévia pode ser recolhida.
 - A ajuda visual reutiliza a mesma janela da Captura com 11 tópicos próprios.
+- Ícones de categoria são opcionais, armazenados em `settings.json` e incluídos no backup completo. Importação/exportação apenas de `snippets.md` mantém conteúdo e nomes, mas não transporta os ícones. Não altera o formato dos atalhos. Se só a preferência visual falhar ao gravar, o status informa que o atalho foi salvo e pede repetir a escolha do ícone.
 - Sem edição temporal de vídeo/GIF, alterações de armazenamento ou release nesta etapa.
 
 ## Evidência automatizada e limites
 
 `--shortcuts-workspace-smoke <pasta>` usa uma fixture WPF sem hooks/bandeja/updater e dados temporários dentro da pasta de evidência.
-Verifica rascunho e cancelamento, inserção real de variável/prévia, salvar/reabrir texto rico/imagem, filtro vazio, painel de variáveis e modo protegido.
+Verifica rascunho e cancelamento (inclusive ícone pendente), inserção real de variável/prévia, salvar/reabrir texto simples/rico/imagem, persistência do ícone, olho da prévia, botão de limpar busca, filtro vazio, painel de variáveis e modo protegido.
 Gera evidências Claro/Preto/Windows em 1440×900 e 980×680, com rasterização 100/125/150/200%.
 Rasterização não substitui teste físico de DPI, posicionamento de monitores, entrada global ou interação manual.
 
