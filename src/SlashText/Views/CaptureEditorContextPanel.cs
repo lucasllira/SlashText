@@ -172,7 +172,7 @@ public sealed class CaptureEditorContextPanel : UserControl
         else AddLabel(shown == "navigate" ? "Clique em uma anotação para editar · arraste fora para navegar · Ctrl+roda para zoom" : selected is not null ? "Arraste para mover · setas ajustam · Delete exclui" : "Arraste na imagem para aplicar a ferramenta");
         if (selected is not null)
         {
-            if (shown is not ("Rectangle" or "Ellipse"))
+            if (shown is not ("Rectangle" or "Ellipse" or "Blur" or "Pixelate"))
             {
                 AddLabel("Opacidade");
                 Combo(new[] { "25%", "50%", "75%", "100%" }, ((int)(_editor.AnnotationOpacity * 100)) + "%",

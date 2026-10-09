@@ -111,7 +111,8 @@ public sealed partial class CaptureEditorDocument
         var points = a.Kind == CaptureAnnotationKind.Pencil && a.Points.Count > 0 ? a.Points : [a.Start, a.End];
         var left = points.Min(p => p.X); var top = points.Min(p => p.Y);
         var bounds = new Rect(left, top, Math.Max(1, points.Max(p => p.X) - left), Math.Max(1, points.Max(p => p.Y) - top));
-        var padding = a.Kind == CaptureAnnotationKind.Arrow ? Math.Max(12, a.Thickness * 4) : Math.Max(3, a.Thickness / 2);
+        var padding = a.Kind == CaptureAnnotationKind.Arrow ? Math.Max(12, a.Thickness * 4) :
+            a.Kind == CaptureAnnotationKind.Highlighter ? Math.Max(3, a.Thickness * 2) : Math.Max(3, a.Thickness / 2);
         bounds.Inflate(padding, padding); return bounds;
     }
 }

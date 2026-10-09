@@ -62,6 +62,7 @@ internal static partial class ShortcutsWorkspaceSmoke
                     history.PageForEvidence(2); Require(history.VisibleCount == 25 && history.PageForEvidenceValue == 2, "History reaches records beyond carousel limit");
                     history.SearchForEvidence("captura-074"); Require(history.VisibleCount == 1 && history.PageForEvidenceValue == 0, "Search resets pagination");
                     history.SearchForEvidence("região 09/10/2026"); Require(history.VisibleCount == 25, "History name/type/date search");
+                    history.UpdateLayout();
                     SaveImage((FrameworkElement)history.Content, output, $"capture-history-owned-{theme}", new Size(history.Width, history.Height), 1);
                     Require(!ModalBackdrop.DismissAt(history.Surface, new Point(40, 40), history.Close), "Click inside history keeps it open");
                     Require(ModalBackdrop.DismissAt(history.Surface, new Point(-10, 40), history.Close), "Click outside full history closes it");
