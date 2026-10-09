@@ -18,6 +18,7 @@
     <FileVersion>3.2.0.0</FileVersion>
     <DebugType>embedded</DebugType>
     <CapturePilotBuild Condition="'$(CaptureComplementsPilotBuild)' == 'true'">true</CapturePilotBuild>
+    <CapturePilotBuild Condition="'$(CaptureOcrPilotBuild)' == 'true'">true</CapturePilotBuild>
     <CapturePilotBuild Condition="'$(ShortcutsPilotBuild)' == 'true'">true</CapturePilotBuild>
     <SlashDeskDistribution Condition="'$(SlashDeskDistribution)' == ''">Installed</SlashDeskDistribution>
   </PropertyGroup>
@@ -27,11 +28,13 @@
     <AssemblyMetadata Include="SlashDeskCaptureComplementsPilot" Value="true" Condition="'$(CaptureComplementsPilotBuild)' == 'true'" />
     <AssemblyMetadata Include="SlashDeskShortcutsPilot" Value="true" Condition="'$(ShortcutsPilotBuild)' == 'true'" />
     <AssemblyMetadata Include="SlashDeskCapturePilot" Value="true" Condition="'$(CapturePilotBuild)' == 'true'" />
+    <AssemblyMetadata Include="SlashDeskCaptureOcrPilot" Value="true" Condition="'$(CaptureOcrPilotBuild)' == 'true'" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="ScreenRecorderLib" Version="6.6.0" />
     <PackageReference Include="AvalonEdit" Version="6.3.1.120" />
+    <PackageReference Include="Tesseract" Version="5.2.0" />
   </ItemGroup>
 
   <ItemGroup>
@@ -54,5 +57,12 @@
   </ItemGroup>
   <Target Name="RestoreNotoEmoji" BeforeTargets="PrepareForBuild">
     <Exec Command="pwsh -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildProjectDirectory)\..\..\scripts\restore-noto-emoji.ps1&quot;" />
+  </Target>
+  <Target Name="RestoreOcrModels" BeforeTargets="PrepareForBuild">
+    <Exec Command="pwsh -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildProjectDirectory)\..\..\scripts\restore-ocr-models.ps1&quot;" />
+    <ItemGroup>
+      <EmbeddedResource Include="Assets\Ocr\*.traineddata" />
+      <EmbeddedResource Include="Assets\Ocr\NOTICE.md;Assets\Ocr\LICENSE.txt" />
+    </ItemGroup>
   </Target>
 </Project>

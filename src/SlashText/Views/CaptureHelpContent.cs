@@ -12,6 +12,9 @@ public static class CaptureHelpContent
     public static ScreenHelpDefinition Create(CaptureSettings settings) => new("Conheça a Captura",
         "Da primeira seleção à imagem pronta para compartilhar.",
     [
+        new("ocr", "EDITOR E FERRAMENTAS", "Extrair texto", "ScanLine", "Copie texto de uma região ou da imagem aberta, sem internet.",
+            ["Após selecionar uma região, clique em Extrair texto na barra. No editor, use Extrair texto acima da imagem.", "A área recebe uma indicação suave enquanto a leitura acontece. Cancelar leitura ou Esc interrompe sem copiar nem salvar.", "Revise o texto no painel. Selecione um trecho e use Copiar seleção, ou use Copiar tudo."],
+            "Português e inglês funcionam offline. Letras pequenas, tabelas e código podem precisar de correção. Com movimentos reduzidos, a indicação fica estática.", "CaptureExtractTextButton"),
         new("start", "COMEÇAR", "Sua primeira captura", "Camera", "Escolha o tipo, ajuste a área e finalize. Tudo acontece localmente.",
             ["Selecione Imagem e escolha Região.", "Clique em Novo e arraste a área na tela.", "Anote se precisar; Capturar finaliza conforme sua regra."],
             "O guia usa exemplos ilustrados. Nenhum botão aqui inicia uma captura.", "CaptureNewButton", Demo: "region"),

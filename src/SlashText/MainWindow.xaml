@@ -1332,7 +1332,14 @@
                                           <lab:LabIcon Kind="Redo2" Style="{StaticResource Lab.Pilot.ToolGlyph}"/>
                                         </Button>
                                       </WrapPanel>
-                                      <StackPanel x:Name="CaptureOutputCommands" Grid.Column="1" Orientation="Horizontal" Margin="8,9,13,9">
+                                      <WrapPanel x:Name="CaptureOutputCommands" Grid.Column="1" Orientation="Horizontal" Margin="8,9,13,9">
+                                        <Button x:Name="CaptureExtractTextButton" Style="{StaticResource Lab.Button}" Margin="0,0,8,0"
+                                                ToolTip="Extrair texto da imagem (OCR)" Click="ExtractCaptureText_OnClick">
+                                          <StackPanel Orientation="Horizontal">
+                                            <lab:LabIcon Kind="ScanLine" Width="16" Height="16" Margin="0,0,7,0"/>
+                                            <TextBlock Text="Extrair texto"/>
+                                          </StackPanel>
+                                        </Button>
                                         <Button x:Name="CaptureCopyImageButton" Style="{StaticResource Lab.Button}" Margin="0,0,8,0"
                                                 Click="CopyCapturePreview_OnClick">
                                           <StackPanel Orientation="Horizontal">
@@ -1355,7 +1362,7 @@
                                                        Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
                                           </StackPanel>
                                         </Button>
-                                      </StackPanel>
+                                      </WrapPanel>
                                     </Grid>
 
                                     <views:CaptureEditorContextPanel x:Name="CaptureEditorContext" Grid.Row="2" Visibility="Collapsed"/>

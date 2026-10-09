@@ -299,6 +299,7 @@ public sealed partial class RegionCaptureWindow : Window
         _undoButton = IconButton("CaptureIconUndo", "Desfazer (Ctrl+Z)", (_, _) => Undo()); history.Children.Add(_undoButton);
         _redoButton = IconButton("CaptureIconRedo", "Refazer (Ctrl+Y)", (_, _) => Redo()); history.Children.Add(_redoButton);
         var finish = Group("FINALIZAR");
+        finish.Children.Add(OcrButton());
         finish.Children.Add(BuildCaptureSplitButton());
         _overflowButton = IconButton("CaptureIconMore", "Mais opções e ferramentas", (_, _) => ShowOverflowMenu()); finish.Children.Add(_overflowButton);
         _cancelButton = IconButton("CaptureIconClose", "Cancelar captura (Esc)", (_, _) => DialogResult = false); finish.Children.Add(_cancelButton);
@@ -562,6 +563,7 @@ public sealed partial class RegionCaptureWindow : Window
             VerticalAlignment = VerticalAlignment.Center
         };
         tools.Children.Add(BuildCaptureSplitButton());
+        tools.Children.Add(OcrButton());
         _captureSeparator = Separator();
         tools.Children.Add(_captureSeparator);
         tools.Children.Add(ToolButton("CaptureIconArrow", "Seta", CaptureAnnotationKind.Arrow));
