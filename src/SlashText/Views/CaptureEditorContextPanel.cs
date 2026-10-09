@@ -27,9 +27,12 @@ public sealed class CaptureEditorContextPanel : UserControl
     {
         if (_editor is null) return;
         if (_applyCrop is not null) _applyCrop.IsEnabled = _editor.HasPendingCrop;
-        var shown = _editor.IsCropTool ? "crop" : _editor.SelectedTool?.ToString() ?? "navigate";
-        if (_shown == shown) return;
-        _shown = shown; _applyCrop = null; _panel.Children.Clear(); Content = _panel;
+        var selected = _editor.SelectedAnnotation;
+        var shown = selected?.Annotation.Kind.ToString() ?? (_editor.IsCropTool ? "crop" : _editor.SelectedTool?.ToString() ?? "navigate");
+        var key = selected is null ? shown : $"selected:{selected.Id}:{_editor.Document?.Revision}";
+        if (_shown == key) return;
+        _shown = key; _applyCrop = null; _panel.Children.Clear(); Content = _panel;
+        if (selected is not null) AddLabel("Anotação selecionada", emphasis: true);
         AddLabel(shown switch
         {
             "crop" => "Recortar", "navigate" => "Navegar", "Text" => "Texto", "Stamp" => "Emotes",
@@ -57,6 +60,20 @@ public sealed class CaptureEditorContextPanel : UserControl
             Toggle("Itálico", _editor.TextItalic, value => _editor.TextItalic = value);
             Combo(new[] { "Esquerda", "Centro", "Direita" }, _editor.TextAlignment switch { "Center" => "Centro", "Right" => "Direita", _ => "Esquerda" },
                 value => _editor.TextAlignment = value switch { "Centro" => "Center", "Direita" => "Right", _ => "Left" }, 116);
+        }
+        else if (shown == "Number" && selected is not null)
+        {
+            AddLabel("Número");
+            var input = new TextBox { Text = _editor.AnnotationText, Width = 100, Margin = new Thickness(0, 0, 12, 0) };
+            input.SetResourceReference(StyleProperty, "Lab.Field");
+            input.TextChanged += (_, _) => _editor.AnnotationText = input.Text; _panel.Children.Add(input);
+        }
+        else if (shown == "Stamp" && selected is not null)
+        {
+            AddLabel("Tamanho");
+            Combo(new[] { "32", "48", "64", "96", "128" }, _editor.StampSize.ToString(CultureInfo.InvariantCulture),
+                value => _editor.StampSize = float.Parse(value, CultureInfo.InvariantCulture), 90);
+            AddButton("Trocar emoji", "Smile", () => { if (CaptureEmojiPicker.Show(Window.GetWindow(this)) is { } value) _editor.SelectedStamp = value; });
         }
         else if (shown == "Stamp")
         {
@@ -152,7 +169,37 @@ public sealed class CaptureEditorContextPanel : UserControl
             AddLabel("Opacidade");
             Combo(new[] { "25%", "50%", "75%", "100%" }, ((int)(_editor.AnnotationOpacity * 100)) + "%", value => _editor.AnnotationOpacity = int.Parse(value.TrimEnd('%')) / 100f, 80);
         }
-        else AddLabel(shown == "navigate" ? "Arraste para navegar · Ctrl+roda para zoom" : "Arraste na imagem para aplicar a ferramenta");
+        else AddLabel(shown == "navigate" ? "Clique em uma anotação para editar · arraste fora para navegar · Ctrl+roda para zoom" : selected is not null ? "Arraste para mover · setas ajustam · Delete exclui" : "Arraste na imagem para aplicar a ferramenta");
+        if (selected is not null)
+        {
+            if (shown is not ("Rectangle" or "Ellipse"))
+            {
+                AddLabel("Opacidade");
+                Combo(new[] { "25%", "50%", "75%", "100%" }, ((int)(_editor.AnnotationOpacity * 100)) + "%",
+                    value => _editor.AnnotationOpacity = int.Parse(value.TrimEnd('%')) / 100f, 80);
+            }
+            TextBox? width = null, height = null;
+            if (selected.Annotation.Kind is CaptureAnnotationKind.Rectangle or CaptureAnnotationKind.Ellipse or CaptureAnnotationKind.Blur or CaptureAnnotationKind.Pixelate)
+            {
+                AddLabel("Largura/altura (px)");
+                width = DimensionField(Math.Abs(selected.Annotation.End.X - selected.Annotation.Start.X));
+                height = DimensionField(Math.Abs(selected.Annotation.End.Y - selected.Annotation.Start.Y));
+            }
+            AddButton("Aplicar alterações", "Check", () =>
+            {
+                double? w = null, h = null;
+                if (width is not null && height is not null)
+                {
+                    if (!double.TryParse(width.Text, NumberStyles.Number, CultureInfo.InvariantCulture, out var parsedWidth) ||
+                        !double.TryParse(height.Text, NumberStyles.Number, CultureInfo.InvariantCulture, out var parsedHeight) ||
+                        parsedWidth < 1 || parsedHeight < 1 || parsedWidth > 32000 || parsedHeight > 32000)
+                    { width.ToolTip = height.ToolTip = "Use um valor entre 1 e 32.000 pixels."; width.Focus(); return; }
+                    w = parsedWidth; h = parsedHeight;
+                }
+                _editor.ApplySelectedProperties(w, h);
+            }, primary: true);
+            AddButton("Excluir anotação", "Trash2", () => _editor.DeleteSelectedAnnotation());
+        }
         LabMotion.SetEntrance(_panel, "Page");
         if (_panel.IsLoaded) LabMotion.PlayEntrance(_panel);
     }
@@ -219,9 +266,14 @@ public sealed class CaptureEditorContextPanel : UserControl
         var label = new TextBlock { Text = text, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, emphasis ? 18 : 8, 0), FontSize = 12 };
         label.SetResourceReference(TextBlock.ForegroundProperty, emphasis ? "Lab.accent-text" : "Lab.muted"); _panel.Children.Add(label);
     }
+    private TextBox DimensionField(double value)
+    {
+        var field = new TextBox { Text = value.ToString("0.##", CultureInfo.InvariantCulture), Width = 70, Margin = new Thickness(0, 0, 10, 0), ToolTip = "Dimensão em pixels (1–32.000)" };
+        field.SetResourceReference(StyleProperty, "Lab.Field"); _panel.Children.Add(field); return field;
+    }
     private ComboBox Combo(IEnumerable<string> choices, string selected, Action<string> change, double width)
     {
-        var combo = new ComboBox { ItemsSource = choices.ToArray(), SelectedItem = selected, Width = width, Margin = new Thickness(0, 0, 12, 0) };
+        var combo = new ComboBox { ItemsSource = choices.Append(selected).Distinct().ToArray(), SelectedItem = selected, Width = width, Margin = new Thickness(0, 0, 12, 0) };
         combo.SetResourceReference(StyleProperty, "Lab.Combo"); combo.SelectionChanged += (_, _) => { if (combo.SelectedItem is string value) change(value); }; _panel.Children.Add(combo);
         return combo;
     }

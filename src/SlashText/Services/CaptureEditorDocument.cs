@@ -9,15 +9,16 @@ namespace SlashText.Services;
 /// One non-destructive image session. Commands use current image pixels, never
 /// screen/DIP coordinates. Layout, zoom and saving must not recreate this object.
 /// </summary>
-public sealed class CaptureEditorDocument : IDisposable
+public sealed partial class CaptureEditorDocument : IDisposable
 {
     private abstract record Step(long Id);
-    private sealed record AnnotationStep(long Id, CaptureAnnotation Annotation) : Step(Id);
+    private sealed record AnnotationStep(long Id, CaptureAnnotation Annotation, long ObjectId = 0) : Step(Id);
     private sealed record CropStep(long Id, Rectangle Bounds) : Step(Id);
     private sealed record ResizeStep(long Id, int Width, int Height) : Step(Id);
     private readonly Bitmap _source;
     private readonly List<Step> _steps = [];
-    private readonly Stack<Step> _redo = new();
+    private readonly Stack<Step[]> _undo = new();
+    private readonly Stack<Step[]> _redo = new();
     private Step[] _checkpoint = [];
     private long _nextId;
     private Bitmap? _rendered;
@@ -25,7 +26,8 @@ public sealed class CaptureEditorDocument : IDisposable
 
     public CaptureEditorDocument(Bitmap source) => _source = new Bitmap(source);
     public int OperationCount => _steps.Count;
-    public bool CanUndo => _steps.Count > 0;
+    public string Revision => string.Join(",", _steps.Select(s => s.Id));
+    public bool CanUndo => _undo.Count > 0;
     public bool CanRedo => _redo.Count > 0;
     public bool HasUnsavedChanges => !_steps.Select(s => s.Id).SequenceEqual(_checkpoint.Select(s => s.Id));
     public int NextNumber => _steps.OfType<AnnotationStep>().Count(s => s.Annotation.Kind == CaptureAnnotationKind.Number) + 1;
@@ -79,15 +81,16 @@ public sealed class CaptureEditorDocument : IDisposable
         Add(new ResizeStep(++_nextId, width, height));
     }
 
-    private void Add(Step step) { _steps.Add(step); _redo.Clear(); }
+    private void Remember() { _undo.Push([.. _steps]); _redo.Clear(); }
+    private void Add(Step step) { Remember(); _steps.Add(step); }
     public void Undo()
     {
         if (!CanUndo) return;
-        _redo.Push(_steps[^1]); _steps.RemoveAt(_steps.Count - 1);
+        _redo.Push([.. _steps]); _steps.Clear(); _steps.AddRange(_undo.Pop());
     }
-    public void Redo() { if (CanRedo) _steps.Add(_redo.Pop()); }
+    public void Redo() { if (CanRedo) { _undo.Push([.. _steps]); _steps.Clear(); _steps.AddRange(_redo.Pop()); } }
     public void MarkSaved() => _checkpoint = [.. _steps];
-    public void DiscardChanges() { _steps.Clear(); _steps.AddRange(_checkpoint); _redo.Clear(); }
+    public void DiscardChanges() { if (!HasUnsavedChanges) return; Remember(); _steps.Clear(); _steps.AddRange(_checkpoint); }
 
     /// <summary>Preview, clipboard and export all call this same renderer.</summary>
     public Bitmap Render(CaptureAnnotation? pending = null)

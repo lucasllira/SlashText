@@ -189,7 +189,7 @@ public partial class MainWindow : Window
             _settings.Capture.Recording ??= new RecordingSettings();
             if (AppPaths.IsCapturePilot)
             {
-                Title = AppPaths.IsShortcutsPilot ? "SlashDesk — Piloto Atalhos 3.3.0 · #64" : "SlashDesk — Piloto Captura 3.3.0 · #63";
+                Title = AppPaths.IsCaptureComplementsPilot ? "SlashDesk — Piloto Complementos da Captura 3.3.0 · #74" : AppPaths.IsShortcutsPilot ? "SlashDesk — Piloto Atalhos 3.3.0 · #64" : "SlashDesk — Piloto Captura 3.3.0 · #63";
                 _settings.CheckUpdatesOnStartup = false;
                 _settings.StartWithWindows = false;
                 _settings.OnboardingCompleted = true;
@@ -3674,14 +3674,7 @@ public partial class MainWindow : Window
         var filter = CaptureHistoryFilterBox is null
             ? "all"
             : SelectedTag(CaptureHistoryFilterBox, "all");
-        var filtered = _captureService.History.Where(item =>
-            filter.Equals("all", StringComparison.OrdinalIgnoreCase) ||
-            filter.Equals("video", StringComparison.OrdinalIgnoreCase) &&
-            item.MediaKind.Equals("video", StringComparison.OrdinalIgnoreCase) ||
-            filter.Equals("gif", StringComparison.OrdinalIgnoreCase) &&
-            item.MediaKind.Equals("gif", StringComparison.OrdinalIgnoreCase) ||
-            item.Type.Equals(filter, StringComparison.OrdinalIgnoreCase))
-            .ToList();
+        var filtered = CaptureHistoryQuery.Filter(_captureService.History, filter, CaptureHistorySearchBox?.Text ?? "");
         foreach (var item in filtered.Take(40))
         {
             CaptureHistoryPanel.Children.Add(BuildCaptureHistoryCard(item));
@@ -3695,7 +3688,7 @@ public partial class MainWindow : Window
                 CornerRadius = new CornerRadius(9),
                 Child = new TextBlock
                 {
-                    Text = "As últimas capturas aparecerão aqui.",
+                    Text = _captureService.History.Count > 0 ? "Nenhuma captura corresponde à busca e ao filtro." : "As últimas capturas aparecerão aqui.",
                     Foreground = (Brush)FindResource("MutedBrush")
                 }
             };
@@ -3703,7 +3696,7 @@ public partial class MainWindow : Window
             empty.SetResourceReference(Border.BorderBrushProperty, "Lab.line");
             CaptureHistoryPanel.Children.Add(empty);
         }
-        CaptureHistoryStatusText.Text = filtered.Count.ToString("N0");
+        CaptureHistoryStatusText.Text = filtered.Count > 40 ? $"40 de {filtered.Count:N0} · Ver todas" : filtered.Count.ToString("N0");
         Dispatcher.BeginInvoke(new Action(UpdateCaptureHistoryNavigationState));
     }
 

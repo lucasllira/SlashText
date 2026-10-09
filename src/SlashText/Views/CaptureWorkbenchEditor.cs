@@ -38,6 +38,10 @@ public sealed class CaptureWorkbenchEditor : UserControl, IDisposable
     private Rect? _crop;
     private int _color = DrawingColor.FromArgb(232, 78, 96).ToArgb();
     private float _thickness = 4;
+    private long? _selectedAnnotationId;
+    private Point? _objectDragStart;
+    private Vector _objectDragDelta;
+    public CaptureEditableAnnotation? SelectedAnnotation => _document?.EditableAnnotations().FirstOrDefault(a => a.Id == _selectedAnnotationId);
 
     public event EventHandler? StateChanged;
     public event EventHandler? SaveCopyRequested;
@@ -80,7 +84,7 @@ public sealed class CaptureWorkbenchEditor : UserControl, IDisposable
         _overlay.MouseLeftButtonDown += PointerDown;
         _overlay.MouseMove += PointerMove;
         _overlay.MouseLeftButtonUp += PointerUp;
-        _overlay.LostMouseCapture += (_, _) => { if (_drawing || _panStart.HasValue) CancelGesture(); };
+        _overlay.LostMouseCapture += (_, _) => { if (_drawing || _panStart.HasValue || _objectDragStart.HasValue) CancelGesture(); };
         _viewbox.Child = _surface;
         _viewbox.HorizontalAlignment = HorizontalAlignment.Center;
         _viewbox.VerticalAlignment = VerticalAlignment.Center;
@@ -123,6 +127,7 @@ public sealed class CaptureWorkbenchEditor : UserControl, IDisposable
         var fit = Math.Min(width / _surface.Width, height / _surface.Height);
         _viewbox.Width = _surface.Width * fit * _zoom;
         _viewbox.Height = _surface.Height * fit * _zoom;
+        if (HasPendingCrop) ShowCrop(); else ShowSelection();
     }
 
     public void LoadImage(string path)
@@ -139,6 +144,7 @@ public sealed class CaptureWorkbenchEditor : UserControl, IDisposable
         var next = new CaptureEditorDocument(bitmap);
         _document?.Dispose();
         _document = next;
+        _selectedAnnotationId = null;
         _tool = null;
         _cropTool = false;
         _crop = null;
@@ -150,6 +156,7 @@ public sealed class CaptureWorkbenchEditor : UserControl, IDisposable
 
     public void Clear()
     {
+        _selectedAnnotationId = null;
         CancelGesture();
         _document?.Dispose(); _document = null;
         _previewBitmap?.Dispose(); _previewBitmap = null;
@@ -161,6 +168,7 @@ public sealed class CaptureWorkbenchEditor : UserControl, IDisposable
 
     public void SelectTool(CaptureAnnotationKind? tool)
     {
+        _selectedAnnotationId = null;
         CancelGesture(); _crop = null; _cropTool = false; _tool = tool;
         _overlay.Cursor = tool switch { null => Cursors.Hand, CaptureAnnotationKind.Text => Cursors.IBeam, _ => Cursors.Cross };
         _overlay.Children.Clear(); NotifyStateChanged();
@@ -176,10 +184,10 @@ public sealed class CaptureWorkbenchEditor : UserControl, IDisposable
         if (Math.Abs(_thickness - next) < .001f) return;
         _thickness = next; NotifyStateChanged();
     }
-    public void Undo() { CancelCrop(); _document?.Undo(); RefreshPreview(); NotifyStateChanged(); }
-    public void Redo() { CancelCrop(); _document?.Redo(); RefreshPreview(); NotifyStateChanged(); }
+    public void Undo() { CancelCrop(); _document?.Undo(); RefreshSelection(); RefreshPreview(); NotifyStateChanged(); }
+    public void Redo() { CancelCrop(); _document?.Redo(); RefreshSelection(); RefreshPreview(); NotifyStateChanged(); }
     public void MarkSaved() { _document?.MarkSaved(); NotifyStateChanged(); }
-    public void DiscardChanges() { CancelCrop(); _document?.DiscardChanges(); RefreshPreview(); NotifyStateChanged(); }
+    public void DiscardChanges() { CancelCrop(); _document?.DiscardChanges(); RefreshSelection(); RefreshPreview(); NotifyStateChanged(); }
     public DrawingBitmap Render()
     {
         if (_document is null) throw new InvalidOperationException("Nenhuma imagem carregada.");
@@ -189,7 +197,7 @@ public sealed class CaptureWorkbenchEditor : UserControl, IDisposable
     public bool ApplyCrop()
     {
         if (_document is null || !_crop.HasValue || !_document.Crop(_crop.Value)) return false;
-        CancelCrop(); _cropTool = false; RefreshPreview(); NotifyStateChanged(); return true;
+        CancelCrop(); _cropTool = false; RefreshSelection(); RefreshPreview(); NotifyStateChanged(); return true;
     }
     public void CancelCrop()
     {
@@ -198,7 +206,54 @@ public sealed class CaptureWorkbenchEditor : UserControl, IDisposable
     public void ResizeImage(int width, int height)
     {
         if (_document is null) return;
-        CancelCrop(); _document.Resize(width, height); RefreshPreview(); NotifyStateChanged();
+        CancelCrop(); _document.Resize(width, height); RefreshSelection(); RefreshPreview(); NotifyStateChanged();
+    }
+
+    public bool SelectAnnotation(long id)
+    {
+        if (_document?.EditableAnnotations().FirstOrDefault(a => a.Id == id) is not { Bounds.IsEmpty: false }) return false;
+        SelectTool(null); _selectedAnnotationId = id; RefreshSelection(); ShowSelection(); NotifyStateChanged(); return true;
+    }
+    private void RefreshSelection()
+    {
+        if (SelectedAnnotation is not { } view) { _selectedAnnotationId = null; return; }
+        var a = view.Annotation; _color = a.OutlineArgb ?? a.FillArgb ?? a.Argb; _thickness = a.Thickness;
+        AnnotationText = a.Text; TextFontFamily = a.FontFamily; TextSize = a.Size; TextBold = a.Bold; TextItalic = a.Italic;
+        TextAlignment = a.Alignment; StampSize = a.Size; _selectedStamp = a.Text; _selectedStampImage = a.StampImage;
+        PrivacyStrength = a.PrivacyStrength; ShapeFill = a.FillArgb; ShapeOutline = a.OutlineArgb.HasValue; AnnotationOpacity = a.Opacity;
+    }
+    public bool ApplySelectedProperties(double? width = null, double? height = null)
+    {
+        if (SelectedAnnotation is not { } view || _document is null) return false;
+        var a = view.Annotation;
+        var value = a with { Argb = _color, OutlineArgb = ShapeOutline ? _color : null, FillArgb = ShapeFill,
+            Thickness = _thickness, Opacity = AnnotationOpacity, Bold = TextBold, Italic = TextItalic,
+            FontFamily = TextFontFamily, Alignment = TextAlignment, PrivacyStrength = PrivacyStrength,
+            Text = a.Kind == CaptureAnnotationKind.Stamp ? _selectedStamp : a.Kind is CaptureAnnotationKind.Text or CaptureAnnotationKind.Number ? AnnotationText : a.Text,
+            StampImage = a.Kind == CaptureAnnotationKind.Stamp ? _selectedStampImage : a.StampImage,
+            Size = a.Kind == CaptureAnnotationKind.Stamp ? StampSize : TextSize };
+        if (width.HasValue && height.HasValue && a.Kind is CaptureAnnotationKind.Rectangle or CaptureAnnotationKind.Ellipse or CaptureAnnotationKind.Blur or CaptureAnnotationKind.Pixelate)
+        {
+            if (!double.IsFinite(width.Value) || !double.IsFinite(height.Value) || width.Value < 1 || height.Value < 1 || width.Value > 32000 || height.Value > 32000) return false;
+            value = value with { End = new Point(a.Start.X + (a.End.X < a.Start.X ? -width.Value : width.Value),
+                a.Start.Y + (a.End.Y < a.Start.Y ? -height.Value : height.Value)) };
+        }
+        if (!_document.UpdateAnnotation(view.Id, value)) return false;
+        RefreshSelection(); RefreshPreview(); NotifyStateChanged(); return true;
+    }
+    public bool DeleteSelectedAnnotation()
+    {
+        if (_selectedAnnotationId is not long id || _document?.DeleteAnnotation(id) != true) return false;
+        _selectedAnnotationId = null; RefreshPreview(); NotifyStateChanged(); return true;
+    }
+    private void ShowSelection()
+    {
+        _overlay.Children.Clear(); if (SelectedAnnotation is not { Bounds.IsEmpty: false } view) return;
+        var bounds = view.Bounds; bounds.Offset(_objectDragDelta.X, _objectDragDelta.Y);
+        var outline = new Rectangle { Width = bounds.Width, Height = bounds.Height, StrokeThickness = 2 / Math.Max(.05, _viewbox.Width / _surface.Width),
+            StrokeDashArray = new DoubleCollection([4, 3]), IsHitTestVisible = false };
+        outline.SetResourceReference(Shape.StrokeProperty, "Lab.accent");
+        Canvas.SetLeft(outline, bounds.X); Canvas.SetTop(outline, bounds.Y); _overlay.Children.Add(outline);
     }
 
     public void InsertAnnotation(CaptureAnnotation annotation)
@@ -221,6 +276,13 @@ public sealed class CaptureWorkbenchEditor : UserControl, IDisposable
         if (_cropTool) { _drawing = true; _crop = new Rect(_start, _start); _overlay.CaptureMouse(); return; }
         if (_tool is null)
         {
+            var hit = _document.HitTestAnnotation(_start, 4 / Math.Max(.05, _viewbox.Width / _surface.Width));
+            if (hit is not null && !Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
+            {
+                _selectedAnnotationId = hit.Id; RefreshSelection(); _objectDragStart = _start; _objectDragDelta = new Vector();
+                ShowSelection(); NotifyStateChanged(); _overlay.CaptureMouse(); return;
+            }
+            _selectedAnnotationId = null; _overlay.Children.Clear(); NotifyStateChanged();
             _panStart = e.GetPosition(_viewport); _panLeft = _viewport.HorizontalOffset; _panTop = _viewport.VerticalOffset;
             _overlay.CaptureMouse(); return;
         }
@@ -236,6 +298,8 @@ public sealed class CaptureWorkbenchEditor : UserControl, IDisposable
 
     private void PointerMove(object sender, MouseEventArgs e)
     {
+        if (_objectDragStart is Point objectStart)
+        { _objectDragDelta = Clamp(e.GetPosition(_overlay)) - objectStart; ShowSelection(); return; }
         if (_panStart is Point origin)
         {
             var point = e.GetPosition(_viewport);
@@ -256,6 +320,11 @@ public sealed class CaptureWorkbenchEditor : UserControl, IDisposable
 
     private void PointerUp(object sender, MouseButtonEventArgs e)
     {
+        if (_objectDragStart.HasValue && _selectedAnnotationId is long id)
+        {
+            var delta = _objectDragDelta; _objectDragStart = null; _objectDragDelta = new Vector(); _overlay.ReleaseMouseCapture();
+            _document?.MoveAnnotation(id, delta.X, delta.Y); RefreshPreview(); NotifyStateChanged(); return;
+        }
         if (_panStart.HasValue) { _panStart = null; _overlay.ReleaseMouseCapture(); return; }
         if (!_drawing) return;
         var end = Clamp(e.GetPosition(_overlay));
@@ -280,8 +349,10 @@ public sealed class CaptureWorkbenchEditor : UserControl, IDisposable
     private void CancelGesture()
     {
         _previewTimer.Stop(); _pending = null; _drawing = false; _panStart = null;
+        _objectDragStart = null; _objectDragDelta = new Vector();
         _overlay.ReleaseMouseCapture();
         if (_previewSource is not null) _image.Source = _previewSource;
+        if (!_cropTool) ShowSelection();
     }
 
     private void RefreshPreview()
@@ -292,7 +363,7 @@ public sealed class CaptureWorkbenchEditor : UserControl, IDisposable
         _surface.Width = _image.Width = _overlay.Width = next.Width;
         _surface.Height = _image.Height = _overlay.Height = next.Height;
         _image.Source = _previewSource = ToBitmapSource(next);
-        _overlay.Children.Clear(); UpdateZoom();
+        _overlay.Children.Clear(); UpdateZoom(); ShowSelection();
     }
 
     private void ShowCrop()
@@ -311,7 +382,15 @@ public sealed class CaptureWorkbenchEditor : UserControl, IDisposable
         { if (Keyboard.Modifiers.HasFlag(ModifierKeys.Shift)) Redo(); else Undo(); e.Handled = true; }
         else if (e.Key == Key.Y && Keyboard.Modifiers.HasFlag(ModifierKeys.Control)) { Redo(); e.Handled = true; }
         else if (e.Key == Key.S && Keyboard.Modifiers.HasFlag(ModifierKeys.Control)) { SaveCopyRequested?.Invoke(this, EventArgs.Empty); e.Handled = true; }
-        else if (e.Key == Key.Escape) { if (HasPendingCrop) CancelCrop(); else ExitRequested?.Invoke(this, EventArgs.Empty); e.Handled = true; }
+        else if (e.Key == Key.Delete && _selectedAnnotationId.HasValue) { DeleteSelectedAnnotation(); e.Handled = true; }
+        else if (_selectedAnnotationId is long id && e.Key is Key.Left or Key.Right or Key.Up or Key.Down)
+        {
+            var distance = Keyboard.Modifiers.HasFlag(ModifierKeys.Shift) ? 10 : 1;
+            _document?.MoveAnnotation(id, e.Key == Key.Left ? -distance : e.Key == Key.Right ? distance : 0,
+                e.Key == Key.Up ? -distance : e.Key == Key.Down ? distance : 0);
+            RefreshPreview(); NotifyStateChanged(); e.Handled = true;
+        }
+        else if (e.Key == Key.Escape) { if (HasPendingCrop) CancelCrop(); else if (_selectedAnnotationId.HasValue) SelectTool(null); else ExitRequested?.Invoke(this, EventArgs.Empty); e.Handled = true; }
     }
 
     private Point Clamp(Point point) => new(Math.Clamp(point.X, 0, Math.Max(1, _surface.Width)), Math.Clamp(point.Y, 0, Math.Max(1, _surface.Height)));

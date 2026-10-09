@@ -1509,9 +1509,20 @@
                                               <TextBlock Text="Limpar"/>
                                             </StackPanel>
                                           </Button>
+                                          <Button Margin="10,0,0,0" Style="{StaticResource Lab.Button}"
+                                                  Click="OpenFullCaptureHistory_OnClick" Content="Ver todas"/>
                                         </StackPanel>
                                     </Grid>
-                                    <ScrollViewer x:Name="CaptureHistoryScroller" Margin="0,14,0,0"
+                                    <WrapPanel Margin="0,12,0,0">
+                                      <TextBlock Text="Buscar capturas" VerticalAlignment="Center" Margin="0,0,12,6"/>
+                                      <TextBox x:Name="CaptureHistorySearchBox" Width="300" Style="{StaticResource Lab.Field}"
+                                               Margin="0,0,8,6" ToolTip="Nome, tipo ou data (dd/MM/aaaa)"
+                                               AutomationProperties.Name="Buscar capturas por nome ou data"
+                                               TextChanged="CaptureHistorySearch_OnChanged"/>
+                                      <Button Style="{StaticResource Lab.Button}" Margin="0,0,0,6"
+                                              Content="Limpar busca" Click="ClearCaptureHistorySearch_OnClick"/>
+                                    </WrapPanel>
+                                    <ScrollViewer x:Name="CaptureHistoryScroller" Margin="0,8,0,0"
                                                   HorizontalScrollBarVisibility="Hidden"
                                                   VerticalScrollBarVisibility="Disabled"
                                                   PanningMode="HorizontalOnly"

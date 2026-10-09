@@ -81,8 +81,10 @@ public sealed class ScreenHelpWindow : Window
         _detailScroll = new ScrollViewer { Content = _detail, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled };
         Grid.SetColumn(_detailScroll, 1); Grid.SetRowSpan(_detailScroll, 2); _body.Children.Add(_detailScroll);
         Grid.SetRow(_body, 2); root.Children.Add(_body);
-        var footer = new DockPanel { Margin = new Thickness(24, 14, 24, 18) };
-        var actions = new StackPanel { Orientation = Orientation.Horizontal }; DockPanel.SetDock(actions, Dock.Right); footer.Children.Add(actions);
+        var footer = new Grid { Margin = new Thickness(24, 14, 24, 18) };
+        footer.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        footer.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        var actions = new WrapPanel { HorizontalAlignment = HorizontalAlignment.Right }; footer.Children.Add(actions);
         _showTarget = ActionButton("Mostrar na tela", "ArrowUpRight", () =>
         {
             RequestedTarget = _definition.Topics.FirstOrDefault(t => t.Id == _selectedId)?.Target;
@@ -90,7 +92,8 @@ public sealed class ScreenHelpWindow : Window
         });
         _showTarget.Margin = new Thickness(0, 0, 8, 0); actions.Children.Add(_showTarget);
         var done = ActionButton("Entendi", "Check", Close, primary: true); actions.Children.Add(done);
-        var footerText = Text("Guia offline · Esc ou clique fora para fechar", 11, muted: true); footerText.Margin = new Thickness(0, 0, 14, 0); footer.Children.Add(footerText);
+        var footerText = Text("Guia offline · Esc ou clique no fundo para fechar", 11, muted: true);
+        footerText.Margin = new Thickness(0, 8, 0, 0); Grid.SetRow(footerText, 1); footer.Children.Add(footerText);
         var footerBorder = new Border { Child = footer, BorderThickness = new Thickness(0, 1, 0, 0) }; footerBorder.SetResourceReference(Border.BorderBrushProperty, "Lab.line");
         Grid.SetRow(footerBorder, 3); root.Children.Add(footerBorder);
         HelpSurface = new Border { Child = root, CornerRadius = new CornerRadius(12), BorderThickness = new Thickness(1), Margin = new Thickness(8) };
@@ -169,6 +172,7 @@ public sealed class ScreenHelpWindow : Window
         var visual = new StackPanel(); visual.Children.Add(demo);
         var replay = ActionButton("Repetir exemplo", "Play", demo.Replay); replay.HorizontalAlignment = HorizontalAlignment.Right;
         visual.Children.Add(replay); var example = Card(visual); example.Margin = new Thickness(0, 16, 0, 16); _detail.Children.Add(example);
+        _detail.Children.Add(Text("Como usar", 14, true));
         for (var i = 0; i < topic.Steps.Length; i++)
         {
             var row = new Grid { Margin = new Thickness(0, 0, 0, 9) }; row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(40) }); row.ColumnDefinitions.Add(new ColumnDefinition());
@@ -177,7 +181,10 @@ public sealed class ScreenHelpWindow : Window
             badge.SetResourceReference(BackgroundProperty, "Lab.tint"); row.Children.Add(badge);
             var instruction = Text(topic.Steps[i], 13); Grid.SetColumn(instruction, 1); row.Children.Add(instruction); _detail.Children.Add(row);
         }
-        var tip = Card(Text(topic.Tip, 12, muted: true)); tip.SetResourceReference(BackgroundProperty, "Lab.raised"); _detail.Children.Add(tip);
+        var tipContent = new StackPanel(); tipContent.Children.Add(Text("Dica e detalhes", 12, true));
+        tipContent.Children.Add(Text(topic.Tip, 12, muted: true));
+        var tip = Card(tipContent); tip.Margin = new Thickness(0, 10, 0, 0);
+        tip.SetResourceReference(BackgroundProperty, "Lab.raised"); _detail.Children.Add(tip);
         _showTarget.Visibility = topic.Target is { Length: > 0 } ? Visibility.Visible : Visibility.Collapsed;
         _detailScroll.ScrollToTop(); LabMotion.SetEntrance(_detail, "Page");
         if (_detail.IsLoaded) LabMotion.PlayEntrance(_detail);
