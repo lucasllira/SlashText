@@ -41,12 +41,25 @@ compressão e pouca definição continuam sendo limitações do Tesseract.
 ## Extrair durante a seleção
 
 1. Em Captura → Novo → Região, selecione uma área contendo texto.
-2. Ajuste o recorte normalmente. Na barra, clique no ícone de leitura, **Extrair texto da região**.
+2. Ajuste o recorte normalmente. Na barra, clique no botão identificado **Extrair texto**, ao lado de Capturar.
 3. Durante o reconhecimento, a área e sua prévia recebem uma camada suave azul/violeta.
    A animação não modifica pixels, anotações, recorte, histórico ou imagem exportada.
 4. Revise o texto apresentado. É possível editar, selecionar um trecho, Copiar seleção ou Copiar tudo.
 5. Fechar retorna à mesma seleção. OCR não finaliza/salva uma captura, não aplica regras de captura
    de imagem e não cria registro no histórico. A captura normal permanece disponível.
+
+## Barra de captura e popup
+
+A barra mantém seleção/movimentação, ferramentas frequentes, desfazer/refazer e saídas em uma faixa menor.
+As opções de cor, tamanho e intensidade aparecem ao escolher uma ferramenta. O menu de três pontos
+mostra Desfocar/Pixelizar, Limpar marcações e Refazer seleção. Em áreas de trabalho pequenas, também
+recebe as ferramentas recolhidas; não repete as ferramentas visíveis na barra. Uma ferramenta de
+privacidade ativa aparece na barra e deixa de ser repetida no menu.
+
+Configurações de captura fica centralizada na área do aplicativo, com o fundo cobrindo toda a janela.
+O limite de tamanho da popup não limita mais o fundo semitransparente em janelas maiores/maximizadas.
+Cancelar, Esc e clique fora continuam descartando alterações. Conferir janela normal/maximizada
+e monitores com escalas diferentes; a correção do fundo é compartilhada pelos demais diálogos.
 
 ## Extrair no editor
 
@@ -93,6 +106,9 @@ Evidências WPF nos temas Claro/Preto/Windows, painel compacto e renderização 
 As quatro abas de configurações são renderizadas nos três temas. Testes cobrem Cancelar sem mutação,
 conflitos de atalhos, regra direta sem saída, preservação dos campos legados de gravação,
 salvar/reabrir as preferências, defaults antigos, opções inválidas e uso real de Fast/Best offline.
+Também são conferidos o rótulo visível do OCR, acesso às ferramentas sem duplicação na barra/menu,
+modos normal/compacto e ferramentas de privacidade ativas nos três temas. O fundo e a centralização
+são verificados com janelas normal/maximizada, inclusive com limites menores na popup para reproduzir o defeito.
 
 Comparação preliminar em seis imagens sintéticas: fast e best reconheceram todos os exemplos;
 fast confundiu `}` com `3` no exemplo de código, best acertou os seis textos após normalizar espaços.

@@ -271,37 +271,35 @@ public sealed partial class RegionCaptureWindow : Window
         Grid.SetRow(_pilotProperties, 1); _toolbarLayout.Children.Add(_pilotProperties);
         Panel Group(string name)
         {
-            var stack = new StackPanel();
-            var label = new TextBlock { Text = name, FontSize = 10, Margin = new Thickness(5, 0, 5, 4) };
-            label.SetResourceReference(TextBlock.ForegroundProperty, "Lab.muted"); stack.Children.Add(label);
-            var row = new StackPanel { Orientation = Orientation.Horizontal }; stack.Children.Add(row);
-            var box = new Border { Child = stack, Padding = new Thickness(6, 4, 6, 4), Margin = new Thickness(0, 0, 6, 0),
+            var row = new StackPanel { Orientation = Orientation.Horizontal };
+            AutomationProperties.SetName(row, name);
+            var box = new Border { Child = row, Padding = new Thickness(4, 2, 4, 2), Margin = new Thickness(0, 0, 4, 0),
                 BorderThickness = new Thickness(0, 0, 1, 0) };
             box.SetResourceReference(Border.BorderBrushProperty, "Lab.line");
             groups.Children.Add(box); _pilotGroups.Add((box, row)); return row;
         }
-        var area = Group("ÁREA");
+        var annotate = Group("Ferramentas de anotação");
         _selectButton = new ToggleButton { Content = new LabIcon { Kind = "MousePointer2", Width = 20, Height = 20 },
             ToolTip = "Mover área, textos e emojis · Ctrl+arraste move a área", Style = (Style)FindResource("Lab.Overlay.Toggle"), IsChecked = true };
         AutomationProperties.SetName(_selectButton, "Selecionar, mover e redimensionar");
-        _selectButton.Click += (_, _) => SelectRegionTool(); area.Children.Add(_selectButton);
-        _reselectButton = IconButton("CaptureIconReselect", "Refazer seleção (R)", (_, _) => ResetSelection()); area.Children.Add(_reselectButton);
-        var annotate = Group("ANOTAR");
+        _selectButton.Click += (_, _) => SelectRegionTool(); annotate.Children.Add(_selectButton);
+        _reselectButton = IconButton("CaptureIconReselect", "Refazer seleção (R)", (_, _) => ResetSelection());
         annotate.Children.Add(ToolButton("CaptureIconPencil", "Caneta", CaptureAnnotationKind.Pencil));
         annotate.Children.Add(ToolButton("CaptureIconHighlighter", "Marca-texto", CaptureAnnotationKind.Highlighter));
         annotate.Children.Add(ToolButton("CaptureIconShapes", "Formas, setas e números", CaptureAnnotationKind.Rectangle));
         annotate.Children.Add(ToolButton("CaptureIconText", "Texto", CaptureAnnotationKind.Text));
         annotate.Children.Add(ToolButton("CaptureIconEmoji", "Emotes e meus emojis", CaptureAnnotationKind.Stamp));
-        var privacy = Group("PRIVACIDADE");
-        privacy.Children.Add(ToolButton("CaptureIconBlur", "Desfocar", CaptureAnnotationKind.Blur));
-        privacy.Children.Add(ToolButton("CaptureIconPixelate", "Pixelizar", CaptureAnnotationKind.Pixelate));
-        var history = Group("HISTÓRICO");
+        // Privacy tools start in More options and replace their menu entry with an active
+        // toolbar button while in use; there is never a second copy of a visible tool.
+        annotate.Children.Add(ToolButton("CaptureIconBlur", "Desfocar", CaptureAnnotationKind.Blur));
+        annotate.Children.Add(ToolButton("CaptureIconPixelate", "Pixelizar", CaptureAnnotationKind.Pixelate));
+        var history = Group("Desfazer e refazer");
         _undoButton = IconButton("CaptureIconUndo", "Desfazer (Ctrl+Z)", (_, _) => Undo()); history.Children.Add(_undoButton);
         _redoButton = IconButton("CaptureIconRedo", "Refazer (Ctrl+Y)", (_, _) => Redo()); history.Children.Add(_redoButton);
-        var finish = Group("FINALIZAR");
+        var finish = Group("Saídas da captura");
         finish.Children.Add(OcrButton());
         finish.Children.Add(BuildCaptureSplitButton());
-        _overflowButton = IconButton("CaptureIconMore", "Mais opções e ferramentas", (_, _) => ShowOverflowMenu()); finish.Children.Add(_overflowButton);
+        _overflowButton = IconButton("CaptureIconMore", "Mais opções: privacidade, limpar e refazer seleção", (_, _) => ShowOverflowMenu()); finish.Children.Add(_overflowButton);
         _cancelButton = IconButton("CaptureIconClose", "Cancelar captura (Esc)", (_, _) => DialogResult = false); finish.Children.Add(_cancelButton);
         // Kept for shared history/density code; clearing is deliberately a named menu action.
         _eraseButton = IconButton("CaptureIconEraser", "Limpar marcações", (_, _) => ClearAllAnnotations());
@@ -312,6 +310,7 @@ public sealed partial class RegionCaptureWindow : Window
         toolbar.SetResourceReference(Border.BackgroundProperty, "Lab.panel");
         toolbar.SetResourceReference(Border.BorderBrushProperty, "Lab.line-strong");
         LabMotion.SetEntrance(toolbar, "Popup"); LabMotion.SetReduced(toolbar, LabMotion.GetReduced(this));
+        ApplyToolbarDensity(compact: false);
         UpdatePilotProperties(); return toolbar;
     }
 
@@ -319,6 +318,7 @@ public sealed partial class RegionCaptureWindow : Window
     {
         if (_pilotProperties is null) return;
         _pilotProperties.Children.Clear();
+        _pilotProperties.Visibility = _selectMode ? Visibility.Collapsed : Visibility.Visible;
         void Label(string text)
         {
             var label = new TextBlock { Text = text, VerticalAlignment = VerticalAlignment.Center,
@@ -343,7 +343,7 @@ public sealed partial class RegionCaptureWindow : Window
             slider.ValueChanged += (_, _) => { changed(slider.Value); number.Text = ((int)slider.Value).ToString(); };
             row.Children.Add(slider); row.Children.Add(number); _pilotProperties.Children.Add(row);
         }
-        if (_selectMode) { Label("Arraste a região ou as alças. Setas ajustam; Shift acelera."); return; }
+        if (_selectMode) return;
         Label(_tool switch { CaptureAnnotationKind.Pencil => "Caneta", CaptureAnnotationKind.Highlighter => "Marca-texto",
             CaptureAnnotationKind.Text => "Texto", CaptureAnnotationKind.Stamp => "Emojis",
             CaptureAnnotationKind.Blur => "Desfocar", CaptureAnnotationKind.Pixelate => "Pixelizar", _ => "Formas" });
@@ -537,6 +537,14 @@ public sealed partial class RegionCaptureWindow : Window
         _toolbar.Visibility = Visibility.Visible; UpdateToolSelection();
     }
     internal void SetDensityForEvidence(bool compact) => ApplyToolbarDensity(compact);
+    internal StackPanel OverflowForEvidence() => BuildPilotOverflowMenu();
+    internal ToggleButton ToolForEvidence(CaptureAnnotationKind tool) => _toolButtons[tool];
+    internal void FitToolbarForEvidence(double width)
+    {
+        _toolbar.Width = _toolbar.MaxWidth = width;
+        _toolbarLayout.Width = width - _toolbar.Padding.Left - _toolbar.Padding.Right -
+            _toolbar.BorderThickness.Left - _toolbar.BorderThickness.Right;
+    }
     internal void AddForEvidence(CaptureAnnotation annotation) => Add(annotation);
     internal DrawingBitmap RenderForEvidence() => RenderSelection();
     internal CaptureAnnotation FinishDragForEvidence(Point start, Point end)
@@ -751,6 +759,11 @@ public sealed partial class RegionCaptureWindow : Window
 
     private void ShowOverflowMenu()
     {
+        if (_pilotVisuals)
+        {
+            ShowContextWindow(BuildPilotOverflowMenu(), 260, _overflowButton);
+            return;
+        }
         var panel = ContextStack(260);
         panel.Children.Add(ContextTitle("Ferramentas"));
         if (_pilotVisuals) panel.Children.Add(ContextAction("Selecionar / mover", SelectRegionTool));
@@ -771,6 +784,28 @@ public sealed partial class RegionCaptureWindow : Window
         ShowContextWindow(panel, 260);
     }
 
+    private StackPanel BuildPilotOverflowMenu()
+    {
+        var panel = ContextStack(260);
+        var tools = new[] {
+            ("Caneta", CaptureAnnotationKind.Pencil), ("Marca-texto", CaptureAnnotationKind.Highlighter),
+            ("Formas, setas e números", CaptureAnnotationKind.Rectangle), ("Texto", CaptureAnnotationKind.Text),
+            ("Emotes e meus emojis", CaptureAnnotationKind.Stamp), ("Desfocar", CaptureAnnotationKind.Blur),
+            ("Pixelizar", CaptureAnnotationKind.Pixelate) };
+        var hidden = tools.Where(item => _toolButtons[item.Item2].Visibility != Visibility.Visible).ToArray();
+        if (hidden.Length > 0)
+        {
+            panel.Children.Add(ContextTitle(_compactToolbar ? "Mais ferramentas" : "Privacidade"));
+            foreach (var (label, tool) in hidden) AddOverflowTool(panel, label, tool);
+            var line = new Border { Height = 1, Margin = new Thickness(0, 10, 0, 10) };
+            line.SetResourceReference(Border.BackgroundProperty, "Lab.line"); panel.Children.Add(line);
+        }
+        var clear = ContextAction("Limpar marcações", () => { HideContextWindow(); ClearAllAnnotations(); });
+        clear.IsEnabled = _annotationHistory.Items.Count > 0; panel.Children.Add(clear);
+        panel.Children.Add(ContextAction("Refazer seleção · R", () => { HideContextWindow(); ResetSelection(); }));
+        return panel;
+    }
+
     private void AddOverflowTool(
         Panel panel,
         string label,
@@ -778,10 +813,13 @@ public sealed partial class RegionCaptureWindow : Window
     {
         panel.Children.Add(ContextAction(label, () =>
         {
+            if (_pilotVisuals) HideContextWindow(reactivateOverlay: false);
             _selectMode = false; _tool = tool;
             Cursor = tool == CaptureAnnotationKind.Text ? Cursors.IBeam : Cursors.Cross;
             UpdateToolSelection();
-            ShowToolContext(tool);
+            // Pilot properties already live below the toolbar. Open a second panel only
+            // when requested through those properties, rather than duplicating it here.
+            if (!_pilotVisuals) ShowToolContext(tool);
         }));
     }
 
@@ -1800,9 +1838,9 @@ public sealed partial class RegionCaptureWindow : Window
         if (_selectButton is not null) _selectButton.IsChecked = _selectMode;
         SetHandlesVisibility(!_selectionReady || _pilotVisuals && !_selectMode ? Visibility.Collapsed : Visibility.Visible);
         _annotationLayer.Cursor = _selectMode ? Cursors.SizeAll : _tool == CaptureAnnotationKind.Text ? Cursors.IBeam : Cursors.Cross;
-        if (_compactToolbar)
+        if (_compactToolbar || _pilotVisuals)
         {
-            ApplyToolbarDensity(compact: true);
+            ApplyToolbarDensity(compact: _compactToolbar);
             RequestToolbarPosition();
         }
         UpdateHistoryButtons();
@@ -1812,6 +1850,18 @@ public sealed partial class RegionCaptureWindow : Window
     private void ApplyToolbarDensity(bool compact)
     {
         _compactToolbar = compact;
+        if (_pilotVisuals)
+        {
+            foreach (var (tool, button) in _toolButtons)
+                button.Visibility = (!compact && tool is not (CaptureAnnotationKind.Blur or CaptureAnnotationKind.Pixelate)) ||
+                    (!_selectMode && RepresentsActiveTool(tool)) ? Visibility.Visible : Visibility.Collapsed;
+            if (_selectButton is not null) _selectButton.Visibility = Visibility.Visible;
+            _eraseButton.Visibility = _reselectButton.Visibility = Visibility.Collapsed;
+            _overflowButton.Visibility = Visibility.Visible;
+            foreach (var (container, tools) in _pilotGroups)
+                container.Visibility = tools.Children.Cast<UIElement>().Any(c => c.Visibility == Visibility.Visible) ? Visibility.Visible : Visibility.Collapsed;
+            return;
+        }
         foreach (var (tool, button) in _toolButtons)
         {
             button.Visibility = !compact || !_selectMode && RepresentsActiveTool(tool)
@@ -2090,8 +2140,7 @@ public sealed partial class RegionCaptureWindow : Window
         var framePadding = _pilotVisuals ? 16d : 0d;
         var maximumWidthDips = Math.Max(1, maximumWidthPixels / monitor.DpiScaleX - framePadding);
 
-        // A faixa normal mede cerca de 640 DIPs. Em áreas menores, comandos
-        // secundários migram para um overflow explícito; nunca são cortados.
+        // In small work areas, hidden tools move to More options; text extraction stays visible.
         ApplyToolbarDensity(compact: false);
         _toolbar.Width = double.NaN; _toolbarLayout.Width = double.NaN;
         _toolbar.MaxWidth = double.PositiveInfinity;

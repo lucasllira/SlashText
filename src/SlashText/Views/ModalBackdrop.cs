@@ -44,6 +44,9 @@ internal static class ModalBackdrop
         dialog.WindowStartupLocation = WindowStartupLocation.Manual;
         dialog.ResizeMode = ResizeMode.NoResize; dialog.SizeToContent = SizeToContent.Manual;
         dialog.MinWidth = 0; dialog.MinHeight = 0;
+        // The content keeps its own bounds. The backdrop must cover the owner's entire client
+        // area, even when the original popup had a MaxHeight/MaxWidth (or the owner is maximized).
+        dialog.MaxWidth = double.PositiveInfinity; dialog.MaxHeight = double.PositiveInfinity;
         dialog.Left = origin.X; dialog.Top = origin.Y; dialog.Width = width; dialog.Height = height;
     }
 }

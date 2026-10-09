@@ -50,6 +50,7 @@ internal static class CaptureOcrSmoke
         }
         File.WriteAllText(Path.Combine(output, "benchmark.json"), JsonSerializer.Serialize(metrics, new JsonSerializerOptions { WriteIndented = true }));
         await CheckSettingsAsync(output);
+        await CaptureLayoutSmoke.RunAsync(Path.Combine(output, "layout"));
         using var blank = Fixture("", false, 18, "Segoe UI");
         Require(string.IsNullOrWhiteSpace((await new CaptureOcrService().RecognizeAsync(blank)).Text), "Blank image produces empty text");
         using (var canceled = new CancellationTokenSource())

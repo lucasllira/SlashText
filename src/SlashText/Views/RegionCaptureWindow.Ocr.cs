@@ -12,7 +12,16 @@ public sealed partial class RegionCaptureWindow
     private Button OcrButton()
     {
         var button = new Button { Content = new LabIcon { Kind = "ScanLine", Width = 20, Height = 20 }, ToolTip = "Extrair texto da região (OCR)" };
-        button.SetResourceReference(StyleProperty, _pilotVisuals ? "Lab.Pilot.ToolButton" : "CaptureToolbarIconButton");
+        button.SetResourceReference(StyleProperty, _pilotVisuals ? "Lab.Button" : "CaptureToolbarIconButton");
+        if (_pilotVisuals)
+        {
+            var content = new StackPanel { Orientation = Orientation.Horizontal };
+            var icon = new LabIcon { Kind = "ScanLine", Width = 18, Height = 18, Margin = new Thickness(0, 0, 6, 0) };
+            icon.SetResourceReference(LabIcon.ForegroundProperty, "Lab.accent-text");
+            content.Children.Add(icon); content.Children.Add(new TextBlock { Text = "Extrair texto", VerticalAlignment = VerticalAlignment.Center });
+            button.Content = content; button.Height = 38; button.Padding = new Thickness(10, 6, 10, 6);
+            button.Margin = new Thickness(0, 0, 8, 0);
+        }
         AutomationProperties.SetName(button, "Extrair texto da região"); button.Click += (_, _) => ExtractRegionText(); return button;
     }
     private void ExtractRegionText()
