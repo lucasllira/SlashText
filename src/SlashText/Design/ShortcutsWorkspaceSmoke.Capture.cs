@@ -11,6 +11,16 @@ namespace SlashText.Design;
 
 internal static partial class ShortcutsWorkspaceSmoke
 {
+    private static void SettleOwnedCaptureLayout(Window window)
+    {
+        // Owned windows are live visuals: allow the queued render to complete
+        // after search/layout changes before rasterizing their visual tree.
+        window.UpdateLayout();
+        var frame = new DispatcherFrame();
+        window.Dispatcher.BeginInvoke(DispatcherPriority.ApplicationIdle, new Action(() => frame.Continue = false));
+        Dispatcher.PushFrame(frame);
+        window.UpdateLayout();
+    }
     private static void CheckCaptureComplements(string theme, string output)
     {
         using var bitmap = new System.Drawing.Bitmap(900, 480);
@@ -62,7 +72,7 @@ internal static partial class ShortcutsWorkspaceSmoke
                     history.PageForEvidence(2); Require(history.VisibleCount == 25 && history.PageForEvidenceValue == 2, "History reaches records beyond carousel limit");
                     history.SearchForEvidence("captura-074"); Require(history.VisibleCount == 1 && history.PageForEvidenceValue == 0, "Search resets pagination");
                     history.SearchForEvidence("região 09/10/2026"); Require(history.VisibleCount == 25, "History name/type/date search");
-                    history.UpdateLayout();
+                    SettleOwnedCaptureLayout(history);
                     SaveImage((FrameworkElement)history.Content, output, $"capture-history-owned-{theme}", new Size(history.Width, history.Height), 1);
                     Require(!ModalBackdrop.DismissAt(history.Surface, new Point(40, 40), history.Close), "Click inside history keeps it open");
                     Require(ModalBackdrop.DismissAt(history.Surface, new Point(-10, 40), history.Close), "Click outside full history closes it");
@@ -78,7 +88,7 @@ internal static partial class ShortcutsWorkspaceSmoke
                 try
                 {
                     help.OpenTopic("objects"); help.SearchForEvidence("anotacoes"); Require(help.ResultCount > 0, "Search new object help topic");
-                    help.SearchForEvidence(""); help.UpdateLayout();
+                    help.SearchForEvidence(""); SettleOwnedCaptureLayout(help);
                     SaveImage((FrameworkElement)help.Content, output, $"capture-help-owned-{theme}", new Size(help.Width, help.Height), 1);
                     Require(!ModalBackdrop.DismissAt(help.HelpSurface, new Point(40, 40), help.Close), "Inside help does not dismiss");
                     Require(ModalBackdrop.DismissAt(help.HelpSurface, new Point(-10, 40), help.Close), "Capture help closes outside");
