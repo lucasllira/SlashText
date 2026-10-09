@@ -41,7 +41,7 @@ compressão e pouca definição continuam sendo limitações do Tesseract.
 ## Extrair durante a seleção
 
 1. Em Captura → Novo → Região, selecione uma área contendo texto.
-2. Ajuste o recorte normalmente. Na barra, clique no botão identificado **Extrair texto**, ao lado de Capturar.
+2. Ajuste o recorte normalmente. Na barra, clique no ícone de leitura no bloco **OCR**; a dica mostra **Extrair texto da região**.
 3. Durante o reconhecimento, a área e sua prévia recebem uma camada suave azul/violeta.
    A animação não modifica pixels, anotações, recorte, histórico ou imagem exportada.
 4. Revise o texto apresentado. É possível editar, selecionar um trecho, Copiar seleção ou Copiar tudo.
@@ -52,9 +52,15 @@ compressão e pouca definição continuam sendo limitações do Tesseract.
 
 A barra mantém os blocos **Área, Anotar, Privacidade, Histórico, OCR e Finalizar**, com títulos e separadores.
 Área reúne mover e refazer seleção; Privacidade mantém Desfocar/Pixelizar visíveis, inclusive no modo compacto.
-Extrair texto tem bloco próprio. As opções de cor, tamanho e intensidade aparecem ao escolher uma ferramenta.
-O menu de três pontos mostra Limpar marcações e, em áreas pequenas, as ferramentas de anotação recolhidas.
-Não repete mover, refazer seleção, privacidade ou as ferramentas que continuam visíveis. Blocos podem
+OCR usa apenas um ícone de leitura com linhas de texto. **Finalizar/Capturar fica à direita**.
+A lixeira **Limpar marcações** fica no Histórico, junto de Desfazer/Refazer; Desfazer recupera as marcações apagadas.
+Os painéis abrem no primeiro clique na ferramenta, com cores em grade, RGB/hexadecimal e prévia curva do traço;
+formas incluem retângulo, elipse, linha, seta e número, com preenchimento/contorno conforme o tipo.
+Texto mantém fonte, negrito, tamanho e cor. Não há uma segunda linha fixa de propriedades.
+Emojis usam imagens **Google Noto Emoji** offline; Ver todos/Meus emojis abre o catálogo completo e as importações.
+Desfocar suaviza a área; Pixelizar forma blocos de cor. São efeitos reais da composição e do arquivo exportado.
+Em áreas pequenas, os três pontos mostram apenas as ferramentas de anotação recolhidas; na barra completa ficam ocultos.
+Não repete mover, refazer seleção, limpar, privacidade ou as ferramentas que continuam visíveis. Blocos podem
 passar para outra linha em uma área estreita, sem cortar comandos ou esconder OCR/Privacidade.
 
 Configurações de captura fica centralizada na área do aplicativo, com o fundo cobrindo toda a janela.
@@ -112,7 +118,9 @@ As quatro abas de configurações são renderizadas nos três temas. Testes cobr
 conflitos de atalhos, regra direta sem saída, preservação dos campos legados de gravação,
 salvar/reabrir as preferências, defaults antigos, opções inválidas e uso real de Fast/Best offline.
 Também são conferidos os seis títulos, OCR e Privacidade visíveis, acesso sem duplicação na barra/menu,
-modos normal/compacto e ferramentas de privacidade ativas nos três temas. Textos ficam fora da árvore
+modos normal/compacto, painéis de ferramentas, RGB/espessura aplicados ao desenho e lixeira com Desfazer.
+Os filtros reais são comparados em pixels: blocos uniformes versus transições suaves, região externa intacta
+e PNG exportado idêntico à composição. Ferramentas de privacidade são verificadas nos três temas. Textos ficam fora da árvore
 do efeito de sombra, com renderizações em 100/125/150%. O fundo e a centralização
 são verificados com janelas normal/maximizada, inclusive com limites menores na popup para reproduzir o defeito.
 

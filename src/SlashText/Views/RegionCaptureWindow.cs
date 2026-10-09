@@ -25,7 +25,6 @@ public sealed partial class RegionCaptureWindow : Window
 {
     private readonly bool _pilotVisuals;
     private ToggleButton? _selectButton;
-    private WrapPanel? _pilotProperties;
     private readonly List<(Border Container, Panel Tools)> _pilotGroups = [];
     private int _privacyStrength = 18;
     private bool _selectMode;
@@ -264,12 +263,10 @@ public sealed partial class RegionCaptureWindow : Window
     {
         var groups = new WrapPanel { Orientation = Orientation.Horizontal };
         _toolbarLayout = new Grid { MinHeight = 44 };
-        _toolbarLayout.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-        _toolbarLayout.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        _toolbarLayout.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        _toolbarLayout.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         _toolbarLayout.Children.Add(groups);
-        _pilotProperties = new WrapPanel { Margin = new Thickness(4, 6, 4, 0) };
-        Grid.SetRow(_pilotProperties, 1); _toolbarLayout.Children.Add(_pilotProperties);
-        Panel Group(string name)
+        Panel Group(string name, bool finish = false)
         {
             var stack = new StackPanel();
             var label = new TextBlock { Text = name, FontSize = 10, Margin = new Thickness(4, 0, 4, 4) };
@@ -279,7 +276,14 @@ public sealed partial class RegionCaptureWindow : Window
             var box = new Border { Child = stack, Padding = new Thickness(4, 3, 4, 3), Margin = new Thickness(0, 0, 4, 0),
                 BorderThickness = new Thickness(0, 0, 1, 0) };
             box.SetResourceReference(Border.BorderBrushProperty, "Lab.line");
-            groups.Children.Add(box); _pilotGroups.Add((box, row)); return row;
+            if (finish)
+            {
+                Grid.SetColumn(box, 1); box.VerticalAlignment = VerticalAlignment.Top;
+                box.BorderThickness = new Thickness(0); box.Margin = new Thickness(0);
+                _toolbarLayout.Children.Add(box);
+            }
+            else groups.Children.Add(box);
+            _pilotGroups.Add((box, row)); return row;
         }
         var area = Group("ÁREA");
         _selectButton = new ToggleButton { Content = new LabIcon { Kind = "MousePointer2", Width = 20, Height = 20 },
@@ -299,13 +303,12 @@ public sealed partial class RegionCaptureWindow : Window
         var history = Group("HISTÓRICO");
         _undoButton = IconButton("CaptureIconUndo", "Desfazer (Ctrl+Z)", (_, _) => Undo()); history.Children.Add(_undoButton);
         _redoButton = IconButton("CaptureIconRedo", "Refazer (Ctrl+Y)", (_, _) => Redo()); history.Children.Add(_redoButton);
+        _eraseButton = IconButton("CaptureIconEraser", "Limpar marcações", (_, _) => ClearAllAnnotations()); history.Children.Add(_eraseButton);
         var ocr = Group("OCR"); ocr.Children.Add(OcrButton());
-        var finish = Group("FINALIZAR");
+        var finish = Group("FINALIZAR", finish: true);
         finish.Children.Add(BuildCaptureSplitButton());
-        _overflowButton = IconButton("CaptureIconMore", "Mais opções: limpar marcações e ferramentas recolhidas", (_, _) => ShowOverflowMenu()); finish.Children.Add(_overflowButton);
+        _overflowButton = IconButton("CaptureIconMore", "Mais ferramentas", (_, _) => ShowOverflowMenu()); finish.Children.Add(_overflowButton);
         _cancelButton = IconButton("CaptureIconClose", "Cancelar captura (Esc)", (_, _) => DialogResult = false); finish.Children.Add(_cancelButton);
-        // Kept for shared history/density code; clearing is deliberately a named menu action.
-        _eraseButton = IconButton("CaptureIconEraser", "Limpar marcações", (_, _) => ClearAllAnnotations());
         _captureSeparator = Separator(); _actionSeparator = Separator();
         var toolbar = new Border { Visibility = Visibility.Collapsed, Padding = new Thickness(6),
             CornerRadius = new CornerRadius(12), BorderThickness = new Thickness(1), Child = _toolbarLayout,
@@ -314,86 +317,7 @@ public sealed partial class RegionCaptureWindow : Window
         toolbar.SetResourceReference(Border.BorderBrushProperty, "Lab.line-strong");
         LabMotion.SetEntrance(toolbar, "Popup"); LabMotion.SetReduced(toolbar, LabMotion.GetReduced(this));
         ApplyToolbarDensity(compact: false);
-        UpdatePilotProperties(); return toolbar;
-    }
-
-    private void UpdatePilotProperties()
-    {
-        if (_pilotProperties is null) return;
-        _pilotProperties.Children.Clear();
-        _pilotProperties.Visibility = _selectMode ? Visibility.Collapsed : Visibility.Visible;
-        void Label(string text)
-        {
-            var label = new TextBlock { Text = text, VerticalAlignment = VerticalAlignment.Center,
-                Margin = new Thickness(4, 0, 8, 0), FontSize = 11, TextWrapping = TextWrapping.Wrap, MaxWidth = 220 };
-            label.SetResourceReference(TextBlock.ForegroundProperty, "Lab.muted"); _pilotProperties.Children.Add(label);
-        }
-        Button Action(string text, Action callback)
-        {
-            var button = ContextAction(text, callback); button.Margin = new Thickness(2); button.Height = 32;
-            _pilotProperties.Children.Add(button); return button;
-        }
-        void Slider(string name, double min, double max, double value, Action<double> changed)
-        {
-            var row = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(5, 0, 7, 0), Height = 34 };
-            var label = new TextBlock { Text = name, VerticalAlignment = VerticalAlignment.Center, FontSize = 11 };
-            label.SetResourceReference(TextBlock.ForegroundProperty, "Lab.muted"); row.Children.Add(label);
-            var slider = new Slider { Minimum = min, Maximum = max, Value = value, Width = 72, TickFrequency = 1,
-                IsSnapToTickEnabled = true, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(8, 0, 6, 0) };
-            slider.SetResourceReference(StyleProperty, "Lab.Pilot.InkSlider"); AutomationProperties.SetName(slider, name);
-            var number = new TextBlock { Text = ((int)value).ToString(), Width = 25, VerticalAlignment = VerticalAlignment.Center };
-            number.SetResourceReference(TextBlock.ForegroundProperty, "Lab.text");
-            slider.ValueChanged += (_, _) => { changed(slider.Value); number.Text = ((int)slider.Value).ToString(); };
-            row.Children.Add(slider); row.Children.Add(number); _pilotProperties.Children.Add(row);
-        }
-        if (_selectMode) return;
-        Label(_tool switch { CaptureAnnotationKind.Pencil => "Caneta", CaptureAnnotationKind.Highlighter => "Marca-texto",
-            CaptureAnnotationKind.Text => "Texto", CaptureAnnotationKind.Stamp => "Emojis",
-            CaptureAnnotationKind.Blur => "Desfocar", CaptureAnnotationKind.Pixelate => "Pixelizar", _ => "Formas" });
-        if (_tool is CaptureAnnotationKind.Blur or CaptureAnnotationKind.Pixelate)
-        { Slider("Intensidade", 6, 40, _privacyStrength, v => _privacyStrength = (int)v); Label("Confira o resultado antes de compartilhar."); }
-        else
-        {
-            if (_tool is CaptureAnnotationKind.Rectangle or CaptureAnnotationKind.Ellipse or CaptureAnnotationKind.Line or CaptureAnnotationKind.Arrow or CaptureAnnotationKind.Number)
-            {
-                var choices = new[] { ("Retângulo", CaptureAnnotationKind.Rectangle), ("Elipse", CaptureAnnotationKind.Ellipse),
-                    ("Linha", CaptureAnnotationKind.Line), ("Seta", CaptureAnnotationKind.Arrow), ("Número", CaptureAnnotationKind.Number) };
-                var combo = new ComboBox { ItemsSource = choices.Select(c => c.Item1).ToArray(), Width = 115, Height = 32,
-                    SelectedIndex = Array.FindIndex(choices, c => c.Item2 == _tool), Margin = new Thickness(2) };
-                combo.SetResourceReference(StyleProperty, "Lab.Combo"); AutomationProperties.SetName(combo, "Tipo de forma");
-                combo.SelectionChanged += (_, _) => { if (combo.SelectedIndex < 0) return; HideContextWindow(); _tool = choices[combo.SelectedIndex].Item2; UpdateToolSelection(); };
-                _pilotProperties.Children.Add(combo);
-            }
-            if (_tool == CaptureAnnotationKind.Stamp)
-            {
-                var choose = Action("Escolher emoji ▾", () => ShowToolContext(CaptureAnnotationKind.Stamp));
-                choose.ToolTip = "Catálogo Noto e Meus emojis";
-                Slider("Tamanho", 24, 128, _annotationSize, v => _annotationSize = (float)v);
-            }
-            else
-            {
-                var color = Action("Cor ▾", ShowInkContext);
-                var dot = new Border { Width = 14, Height = 14, CornerRadius = new CornerRadius(7), Background = WpfBrush(_color, 1), BorderThickness = new Thickness(1), Margin = new Thickness(0, 0, 6, 0) };
-                dot.SetResourceReference(Border.BorderBrushProperty, "Lab.line-strong");
-                var content = new StackPanel { Orientation = Orientation.Horizontal }; content.Children.Add(dot);
-                content.Children.Add(new TextBlock { Text = "Cor ▾" }); color.Content = content;
-                if (_tool == CaptureAnnotationKind.Text)
-                {
-                    var font = new ComboBox { ItemsSource = new[] { "Segoe UI", "Arial", "Verdana", "Georgia", "Consolas" },
-                        SelectedItem = _textFont, Width = 130, Height = 32, Margin = new Thickness(2) };
-                    font.SetResourceReference(StyleProperty, "Lab.Combo"); AutomationProperties.SetName(font, "Fonte da anotação");
-                    font.SelectionChanged += (_, _) => { if (font.SelectedItem is string value) _textFont = value; };
-                    _pilotProperties.Children.Add(font);
-                }
-                if (_tool is CaptureAnnotationKind.Text or CaptureAnnotationKind.Number)
-                    Slider("Tamanho", 12, 64, _annotationSize, v => _annotationSize = (float)v);
-                else Slider("Espessura", 1, 24, _thickness, v => _thickness = (float)v);
-                Slider("Opacidade", 10, 100, _opacity * 100, v => _opacity = (float)(v / 100));
-                Action("Propriedades ▾", () => ShowToolContext(_tool));
-            }
-        }
-        LabMotion.SetEntrance(_pilotProperties, "Page");
-        if (_pilotProperties.IsLoaded) LabMotion.PlayEntrance(_pilotProperties);
+        return toolbar;
     }
 
     private static LabIcon PilotIcon(string geometryKey) => new()
@@ -423,25 +347,25 @@ public sealed partial class RegionCaptureWindow : Window
     private void ShowShapeInk(bool fill)
     {
         var panel = new StackPanel();
-        panel.Children.Add(CaptureInkPicker.CreateContent(() => (fill ? _fillArgb : _outlineArgb) ?? _color, color =>
+        panel.Children.Add(CaptureInkPicker.CreateColorContent(() => (fill ? _fillArgb : _outlineArgb) ?? _color, color =>
         {
             if (fill) _fillArgb = color; else _outlineArgb = color;
             _color = color;
-        }, () => _thickness, value => _thickness = value));
+        }, fill ? "Preenchimento" : "Contorno", compactPalette: true));
         var actions = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(14, 0, 14, 10) };
         actions.Children.Add(ContextAction("Sem cor", () =>
         {
             if (fill) { _fillArgb = null; _outlineArgb ??= _color; }
             else { _outlineArgb = null; _fillArgb ??= _color; }
-            ShowToolContext(CaptureAnnotationKind.Rectangle);
+            ShowToolContext(_tool);
         }));
-        actions.Children.Add(ContextAction("Voltar às formas", () => ShowToolContext(CaptureAnnotationKind.Rectangle)));
-        panel.Children.Add(actions); ShowContextWindow(panel, 700);
+        actions.Children.Add(ContextAction("Voltar às formas", () => ShowToolContext(_tool)));
+        panel.Children.Add(actions); ShowContextWindow(panel, 380, _toolButtons[CaptureAnnotationKind.Rectangle]);
     }
 
     private FrameworkElement BuildPilotStampContext()
     {
-        var panel = new StackPanel { Margin = new Thickness(14), Width = 660 };
+        var panel = new StackPanel { Margin = new Thickness(14), Width = 320 };
         var row = new DockPanel();
         var all = ContextAction("Ver todos / Meus emojis", () =>
         {
@@ -452,8 +376,8 @@ public sealed partial class RegionCaptureWindow : Window
             UpdateToolSelection(); ShowToolContext(CaptureAnnotationKind.Stamp);
         });
         DockPanel.SetDock(all, Dock.Right); row.Children.Add(all);
-        row.Children.Add(ContextTitle("Emotes")); panel.Children.Add(row);
-        var strip = new StackPanel { Orientation = Orientation.Horizontal };
+        row.Children.Add(ContextTitle("Emojis")); panel.Children.Add(row);
+        var strip = new UniformGrid { Columns = 6 };
         var quick = NotoEmojiCatalog.QuickItems.AsEnumerable();
         if (!quick.Any(e => e.Value == _selectedStamp) && CaptureStampCatalog.Current.TryGet(_selectedStamp, out var current))
             quick = new[] { current }.Concat(quick);
@@ -472,8 +396,8 @@ public sealed partial class RegionCaptureWindow : Window
             };
             choices.Add(button); strip.Children.Add(button);
         }
-        panel.Children.Add(new ScrollViewer { Content = strip, Height = 56,
-            HorizontalScrollBarVisibility = ScrollBarVisibility.Auto, VerticalScrollBarVisibility = ScrollBarVisibility.Disabled });
+        panel.Children.Add(new ScrollViewer { Content = strip, MaxHeight = 268,
+            HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled, VerticalScrollBarVisibility = ScrollBarVisibility.Auto });
         panel.Children.Add(LabeledSlider("Tamanho", 24, 128, _annotationSize, value => _annotationSize = (float)value, " px"));
         return panel;
     }
@@ -549,10 +473,13 @@ public sealed partial class RegionCaptureWindow : Window
             _toolbar.BorderThickness.Left - _toolbar.BorderThickness.Right;
     }
     internal void AddForEvidence(CaptureAnnotation annotation) => Add(annotation);
+    internal FrameworkElement? ContextForEvidence => _contextWindow?.Content as FrameworkElement;
+    internal int AnnotationCountForEvidence => _annotationHistory.Items.Count;
     internal DrawingBitmap RenderForEvidence() => RenderSelection();
     internal CaptureAnnotation FinishDragForEvidence(Point start, Point end)
     {
         _annotationStart = start; _pencilPoints.Clear();
+        if (_tool == CaptureAnnotationKind.Pencil) _pencilPoints.Add(start);
         FinishAnnotation(new Point(end.X + _annotationOrigin.X, end.Y + _annotationOrigin.Y));
         return _annotationHistory.Items.Last();
     }
@@ -639,7 +566,7 @@ public sealed partial class RegionCaptureWindow : Window
             HideContextWindow(); _selectMode = false; _tool = tool;
             Cursor = tool == CaptureAnnotationKind.Text ? Cursors.IBeam : Cursors.Cross;
             UpdateToolSelection();
-            if (_pilotVisuals ? repeated : repeated || tool is CaptureAnnotationKind.Rectangle or
+            if (_pilotVisuals || repeated || tool is CaptureAnnotationKind.Rectangle or
                     CaptureAnnotationKind.Text or CaptureAnnotationKind.Number or
                     CaptureAnnotationKind.Stamp)
             {
@@ -800,11 +727,7 @@ public sealed partial class RegionCaptureWindow : Window
         {
             panel.Children.Add(ContextTitle("Mais ferramentas"));
             foreach (var (label, tool) in hidden) AddOverflowTool(panel, label, tool);
-            var line = new Border { Height = 1, Margin = new Thickness(0, 10, 0, 10) };
-            line.SetResourceReference(Border.BackgroundProperty, "Lab.line"); panel.Children.Add(line);
         }
-        var clear = ContextAction("Limpar marcações", () => { HideContextWindow(); ClearAllAnnotations(); });
-        clear.IsEnabled = _annotationHistory.Items.Count > 0; panel.Children.Add(clear);
         return panel;
     }
 
@@ -819,9 +742,7 @@ public sealed partial class RegionCaptureWindow : Window
             _selectMode = false; _tool = tool;
             Cursor = tool == CaptureAnnotationKind.Text ? Cursors.IBeam : Cursors.Cross;
             UpdateToolSelection();
-            // Pilot properties already live below the toolbar. Open a second panel only
-            // when requested through those properties, rather than duplicating it here.
-            if (!_pilotVisuals) ShowToolContext(tool);
+            ShowToolContext(tool);
         }));
     }
 
@@ -829,13 +750,16 @@ public sealed partial class RegionCaptureWindow : Window
     {
         FrameworkElement content = tool switch
         {
+            _ when _pilotVisuals => BuildPilotToolContext(tool),
             CaptureAnnotationKind.Rectangle or CaptureAnnotationKind.Ellipse or
                 CaptureAnnotationKind.Line => BuildShapesContext(),
             CaptureAnnotationKind.Stamp => BuildStampContext(),
             _ => BuildStrokeContext(tool)
         };
-        ShowContextWindow(content, tool == CaptureAnnotationKind.Stamp && _pilotVisuals ? 700 : 380,
-            _toolButtons.TryGetValue(tool, out var button) ? button : null);
+        var toolbarTool = _pilotVisuals && tool is CaptureAnnotationKind.Ellipse or CaptureAnnotationKind.Line or CaptureAnnotationKind.Arrow or CaptureAnnotationKind.Number
+            ? CaptureAnnotationKind.Rectangle : tool;
+        ShowContextWindow(content, 380,
+            _toolButtons.TryGetValue(toolbarTool, out var button) ? button : null);
     }
 
     private FrameworkElement BuildStrokeContext(CaptureAnnotationKind tool)
@@ -1212,12 +1136,25 @@ public sealed partial class RegionCaptureWindow : Window
                 Opacity = .3
             }
         };
+        if (_pilotVisuals)
+        {
+            // Keep the shadow off the text/control subtree, as in Capture settings.
+            border.Effect = null;
+            border.Child = null;
+            var layers = new Grid();
+            layers.Children.Add(new Border { Background = border.Background, CornerRadius = border.CornerRadius,
+                IsHitTestVisible = false, Effect = new System.Windows.Media.Effects.DropShadowEffect { BlurRadius = 14, ShadowDepth = 3, Opacity = .3 } });
+            layers.Children.Add(scroller); border.Child = layers;
+            RenderOptions.SetClearTypeHint(border, ClearTypeHint.Enabled);
+        }
         _contextWindow = new Window
         {
             Title = "Opções da ferramenta",
             WindowStyle = WindowStyle.None,
             ResizeMode = ResizeMode.NoResize,
             AllowsTransparency = true,
+            UseLayoutRounding = true,
+            SnapsToDevicePixels = true,
             Background = Brushes.Transparent,
             SizeToContent = SizeToContent.WidthAndHeight,
             ShowInTaskbar = false,
@@ -1229,6 +1166,7 @@ public sealed partial class RegionCaptureWindow : Window
             Opacity = SystemParameters.ClientAreaAnimation ? 0 : 1,
             Content = _pilotVisuals ? new Border { Padding = new Thickness(8), Child = border } : border
         };
+        TextOptions.SetTextFormattingMode(_contextWindow, TextFormattingMode.Display);
         _contextWindow.PreviewKeyDown += (_, args) =>
         {
             if (args.Key == Key.Escape)
@@ -1240,6 +1178,7 @@ public sealed partial class RegionCaptureWindow : Window
         _contextWindow.Deactivated += (_, _) => HideContextWindow();
         if (_pilotVisuals) { LabMotion.SetEntrance(border, "Popup"); LabMotion.SetReduced(border, LabMotion.GetReduced(this)); }
         _contextWindow.DpiChanged += (_, _) => PositionContextWindow();
+        _toolbar.UpdateLayout();
         _contextWindow.Show();
         _contextWindow.UpdateLayout();
         PositionContextWindow();
@@ -1311,7 +1250,7 @@ public sealed partial class RegionCaptureWindow : Window
         _contextWindow = null;
         _contextAnchor = null;
         window.Close();
-        if (_pilotVisuals) { UpdatePilotProperties(); RequestToolbarPosition(); }
+        if (_pilotVisuals) { RequestToolbarPosition(); }
         if (reactivateOverlay && IsVisible) Activate();
     }
 
@@ -1846,7 +1785,7 @@ public sealed partial class RegionCaptureWindow : Window
             RequestToolbarPosition();
         }
         UpdateHistoryButtons();
-        if (_pilotVisuals) { UpdatePilotProperties(); RequestToolbarPosition(); }
+        if (_pilotVisuals) { RequestToolbarPosition(); }
     }
 
     private void ApplyToolbarDensity(bool compact)
@@ -1858,8 +1797,8 @@ public sealed partial class RegionCaptureWindow : Window
                 button.Visibility = !compact || tool is CaptureAnnotationKind.Blur or CaptureAnnotationKind.Pixelate ||
                     (!_selectMode && RepresentsActiveTool(tool)) ? Visibility.Visible : Visibility.Collapsed;
             if (_selectButton is not null) _selectButton.Visibility = Visibility.Visible;
-            _eraseButton.Visibility = Visibility.Collapsed; _reselectButton.Visibility = Visibility.Visible;
-            _overflowButton.Visibility = Visibility.Visible;
+            _eraseButton.Visibility = Visibility.Visible; _reselectButton.Visibility = Visibility.Visible;
+            _overflowButton.Visibility = _toolButtons.Values.Any(b => b.Visibility != Visibility.Visible) ? Visibility.Visible : Visibility.Collapsed;
             foreach (var (container, tools) in _pilotGroups)
                 container.Visibility = tools.Children.Cast<UIElement>().Any(c => c.Visibility == Visibility.Visible) ? Visibility.Visible : Visibility.Collapsed;
             return;
@@ -2196,6 +2135,7 @@ public sealed partial class RegionCaptureWindow : Window
             SwpNoActivate | SwpShowWindow);
         _toolbarWindow.Opacity = 1;
         if (_pilotVisuals && entering) LabMotion.PlayEntrance(_toolbar);
+        if (_contextWindow is not null) PositionContextWindow();
 
         SafeDiagnosticLog.Write("capture.toolbar-positioned", new Dictionary<string, object?>
         {

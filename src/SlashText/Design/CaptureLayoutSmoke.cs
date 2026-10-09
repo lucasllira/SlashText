@@ -21,6 +21,7 @@ internal static class CaptureLayoutSmoke
             ThemeService.Apply(theme);
             using var bitmap = new System.Drawing.Bitmap(900, 500);
             var overlay = new RegionCaptureWindow(bitmap, pilotVisuals: true);
+            LabMotion.SetReduced(overlay, true);
             Window? toolbarHost = null;
             try
             {
@@ -30,8 +31,9 @@ internal static class CaptureLayoutSmoke
                     WindowStyle = WindowStyle.None, ShowInTaskbar = false };
                 toolbarHost.Show(); await SettleAsync();
                 var textButton = Descendants(toolbar).OfType<Button>().Single(b => AutomationProperties.GetName(b) == "Extrair texto da região");
-                Require(textButton.Content is StackPanel textContent && textContent.Children.OfType<TextBlock>().Any(t => t.Text == "Extrair texto"),
-                    "OCR contains the actual text label, beyond its automation name");
+                Require(textButton.Content is LabIcon { Kind: "ScanText" }, "OCR uses only a text scan icon with an accessible name");
+                var clear = Descendants(toolbar).OfType<Button>().Single(b => AutomationProperties.GetName(b) == "Limpar marcações");
+                Require(!clear.IsEnabled, "History clear is disabled with no annotations");
                 Require(new[] { "ÁREA", "ANOTAR", "PRIVACIDADE", "HISTÓRICO", "OCR", "FINALIZAR" }
                     .All(name => Descendants(toolbar).OfType<TextBlock>().Any(t => t.Text == name)), "Toolbar has six labeled blocks");
                 foreach (var compact in new[] { false, true })
@@ -42,6 +44,12 @@ internal static class CaptureLayoutSmoke
                     overlay.FitToolbarForEvidence(toolbarHost.Width); await SettleAsync();
                     CheckDistribution(overlay);
                     Require(textButton.Visibility == Visibility.Visible, "OCR stays visible in both densities");
+                    var finish = Descendants(toolbar).OfType<StackPanel>().Single(p => AutomationProperties.GetName(p) == "FINALIZAR");
+                    var finishBounds = finish.TransformToAncestor(toolbar).TransformBounds(new Rect(finish.RenderSize));
+                    var ocrBounds = textButton.TransformToAncestor(toolbar).TransformBounds(new Rect(textButton.RenderSize));
+                    Require(finishBounds.Left >= ocrBounds.Right, "Finalize stays on right even when other blocks wrap");
+                    Require(Descendants(toolbar).OfType<Button>().Single(b => AutomationProperties.GetName(b) == "Mais ferramentas").IsVisible == compact,
+                        "More appears only when tools are collapsed");
                     Save(toolbar, output, $"{theme}-toolbar-{(compact ? "compact" : "normal")}", toolbarHost.Width);
                     var menu = overlay.OverflowForEvidence();
                     var menuSurface = new Border { Child = menu, CornerRadius = new CornerRadius(10), Padding = new Thickness(8) };
@@ -49,6 +57,27 @@ internal static class CaptureLayoutSmoke
                     Save(menuSurface, output, $"{theme}-more-{(compact ? "compact" : "normal")}", 310);
                 }
                 overlay.SetDensityForEvidence(false);
+                foreach (var tool in new[] { CaptureAnnotationKind.Pencil, CaptureAnnotationKind.Highlighter,
+                    CaptureAnnotationKind.Rectangle, CaptureAnnotationKind.Text, CaptureAnnotationKind.Stamp })
+                {
+                    overlay.ToolForEvidence(tool).RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); await SettleAsync();
+                    var context = overlay.ContextForEvidence ?? throw new InvalidOperationException("Tool opens its own panel on first click");
+                    Save(context, output, $"{theme}-panel-{tool}", context.ActualWidth, preserveLayout: true);
+                    Require(!Descendants(toolbar).OfType<Slider>().Any(), "Toolbar has no duplicate persistent property row");
+                    if (tool == CaptureAnnotationKind.Pencil)
+                    {
+                        Descendants(context).OfType<Button>().Single(b => b.Name == "OpenInkRgb").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                        var hex = Descendants(context).OfType<TextBox>().Single(t => t.Name == "InkHex"); hex.Text = "#137B53";
+                        Descendants(context).OfType<Button>().Single(b => b.Name == "ApplyInkHex").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                        Descendants(context).OfType<Slider>().Single(s => s.Name == "InkThickness").Value = 9;
+                        var drawn = overlay.FinishDragForEvidence(new Point(100, 100), new Point(200, 120));
+                        Require(drawn.Argb == System.Drawing.Color.FromArgb(19, 123, 83).ToArgb() && drawn.Thickness == 9,
+                            "Panel RGB/thickness reach the actual drawing command");
+                    }
+                    if (tool == CaptureAnnotationKind.Stamp)
+                        Require(Descendants(context).OfType<Image>().Count(i => i.Source is BitmapSource) >= 36,
+                            "Emoji panel uses real catalog images");
+                }
                 foreach (var privacy in new[] { CaptureAnnotationKind.Blur, CaptureAnnotationKind.Pixelate })
                 {
                     overlay.ToolForEvidence(privacy)
@@ -59,6 +88,12 @@ internal static class CaptureLayoutSmoke
                     Require(overlay.ToolForEvidence(privacy).Visibility == Visibility.Visible, "Active privacy tool appears in toolbar");
                     Save(toolbar, output, $"{theme}-toolbar-{privacy}", 900);
                 }
+                overlay.AddForEvidence(new CaptureAnnotation { Kind = CaptureAnnotationKind.Line, Start = new Point(100, 100), End = new Point(180, 100) });
+                var count = overlay.AnnotationCountForEvidence;
+                Require(clear.IsEnabled, "History clear enables for annotations"); clear.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                Require(overlay.AnnotationCountForEvidence == 0 && !clear.IsEnabled, "History trash clears annotations");
+                Descendants(toolbar).OfType<Button>().Single(b => AutomationProperties.GetName(b).StartsWith("Desfazer")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                Require(overlay.AnnotationCountForEvidence == count, "Undo restores the marks cleared by trash");
             }
             finally { toolbarHost?.Close(); overlay.Close(); }
 
@@ -95,7 +130,8 @@ internal static class CaptureLayoutSmoke
                 owner.Close();
             }
         }
-        File.WriteAllText(Path.Combine(output, "result.txt"), "PASS: six labeled blocks, dedicated OCR/privacy, toolbar/menu without duplicates, normal/compact rendering, full centered backdrop, effect-free text subtree and pixel hinting, renders at 100/125/150%, safe dismissal, all themes. Mixed-DPI hardware remains manual.");
+        CheckPrivacyExports(output);
+        File.WriteAllText(Path.Combine(output, "result.txt"), "PASS: six blocks with Finalize on right, icon-only OCR, history trash/undo, tool panels and real RGB/thickness/Noto, toolbar/menu without duplicates, distinct privacy pixels and PNG exports, normal/compact rendering, full centered backdrop, effect-free settings text, 100/125/150%, safe dismissal, all themes. Mixed-DPI hardware remains manual.");
     }
 
     private static void CheckDistribution(RegionCaptureWindow overlay)
@@ -110,10 +146,41 @@ internal static class CaptureLayoutSmoke
                 "Tool is reachable exactly once: " + label);
         Require(overlay.ToolForEvidence(CaptureAnnotationKind.Blur).Visibility == Visibility.Visible &&
             overlay.ToolForEvidence(CaptureAnnotationKind.Pixelate).Visibility == Visibility.Visible, "Privacy stays visible in both densities");
-        Require(!labels.Contains("Selecionar / mover") && !labels.Any(value => value.StartsWith("Refazer seleção")) && labels.Count(value => value == "Limpar marcações") == 1,
-            "Selection/reset stay in Area; clear appears only in menu");
-        Require(!menu.Children.OfType<Button>().Single(b => AutomationProperties.GetName(b) == "Limpar marcações").IsEnabled,
-            "Clear stays disabled with no annotations");
+        Require(!labels.Contains("Selecionar / mover") && !labels.Any(value => value.StartsWith("Refazer seleção")) && !labels.Contains("Limpar marcações"),
+            "Area/history commands are never repeated in overflow");
+    }
+
+    private static void CheckPrivacyExports(string output)
+    {
+        using var source = new System.Drawing.Bitmap(400, 240);
+        for (var y = 0; y < source.Height; y++) for (var x = 0; x < source.Width; x++)
+            source.SetPixel(x, y, System.Drawing.Color.FromArgb(x * 255 / 400, y * 255 / 240, (x / 7 + y / 7) % 2 == 0 ? 220 : 30));
+        source.Save(Path.Combine(output, "privacy-original.png"));
+        var annotation = new CaptureAnnotation { Start = new Point(40, 40), End = new Point(360, 200), PrivacyStrength = 18 };
+        using var blurDocument = new CaptureEditorDocument(source); using var pixelDocument = new CaptureEditorDocument(source);
+        blurDocument.AddAnnotation(annotation with { Kind = CaptureAnnotationKind.Blur }); pixelDocument.AddAnnotation(annotation with { Kind = CaptureAnnotationKind.Pixelate });
+        using var blur = blurDocument.Render(); using var pixel = pixelDocument.Render();
+        int different = 0, blurFlat = 0, pixelFlat = 0;
+        for (var y = 0; y < source.Height; y++) for (var x = 0; x < source.Width; x++)
+        {
+            if (x < 40 || x >= 360 || y < 40 || y >= 200)
+                Require(blur.GetPixel(x, y) == source.GetPixel(x, y) && pixel.GetPixel(x, y) == source.GetPixel(x, y), "Privacy preserves pixels outside its region");
+            else if (x > 60 && x < 340 && y > 60 && y < 180)
+            {
+                if (blur.GetPixel(x, y) != pixel.GetPixel(x, y)) different++;
+                if (blur.GetPixel(x, y) == blur.GetPixel(x - 1, y)) blurFlat++;
+                if (pixel.GetPixel(x, y) == pixel.GetPixel(x - 1, y)) pixelFlat++;
+            }
+        }
+        Require(different > 10000 && pixelFlat > blurFlat * 2, "Pixelate produces uniform blocks; blur produces smooth transitions");
+        foreach (var (name, bitmap) in new[] { ("blur", blur), ("pixelate", pixel) })
+        {
+            var path = Path.Combine(output, $"privacy-{name}.png"); bitmap.Save(path, System.Drawing.Imaging.ImageFormat.Png);
+            using var exported = new System.Drawing.Bitmap(path);
+            Require(exported.Size == source.Size, "Privacy export preserves dimensions");
+            for (var y = 0; y < bitmap.Height; y++) for (var x = 0; x < bitmap.Width; x++)
+                Require(exported.GetPixel(x, y) == bitmap.GetPixel(x, y), "PNG export preserves the composed privacy pixels");
+        }
     }
 
     private static IEnumerable<DependencyObject> Descendants(DependencyObject parent)
