@@ -437,222 +437,139 @@
                         </Border>
                     </Grid>
 
-                    <ScrollViewer x:Name="QuickAccentView" Visibility="Collapsed"
-                                  VerticalScrollBarVisibility="Auto">
-                        <Grid Margin="24" MaxWidth="1180" HorizontalAlignment="Center">
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="18"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="18"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="18"/>
-                                <RowDefinition Height="Auto"/>
-                            </Grid.RowDefinitions>
-
-                            <StackPanel>
-                                <TextBlock Text="Acento Rápido" Style="{StaticResource PageTitle}"/>
-                                <TextBlock Text="Digite caracteres especiais sem interromper seu fluxo."
-                                           Style="{StaticResource PageDescription}"/>
-                            </StackPanel>
-
-                            <Border Grid.Row="2" Style="{StaticResource SettingsCard}" Padding="20">
+                    <ScrollViewer x:Name="QuickAccentView" Visibility="Collapsed" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                        <StackPanel x:Name="QuickAccentPage" Margin="24" MaxWidth="1180" HorizontalAlignment="Stretch">
+                            <Grid Margin="0,0,0,24">
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                                 <StackPanel>
-                                    <Grid Margin="0,0,0,16">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="Auto"/>
-                                        </Grid.ColumnDefinitions>
-                                        <StackPanel>
-                                            <TextBlock Text="PRÉVIA AO VIVO" Style="{StaticResource Eyebrow}"/>
-                                            <TextBlock Text="Segure A e toque na tecla de ativação para avançar"
-                                                       Margin="0,4,0,0" FontWeight="SemiBold"/>
+                                    <TextBlock Text="NO SEU RITMO" Style="{StaticResource Lab.Metadata}" Foreground="{DynamicResource Lab.accent-text}" FontSize="11"/>
+                                    <TextBlock Text="O acento certo. Sem esforço." Style="{StaticResource Lab.Heading}" Margin="0,7,0,0"/>
+                                    <TextBlock Text="Digite caracteres especiais sem interromper seu fluxo." Style="{StaticResource Lab.Metadata}" Margin="0,6,0,0"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                    <Border x:Name="QuickAccentStateBadge" Background="{DynamicResource Lab.tint}" CornerRadius="5" Padding="12,7" Margin="0,0,10,0">
+                                        <TextBlock x:Name="QuickAccentStateText" Text="Inativo" Style="{StaticResource Lab.Metadata}"/>
+                                    </Border>
+                                    <Button x:Name="QuickAccentHelpButton" Style="{StaticResource Lab.Button}" Padding="9" ToolTip="Ajuda do Acento Rápido" AutomationProperties.Name="Ajuda do Acento Rápido" Click="OpenQuickAccentHelp_OnClick">
+                                        <lab:LabIcon Kind="CircleHelp" Width="18" Height="18"/>
+                                    </Button>
+                                </StackPanel>
+                            </Grid>
+                            <Border x:Name="QuickAccentPreviewPanel" Style="{StaticResource Lab.Card}" Padding="24" Margin="0,0,0,18">
+                                <StackPanel>
+                                    <Grid Margin="0,0,0,18">
+                                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                        <TextBlock Text="PRÉVIA INTERATIVA" Style="{StaticResource Lab.Metadata}" FontSize="11" VerticalAlignment="Center"/>
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                            <ComboBox x:Name="QuickAccentPreviewLetterBox" Width="65" Style="{StaticResource Lab.Combo}" SelectionChanged="QuickAccentPreviewLetter_OnChanged" AutomationProperties.Name="Letra da prévia">
+                                                <ComboBoxItem Content="A" Tag="A" IsSelected="True"/><ComboBoxItem Content="C" Tag="C"/><ComboBoxItem Content="D" Tag="D"/><ComboBoxItem Content="E" Tag="E"/>
+                                                <ComboBoxItem Content="I" Tag="I"/><ComboBoxItem Content="L" Tag="L"/><ComboBoxItem Content="M" Tag="M"/><ComboBoxItem Content="N" Tag="N"/><ComboBoxItem Content="O" Tag="O"/>
+                                                <ComboBoxItem Content="R" Tag="R"/><ComboBoxItem Content="S" Tag="S"/><ComboBoxItem Content="U" Tag="U"/><ComboBoxItem Content="Y" Tag="Y"/><ComboBoxItem Content="Z" Tag="Z"/>
+                                            </ComboBox>
+                                            <TextBlock x:Name="QuickAccentPreviewActivationText" Text=" + Espaço" Style="{StaticResource Lab.Metadata}" Margin="8,0,0,0" VerticalAlignment="Center"/>
                                         </StackPanel>
-                                        <Border Grid.Column="1" Background="{DynamicResource ChromeBrush}"
-                                                BorderBrush="{DynamicResource DividerBrush}" BorderThickness="1"
-                                                CornerRadius="8" Padding="12,7">
-                                            <TextBlock Text="A + Espaço" Foreground="{DynamicResource MutedBrush}"/>
-                                        </Border>
                                     </Grid>
-                                    <UniformGrid Columns="8">
-                                        <Border x:Name="QuickAccentPreviewChoice0" Tag="0"
-                                                Style="{StaticResource FeatureTile}"
-                                                MouseLeftButtonDown="QuickAccentPreviewChoice_OnMouseLeftButtonDown">
-                                            <TextBlock Text="a" FontSize="31" FontWeight="SemiBold"
-                                                       HorizontalAlignment="Center"/>
-                                        </Border>
-                                        <Border x:Name="QuickAccentPreviewChoice1" Tag="1"
-                                                Style="{StaticResource FeatureTile}"
-                                                MouseLeftButtonDown="QuickAccentPreviewChoice_OnMouseLeftButtonDown">
-                                            <TextBlock Text="á" FontSize="31" FontWeight="SemiBold"
-                                                       HorizontalAlignment="Center"/>
-                                        </Border>
-                                        <Border x:Name="QuickAccentPreviewChoice2" Tag="2"
-                                                Style="{StaticResource FeatureTile}"
-                                                MouseLeftButtonDown="QuickAccentPreviewChoice_OnMouseLeftButtonDown">
-                                            <TextBlock Text="à" FontSize="31" FontWeight="SemiBold"
-                                                       HorizontalAlignment="Center"/>
-                                        </Border>
-                                        <Border x:Name="QuickAccentPreviewChoice3" Tag="3"
-                                                Style="{StaticResource FeatureTile}"
-                                                MouseLeftButtonDown="QuickAccentPreviewChoice_OnMouseLeftButtonDown">
-                                            <TextBlock Text="â" FontSize="31" FontWeight="SemiBold"
-                                                       HorizontalAlignment="Center"/>
-                                        </Border>
-                                        <Border x:Name="QuickAccentPreviewChoice4" Tag="4"
-                                                Style="{StaticResource FeatureTile}"
-                                                MouseLeftButtonDown="QuickAccentPreviewChoice_OnMouseLeftButtonDown">
-                                            <TextBlock Text="ã" FontSize="31" FontWeight="SemiBold"
-                                                       HorizontalAlignment="Center"/>
-                                        </Border>
-                                        <Border x:Name="QuickAccentPreviewChoice5" Tag="5"
-                                                Style="{StaticResource FeatureTile}"
-                                                MouseLeftButtonDown="QuickAccentPreviewChoice_OnMouseLeftButtonDown">
-                                            <TextBlock Text="ä" FontSize="31" FontWeight="SemiBold"
-                                                       HorizontalAlignment="Center"/>
-                                        </Border>
-                                        <Border x:Name="QuickAccentPreviewChoice6" Tag="6"
-                                                Style="{StaticResource FeatureTile}"
-                                                MouseLeftButtonDown="QuickAccentPreviewChoice_OnMouseLeftButtonDown">
-                                            <TextBlock Text="å" FontSize="31" FontWeight="SemiBold"
-                                                       HorizontalAlignment="Center"/>
-                                        </Border>
-                                        <Border x:Name="QuickAccentPreviewChoice7" Tag="7"
-                                                Style="{StaticResource FeatureTile}" Margin="6"
-                                                MouseLeftButtonDown="QuickAccentPreviewChoice_OnMouseLeftButtonDown">
-                                            <TextBlock Text="æ" FontSize="31" FontWeight="SemiBold"
-                                                       HorizontalAlignment="Center"/>
-                                        </Border>
-                                    </UniformGrid>
-                                    <TextBlock Text="Cada toque avança uma opção. Solte a letra para inserir o caractere destacado."
-                                               Margin="0,14,0,0" HorizontalAlignment="Center"
-                                               Foreground="{DynamicResource MutedBrush}"/>
+                                    <WrapPanel HorizontalAlignment="Center" Margin="0,0,0,15">
+                                    <Button x:Name="QuickAccentPreviewChoice0" Tag="0" Style="{StaticResource Lab.Accent.Choice}"
+                                            MouseLeftButtonDown="QuickAccentPreviewChoice_OnMouseLeftButtonDown" Click="QuickAccentPreviewChoice_OnClick"/>
+                                    <Button x:Name="QuickAccentPreviewChoice1" Tag="1" Style="{StaticResource Lab.Accent.Choice}"
+                                            MouseLeftButtonDown="QuickAccentPreviewChoice_OnMouseLeftButtonDown" Click="QuickAccentPreviewChoice_OnClick"/>
+                                    <Button x:Name="QuickAccentPreviewChoice2" Tag="2" Style="{StaticResource Lab.Accent.Choice}"
+                                            MouseLeftButtonDown="QuickAccentPreviewChoice_OnMouseLeftButtonDown" Click="QuickAccentPreviewChoice_OnClick"/>
+                                    <Button x:Name="QuickAccentPreviewChoice3" Tag="3" Style="{StaticResource Lab.Accent.Choice}"
+                                            MouseLeftButtonDown="QuickAccentPreviewChoice_OnMouseLeftButtonDown" Click="QuickAccentPreviewChoice_OnClick"/>
+                                    <Button x:Name="QuickAccentPreviewChoice4" Tag="4" Style="{StaticResource Lab.Accent.Choice}"
+                                            MouseLeftButtonDown="QuickAccentPreviewChoice_OnMouseLeftButtonDown" Click="QuickAccentPreviewChoice_OnClick"/>
+                                    <Button x:Name="QuickAccentPreviewChoice5" Tag="5" Style="{StaticResource Lab.Accent.Choice}"
+                                            MouseLeftButtonDown="QuickAccentPreviewChoice_OnMouseLeftButtonDown" Click="QuickAccentPreviewChoice_OnClick"/>
+                                    <Button x:Name="QuickAccentPreviewChoice6" Tag="6" Style="{StaticResource Lab.Accent.Choice}"
+                                            MouseLeftButtonDown="QuickAccentPreviewChoice_OnMouseLeftButtonDown" Click="QuickAccentPreviewChoice_OnClick"/>
+                                    <Button x:Name="QuickAccentPreviewChoice7" Tag="7" Style="{StaticResource Lab.Accent.Choice}"
+                                            MouseLeftButtonDown="QuickAccentPreviewChoice_OnMouseLeftButtonDown" Click="QuickAccentPreviewChoice_OnClick"/>
+                                    </WrapPanel>
+                                    <TextBlock x:Name="QuickAccentPreviewEmptyText" Text="Não há caracteres para esta letra nos conjuntos selecionados." Style="{StaticResource Lab.Metadata}" HorizontalAlignment="Center" Visibility="Collapsed" Margin="0,0,0,15"/>
+                                    <Grid MaxWidth="600" Margin="0,0,0,14">
+                                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                        <TextBox x:Name="QuickAccentTestBox" Style="{StaticResource Lab.Field}" FontSize="16" TextAlignment="Center" AutomationProperties.Name="Campo de teste dos caracteres" ToolTip="Clique em um caractere acima ou digite para experimentar."/>
+                                        <TextBlock Text="Experimente os caracteres aqui…" IsHitTestVisible="False" VerticalAlignment="Center" HorizontalAlignment="Center" Foreground="{DynamicResource Lab.muted}">
+                                            <TextBlock.Style><Style TargetType="TextBlock" BasedOn="{StaticResource Lab.Text}">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                <Style.Triggers><DataTrigger Binding="{Binding Text, ElementName=QuickAccentTestBox}" Value=""><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers>
+                                            </Style></TextBlock.Style>
+                                        </TextBlock>
+                                        <Button Grid.Column="1" x:Name="QuickAccentClearTestButton" Style="{StaticResource Lab.Button}" Margin="8,0,0,0" Padding="9" Click="QuickAccentClearTest_OnClick" ToolTip="Limpar teste" AutomationProperties.Name="Limpar teste">
+                                            <lab:LabIcon Kind="X" Width="18" Height="18"/>
+                                        </Button>
+                                    </Grid>
+                                    <TextBlock Text="Clique nos caracteres para experimentar. Para usar em outros aplicativos, segure a letra e toque na tecla de ativação; solte a letra para inserir." Style="{StaticResource Lab.Metadata}" TextAlignment="Center"/>
                                 </StackPanel>
                             </Border>
-
-                            <Grid Grid.Row="4">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="1.02*"/>
-                                    <ColumnDefinition Width="18"/>
-                                    <ColumnDefinition Width="1.18*"/>
-                                </Grid.ColumnDefinitions>
-
-                                <Border Style="{StaticResource SettingsCard}" Margin="0">
+                            <Grid x:Name="QuickAccentCards" Margin="0,0,0,18">
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="18"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                                <Border x:Name="QuickAccentActivationPanel" Style="{StaticResource Lab.Card}">
                                     <StackPanel>
-                                        <TextBlock Text="Como ativar" FontSize="17" FontWeight="SemiBold"/>
-                                        <CheckBox x:Name="QuickAccentEnabledCheckBox" Style="{StaticResource ToggleSwitch}"
-                                                   Content="Ativar Acento Rápido"
-                                                  Margin="0,14,0,10" FontWeight="SemiBold"
-                                                  Click="QuickAccentSettings_OnChanged"/>
-                                        <Border Height="1" Background="{DynamicResource DividerBrush}" Margin="0,0,0,14"/>
-                                        <TextBlock Text="Tecla de ativação" Foreground="{DynamicResource MutedBrush}"/>
-                                        <ComboBox x:Name="QuickAccentActivationBox" Margin="0,6,0,14"
-                                                  SelectionChanged="QuickAccentSettings_OnChanged">
-                                            <ComboBoxItem Content="Espaço" Tag="Space"/>
-                                            <ComboBoxItem Content="Seta esquerda" Tag="Left"/>
-                                            <ComboBoxItem Content="Seta direita" Tag="Right"/>
+                                        <StackPanel Orientation="Horizontal"><lab:LabIcon Kind="Keyboard" Width="20" Height="20" Margin="0,0,9,0" Foreground="{DynamicResource Lab.accent-text}"/><TextBlock Text="Como ativar" Style="{StaticResource Lab.Text}" FontSize="17" FontWeight="SemiBold"/></StackPanel>
+                                        <CheckBox x:Name="QuickAccentEnabledCheckBox" Style="{StaticResource Lab.Switch}" Content="Ativar Acento Rápido" Margin="0,18,0,18" Click="QuickAccentSettings_OnChanged"/>
+                                        <TextBlock Text="Tecla de ativação" Style="{StaticResource Lab.Accent.Label}"/>
+                                        <ComboBox x:Name="QuickAccentActivationBox" Style="{StaticResource Lab.Combo}" Margin="0,0,0,18" SelectionChanged="QuickAccentSettings_OnChanged">
+                                            <ComboBoxItem Content="Espaço" Tag="Space"/><ComboBoxItem Content="Seta esquerda" Tag="Left"/><ComboBoxItem Content="Seta direita" Tag="Right"/>
                                         </ComboBox>
-                                        <TextBlock Text="Atraso para abrir" Foreground="{DynamicResource MutedBrush}"/>
-                                        <Grid Margin="0,6,0,14">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="*"/>
-                                                <ColumnDefinition Width="90"/>
-                                            </Grid.ColumnDefinitions>
-                                            <Slider x:Name="QuickAccentDelaySlider" Minimum="100" Maximum="1000"
-                                                    TickFrequency="50" ValueChanged="QuickAccentDelaySlider_OnValueChanged"/>
-                                            <TextBox Grid.Column="1" x:Name="QuickAccentDelayBox"
-                                                     Margin="10,0,0,0" LostFocus="QuickAccentSettings_OnChanged"/>
+                                        <TextBlock Text="Atraso para abrir (ms)" Style="{StaticResource Lab.Accent.Label}"/>
+                                        <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="90"/></Grid.ColumnDefinitions>
+                                            <Slider x:Name="QuickAccentDelaySlider" Style="{StaticResource Lab.Accent.Slider}" Minimum="0" Maximum="2000" TickFrequency="50" SmallChange="50" LargeChange="100" VerticalAlignment="Center" ValueChanged="QuickAccentDelaySlider_OnValueChanged" AutomationProperties.Name="Atraso para abrir em milissegundos"/>
+                                            <TextBox Grid.Column="1" x:Name="QuickAccentDelayBox" Style="{StaticResource Lab.Field}" Margin="10,0,0,0" LostFocus="QuickAccentSettings_OnChanged" KeyDown="QuickAccentDelay_OnKeyDown" AutomationProperties.Name="Atraso para abrir em milissegundos"/>
                                         </Grid>
-                                        <TextBlock Text="Posição do painel" Foreground="{DynamicResource MutedBrush}"/>
-                                        <ComboBox x:Name="QuickAccentPositionBox" Margin="0,6,0,8"
-                                                  SelectionChanged="QuickAccentSettings_OnChanged">
-                                            <ComboBoxItem Content="Centro superior" Tag="TopCenter"/>
-                                            <ComboBoxItem Content="Centro da tela" Tag="Center"/>
-                                            <ComboBoxItem Content="Centro inferior" Tag="BottomCenter"/>
+                                        <TextBlock Text="0 ms · imediato                     2.000 ms · mais deliberado" Style="{StaticResource Lab.Metadata}" FontSize="11" Margin="0,5,0,0"/>
+                                        <TextBlock x:Name="QuickAccentDelayErrorText" Text="Informe um número inteiro entre 0 e 2.000 ms." Style="{StaticResource Lab.Metadata}" Foreground="{DynamicResource Lab.error}" Visibility="Collapsed" Margin="0,5,0,0"/>
+                                        <TextBlock Text="Posição do painel" Style="{StaticResource Lab.Accent.Label}" Margin="0,18,0,6"/>
+                                        <ComboBox x:Name="QuickAccentPositionBox" Style="{StaticResource Lab.Combo}" Margin="0,0,0,12" SelectionChanged="QuickAccentSettings_OnChanged">
+                                            <ComboBoxItem Content="Centro superior" Tag="TopCenter"/><ComboBoxItem Content="Centro da tela" Tag="Center"/><ComboBoxItem Content="Centro inferior" Tag="BottomCenter"/>
                                         </ComboBox>
-                                        <CheckBox x:Name="QuickAccentUnicodeCheckBox"
-                                                  Content="Mostrar código Unicode"
-                                                  Click="QuickAccentSettings_OnChanged"/>
-                                        <CheckBox x:Name="QuickAccentSortCheckBox"
-                                                  Content="Priorizar caracteres mais usados"
-                                                  Click="QuickAccentSettings_OnChanged"/>
+                                        <CheckBox x:Name="QuickAccentUnicodeCheckBox" Style="{StaticResource Lab.Switch}" Content="Mostrar código Unicode" Margin="0,7" Click="QuickAccentSettings_OnChanged"/>
+                                        <CheckBox x:Name="QuickAccentSortCheckBox" Style="{StaticResource Lab.Switch}" Content="Priorizar caracteres mais usados" Margin="0,7" Click="QuickAccentSettings_OnChanged"/>
                                     </StackPanel>
                                 </Border>
-
-                                <Border Grid.Column="2" Style="{StaticResource SettingsCard}" Margin="0">
+                                <Border x:Name="QuickAccentSetsPanel" Grid.Column="2" Style="{StaticResource Lab.Card}">
                                     <StackPanel>
-                                        <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="*"/>
-                                                <ColumnDefinition Width="Auto"/>
-                                            </Grid.ColumnDefinitions>
-                                            <StackPanel>
-                                                <TextBlock Text="Conjuntos de caracteres" FontSize="17" FontWeight="SemiBold"/>
-                                                <TextBlock x:Name="QuickAccentSetSummaryText" Margin="0,4,0,0"
-                                                           Foreground="{DynamicResource MutedBrush}"/>
-                                            </StackPanel>
-                                            <StackPanel Grid.Column="1" Orientation="Horizontal">
-                                                <Button Content="Somente PT-BR" Style="{StaticResource ToolbarButton}"
-                                                        Click="QuickAccentPortugueseOnly_OnClick"/>
-                                                <Button Content="Todos" Style="{StaticResource ToolbarButton}" Margin="0"
-                                                        Click="QuickAccentSelectAll_OnClick"/>
-                                            </StackPanel>
-                                        </Grid>
-                                        <UniformGrid Columns="2" Margin="0,14,0,8">
-                                            <CheckBox x:Name="QuickAccentPortugueseCheckBox" Content="Português (Brasil)"
-                                                      Tag="PortugueseBrazil" Click="QuickAccentCharacterSet_OnChanged"/>
-                                            <CheckBox x:Name="QuickAccentSpanishCheckBox" Content="Espanhol"
-                                                      Tag="Spanish" Click="QuickAccentCharacterSet_OnChanged"/>
-                                            <CheckBox x:Name="QuickAccentFrenchCheckBox" Content="Francês"
-                                                      Tag="French" Click="QuickAccentCharacterSet_OnChanged"/>
-                                            <CheckBox x:Name="QuickAccentGermanCheckBox" Content="Alemão"
-                                                      Tag="German" Click="QuickAccentCharacterSet_OnChanged"/>
-                                            <CheckBox x:Name="QuickAccentItalianCheckBox" Content="Italiano"
-                                                      Tag="Italian" Click="QuickAccentCharacterSet_OnChanged"/>
-                                            <CheckBox x:Name="QuickAccentNordicCheckBox" Content="Idiomas nórdicos"
-                                                      Tag="Nordic" Click="QuickAccentCharacterSet_OnChanged"/>
-                                            <CheckBox x:Name="QuickAccentCentralEuropeanCheckBox" Content="Europa Central"
-                                                      Tag="CentralEuropean" Click="QuickAccentCharacterSet_OnChanged"/>
-                                            <CheckBox x:Name="QuickAccentCurrencyCheckBox" Content="Moedas"
-                                                      Tag="Currency" Click="QuickAccentCharacterSet_OnChanged"/>
-                                            <CheckBox x:Name="QuickAccentSpecialCheckBox" Content="Símbolos especiais"
-                                                      Tag="Special" Click="QuickAccentCharacterSet_OnChanged"/>
-                                        </UniformGrid>
-                                        <Border Background="{DynamicResource InputBrush}"
-                                                BorderBrush="{DynamicResource DividerBrush}" BorderThickness="1"
-                                                CornerRadius="10" Padding="14" Margin="0,8,0,0">
-                                            <StackPanel>
-                                                <TextBlock Text="Prévia dos caracteres" Foreground="{DynamicResource MutedBrush}"/>
-                                                <TextBlock x:Name="QuickAccentCharactersPreviewText" Margin="0,8,0,0"
-                                                           FontFamily="Cascadia Mono, Consolas" FontSize="18"
-                                                           TextWrapping="Wrap"/>
-                                            </StackPanel>
+                                        <StackPanel Orientation="Horizontal"><lab:LabIcon Kind="Languages" Width="20" Height="20" Margin="0,0,9,0" Foreground="{DynamicResource Lab.accent-text}"/><TextBlock Text="Conjuntos de caracteres" Style="{StaticResource Lab.Text}" FontSize="17" FontWeight="SemiBold"/></StackPanel>
+                                        <TextBlock x:Name="QuickAccentSetSummaryText" Style="{StaticResource Lab.Metadata}" Margin="0,5,0,14"/>
+                                        <WrapPanel>
+                                            <Button Content="Somente PT-BR" Style="{StaticResource Lab.Button}" Margin="0,0,8,8" Click="QuickAccentPortugueseOnly_OnClick"/>
+                                            <Button Content="Todos" Style="{StaticResource Lab.Button}" Margin="0,0,0,8" Click="QuickAccentSelectAll_OnClick"/>
+                                        </WrapPanel>
+                                        <CheckBox x:Name="QuickAccentPortugueseCheckBox" Content="Português (Brasil)" Tag="PortugueseBrazil" Style="{StaticResource Lab.Switch}" Margin="0,7"
+                                                  Click="QuickAccentCharacterSet_OnChanged"/>
+                                        <CheckBox x:Name="QuickAccentSpanishCheckBox" Content="Espanhol" Tag="Spanish" Style="{StaticResource Lab.Switch}" Margin="0,7"
+                                                  Click="QuickAccentCharacterSet_OnChanged"/>
+                                        <CheckBox x:Name="QuickAccentFrenchCheckBox" Content="Francês" Tag="French" Style="{StaticResource Lab.Switch}" Margin="0,7"
+                                                  Click="QuickAccentCharacterSet_OnChanged"/>
+                                        <CheckBox x:Name="QuickAccentGermanCheckBox" Content="Alemão" Tag="German" Style="{StaticResource Lab.Switch}" Margin="0,7"
+                                                  Click="QuickAccentCharacterSet_OnChanged"/>
+                                        <CheckBox x:Name="QuickAccentItalianCheckBox" Content="Italiano" Tag="Italian" Style="{StaticResource Lab.Switch}" Margin="0,7"
+                                                  Click="QuickAccentCharacterSet_OnChanged"/>
+                                        <CheckBox x:Name="QuickAccentNordicCheckBox" Content="Idiomas nórdicos" Tag="Nordic" Style="{StaticResource Lab.Switch}" Margin="0,7"
+                                                  Click="QuickAccentCharacterSet_OnChanged"/>
+                                        <CheckBox x:Name="QuickAccentCentralEuropeanCheckBox" Content="Europa Central" Tag="CentralEuropean" Style="{StaticResource Lab.Switch}" Margin="0,7"
+                                                  Click="QuickAccentCharacterSet_OnChanged"/>
+                                        <CheckBox x:Name="QuickAccentCurrencyCheckBox" Content="Moedas" Tag="Currency" Style="{StaticResource Lab.Switch}" Margin="0,7"
+                                                  Click="QuickAccentCharacterSet_OnChanged"/>
+                                        <CheckBox x:Name="QuickAccentSpecialCheckBox" Content="Símbolos especiais" Tag="Special" Style="{StaticResource Lab.Switch}" Margin="0,7"
+                                                  Click="QuickAccentCharacterSet_OnChanged"/>
+                                        <Border Background="{DynamicResource Lab.input}" BorderBrush="{DynamicResource Lab.line}" BorderThickness="1" CornerRadius="6" Padding="14" Margin="0,12,0,0">
+                                            <StackPanel><TextBlock Text="Caracteres disponíveis" Style="{StaticResource Lab.Metadata}"/><TextBlock x:Name="QuickAccentCharactersPreviewText" Style="{StaticResource Lab.Text}" FontFamily="Cascadia Mono, Consolas" FontSize="18" Margin="0,8,0,0"/></StackPanel>
                                         </Border>
                                     </StackPanel>
                                 </Border>
                             </Grid>
-
-                            <Border Grid.Row="6" Style="{StaticResource SettingsCard}" Margin="0">
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="1.05*"/>
-                                        <ColumnDefinition Width="18"/>
-                                        <ColumnDefinition Width="1.15*"/>
-                                    </Grid.ColumnDefinitions>
-                                    <StackPanel>
-                                        <TextBlock Text="Aplicativos excluídos" FontSize="17" FontWeight="SemiBold"/>
-                                        <TextBlock Margin="0,5,0,0" TextWrapping="Wrap"
-                                                   Foreground="{DynamicResource MutedBrush}"
-                                                   Text="O Acento Rápido não será exibido nos processos informados."/>
-                                    </StackPanel>
-                                    <TextBox Grid.Column="2" x:Name="QuickAccentExcludedAppsBox"
-                                             Height="74" AcceptsReturn="True"
-                                             VerticalScrollBarVisibility="Auto"
-                                             ToolTip="Informe um processo por linha, como mstsc.exe ou game.exe"
-                                             LostFocus="QuickAccentSettings_OnChanged"/>
-                                </Grid>
+                            <Border x:Name="QuickAccentExcludedPanel" Style="{StaticResource Lab.Card}">
+                                <StackPanel>
+                                    <StackPanel Orientation="Horizontal"><lab:LabIcon Kind="AppWindow" Width="20" Height="20" Margin="0,0,9,0" Foreground="{DynamicResource Lab.accent-text}"/><TextBlock Text="Aplicativos excluídos" Style="{StaticResource Lab.Text}" FontSize="17" FontWeight="SemiBold"/></StackPanel>
+                                    <TextBlock Text="O Acento Rápido não será exibido nos processos informados. Separe por ponto e vírgula ou por linha." Style="{StaticResource Lab.Metadata}" Margin="0,7,0,12"/>
+                                    <TextBox x:Name="QuickAccentExcludedAppsBox" Style="{StaticResource Lab.Field}" Height="74" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" ToolTip="Exemplo: mstsc.exe; game.exe" LostFocus="QuickAccentSettings_OnChanged" AutomationProperties.Name="Processos excluídos"/>
+                                </StackPanel>
                             </Border>
-                        </Grid>
+                        </StackPanel>
                     </ScrollViewer>
 
                     <ScrollViewer x:Name="CaptureView" Visibility="Collapsed"

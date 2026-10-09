@@ -250,7 +250,13 @@ public sealed class ScreenHelpWindow : Window
                     "snippet" => new[] { "/comando", "Seu conteúdo", "Salvar" },
                     "workspace" => new[] { "Lista", "Editor", "Variáveis" },
                     "variable" => new[] { "Cursor", "{{nome}}", "Prévia" },
-                    "format" => new[] { "Selecionar", "Formatar", "Conferir" }, _ => new[] { "Ferramenta", "Cor", "Desenhar" } };
+                    "format" => new[] { "Selecionar", "Formatar", "Conferir" },
+                    "accent" => new[] { "A + Espaço", "á à â ã", "Soltar → á" },
+                    "accent-preview" => new[] { "Letra A", "á à â ã", "Campo de teste" },
+                    "accent-preferences" => new[] { "Atraso", "Posição", "Unicode" },
+                    "accent-sets" => new[] { "PT-BR", "Conjuntos", "Caracteres" },
+                    "accent-exclude" => new[] { "Processos", "Separar por ;", "Salvar" },
+                    _ => new[] { "Ferramenta", "Cor", "Desenhar" } };
                 for (var i = 0; i < 3; i++)
                 {
                     var cell = new StackPanel(); cell.Children.Add(HelpGlyph(i == 0 ? icon : i == 1 ? "SlidersHorizontal" : "Check", 23)); cell.Children.Add(Text(labels[i], 10, true));

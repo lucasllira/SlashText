@@ -20,6 +20,7 @@
     <CapturePilotBuild Condition="'$(CaptureComplementsPilotBuild)' == 'true'">true</CapturePilotBuild>
     <CapturePilotBuild Condition="'$(CaptureOcrPilotBuild)' == 'true'">true</CapturePilotBuild>
     <CapturePilotBuild Condition="'$(ShortcutsPilotBuild)' == 'true'">true</CapturePilotBuild>
+    <CapturePilotBuild Condition="'$(QuickAccentPilotBuild)' == 'true'">true</CapturePilotBuild>
     <SlashDeskDistribution Condition="'$(SlashDeskDistribution)' == ''">Installed</SlashDeskDistribution>
   </PropertyGroup>
 

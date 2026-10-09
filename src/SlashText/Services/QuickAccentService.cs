@@ -468,6 +468,19 @@ public sealed class QuickAccentService : IDisposable
         _ => 0x20
     };
 
+    /// <summary>Read-only preview of the same sets, case and usage order as activation.
+    /// Does not change pending keys, timers, insertion or usage statistics.</summary>
+    public string GetPreviewChoices(char baseLetter)
+    {
+        lock (_stateSync)
+        {
+            var choices = MatchCase(ChoicesFor(char.ToUpperInvariant(baseLetter)), char.IsUpper(baseLetter));
+            return SortByUsage
+                ? new string(choices.OrderByDescending(character => _usage.GetValueOrDefault(character)).ToArray())
+                : choices;
+        }
+    }
+
     private string ChoicesFor(int virtualKey)
     {
         var result = new List<char>();
