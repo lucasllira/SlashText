@@ -2797,6 +2797,9 @@ public partial class MainWindow : Window
             return;
         }
 
+        if (action == CaptureShortcutAction.Region && AppPaths.IsCapturePilot && !CanReplaceCaptureSession()) return;
+        CaptureRegionSession? regionSession = null;
+
         var wasVisible = IsVisible;
         var shouldHide = _settings.Capture.ShouldHideSlashDesk(wasVisible);
         try
@@ -2838,7 +2841,7 @@ public partial class MainWindow : Window
                 editedRegion = _captureService.SelectAndEditRegion(
                     null,
                     _settings.Capture.IncludeCursor,
-                    out requestedRegionOutput);
+                    out requestedRegionOutput, out regionSession);
             }
             CaptureRecord? result = null;
             if (editedRegion is not null)
@@ -2867,6 +2870,7 @@ public partial class MainWindow : Window
                 StatusText.Text = string.IsNullOrWhiteSpace(result.FilePath)
                     ? $"Captura de {type} copiada"
                     : $"Captura salva: {Path.GetFileName(result.FilePath)}";
+                if (regionSession is not null) LoadCompletedRegionSession(regionSession);
                 AcceptCompletedCapture(result);
                 RefreshCaptureHistory();
                 ShowTrayBalloon(
@@ -2916,6 +2920,7 @@ public partial class MainWindow : Window
         }
         finally
         {
+            regionSession?.Dispose();
             if (shouldHide && wasVisible && !IsVisible)
             {
                 ShowFromTray();

@@ -154,6 +154,13 @@ public sealed class CaptureWorkbenchEditor : UserControl, IDisposable
         NotifyStateChanged();
     }
 
+    public void LoadSession(CaptureRegionSession session)
+    {
+        LoadImage(session.Source);
+        foreach (var annotation in session.Annotations) _document!.AddAnnotation(annotation);
+        _document!.MarkSaved(); RefreshPreview(); NotifyStateChanged();
+    }
+
     public void Clear()
     {
         _selectedAnnotationId = null;

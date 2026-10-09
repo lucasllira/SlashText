@@ -131,6 +131,17 @@ public sealed class CaptureService
         bool includeCursor,
         out CaptureEditorOutput requestedOutput)
     {
+        var bitmap = SelectAndEditRegion(owner, includeCursor, out requestedOutput, out var session);
+        session?.Dispose(); return bitmap;
+    }
+
+    public Bitmap? SelectAndEditRegion(
+        Window? owner,
+        bool includeCursor,
+        out CaptureEditorOutput requestedOutput,
+        out CaptureRegionSession? session)
+    {
+        session = null;
         requestedOutput = CaptureEditorOutput.Default;
         var selector = new RegionCaptureWindow(includeCursor);
         if (owner is not null)
@@ -143,6 +154,7 @@ public sealed class CaptureService
         }
 
         requestedOutput = selector.RequestedOutput;
+        session = selector.CompletedSession;
         return selector.EditedBitmap;
     }
 

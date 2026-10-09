@@ -149,6 +149,32 @@ internal static partial class ShortcutsWorkspaceSmoke
             Require(overlay.BeginObjectMoveForEvidence(new Point(590, 260)), "Navigation tool selects moved emoji");
             overlay.EndObjectMoveForEvidence(new Point(620, 280), commit: false);
             Require(overlay.AnnotationsForEvidence[1].Start == new Point(550, 230), "Cancel drag preserves position and history");
+            using (var session = overlay.SessionForEvidence())
+            using (var editor = new CaptureWorkbenchEditor())
+            {
+                editor.LoadSession(session);
+                Require(editor.Document!.EditableAnnotations().Count == 2 && !editor.HasUnsavedChanges,
+                    "Region handoff retains objects with a saved checkpoint");
+                using var original = overlay.RenderForEvidence(); using var transferred = editor.Render();
+                Require(original.Size == transferred.Size && original.GetPixel(530, 220).ToArgb() == transferred.GetPixel(530, 220).ToArgb(),
+                    "Session handoff preserves composition without drawing annotations twice");
+                var stamp = editor.Document.EditableAnnotations().Last(); editor.SelectAnnotation(stamp.Id);
+                Require(editor.Document.MoveAnnotation(stamp.Id, -100, -40), "Overlay emoji remains movable in workbench");
+                using var moved = editor.Render();
+                Require(moved.GetPixel(430, 180).ToArgb() == transferred.GetPixel(530, 220).ToArgb() &&
+                    moved.GetPixel(530, 220).ToArgb() == session.Source.GetPixel(530, 220).ToArgb(),
+                    "Moving transferred emoji reveals clean crop at its original location");
+                editor.Undo(); Require(editor.Document.EditableAnnotations().Last().Annotation.Start == stamp.Annotation.Start,
+                    "Workbench undo restores a transferred object's position");
+                var shell = new MainWindow(captureEvidence: true);
+                try
+                {
+                    shell.AcceptRegionSessionForEvidence(session, new CaptureRecord { Type = "regiao", FilePath = "", Width = original.Width, Height = original.Height });
+                    Require(shell.CaptureEvidenceDocument!.EditableAnnotations().Count == 2 && !shell.CaptureEvidenceDocument.HasUnsavedChanges,
+                        "Completing clipboard-only region capture retains editable objects in actual shell");
+                }
+                finally { shell.DisposeCaptureEvidence(); shell.Close(); }
+            }
             var canvas = overlay.SelectionSurfaceForEvidence;
             canvas.Measure(new Size(900, 480)); canvas.Arrange(new Rect(0, 0, 900, 480)); canvas.UpdateLayout();
             foreach (var scale in new[] { 1d, 1.5d }) SaveImage(canvas, output, $"capture-overlay-objects-{theme}", new Size(900, 480), scale);

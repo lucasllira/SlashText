@@ -32,6 +32,7 @@ Extraia o ZIP em uma pasta própria e abra `Abrir-Piloto-Captura.cmd` ou `SlashD
 4. Setas movem o objeto selecionado em 1 pixel da imagem de saída; Shift aumenta para 10. Sem objeto selecionado, as setas continuam ajustando a área. Ctrl+arraste move a área mesmo quando o cursor está sobre texto/emoji; as alças continuam redimensionando a área.
 5. Mova/redimensione a área depois de anotar, mova o texto/emoji que continua visível e confira Capturar, Copiar e Salvar. A posição usa o conteúdo congelado do desktop, inclusive com DPI diferente.
 6. No editor normal e expandido, clique em texto/emoji existente com sua ferramenta ativa: o editor seleciona a anotação para mover e ajustar propriedades. Selecione novamente a ferramenta para inserir novas anotações. Ctrl+arraste continua sendo navegação.
+7. Finalize a captura e volte à tela Captura: os mesmos textos/emojis inseridos na seleção devem continuar sendo objetos editáveis. Mova-os e teste desfazer, salvar/copiar e descartar para o checkpoint. A transferência preserva o recorte limpo e as anotações separadas; não reconstrói camadas a partir do PNG. Antes de iniciar outra captura de região, uma edição pendente pede confirmação para não ser substituída silenciosamente.
 
 Formas e efeitos continuam editáveis como objetos no editor. Na seleção do desktop, esta melhoria permite mover **textos e emojis**. A seleção prioriza o objeto de cima; uma anotação totalmente coberta precisa ser desobstruída antes de selecionar.
 

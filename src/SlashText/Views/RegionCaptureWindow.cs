@@ -1902,6 +1902,8 @@ public sealed partial class RegionCaptureWindow : Window
             return;
         }
 
+        if (_objectDragStart.HasValue) FinishObjectMove(commit: true);
+
         _toolbarWindow.Hide();
         HideContextWindow();
         RequestedOutput = requestedOutput;
@@ -1909,6 +1911,7 @@ public sealed partial class RegionCaptureWindow : Window
         EditedBitmap?.Dispose();
         EditedBitmap = _pilotVisuals ? RenderSelection() : CaptureAnnotationRenderer.Render(
             crop, _annotationHistory.Items, _localSelection.Width, _localSelection.Height);
+        if (_pilotVisuals) { CompletedSession?.Dispose(); CompletedSession = CreateRegionSession(); }
         DialogResult = true;
     }
 

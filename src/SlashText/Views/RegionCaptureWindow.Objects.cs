@@ -17,6 +17,16 @@ public sealed partial class RegionCaptureWindow
         IsHitTestVisible = false, Fill = Brushes.Transparent
     };
 
+    internal CaptureRegionSession? CompletedSession { get; private set; }
+
+    private CaptureRegionSession CreateRegionSession()
+    {
+        using var crop = CropFrozenSelection();
+        var sx = crop.Width / _localSelection.Width; var sy = crop.Height / _localSelection.Height;
+        return new CaptureRegionSession(crop, _annotationHistory.Items.Select(a => a.Transform(
+            _annotationOrigin.X - _localSelection.X, _annotationOrigin.Y - _localSelection.Y, sx, sy)));
+    }
+
     // Both the canvas and annotation-layer handlers use this route. Text input
     // retains its caret; only committed annotations can be moved.
     private bool TryBeginObjectMove(Point canvasPoint, bool bypass, bool captureMouse = true)
@@ -107,4 +117,5 @@ public sealed partial class RegionCaptureWindow
     internal void UndoObjectMoveForEvidence() => Undo();
     internal void RedoObjectMoveForEvidence() => Redo();
     internal FrameworkElement SelectionSurfaceForEvidence => _canvas;
+    internal CaptureRegionSession SessionForEvidence() => CreateRegionSession();
 }
