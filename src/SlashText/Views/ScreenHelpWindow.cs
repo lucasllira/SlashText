@@ -246,6 +246,7 @@ public sealed class ScreenHelpWindow : Window
                     "time" => new[] { "Preparar", "Aguardar", "Capturar" }, "emoji" => new[] { "Catálogo", "Meus emojis", "Inserir" },
                     "privacy" => new[] { "Selecionar", "Intensidade", "Conferir" }, "text" => new[] { "Fonte", "Seu texto", "Inserir" },
                     "shape" => new[] { "Forma", "Contorno", "Preencher" },
+                    "objects" => new[] { "Selecionar", "Editar", "Aplicar" },
                     "snippet" => new[] { "/comando", "Seu conteúdo", "Salvar" },
                     "workspace" => new[] { "Lista", "Editor", "Variáveis" },
                     "variable" => new[] { "Cursor", "{{nome}}", "Prévia" },

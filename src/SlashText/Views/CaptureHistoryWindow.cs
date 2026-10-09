@@ -47,9 +47,13 @@ public sealed class CaptureHistoryWindow : Window
         var filters = new WrapPanel { Margin = new Thickness(0, 18, 0, 16) };
         _search.Width = 300; _search.Margin = new Thickness(0, 0, 12, 6); _search.ToolTip = "Nome, tipo ou data (dd/MM/aaaa)";
         AutomationProperties.SetName(_search, "Buscar capturas por nome ou data"); _search.SetResourceReference(StyleProperty, "Lab.Field");
-        _search.Text = search; filters.Children.Add(_search);
-        filters.Children.Add(Button("Limpar busca", "X", () => { _search.Clear(); _search.Focus(); }));
-        _filter.Width = 155; _filter.Margin = new Thickness(12, 0, 0, 6); _filter.SetResourceReference(StyleProperty, "Lab.Combo");
+        _search.Text = search;
+        var searchColumn = new StackPanel();
+        var searchLabel = new TextBlock { Text = "Buscar por nome, tipo ou data", FontSize = 11, Margin = new Thickness(0, 0, 0, 5) };
+        searchLabel.SetResourceReference(TextBlock.ForegroundProperty, "Lab.muted"); searchColumn.Children.Add(searchLabel); searchColumn.Children.Add(_search);
+        filters.Children.Add(searchColumn);
+        var clearSearch = Button("Limpar busca", "X", () => { _search.Clear(); _search.Focus(); }); clearSearch.VerticalAlignment = VerticalAlignment.Bottom; filters.Children.Add(clearSearch);
+        _filter.VerticalAlignment = VerticalAlignment.Bottom; _filter.Width = 155; _filter.Margin = new Thickness(12, 0, 0, 6); _filter.SetResourceReference(StyleProperty, "Lab.Combo");
         foreach (var (label, key) in new[] { ("Todos", "all"), ("Monitor", "monitor"), ("Região", "regiao"), ("Janela", "janela"),
             ("Captura longa", "rolagem"), ("Vídeo MP4", "video"), ("GIF", "gif") }) _filter.Items.Add(new ComboBoxItem { Content = label, Tag = key });
         _filter.SelectedItem = _filter.Items.Cast<ComboBoxItem>().FirstOrDefault(i => Equals(i.Tag, filter)) ?? _filter.Items[0];
