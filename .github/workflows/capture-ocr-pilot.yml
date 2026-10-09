@@ -1,0 +1,99 @@
+name: Capture OCR Pilot Windows
+
+on:
+  push:
+    branches: [feat/3.3.0-capture-ocr]
+  pull_request:
+    branches: [main, feat/3.3.0-capture-complements]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Restore and build
+        shell: pwsh
+        run: |
+          dotnet restore SlashText.sln -p:Platform=x64
+          if ($LASTEXITCODE -ne 0) { throw 'Restore failed' }
+          dotnet build SlashText.sln -c Release --no-restore -p:Platform=x64
+          if ($LASTEXITCODE -ne 0) { throw 'Build failed' }
+      - name: Existing contracts and regression
+        shell: pwsh
+        run: |
+          ./scripts/compare-ui-inventory.ps1
+          ./scripts/ui-integrity-smoke.ps1
+          ./scripts/capture-pilot-smoke.ps1
+          ./scripts/capture-toolbar-visual-contract-smoke.ps1
+          ./scripts/visual-foundation-smoke.ps1
+          ./scripts/release-workflow-smoke.ps1
+          dotnet run --project tests/SlashText.SmokeTests/SlashText.SmokeTests.csproj -c Release --no-build -p:Platform=x64
+          if ($LASTEXITCODE -ne 0) { throw 'Regression failed' }
+      - name: Real WPF capture and shortcuts regression
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem src/SlashText/bin -Recurse -Filter SlashDesk.exe | Select-Object -First 1
+          $output = Join-Path $PWD 'ocr-evidence/regression-wpf'
+          $process = Start-Process $exe.FullName -ArgumentList "--shortcuts-workspace-smoke `"$output`"" -WindowStyle Hidden -PassThru
+          if (-not $process.WaitForExit(180000)) { $process.Kill(); throw 'WPF timeout' }
+          if ($process.ExitCode -ne 0) { Get-Content "$output/failure.txt" -ErrorAction SilentlyContinue; throw 'WPF failed' }
+      - name: Recording audio toolbar and settings
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem src/SlashText/bin -Recurse -Filter SlashDesk.exe | Select-Object -First 1
+          $output = Join-Path $PWD 'ocr-evidence/recording-audio'
+          $process = Start-Process $exe.FullName -ArgumentList "--recording-audio-smoke `"$output`"" -WindowStyle Hidden -PassThru
+          if (-not $process.WaitForExit(60000)) { $process.Kill(); throw 'Audio WPF timeout' }
+          if ($process.ExitCode -ne 0) { Get-Content "$output/failure.txt" -ErrorAction SilentlyContinue; throw 'Audio WPF failed' }
+      - name: Publish isolated portable OCR pilot
+        shell: pwsh
+        run: |
+          dotnet restore src/SlashText/SlashText.csproj --runtime win-x64 -p:Platform=x64
+          if ($LASTEXITCODE -ne 0) { throw 'Runtime restore failed' }
+          dotnet publish src/SlashText/SlashText.csproj -c Release -p:Platform=x64 -p:PublishProfile=Portable -p:CaptureOcrPilotBuild=true --no-restore --output publish-ocr
+          if ($LASTEXITCODE -ne 0) { throw 'Publish failed' }
+          $files = @(Get-ChildItem publish-ocr -Force)
+          if ($files.Count -ne 1 -or $files[0].Name -ne 'SlashDesk.exe') { throw 'Portable must contain only SlashDesk.exe' }
+      - name: Offline OCR inside published single-file EXE
+        shell: pwsh
+        run: |
+          $output = Join-Path $PWD 'ocr-evidence/portable'
+          $exe = (Resolve-Path publish-ocr/SlashDesk.exe).Path
+          $process = Start-Process $exe -ArgumentList "--capture-ocr-smoke `"$output`"" -WindowStyle Hidden -PassThru
+          if (-not $process.WaitForExit(180000)) { $process.Kill(); throw 'OCR timeout' }
+          if ($process.ExitCode -ne 0) { Get-Content "$output/failure.txt" -ErrorAction SilentlyContinue; throw 'Portable OCR failed' }
+          Get-Content "$output/result.txt"
+      - name: Package isolated pilot and verify startup
+        shell: pwsh
+        run: |
+          New-Item ocr-pilot-package -ItemType Directory -Force | Out-Null
+          Copy-Item publish-ocr/SlashDesk.exe ocr-pilot-package/SlashDesk.exe
+          Copy-Item docs/capture-ocr-pilot-testing.md ocr-pilot-package/LEIA-ANTES.md
+          Copy-Item src/SlashText/Assets/Ocr/LICENSE.txt ocr-pilot-package/OCR-LICENSE.txt
+          Copy-Item src/SlashText/Assets/Ocr/NOTICE.md ocr-pilot-package/OCR-NOTICE.md
+          Set-Content ocr-pilot-package/Abrir-Piloto-Captura-OCR.cmd -Encoding ascii -Value '@echo off','start "" "%~dp0SlashDesk.exe"'
+          $probe = Join-Path $env:RUNNER_TEMP 'SlashDesk OCR çã com espaços'
+          New-Item $probe -ItemType Directory -Force | Out-Null
+          Copy-Item publish-ocr/SlashDesk.exe "$probe/SlashDesk.exe"
+          $process = Start-Process "$probe/SlashDesk.exe" -ArgumentList '--portable-smoke' -WindowStyle Hidden -PassThru -Wait
+          if ($process.ExitCode -ne 0) { throw 'Isolated startup failed' }
+          if (-not (Test-Path "$probe/SlashDeskPilotData/snippets.md") -or (Test-Path "$probe/SlashDeskData")) { throw 'Pilot isolation failed' }
+          Get-FileHash ocr-pilot-package/SlashDesk.exe -Algorithm SHA256
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: SlashDesk-capture-ocr-evidence
+          path: ocr-evidence/
+          if-no-files-found: warn
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SlashDesk-3.3.0-capture-ocr-pilot-win-x64
+          path: ocr-pilot-package/
+          if-no-files-found: error

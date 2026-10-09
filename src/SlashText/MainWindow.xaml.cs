@@ -189,7 +189,7 @@ public partial class MainWindow : Window
             _settings.Capture.Recording ??= new RecordingSettings();
             if (AppPaths.IsCapturePilot)
             {
-                Title = AppPaths.IsCaptureComplementsPilot ? "SlashDesk — Piloto Complementos da Captura 3.3.0 · #74" : AppPaths.IsShortcutsPilot ? "SlashDesk — Piloto Atalhos 3.3.0 · #64" : "SlashDesk — Piloto Captura 3.3.0 · #63";
+                Title = AppPaths.IsCaptureOcrPilot ? "SlashDesk — Piloto Captura + OCR 3.3.0" : AppPaths.IsCaptureComplementsPilot ? "SlashDesk — Piloto Complementos da Captura 3.3.0 · #74" : AppPaths.IsShortcutsPilot ? "SlashDesk — Piloto Atalhos 3.3.0 · #64" : "SlashDesk — Piloto Captura 3.3.0 · #63";
                 _settings.CheckUpdatesOnStartup = false;
                 _settings.StartWithWindows = false;
                 _settings.OnboardingCompleted = true;
@@ -2298,7 +2298,9 @@ public partial class MainWindow : Window
 
         await _settingsStore.SaveAsync(_settings);
         ConfigureCaptureShortcuts();
-        StatusText.Text = "Configurações de captura salvas";
+        StatusText.Text = CaptureShortcutStatusText.Text.StartsWith("●", StringComparison.Ordinal)
+            ? "Configurações de captura salvas"
+            : "Configurações salvas. " + CaptureShortcutStatusText.Text;
     }
 
     private bool TryReadCaptureSettings(out string error)
@@ -2371,8 +2373,10 @@ public partial class MainWindow : Window
             OpenEditorForMonitorAndWindow = openEditor,
             DelaySeconds = ParseSelectedInt(CaptureDelayBox, 0),
             HistoryRetentionDays = ParseSelectedInt(CaptureRetentionBox, 90),
+            Ocr = _settings.Capture.Ocr ?? new(),
             Recording = new RecordingSettings
             {
+                Audio = (_settings.Capture.Recording.Audio ?? new()).Copy(),
                 VideoFps = ParseSelectedInt(RecordingFpsBox, 30),
                 VideoQuality = SelectedTag(RecordingQualityBox, "Alta"),
                 IncludeCursor = RecordingCursorCheckBox.IsChecked == true,
@@ -2586,7 +2590,7 @@ public partial class MainWindow : Window
     {
         if (!TryReadCaptureSettings(out var currentError))
         {
-            MessageBox.Show(currentError, "Regra de captura",
+            MessageBox.Show(currentError, "Configurações de captura",
                 MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
@@ -2594,6 +2598,8 @@ public partial class MainWindow : Window
         {
             Owner = this
         };
+        LabMotion.SetReduced(dialog, LabMotion.GetReduced(this));
+        dialog.ShortcutStatus = CaptureShortcutStatusText.Text;
         var accepted = ShowCaptureDialog(dialog);
         if (!accepted)
         {
@@ -2604,29 +2610,9 @@ public partial class MainWindow : Window
         await _settingsStore.SaveAsync(_settings);
         LoadCaptureSettings();
         ConfigureCaptureShortcuts();
-        StatusText.Text = "Regra de captura salva";
-    }
-
-    private async void OpenCaptureShortcuts_OnClick(object sender, RoutedEventArgs e)
-    {
-        var dialog = new CaptureShortcutDialog(_settings.Capture)
-        {
-            Owner = this
-        };
-        var accepted = ShowCaptureDialog(dialog);
-        if (!accepted)
-        {
-            return;
-        }
-
-        _settings.Capture.ActiveMonitorShortcut = dialog.MonitorShortcut;
-        _settings.Capture.RegionShortcut = dialog.RegionShortcut;
-        _settings.Capture.WindowShortcut = dialog.WindowShortcut;
-        _settings.Capture.ScrollingShortcut = dialog.ScrollingShortcut;
-        await _settingsStore.SaveAsync(_settings);
-        LoadCaptureSettings();
-        ConfigureCaptureShortcuts();
-        StatusText.Text = "Atalhos de captura salvos";
+        StatusText.Text = CaptureShortcutStatusText.Text.StartsWith("●", StringComparison.Ordinal)
+            ? "Configurações de captura salvas"
+            : "Configurações salvas. " + CaptureShortcutStatusText.Text;
     }
 
     private bool ShowCaptureDialog(Window dialog)
@@ -2841,7 +2827,7 @@ public partial class MainWindow : Window
                 editedRegion = _captureService.SelectAndEditRegion(
                     null,
                     _settings.Capture.IncludeCursor,
-                    out requestedRegionOutput, out regionSession);
+                    out requestedRegionOutput, out regionSession, _settings.Capture.Ocr);
             }
             CaptureRecord? result = null;
             if (editedRegion is not null)
@@ -2989,12 +2975,28 @@ public partial class MainWindow : Window
             _recordingService = new ScreenRecordingService();
             _recordingService.RecordingFailed += (_, message) =>
                 _ = Dispatcher.BeginInvoke(() => StatusText.Text = message);
+            _recordingControl = new RecordingControlWindow(_recordingService, "MP4", _settings.Capture.Recording);
+            _recordingControl.Show();
+            var shouldStart = await _recordingControl.WaitForStartAsync();
+            if (shouldStart)
+            {
+                await _settingsStore.SaveAsync(_settings);
+                shouldStart = _recordingControl.IsVisible;
+            }
+            if (!shouldStart)
+            {
+                _recordingControl.Close();
+                _recordingControl = null;
+                _recordingService.Dispose();
+                _recordingService = null;
+                ShowFromTray();
+                return;
+            }
+            _recordingControl.BeginRecording();
             var completion = _recordingService.StartAsync(
                 target,
                 _settings.Capture,
                 _settings.Capture.Recording);
-            _recordingControl = new RecordingControlWindow(_recordingService, "MP4");
-            _recordingControl.Show();
             var path = await completion;
             var elapsed = _recordingService.Elapsed;
             var completedRecordingId = _recordingService.RecordingId.ToString("N");

@@ -17,6 +17,7 @@ public sealed class CaptureWorkbenchEditor : UserControl, IDisposable
     private readonly Image _image = new() { Stretch = Stretch.Fill };
     private readonly Canvas _overlay = new() { Background = Brushes.Transparent };
     private readonly Grid _surface = new() { ClipToBounds = true };
+    private readonly CaptureOcrPulse _ocrPulse = new();
     private readonly Viewbox _viewbox = new() { Stretch = Stretch.Uniform };
     private readonly ScrollViewer _viewport = new()
     {
@@ -81,6 +82,7 @@ public sealed class CaptureWorkbenchEditor : UserControl, IDisposable
         Focusable = true;
         _surface.Children.Add(_image);
         _surface.Children.Add(_overlay);
+        _surface.Children.Add(_ocrPulse);
         _overlay.MouseLeftButtonDown += PointerDown;
         _overlay.MouseMove += PointerMove;
         _overlay.MouseLeftButtonUp += PointerUp;
@@ -200,6 +202,11 @@ public sealed class CaptureWorkbenchEditor : UserControl, IDisposable
         if (_document is null) throw new InvalidOperationException("Nenhuma imagem carregada.");
         if (HasPendingCrop) throw new InvalidOperationException("Aplique ou cancele o recorte antes de copiar/salvar.");
         return _document.Render();
+    }
+    public void SetOcrReading(bool reading)
+    {
+        if (reading) { CancelGesture(); _ocrPulse.Start(); }
+        else _ocrPulse.Stop();
     }
     public bool ApplyCrop()
     {

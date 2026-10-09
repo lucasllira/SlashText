@@ -38,14 +38,15 @@ public static class CaptureInkPicker
     internal static Border CreateContent(CaptureWorkbenchEditor editor) => CreateContent(
         () => editor.InkArgb, editor.SetColor, () => editor.InkThickness, editor.SetThickness);
 
-    internal static Border CreateColorContent(Func<int> getInk, Action<int> setInk, string title) =>
-        CreateContent(getInk, setInk, () => 4, _ => { }, colorOnly: true, title: title);
+    internal static Border CreateColorContent(Func<int> getInk, Action<int> setInk, string title, bool compactPalette = false) =>
+        CreateContent(getInk, setInk, () => 4, _ => { }, colorOnly: true, title: title, compactPalette: compactPalette);
 
     internal static Border CreateContent(Func<int> getInk, Action<int> setInk, Func<float> getThickness, Action<float> setThickness,
-        bool colorOnly = false, string title = "Cores")
+        bool colorOnly = false, string title = "Cores", bool compactPalette = false, bool highlighter = false,
+        Func<float>? getOpacity = null, Action<float>? setOpacity = null)
     {
         var panel = new StackPanel { Margin = new Thickness(14) };
-        var border = new Border { Width = colorOnly ? 560 : 700, CornerRadius = new CornerRadius(10), BorderThickness = new Thickness(1), Child = panel };
+        var border = new Border { Width = compactPalette ? 320 : colorOnly ? 560 : 700, CornerRadius = new CornerRadius(10), BorderThickness = new Thickness(1), Child = panel };
         border.SetResourceReference(Border.BackgroundProperty, "Lab.raised");
         border.SetResourceReference(Border.BorderBrushProperty, "Lab.line-strong");
         border.SetResourceReference(System.Windows.Documents.TextElement.ForegroundProperty, "Lab.text");
@@ -59,7 +60,8 @@ public static class CaptureInkPicker
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = width });
         void Place(UIElement control, int column) { Grid.SetColumn(control, column); row.Children.Add(control); }
         var label = Label(title); label.Margin = new Thickness(0, 0, 10, 0); Place(label, 0);
-        var colors = new StackPanel { Name = "InkPalette", Orientation = Orientation.Horizontal };
+        Panel colors = compactPalette ? new UniformGrid { Name = "InkPalette", Columns = 6 } :
+            new StackPanel { Name = "InkPalette", Orientation = Orientation.Horizontal };
         var scroll = new ScrollViewer { Content = colors, Height = 44, Margin = new Thickness(0, 0, 4, 0),
             HorizontalScrollBarVisibility = ScrollBarVisibility.Hidden, VerticalScrollBarVisibility = ScrollBarVisibility.Disabled };
         Place(scroll, 2);
@@ -69,8 +71,8 @@ public static class CaptureInkPicker
             StrokeStartLineCap = PenLineCap.Round, StrokeEndLineCap = PenLineCap.Round, Stretch = Stretch.Fill };
         border.SizeChanged += (_, _) =>
         {
-            preview.Visibility = border.ActualWidth < 460 ? Visibility.Collapsed : Visibility.Visible;
-            preview.Width = border.ActualWidth < 580 ? 180 : 286;
+            preview.Visibility = compactPalette || border.ActualWidth >= 460 ? Visibility.Visible : Visibility.Collapsed;
+            preview.Width = compactPalette ? Math.Max(120, border.ActualWidth - 28) : border.ActualWidth < 580 ? 180 : 286;
         };
         var sizeValue = Label(""); sizeValue.Name = "InkSizeValue"; sizeValue.Width = 44; sizeValue.TextAlignment = TextAlignment.Right;
         var rgbPanel = new StackPanel { Name = "InkRgbPanel", Visibility = Visibility.Collapsed, Margin = new Thickness(0, 12, 0, 0) };
@@ -109,7 +111,9 @@ public static class CaptureInkPicker
         void Refresh()
         {
             var c = System.Drawing.Color.FromArgb(getInk());
-            preview.Stroke = new SolidColorBrush(Color.FromRgb(c.R, c.G, c.B)); preview.StrokeThickness = getThickness();
+            var opacity = getOpacity?.Invoke() ?? 1;
+            preview.Stroke = new SolidColorBrush(Color.FromRgb(c.R, c.G, c.B)) { Opacity = highlighter ? Math.Min(opacity, .38f) : opacity };
+            preview.StrokeThickness = getThickness() * (highlighter ? 4 : 1);
             sizeValue.Text = $"{getThickness():0} px"; SetFields(getInk()); error.Visibility = Visibility.Collapsed;
             foreach (var item in rings)
             {
@@ -118,7 +122,10 @@ public static class CaptureInkPicker
                 System.Windows.Automation.AutomationProperties.SetItemStatus(item.Button, item.Argb == getInk() ? "Selecionada" : "");
             }
         }
-        foreach (var item in Colors)
+        var palette = compactPalette && highlighter
+            ? Colors.Where(c => new[] { "FFD800", "00D900", "7FD7FD", "AF0F64", "FF5F00", "6600CC" }.Contains(c.Hex))
+            : Colors.AsEnumerable();
+        foreach (var item in palette)
         {
             TryParseHex(item.Hex, out var argb); var c = System.Drawing.Color.FromArgb(argb);
             var dot = new Border { Width = 24, Height = 24, CornerRadius = new CornerRadius(12),
@@ -147,7 +154,15 @@ public static class CaptureInkPicker
         var rgb = new Button { Name = "OpenInkRgb", Content = "RGB", Padding = new Thickness(12, 6, 12, 6) };
         rgb.SetResourceReference(FrameworkElement.StyleProperty, "Lab.Button"); rgb.ToolTip = "Definir uma cor específica por RGB ou hexadecimal";
         rgb.Click += (_, _) => { rgbPanel.Visibility = rgbPanel.Visibility == Visibility.Visible ? Visibility.Collapsed : Visibility.Visible; if (rgbPanel.IsVisible) r.Focus(); };
-        Place(rgb, 4); panel.Children.Add(row); panel.Children.Add(rgbPanel);
+        Place(rgb, 4);
+        if (compactPalette)
+        {
+            row.Children.Remove(previous); row.Children.Remove(next); row.Children.Remove(scroll);
+            scroll.Content = null;
+        }
+        panel.Children.Add(row);
+        if (compactPalette) panel.Children.Add(colors);
+        panel.Children.Add(rgbPanel);
         hex.TextChanged += (_, _) =>
         {
             if (syncing) return; hexEdited = true;
@@ -175,7 +190,25 @@ public static class CaptureInkPicker
         slider.ValueChanged += (_, _) => { setThickness((float)slider.Value); Refresh(); };
         Grid.SetColumn(slider, 1); sizeRow.Children.Add(slider);
         Grid.SetColumn(sizeValue, 2); sizeValue.Margin = new Thickness(10, 0, 10, 0); sizeRow.Children.Add(sizeValue);
-        Grid.SetColumn(preview, 3); sizeRow.Children.Add(preview); if (!colorOnly) panel.Children.Add(sizeRow);
+        if (!compactPalette) { Grid.SetColumn(preview, 3); sizeRow.Children.Add(preview); }
+        if (!colorOnly)
+        {
+            if (compactPalette) panel.Children.Add(preview);
+            panel.Children.Add(sizeRow);
+        }
+        if (getOpacity is not null && setOpacity is not null)
+        {
+            var opacityRow = new DockPanel { Margin = new Thickness(0, 10, 0, 4) };
+            var caption = Label("Opacidade"); caption.Margin = new Thickness(0, 0, 12, 0); opacityRow.Children.Add(caption);
+            var percent = Label($"{getOpacity() * 100:0}%"); percent.Width = 42; percent.TextAlignment = TextAlignment.Right;
+            DockPanel.SetDock(percent, Dock.Right); opacityRow.Children.Add(percent);
+            var opacity = new Slider { Name = "InkOpacity", Minimum = 10, Maximum = highlighter ? 38 : 100, Value = getOpacity() * 100,
+                TickFrequency = 1, IsSnapToTickEnabled = true, SmallChange = 1, LargeChange = 10 };
+            opacity.SetResourceReference(FrameworkElement.StyleProperty, "Lab.Pilot.InkSlider");
+            System.Windows.Automation.AutomationProperties.SetName(opacity, "Opacidade");
+            opacity.ValueChanged += (_, _) => { setOpacity((float)(opacity.Value / 100)); percent.Text = $"{opacity.Value:0}%"; Refresh(); };
+            opacityRow.Children.Add(opacity); panel.Children.Add(opacityRow);
+        }
         var hint = Label("Aplica às próximas anotações."); hint.FontSize = 11; hint.Margin = new Thickness(0, 4, 0, 0);
         hint.SetResourceReference(TextBlock.ForegroundProperty, "Lab.muted"); if (!colorOnly) panel.Children.Add(hint);
         Refresh(); LabMotion.SetEntrance(border, "Popup"); return border;

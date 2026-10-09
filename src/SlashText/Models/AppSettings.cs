@@ -46,11 +46,13 @@ public sealed class CaptureSettings
     public bool IncludeCursor { get; set; }
     public bool OpenEditorForMonitorAndWindow { get; set; }
     public int HistoryRetentionDays { get; set; } = 90;
+    public CaptureOcrSettings Ocr { get; set; } = new();
     public RecordingSettings Recording { get; set; } = new();
 }
 
 public sealed class RecordingSettings
 {
+    public RecordingAudioSettings Audio { get; set; } = new();
     public int VideoFps { get; set; } = 30;
     public string VideoQuality { get; set; } = "Alta";
     public bool IncludeCursor { get; set; } = true;
@@ -60,4 +62,24 @@ public sealed class RecordingSettings
     public int GifDurationSeconds { get; set; } = 5;
     public int GifWidth { get; set; } = 960;
     public int GifQuality { get; set; } = 128;
+}
+
+public sealed class RecordingAudioSettings
+{
+    public bool CaptureComputer { get; set; } = true;
+    public bool CaptureMicrophone { get; set; }
+    public string OutputDeviceId { get; set; } = string.Empty;
+    public string InputDeviceId { get; set; } = string.Empty;
+    public float OutputVolume { get; set; } = 1;
+    public float InputVolume { get; set; } = 1;
+
+    public RecordingAudioSettings Copy() => new()
+    {
+        CaptureComputer = CaptureComputer,
+        CaptureMicrophone = CaptureMicrophone,
+        OutputDeviceId = OutputDeviceId ?? string.Empty,
+        InputDeviceId = InputDeviceId ?? string.Empty,
+        OutputVolume = float.IsFinite(OutputVolume) ? Math.Clamp(OutputVolume, 0, 1) : 1,
+        InputVolume = float.IsFinite(InputVolume) ? Math.Clamp(InputVolume, 0, 1) : 1
+    };
 }
