@@ -50,6 +50,37 @@ compressão e pouca definição continuam sendo limitações do Tesseract.
 
 ## Barra de captura e popup
 
+### Gravação de vídeo com áudio — piloto v6
+
+Selecione Vídeo, escolha monitor/região/janela e clique em Novo. A seleção abre a barra de preparação;
+a gravação só começa ao clicar em **Iniciar** (ou Enter). Cancelar/X/Esc antes de iniciar não cria um arquivo.
+O tempo fica à esquerda; microfone e áudio do PC são ícones independentes; Iniciar/Finalizar fica à direita.
+O microfone começa desligado e o áudio do PC ligado. A última escolha ao iniciar é lembrada.
+
+A seta ao lado dos ícones permite escolher os dispositivos e ajustar o volume de cada fonte para a gravação,
+sem alterar o volume do Windows. As mesmas preferências ficam em Configurações de captura → Vídeo e GIF.
+Padrão do Windows usa o dispositivo padrão ao iniciar; dispositivos específicos indisponíveis exigem escolher
+outro ou desligar a fonte. O áudio do PC inclui os sons da saída selecionada, mesmo ao gravar uma janela.
+
+Durante a gravação, clique nos ícones para silenciar/reativar as fontes selecionadas antes de iniciar.
+Uma fonte inicialmente desligada fica indisponível até a próxima gravação. Na pausa, os controles de áudio
+ficam desativados porque o gravador não aplica mudanças de volume nesse estado. Continuar os libera.
+Espaço pausa/continua; Esc finaliza. A barra é excluída da captura pelo Windows.
+GIF continua sem áudio, com Pausar/Finalizar e o fluxo de prévia já existente.
+
+Validar no piloto:
+- Sem áudio, só computador, só microfone e ambos, ouvindo os MP4 exportados.
+- Silenciar cada fonte separadamente, reativar e conferir que a outra continua audível.
+- Pausar por alguns segundos e continuar: tempo/áudio/vídeo devem excluir a pausa.
+- Dispositivo padrão, dispositivo específico, fones/Bluetooth, microfone bloqueado e desconexão durante a gravação.
+- Reabrir o app e conferir fontes, dispositivos e volumes salvos.
+- Temas claro/escuro, monitores e escalas de 100%, 125%, 150% e 200%.
+
+Regressão automatizada: `--recording-audio-smoke <pasta>` verifica a barra WPF e as preferências sem gravar.
+Com `--native`, grava uma janela sintética usando os dispositivos locais; pode reproduzir um tom baixo
+e captar o microfone. Verifica as faixas/durações do MP4, silenciar/reativar e pausa. Ausência de dispositivo
+fica registrada como cenário não executado. `native.json` registra os resultados, sem nomes de dispositivos.
+
 A barra mantém os blocos **Área, Anotar, Privacidade, Histórico, OCR e Finalizar**, com títulos e separadores.
 Área reúne mover e refazer seleção; Privacidade mantém Desfocar/Pixelizar visíveis, inclusive no modo compacto.
 OCR usa apenas um ícone de leitura com linhas de texto. **Finalizar/Capturar fica à direita**.

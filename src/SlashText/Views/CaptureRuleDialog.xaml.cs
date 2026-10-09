@@ -10,6 +10,7 @@ namespace SlashText.Views;
 public partial class CaptureRuleDialog : Window
 {
     private readonly RecordingSettings _recording;
+    private readonly RecordingAudioPanel _audio;
 
     public CaptureSettings Result { get; private set; }
     public string ShortcutStatus { set => ShortcutStatusText.Text = value; }
@@ -18,6 +19,8 @@ public partial class CaptureRuleDialog : Window
     {
         InitializeComponent();
         _recording = settings.Recording ?? new RecordingSettings();
+        _audio = new RecordingAudioPanel(_recording.Audio ?? new());
+        RecordingAudioHost.Content = _audio;
         Result = settings;
         Width = Math.Min(700, SystemParameters.WorkArea.Width - 32);
         Height = Math.Min(740, SystemParameters.WorkArea.Height - 32);
@@ -151,6 +154,7 @@ public partial class CaptureRuleDialog : Window
             }.Normalize(),
             Recording = new RecordingSettings
             {
+                Audio = _audio.ReadSettings(),
                 VideoFps = SelectedInt(VideoFpsBox, 30), VideoQuality = SelectedTag(VideoQualityBox, "Alta"),
                 IncludeCursor = RecordingCursorBox.IsChecked == true,
                 GifFps = SelectedInt(GifFpsBox, 10), GifQuality = SelectedInt(GifQualityBox, 128),

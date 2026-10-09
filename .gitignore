@@ -13,3 +13,5 @@ src/SlashText/Assets/Ocr/*.traineddata
 src/SlashText/Assets/Ocr/Fast/*.traineddata
 ocr-evidence/
 publish-ocr/
+recording-audio-evidence/
+recording-audio-pilot-package/

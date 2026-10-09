@@ -2376,6 +2376,7 @@ public partial class MainWindow : Window
             Ocr = _settings.Capture.Ocr ?? new(),
             Recording = new RecordingSettings
             {
+                Audio = (_settings.Capture.Recording.Audio ?? new()).Copy(),
                 VideoFps = ParseSelectedInt(RecordingFpsBox, 30),
                 VideoQuality = SelectedTag(RecordingQualityBox, "Alta"),
                 IncludeCursor = RecordingCursorCheckBox.IsChecked == true,
@@ -2974,12 +2975,28 @@ public partial class MainWindow : Window
             _recordingService = new ScreenRecordingService();
             _recordingService.RecordingFailed += (_, message) =>
                 _ = Dispatcher.BeginInvoke(() => StatusText.Text = message);
+            _recordingControl = new RecordingControlWindow(_recordingService, "MP4", _settings.Capture.Recording);
+            _recordingControl.Show();
+            var shouldStart = await _recordingControl.WaitForStartAsync();
+            if (shouldStart)
+            {
+                await _settingsStore.SaveAsync(_settings);
+                shouldStart = _recordingControl.IsVisible;
+            }
+            if (!shouldStart)
+            {
+                _recordingControl.Close();
+                _recordingControl = null;
+                _recordingService.Dispose();
+                _recordingService = null;
+                ShowFromTray();
+                return;
+            }
+            _recordingControl.BeginRecording();
             var completion = _recordingService.StartAsync(
                 target,
                 _settings.Capture,
                 _settings.Capture.Recording);
-            _recordingControl = new RecordingControlWindow(_recordingService, "MP4");
-            _recordingControl.Show();
             var path = await completion;
             var elapsed = _recordingService.Elapsed;
             var completedRecordingId = _recordingService.RecordingId.ToString("N");

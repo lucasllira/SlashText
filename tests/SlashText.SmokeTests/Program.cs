@@ -1286,6 +1286,37 @@ try
         ["Alta"] = (9_000_000, 85),
         ["Muito alta"] = (16_000_000, 95)
     };
+    foreach (var (computer, microphone) in new[] { (false, false), (true, false), (false, true), (true, true) })
+    {
+        var audioOptions = ScreenRecordingService.BuildOptions(
+            new RecordingTarget(RecordingTargetKind.Window, new System.Drawing.Rectangle(0, 0, 640, 480), new IntPtr(1)),
+            new RecordingSettings { Audio = new() { CaptureComputer = computer, CaptureMicrophone = microphone,
+                InputDeviceId = "input-fixture", OutputDeviceId = "output-fixture", InputVolume = .4f, OutputVolume = .7f } },
+            Path.Combine(root, "audio-options.log")).AudioOptions;
+        Require(audioOptions.IsAudioEnabled == (computer || microphone) &&
+                audioOptions.IsInputDeviceEnabled == microphone && audioOptions.IsOutputDeviceEnabled == computer &&
+                audioOptions.AudioInputDevice == "input-fixture" && audioOptions.AudioOutputDevice == "output-fixture" &&
+                audioOptions.InputVolume == .4f && audioOptions.OutputVolume == .7f,
+            $"MP4 respeita fontes independentes PC={computer} microfone={microphone}, dispositivos e volumes");
+    }
+    var savedAudio = System.Text.Json.JsonSerializer.Deserialize<RecordingSettings>(
+        System.Text.Json.JsonSerializer.Serialize(new RecordingSettings { Audio = new() {
+            CaptureComputer = false, CaptureMicrophone = true, InputDeviceId = "mic-saved", InputVolume = .6f } }))!;
+    Require(!savedAudio.Audio.CaptureComputer && savedAudio.Audio.CaptureMicrophone &&
+            savedAudio.Audio.InputDeviceId == "mic-saved" && savedAudio.Audio.InputVolume == .6f,
+        "preferências de áudio sobrevivem ao JSON");
+    var oldRecording = System.Text.Json.JsonSerializer.Deserialize<RecordingSettings>("{\"VideoFps\":24}")!;
+    Require(oldRecording.VideoFps == 24 && oldRecording.Audio.CaptureComputer && !oldRecording.Audio.CaptureMicrophone,
+        "configuração anterior migra com PC ligado e microfone desligado");
+    var unavailableAudio = new RecordingAudioDevices(new([], null), new([], null));
+    Require(unavailableAudio.Validate(new() { CaptureComputer = false, CaptureMicrophone = false }) is null &&
+            unavailableAudio.Validate(new() { CaptureComputer = true }) is not null,
+        "sem dispositivos permite vídeo silencioso e impede fingir áudio ativo");
+    var disconnectedAudio = new RecordingAudioDeviceList([new("available", "Disponível")], null);
+    Require(disconnectedAudio.Validate(true, "removed", "o microfone") is not null &&
+            disconnectedAudio.Validate(true, string.Empty, "o microfone") is null &&
+            disconnectedAudio.Validate(false, "removed", "o microfone") is null,
+        "dispositivo desconectado não troca silenciosamente pelo padrão");
     foreach (var preset in RecordingPresetCatalog.Mp4Quality)
     {
         var options = ScreenRecordingService.BuildOptions(
@@ -1368,18 +1399,29 @@ try
                 OutputDirectoryTemplate = root,
                 FileNameTemplate = "lifecycle"
             },
-            new RecordingSettings { VideoFps = 30 });
+            new RecordingSettings { VideoFps = 30, Audio = new() { CaptureComputer = true, CaptureMicrophone = true,
+                InputVolume = .4f, OutputVolume = .7f } });
         Require(fakeFactory.Backend.RecordCalled.Wait(TimeSpan.FromSeconds(2)), "MP4 inicia backend");
         await WaitUntilAsync(
             () => lifecycle.State == ScreenRecordingState.Recording,
             "estado Recording");
         await Task.Delay(100);
         Require(lifecycle.Elapsed >= TimeSpan.FromMilliseconds(60), "contador MP4 avança");
+        Require(await lifecycle.SetAudioMutedAsync(true, false) && lifecycle.IsMicrophoneMuted &&
+                fakeFactory.Backend.InputVolume == 0 && fakeFactory.Backend.OutputVolume == .7f,
+            "silenciar microfone mantém o áudio do PC");
+        fakeFactory.Backend.RejectAudioChanges = true;
+        Require(!await lifecycle.SetAudioMutedAsync(false, true) && lifecycle.IsMicrophoneMuted && !lifecycle.IsComputerMuted &&
+                lifecycle.State == ScreenRecordingState.Recording,
+            "falha ao silenciar mantém estado real e não interrompe vídeo");
+        fakeFactory.Backend.RejectAudioChanges = false;
         lifecycle.Pause();
         await WaitUntilAsync(
             () => lifecycle.State == ScreenRecordingState.Paused,
             "estado Paused");
         var pausedElapsed = lifecycle.Elapsed;
+        Require(!await lifecycle.SetAudioMutedAsync(false, true) && lifecycle.IsMicrophoneMuted && !lifecycle.IsComputerMuted,
+            "pausa preserva áudio e impede uma alteração que o encoder não aplica");
         await Task.Delay(80);
         Require(
             lifecycle.Elapsed - pausedElapsed < TimeSpan.FromMilliseconds(30),
@@ -1388,6 +1430,9 @@ try
         await WaitUntilAsync(
             () => lifecycle.State == ScreenRecordingState.Recording,
             "retorno ao estado Recording");
+        Require(await lifecycle.SetAudioMutedAsync(false, true) && !lifecycle.IsMicrophoneMuted && lifecycle.IsComputerMuted &&
+                fakeFactory.Backend.InputVolume == .4f && fakeFactory.Backend.OutputVolume == 0,
+            "retomar permite alterar áudio e restaura o volume escolhido");
         await Task.Delay(80);
         Require(lifecycle.Elapsed > pausedElapsed, "contador MP4 retoma do acumulado");
         lifecycle.Stop();
@@ -1395,6 +1440,7 @@ try
         var lifecyclePath = await lifecycleTask.WaitAsync(TimeSpan.FromSeconds(3));
         Require(File.Exists(lifecyclePath), "MP4 finaliza e publica arquivo");
         Require(lifecycle.State == ScreenRecordingState.Completed, "estado Completed");
+        Require(!await lifecycle.SetAudioMutedAsync(false, false), "não muda áudio após finalizar");
         Require(fakeFactory.Backend.DisposeCalls == 1, "Recorder descartado uma única vez");
         Require(fakeFactory.Backend.MaximumConcurrentCalls == 1, "chamadas nativas serializadas");
         Require(
@@ -2663,6 +2709,14 @@ sealed class FakeRecorderBackend : IScreenRecorderBackend
     public int DisposeCalls => Volatile.Read(ref _disposeCalls);
     public int StopCalls => Volatile.Read(ref _stopCalls);
     public int MaximumConcurrentCalls => Volatile.Read(ref _maximumConcurrentCalls);
+    public float InputVolume { get; private set; }
+    public float OutputVolume { get; private set; }
+    public bool RejectAudioChanges { get; set; }
+    public bool SetAudioVolumes(float inputVolume, float outputVolume)
+    {
+        NativeCall(() => { if (!RejectAudioChanges) { InputVolume = inputVolume; OutputVolume = outputVolume; } });
+        return !RejectAudioChanges;
+    }
 
     public void Record(string path)
     {

@@ -30,6 +30,9 @@ public sealed class ScreenRecordingService : IRecordingController, IDisposable
     private int _timeoutReported;
     private int _nativeStopOutstanding;
     private bool _disposed;
+    private RecordingAudioSettings _audio = new();
+    public bool IsMicrophoneMuted { get; private set; }
+    public bool IsComputerMuted { get; private set; }
 
     public ScreenRecordingService()
         : this(new ScreenRecorderBackendFactory(), DefaultStopTimeout)
@@ -103,6 +106,9 @@ public sealed class ScreenRecordingService : IRecordingController, IDisposable
             }
 
             RecordingPresetCatalog.Normalize(settings);
+            _audio = settings.Audio.Copy();
+            IsMicrophoneMuted = !_audio.CaptureMicrophone;
+            IsComputerMuted = !_audio.CaptureComputer;
             _recordingId = Guid.NewGuid();
             _path = CreateMediaPath(captureSettings, target.Type, ".mp4");
             _workingPath = CreateWorkingPath(_path);
@@ -114,7 +120,7 @@ public sealed class ScreenRecordingService : IRecordingController, IDisposable
             Volatile.Write(ref _pauseRequested, 0);
             Volatile.Write(ref _timeoutReported, 0);
             Volatile.Write(ref _nativeStopOutstanding, 0);
-            _clock.Start();
+            _clock.Reset();
         }
 
         Log(
@@ -124,6 +130,8 @@ public sealed class ScreenRecordingService : IRecordingController, IDisposable
             ("height", target.Bounds.Height),
             ("fps", settings.VideoFps),
             ("cursor", settings.IncludeCursor),
+            ("computerAudio", _audio.CaptureComputer),
+            ("microphoneAudio", _audio.CaptureMicrophone),
             ("encoder", EncoderPolicy));
         AppDiagnosticLog.MarkRecordingActive(
             _recordingId,
@@ -144,6 +152,49 @@ public sealed class ScreenRecordingService : IRecordingController, IDisposable
         }
         _clock.Pause();
         EnqueueNative("recording.pause", PauseCore);
+    }
+
+    // Keep volume changes in the same native queue as pause/resume/stop.
+    // A failed mute must not stop the video or falsely update the toolbar.
+    public Task<bool> SetAudioMutedAsync(bool microphoneMuted, bool computerMuted)
+    {
+        lock (_gate)
+        {
+            if (_disposed || _state != ScreenRecordingState.Recording ||
+                Volatile.Read(ref _stopRequested) != 0 ||
+                (!_audio.CaptureMicrophone && !microphoneMuted) ||
+                (!_audio.CaptureComputer && !computerMuted))
+                return Task.FromResult(false);
+            var completion = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            _nativeQueue = _nativeQueue.ContinueWith(_ =>
+            {
+                try
+                {
+                    var backend = BackendSnapshot();
+                    if (backend is null || State != ScreenRecordingState.Recording || Volatile.Read(ref _stopRequested) != 0)
+                    {
+                        completion.TrySetResult(false);
+                        return;
+                    }
+                    var applied = backend.SetAudioVolumes(
+                        microphoneMuted ? 0 : _audio.InputVolume,
+                        computerMuted ? 0 : _audio.OutputVolume);
+                    if (applied)
+                    {
+                        IsMicrophoneMuted = microphoneMuted;
+                        IsComputerMuted = computerMuted;
+                        Log("recording.audio-muted", ("microphone", microphoneMuted), ("computer", computerMuted));
+                    }
+                    completion.TrySetResult(applied);
+                }
+                catch (Exception exception)
+                {
+                    LogException("recording.audio-change-failed", exception);
+                    completion.TrySetException(exception);
+                }
+            }, CancellationToken.None, TaskContinuationOptions.None, TaskScheduler.Default);
+            return completion.Task;
+        }
     }
 
     public void Resume()
@@ -206,14 +257,6 @@ public sealed class ScreenRecordingService : IRecordingController, IDisposable
         Log("recording.native-record-enter");
         backend.Record(_workingPath);
         Log("recording.native-record-return", ("durationMs", started.Elapsed.TotalMilliseconds));
-        lock (_gate)
-        {
-            if (_state == ScreenRecordingState.Starting)
-            {
-                _state = ScreenRecordingState.Recording;
-            }
-        }
-        PublishProgress("Gravando MP4");
     }
 
     private void PauseCore()
@@ -323,6 +366,8 @@ public sealed class ScreenRecordingService : IRecordingController, IDisposable
             {
                 return;
             }
+            if (_state == ScreenRecordingState.Starting && e.Status == RecorderStatus.Recording)
+                _clock.Start();
             _state = e.Status switch
             {
                 RecorderStatus.Recording => ScreenRecordingState.Recording,
@@ -331,6 +376,13 @@ public sealed class ScreenRecordingService : IRecordingController, IDisposable
                 _ => _state
             };
         }
+        PublishProgress(e.Status switch
+        {
+            RecorderStatus.Recording => "Gravando MP4",
+            RecorderStatus.Paused => "MP4 pausado",
+            RecorderStatus.Finishing => "Finalizando MP4…",
+            _ => "Inicializando MP4"
+        });
     }
 
     private void QueueFinalization(FinalizationRequest request)
@@ -510,7 +562,16 @@ public sealed class ScreenRecordingService : IRecordingController, IDisposable
                     ? new ScreenSize(Even(target.Bounds.Width), Even(target.Bounds.Height))
                     : ScreenSize.Empty
             },
-            AudioOptions = new AudioOptions { IsAudioEnabled = false },
+            AudioOptions = new AudioOptions
+            {
+                IsAudioEnabled = settings.Audio.CaptureComputer || settings.Audio.CaptureMicrophone,
+                IsOutputDeviceEnabled = settings.Audio.CaptureComputer,
+                IsInputDeviceEnabled = settings.Audio.CaptureMicrophone,
+                AudioOutputDevice = settings.Audio.OutputDeviceId,
+                AudioInputDevice = settings.Audio.InputDeviceId,
+                OutputVolume = settings.Audio.OutputVolume,
+                InputVolume = settings.Audio.InputVolume
+            },
             VideoEncoderOptions = new VideoEncoderOptions
             {
                 Bitrate = bitrate,

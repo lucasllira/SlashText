@@ -12,6 +12,7 @@ internal interface IScreenRecorderBackend : IDisposable
     void Pause();
     void Resume();
     void Stop();
+    bool SetAudioVolumes(float inputVolume, float outputVolume);
 }
 
 internal interface IScreenRecorderBackendFactory
@@ -45,6 +46,12 @@ internal sealed class ScreenRecorderBackend : IScreenRecorderBackend
     public void Pause() => Recorder.Pause();
     public void Resume() => Recorder.Resume();
     public void Stop() => Recorder.Stop();
+    public bool SetAudioVolumes(float inputVolume, float outputVolume) =>
+        Recorder.GetDynamicOptionsBuilder().SetDynamicAudioOptions(new DynamicAudioOptions
+        {
+            InputVolume = inputVolume,
+            OutputVolume = outputVolume
+        }).Apply();
 
     public void Dispose()
     {

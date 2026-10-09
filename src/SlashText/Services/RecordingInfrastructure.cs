@@ -53,6 +53,16 @@ internal sealed class MonotonicRecordingClock
         }
     }
 
+    public void Reset()
+    {
+        lock (_gate)
+        {
+            _accumulated = TimeSpan.Zero;
+            _stopwatch.Reset();
+            _stopped = false;
+        }
+    }
+
     public void Pause()
     {
         lock (_gate)
@@ -145,6 +155,7 @@ internal static class RecordingPresetCatalog
 
     public static void Normalize(RecordingSettings settings)
     {
+        settings.Audio = (settings.Audio ?? new()).Copy();
         settings.GifFps = NormalizeGifFps(settings.GifFps);
         settings.GifQuality = NormalizeGifQuality(settings.GifQuality);
         settings.VideoQuality = NormalizeMp4Quality(settings.VideoQuality);

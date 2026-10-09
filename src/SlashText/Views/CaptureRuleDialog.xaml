@@ -162,6 +162,8 @@
                                 <ComboBoxItem Content="Muito alta" Tag="Muito alta" />
                             </ComboBox>
                             <CheckBox x:Name="RecordingCursorBox" Content="Incluir cursor nas gravações" Margin="0,18,0,0" Style="{StaticResource Lab.Switch}" />
+                            <TextBlock Text="Áudio do vídeo MP4" FontSize="15" FontWeight="SemiBold" Margin="0,24,0,0" />
+                            <ContentControl x:Name="RecordingAudioHost" />
                             <TextBlock Text="GIF — quadros por segundo" Margin="0,16,0,6" Style="{StaticResource Lab.Metadata}" />
                             <ComboBox x:Name="GifFpsBox" Style="{StaticResource Lab.Combo}">
                                 <ComboBoxItem Content="10 FPS — recomendado" Tag="10" />
