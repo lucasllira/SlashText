@@ -8,6 +8,7 @@ using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using SlashText.Services;
 using SlashText.Views;
+using SlashText.Models;
 using DrawingBitmap = System.Drawing.Bitmap;
 using DrawingColor = System.Drawing.Color;
 
@@ -18,9 +19,9 @@ internal static class CaptureOcrSmoke
 {
     internal static async Task RunAsync(string output, string? bestModels)
     {
-        var clipboard = Clipboard.GetDataObject();
+        var clipboard = await ClipboardWithRetryAsync(Clipboard.GetDataObject);
         try { await RunChecksAsync(output, bestModels); }
-        finally { if (clipboard is not null) Clipboard.SetDataObject(clipboard, copy: true); else Clipboard.Clear(); }
+        finally { await ClipboardWithRetryAsync(() => { if (clipboard is not null) Clipboard.SetDataObject(clipboard, copy: true); else Clipboard.Clear(); return true; }); }
     }
     private static async Task RunChecksAsync(string output, string? alternativeModels)
     {
@@ -37,15 +38,18 @@ internal static class CaptureOcrSmoke
         {
             using var bitmap = Fixture(text, dark, size, font);
             bitmap.Save(Path.Combine(output, name + ".png"), System.Drawing.Imaging.ImageFormat.Png);
-            foreach (var model in alternativeModels is null ? new[] { "best" } : new[] { "best", "fast" })
+            foreach (var model in new[] { "Best", "Fast" })
             {
-                var result = await new CaptureOcrService(modelsDirectory: model == "fast" ? alternativeModels : null).RecognizeAsync(bitmap);
+                var result = await new CaptureOcrService(modelsDirectory: model == "Fast" ? alternativeModels : null,
+                    options: new() { Model = model }).RecognizeAsync(bitmap);
                 Require(result.Text.Length > 0, name + " recognizes text");
+                Require(ErrorRate(text, result.Text) < 0.10, name + " stays readable with " + model);
                 metrics.Add(new { Fixture = name, Model = model, result.ElapsedMilliseconds, result.PeakWorkingSetBytes,
-                    CharacterErrorRate = ErrorRate(text, result.Text), Expected = text, Actual = result.Text });
+                    result.Confidence, result.UsedFallback, CharacterErrorRate = ErrorRate(text, result.Text), Expected = text, Actual = result.Text });
             }
         }
         File.WriteAllText(Path.Combine(output, "benchmark.json"), JsonSerializer.Serialize(metrics, new JsonSerializerOptions { WriteIndented = true }));
+        await CheckSettingsAsync(output);
         using var blank = Fixture("", false, 18, "Segoe UI");
         Require(string.IsNullOrWhiteSpace((await new CaptureOcrService().RecognizeAsync(blank)).Text), "Blank image produces empty text");
         using (var canceled = new CancellationTokenSource())
@@ -71,6 +75,21 @@ internal static class CaptureOcrSmoke
             var owner = new Window { Width = 940, Height = 760, ShowInTaskbar = false, WindowStartupLocation = WindowStartupLocation.CenterScreen };
             var editor = new CaptureWorkbenchEditor(); editor.LoadImage(fixture); owner.Content = editor;
             LabMotion.SetReduced(owner, true); owner.Show();
+            var configuration = new CaptureRuleDialog(new CaptureSettings()) { Owner = owner };
+            LabMotion.SetReduced(configuration, true); configuration.Show();
+            for (var tab = 0; tab < 4; tab++)
+            {
+                configuration.Sections.SelectedIndex = tab;
+                await System.Windows.Application.Current.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
+                Save(configuration, output, theme + "-settings-" + tab, 1);
+                Save(configuration, output, theme + "-settings-" + tab, 1.5);
+            }
+            configuration.Close();
+            var smallConfiguration = new CaptureRuleDialog(new CaptureSettings()) { Owner = owner, Width = 540, Height = 500 };
+            smallConfiguration.Show();
+            smallConfiguration.Sections.SelectedIndex = 3;
+            await System.Windows.Application.Current.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
+            Save(smallConfiguration, output, theme + "-settings-compact", 1); smallConfiguration.Close();
             var revision = editor.Document!.Revision;
             var before = editor.Render(); using var beforeStream = new MemoryStream(); before.Save(beforeStream, System.Drawing.Imaging.ImageFormat.Png); before.Dispose();
             var dialog = new CaptureOcrWindow(fixture, editor.SetOcrReading) { Owner = owner };
@@ -80,8 +99,15 @@ internal static class CaptureOcrSmoke
             await dialog.FirstRead;
             Require(dialog.ResultText.Contains("SlashDesk", StringComparison.OrdinalIgnoreCase), "WPF panel shows actual OCR output");
             Require(dialog.CopyAllEnabled, "Copy enabled only after text is ready");
-            dialog.SelectTextForEvidence(0, 9); dialog.CopySelectionForEvidence(); Require(Clipboard.GetText() == dialog.ResultText[..9], "Copies only selected text");
-            dialog.CopyAllForEvidence(); Require(Clipboard.GetText() == dialog.ResultText, "Copies complete edited result");
+            dialog.SelectTextForEvidence(0, 9);
+            var selection = await ClipboardWithRetryAsync(() => {
+                if (!dialog.CopySelectionForEvidence()) throw new System.Runtime.InteropServices.COMException("Clipboard temporarily unavailable");
+                return Clipboard.GetText(); });
+            Require(selection == dialog.ResultText[..9], "Copies only selected text");
+            var all = await ClipboardWithRetryAsync(() => {
+                if (!dialog.CopyAllForEvidence()) throw new System.Runtime.InteropServices.COMException("Clipboard temporarily unavailable");
+                return Clipboard.GetText(); });
+            Require(all == dialog.ResultText, "Copies complete edited result");
             await System.Windows.Application.Current.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
             Save(dialog, output, theme + "-result", 1); Save(dialog, output, theme + "-result", 1.5);
             dialog.Close();
@@ -107,6 +133,34 @@ internal static class CaptureOcrSmoke
         overlay.Close();
         File.WriteAllText(Path.Combine(output, "result.txt"), "PASS: offline workers, pt/en, empty result, cancellation, cleanup, WPF results/copy, reduced motion, unchanged pixels and selection. Synthetic fixtures only; real screenshots/DPI mixed-monitor validation remains manual.");
     }
+    private static async Task CheckSettingsAsync(string output)
+    {
+        var settings = new CaptureSettings { Recording = new() { VideoFps = 24, GifWidth = 1234, GifDurationSeconds = 7 } };
+        var original = JsonSerializer.Serialize(settings);
+        var dialog = new CaptureRuleDialog(settings);
+        dialog.OcrModelBox.SelectedIndex = 1; dialog.OcrLanguageBox.SelectedIndex = 2; dialog.OcrLayoutBox.SelectedIndex = 1;
+        dialog.OcrImproveCheckBox.IsChecked = false; dialog.GifFpsBox.SelectedIndex = 2; dialog.MonitorBox.Text = "Ctrl+Alt+F8";
+        Require(dialog.TryBuildResult(out var candidate, out _), "Unified configuration validates before saving");
+        Require(JsonSerializer.Serialize(settings) == original && ReferenceEquals(dialog.Result, settings), "Editing/cancel does not mutate existing preferences");
+        Require(candidate.Ocr.Model == "Fast" && candidate.Ocr.Languages == "eng" && candidate.Ocr.Layout == "Block" && !candidate.Ocr.ImproveDifficultImages,
+            "OCR options come from the unified dialog");
+        Require(candidate.Recording.VideoFps == 24 && candidate.Recording.GifFps == 30 && candidate.Recording.GifWidth == 1234 && candidate.Recording.GifDurationSeconds == 7,
+            "Recording preferences and legacy fields survive saving");
+        dialog.RegionBox.Text = dialog.MonitorBox.Text;
+        Require(!dialog.TryBuildResult(out _, out _), "Conflicting capture shortcuts rejected");
+        dialog.RegionBox.Text = settings.RegionShortcut; dialog.CopyCheckBox.IsChecked = false; dialog.SaveCheckBox.IsChecked = false;
+        Require(!dialog.TryBuildResult(out _, out _), "Direct capture requires an output"); dialog.Close();
+        var store = new JsonFileStore<AppSettings>(Path.Combine(output, "fixture-settings.json"));
+        await store.SaveAsync(new() { Capture = candidate }); var loaded = await store.LoadAsync();
+        Require(loaded.Capture.Ocr == candidate.Ocr && loaded.Capture.ActiveMonitorShortcut == candidate.ActiveMonitorShortcut, "Saved OCR and shortcuts survive restart");
+        var legacy = JsonSerializer.Deserialize<AppSettings>("{\"Capture\":{\"ImageFormat\":\"JPEG\"}}")!;
+        Require(legacy.Capture.Ocr.Model == "Best" && legacy.Capture.Ocr.Languages == "por+eng", "Old settings load with safe OCR defaults");
+        Require(new CaptureOcrSettings { Model = "missing", Languages = "bad", Layout = "unknown" }.Normalize() == new CaptureOcrSettings(), "Invalid OCR preferences normalize safely");
+        using var fixture = Fixture("Local text 123", false, 18, "Segoe UI");
+        foreach (var language in new[] { "por", "eng" }) foreach (var layout in new[] { "Block", "Sparse" })
+            Require((await new CaptureOcrService(options: new() { Languages = language, Layout = layout, Model = "Fast" }).RecognizeAsync(fixture)).Text.Contains("123"),
+                "Explicit OCR language and layout work offline");
+    }
     private static DrawingBitmap Fixture(string text, bool dark, float size, string family)
     {
         var bitmap = new DrawingBitmap(950, 260);
@@ -123,6 +177,14 @@ internal static class CaptureOcrSmoke
         for (var i = 1; i <= expected.Length; i++) { var next = new int[actual.Length + 1]; next[0] = i;
             for (var j = 1; j <= actual.Length; j++) next[j] = Math.Min(Math.Min(next[j - 1] + 1, row[j] + 1), row[j - 1] + (expected[i - 1] == actual[j - 1] ? 0 : 1)); row = next; }
         return row[^1] / (double)Math.Max(1, expected.Length);
+    }
+    private static async Task<T> ClipboardWithRetryAsync<T>(Func<T> action)
+    {
+        for (var attempt = 0; ; attempt++)
+        {
+            try { return action(); }
+            catch (System.Runtime.InteropServices.COMException) when (attempt < 12) { await Task.Delay(150); }
+        }
     }
     private static void Save(Window window, string output, string name, double scale)
     {

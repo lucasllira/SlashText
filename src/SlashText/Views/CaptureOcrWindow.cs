@@ -33,8 +33,8 @@ public sealed class CaptureOcrWindow : Window
     internal Task FirstRead => _firstRead.Task;
     internal bool CopyAllEnabled => _copyAll.IsEnabled;
     internal void SelectTextForEvidence(int start, int length) => _text.Select(start, length);
-    internal void CopySelectionForEvidence() => Copy(_text.SelectedText);
-    internal void CopyAllForEvidence() => Copy(_text.Text);
+    internal bool CopySelectionForEvidence() => Copy(_text.SelectedText);
+    internal bool CopyAllForEvidence() => Copy(_text.Text);
 
     public CaptureOcrWindow(DrawingBitmap snapshot, Action<bool>? busyChanged = null, CaptureOcrService? service = null)
     {
@@ -54,7 +54,8 @@ public sealed class CaptureOcrWindow : Window
         var header = new DockPanel(); _close = ActionButton("Fechar", Close); DockPanel.SetDock(_close, Dock.Right); header.Children.Add(_close);
         header.Children.Add(new TextBlock { Text = "Extrair texto", FontSize = 23, FontWeight = FontWeights.SemiBold }); root.Children.Add(header);
         var statusPanel = new StackPanel { Margin = new Thickness(0, 8, 0, 12) };
-        var subtitle = new TextBlock { Text = "Português + inglês · processamento local", FontSize = 12 };
+        var language = _service.Options.Languages switch { "por" => "Português", "eng" => "Inglês", _ => "Português + inglês" };
+        var subtitle = new TextBlock { Text = $"{language} · {_service.Options.Model} · processamento local", FontSize = 12 };
         subtitle.SetResourceReference(TextBlock.ForegroundProperty, "Lab.muted"); statusPanel.Children.Add(subtitle);
         _status.Margin = new Thickness(0, 8, 0, 0); AutomationProperties.SetLiveSetting(_status, AutomationLiveSetting.Polite);
         statusPanel.Children.Add(_status); Grid.SetRow(statusPanel, 1); root.Children.Add(statusPanel);
@@ -98,7 +99,9 @@ public sealed class CaptureOcrWindow : Window
             _text.Text = result.Text;
             _status.Text = string.IsNullOrWhiteSpace(result.Text)
                 ? "Nenhum texto encontrado. Tente uma região mais próxima do texto ou uma imagem mais nítida."
-                : "Texto pronto. Você pode corrigir e selecionar um trecho antes de copiar.";
+                : result.Confidence < 0.80f
+                    ? "Leitura com baixa confiança. Revise o texto; tente aproximar a seleção ou ajustar o OCR nas Configurações de captura."
+                    : "Texto pronto. Você pode corrigir e selecionar um trecho antes de copiar.";
         }
         catch (OperationCanceledException) { }
         catch (Exception exception)
@@ -121,11 +124,11 @@ public sealed class CaptureOcrWindow : Window
         _retry.IsEnabled = !_running; _copyAll.IsEnabled = !_running && !string.IsNullOrWhiteSpace(_text.Text);
         _copySelected.IsEnabled = !_running && !string.IsNullOrWhiteSpace(_text.SelectedText);
     }
-    private void Copy(string text)
+    private bool Copy(string text)
     {
-        if (_running || string.IsNullOrWhiteSpace(text)) return;
-        try { Clipboard.SetText(text); CopiedText = true; _status.Text = "Texto copiado."; }
-        catch (System.Runtime.InteropServices.COMException) { _status.Text = "A área de transferência está ocupada. Tente copiar novamente."; }
+        if (_running || string.IsNullOrWhiteSpace(text)) return false;
+        try { Clipboard.SetText(text); CopiedText = true; _status.Text = "Texto copiado."; return true; }
+        catch (System.Runtime.InteropServices.COMException) { _status.Text = "A área de transferência está ocupada. Tente copiar novamente."; return false; }
     }
     private static Button ActionButton(string label, Action callback)
     {

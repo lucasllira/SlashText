@@ -2298,7 +2298,9 @@ public partial class MainWindow : Window
 
         await _settingsStore.SaveAsync(_settings);
         ConfigureCaptureShortcuts();
-        StatusText.Text = "Configurações de captura salvas";
+        StatusText.Text = CaptureShortcutStatusText.Text.StartsWith("●", StringComparison.Ordinal)
+            ? "Configurações de captura salvas"
+            : "Configurações salvas. " + CaptureShortcutStatusText.Text;
     }
 
     private bool TryReadCaptureSettings(out string error)
@@ -2371,6 +2373,7 @@ public partial class MainWindow : Window
             OpenEditorForMonitorAndWindow = openEditor,
             DelaySeconds = ParseSelectedInt(CaptureDelayBox, 0),
             HistoryRetentionDays = ParseSelectedInt(CaptureRetentionBox, 90),
+            Ocr = _settings.Capture.Ocr ?? new(),
             Recording = new RecordingSettings
             {
                 VideoFps = ParseSelectedInt(RecordingFpsBox, 30),
@@ -2586,7 +2589,7 @@ public partial class MainWindow : Window
     {
         if (!TryReadCaptureSettings(out var currentError))
         {
-            MessageBox.Show(currentError, "Regra de captura",
+            MessageBox.Show(currentError, "Configurações de captura",
                 MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
@@ -2594,6 +2597,8 @@ public partial class MainWindow : Window
         {
             Owner = this
         };
+        LabMotion.SetReduced(dialog, LabMotion.GetReduced(this));
+        dialog.ShortcutStatus = CaptureShortcutStatusText.Text;
         var accepted = ShowCaptureDialog(dialog);
         if (!accepted)
         {
@@ -2604,29 +2609,9 @@ public partial class MainWindow : Window
         await _settingsStore.SaveAsync(_settings);
         LoadCaptureSettings();
         ConfigureCaptureShortcuts();
-        StatusText.Text = "Regra de captura salva";
-    }
-
-    private async void OpenCaptureShortcuts_OnClick(object sender, RoutedEventArgs e)
-    {
-        var dialog = new CaptureShortcutDialog(_settings.Capture)
-        {
-            Owner = this
-        };
-        var accepted = ShowCaptureDialog(dialog);
-        if (!accepted)
-        {
-            return;
-        }
-
-        _settings.Capture.ActiveMonitorShortcut = dialog.MonitorShortcut;
-        _settings.Capture.RegionShortcut = dialog.RegionShortcut;
-        _settings.Capture.WindowShortcut = dialog.WindowShortcut;
-        _settings.Capture.ScrollingShortcut = dialog.ScrollingShortcut;
-        await _settingsStore.SaveAsync(_settings);
-        LoadCaptureSettings();
-        ConfigureCaptureShortcuts();
-        StatusText.Text = "Atalhos de captura salvos";
+        StatusText.Text = CaptureShortcutStatusText.Text.StartsWith("●", StringComparison.Ordinal)
+            ? "Configurações de captura salvas"
+            : "Configurações salvas. " + CaptureShortcutStatusText.Text;
     }
 
     private bool ShowCaptureDialog(Window dialog)
@@ -2841,7 +2826,7 @@ public partial class MainWindow : Window
                 editedRegion = _captureService.SelectAndEditRegion(
                     null,
                     _settings.Capture.IncludeCursor,
-                    out requestedRegionOutput, out regionSession);
+                    out requestedRegionOutput, out regionSession, _settings.Capture.Ocr);
             }
             CaptureRecord? result = null;
             if (editedRegion is not null)

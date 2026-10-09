@@ -696,7 +696,7 @@
                                   <Button x:Name="CaptureRuleButton" Style="{StaticResource Lab.Button}" Click="FocusCaptureRule_OnClick">
                                     <StackPanel Orientation="Horizontal">
                                         <Path Data="{StaticResource Lab.Icon.SlidersHorizontal}" Style="{StaticResource NavigationIcon}"/>
-                                        <TextBlock Text="Regra de captura"/>
+                                        <TextBlock Text="Configurações de captura"/>
                                     </StackPanel>
                                   </Button>
                                 </StackPanel>
@@ -1216,11 +1216,6 @@
                                     </Grid.RowDefinitions>
 
                                     <DockPanel Margin="14,9">
-                                      <Button DockPanel.Dock="Right" Width="38" Height="38" Padding="8" Margin="8,0,0,0"
-                                              Style="{StaticResource Lab.Button}" ToolTip="Como usar o editor de Captura"
-                                              AutomationProperties.Name="Ajuda do editor de Captura" Click="OpenCaptureHelp_OnClick">
-                                        <lab:LabIcon Kind="CircleHelp" Width="20" Height="20"/>
-                                      </Button>
                                       <Button x:Name="CaptureExpandEditorButton" DockPanel.Dock="Right" HorizontalAlignment="Right"
                                               Style="{StaticResource Lab.Button}" Content="Expandir editor"
                                               Click="OpenAdvancedCaptureEditor_OnClick"/>
@@ -1457,13 +1452,7 @@
                                       </StackPanel>
                                     </Button>
                                   </StackPanel>
-                                  <Button x:Name="CaptureShortcutHelpTarget" Grid.Column="1" Style="{StaticResource Lab.Button}"
-                                          Click="OpenCaptureShortcuts_OnClick">
-                                    <StackPanel Orientation="Horizontal">
-                                      <Path Data="{StaticResource Lab.Icon.Keyboard}" Style="{StaticResource NavigationIcon}"/>
-                                      <TextBlock Text="Personalizar atalhos"/>
-                                    </StackPanel>
-                                  </Button>
+
                                 </Grid>
                               </StackPanel>
                             </Grid>

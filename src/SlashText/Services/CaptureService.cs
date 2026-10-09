@@ -139,11 +139,12 @@ public sealed class CaptureService
         Window? owner,
         bool includeCursor,
         out CaptureEditorOutput requestedOutput,
-        out CaptureRegionSession? session)
+        out CaptureRegionSession? session,
+        CaptureOcrSettings? ocrSettings = null)
     {
         session = null;
         requestedOutput = CaptureEditorOutput.Default;
-        var selector = new RegionCaptureWindow(includeCursor);
+        var selector = new RegionCaptureWindow(includeCursor) { OcrSettings = ocrSettings ?? new() };
         if (owner is not null)
         {
             selector.Owner = owner;

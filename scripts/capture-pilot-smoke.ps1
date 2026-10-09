@@ -57,7 +57,6 @@ foreach ($surface in @(
     'x:Name="CaptureHistoryPanel"',
     'x:Name="CaptureWorkbenchZoomBox"',
     'x:Name="CapturePostModeText"',
-    'Text="Personalizar atalhos"',
     'x:Name="CaptureInlineEditor"',
     'x:Name="CaptureHistoryScroller"',
     'Content="Expandir editor"',
@@ -84,7 +83,6 @@ foreach ($behavior in @(
     'StartGifRecording_OnClick(sender, e)',
     'TryReadCaptureSettings(out var error)',
     'new CaptureRuleDialog(_settings.Capture)',
-    'new CaptureShortcutDialog(_settings.Capture)',
     'LoadCaptureWorkbenchImage(',
     'BuildCaptureHistoryCard(item)',
     'SelectCaptureWorkbenchTool_OnClick',
@@ -187,7 +185,7 @@ foreach ($palette in @(
 
 foreach ($label in @(
     @{ Markup = $captureMarkup; Text = 'Concluir' },
-    @{ Markup = [xml]$ruleDialog; Text = 'Salvar regra' },
+    @{ Markup = [xml]$ruleDialog; Text = 'Salvar configurações' },
     @{ Markup = [xml]$shortcutDialog; Text = 'Salvar atalhos' }
 )) {
     $labelNs = New-Object System.Xml.XmlNamespaceManager($label.Markup.NameTable)
@@ -238,12 +236,14 @@ if (-not $app.Contains('Source="Styles/VisualLab/CapturePilot.xaml"')) {
 
 foreach ($modalContract in @(
     @{ Content = $ruleDialog; Token = 'x:Class="SlashText.Views.CaptureRuleDialog"' },
-    @{ Content = $ruleDialog; Token = 'Text="Regra de captura"' },
-    @{ Content = $ruleDialog; Token = 'Text="Salvar regra"' },
+    @{ Content = $ruleDialog; Token = 'Text="Configurações de captura"' },
+    @{ Content = $ruleDialog; Token = 'Text="Salvar configurações"' },
     @{ Content = $ruleCode; Token = 'DialogResult = true' },
-    @{ Content = $shortcutDialog; Token = 'x:Class="SlashText.Views.CaptureShortcutDialog"' },
-    @{ Content = $shortcutDialog; Token = 'x:Name="ScrollingBox"' },
-    @{ Content = $shortcutCode; Token = 'GlobalCaptureShortcutService.IsValid' }
+    @{ Content = $ruleDialog; Token = 'Header="Atalhos"' },
+    @{ Content = $ruleDialog; Token = 'Header="Vídeo e GIF"' },
+    @{ Content = $ruleDialog; Token = 'Header="OCR"' },
+    @{ Content = $ruleDialog; Token = 'x:Name="ScrollingBox"' },
+    @{ Content = $ruleCode; Token = 'GlobalCaptureShortcutService.IsValid' }
 )) {
     if (-not $modalContract.Content.Contains($modalContract.Token)) {
         throw "Contrato modal ausente: $($modalContract.Token)"

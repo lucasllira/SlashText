@@ -61,7 +61,7 @@
   <Target Name="RestoreOcrModels" BeforeTargets="PrepareForBuild">
     <Exec Command="pwsh -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildProjectDirectory)\..\..\scripts\restore-ocr-models.ps1&quot;" />
     <ItemGroup>
-      <EmbeddedResource Include="Assets\Ocr\*.traineddata" />
+      <EmbeddedResource Include="Assets\Ocr\**\*.traineddata" />
       <EmbeddedResource Include="Assets\Ocr\NOTICE.md;Assets\Ocr\LICENSE.txt" />
     </ItemGroup>
   </Target>

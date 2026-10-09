@@ -12,7 +12,8 @@ public partial class MainWindow
         if (CaptureInlineEditor.HasPendingCrop)
         { StatusText.Text = "Aplique ou cancele o recorte antes de extrair texto."; return; }
         using var snapshot = CaptureInlineEditor.Render();
-        var dialog = new CaptureOcrWindow(snapshot, CaptureInlineEditor.SetOcrReading) { Owner = this };
+        var dialog = new CaptureOcrWindow(snapshot, CaptureInlineEditor.SetOcrReading,
+            new Services.CaptureOcrService(options: _settings.Capture.Ocr)) { Owner = this };
         LabMotion.SetReduced(dialog, LabMotion.GetReduced(this));
         try { ShowCaptureDialog(dialog); }
         finally { CaptureInlineEditor.SetOcrReading(false); }

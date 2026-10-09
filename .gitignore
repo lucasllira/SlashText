@@ -10,5 +10,6 @@ usage.json
 src/SlashText/Assets/NotoEmoji/Full/
 src/SlashText/Assets/NotoEmoji/catalog-assets.zip*
 src/SlashText/Assets/Ocr/*.traineddata
+src/SlashText/Assets/Ocr/Fast/*.traineddata
 ocr-evidence/
 publish-ocr/

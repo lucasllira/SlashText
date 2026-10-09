@@ -8,6 +8,7 @@ namespace SlashText.Views;
 public sealed partial class RegionCaptureWindow
 {
     private readonly CaptureOcrPulse _ocrPulse = new();
+    public Models.CaptureOcrSettings OcrSettings { get; set; } = new();
     private Button OcrButton()
     {
         var button = new Button { Content = new LabIcon { Kind = "ScanLine", Width = 20, Height = 20 }, ToolTip = "Extrair texto da região (OCR)" };
@@ -27,7 +28,8 @@ public sealed partial class RegionCaptureWindow
         Canvas.SetLeft(_ocrPulse, _localSelection.Left); Canvas.SetTop(_ocrPulse, _localSelection.Top);
         if (!_canvas.Children.Contains(_ocrPulse)) _canvas.Children.Add(_ocrPulse);
         LabMotion.SetReduced(_ocrPulse, LabMotion.GetReduced(this)); _toolbarWindow.Hide();
-        var dialog = new CaptureOcrWindow(snapshot, busy => { if (busy) _ocrPulse.Start(); else _ocrPulse.Stop(); }) { Owner = this, Topmost = true };
+        var dialog = new CaptureOcrWindow(snapshot, busy => { if (busy) _ocrPulse.Start(); else _ocrPulse.Stop(); },
+            new Services.CaptureOcrService(options: OcrSettings)) { Owner = this, Topmost = true };
         LabMotion.SetReduced(dialog, LabMotion.GetReduced(this));
         try { dialog.ShowDialog(); }
         finally { _ocrPulse.Stop(); if (_selectionReady) { _toolbarWindow.Show(); Activate(); RequestToolbarPosition(); } }

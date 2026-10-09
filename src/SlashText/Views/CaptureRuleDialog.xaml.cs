@@ -12,12 +12,29 @@ public partial class CaptureRuleDialog : Window
     private readonly RecordingSettings _recording;
 
     public CaptureSettings Result { get; private set; }
+    public string ShortcutStatus { set => ShortcutStatusText.Text = value; }
 
     public CaptureRuleDialog(CaptureSettings settings)
     {
         InitializeComponent();
         _recording = settings.Recording ?? new RecordingSettings();
         Result = settings;
+        Width = Math.Min(700, SystemParameters.WorkArea.Width - 32);
+        Height = Math.Min(740, SystemParameters.WorkArea.Height - 32);
+        MonitorBox.Text = settings.ActiveMonitorShortcut;
+        RegionBox.Text = settings.RegionShortcut;
+        WindowBox.Text = settings.WindowShortcut;
+        ScrollingBox.Text = settings.ScrollingShortcut;
+        var ocr = (settings.Ocr ?? new()).Normalize();
+        SelectByTag(OcrModelBox, ocr.Model);
+        SelectByTag(OcrLanguageBox, ocr.Languages);
+        SelectByTag(OcrLayoutBox, ocr.Layout);
+        OcrImproveCheckBox.IsChecked = ocr.ImproveDifficultImages;
+        SelectByTag(VideoFpsBox, _recording.VideoFps.ToString());
+        SelectByTag(VideoQualityBox, RecordingPresetCatalog.NormalizeMp4Quality(_recording.VideoQuality));
+        RecordingCursorBox.IsChecked = _recording.IncludeCursor;
+        SelectByTag(GifFpsBox, RecordingPresetCatalog.NormalizeGifFps(_recording.GifFps).ToString());
+        SelectByTag(GifQualityBox, RecordingPresetCatalog.NormalizeGifQuality(_recording.GifQuality).ToString());
         DirectoryBox.Text = settings.OutputDirectoryTemplate;
         FileNameBox.Text = settings.FileNameTemplate;
         QualityBox.Text = settings.JpegQuality.ToString();
@@ -31,6 +48,7 @@ public partial class CaptureRuleDialog : Window
         SelectByTag(RetentionBox, settings.HistoryRetentionDays.ToString());
         UpdateQualityState();
         SourceInitialized += (_, _) => ThemeService.ApplyToWindow(this);
+        Loaded += (_, _) => ModalBackdrop.Attach(this, Surface, () => DialogResult = false);
         PreviewKeyDown += (_, e) =>
         {
             if (e.Key == System.Windows.Input.Key.Escape)
@@ -72,28 +90,49 @@ public partial class CaptureRuleDialog : Window
 
     private void Save_OnClick(object sender, RoutedEventArgs e)
     {
+        if (!TryBuildResult(out var result, out var error))
+        {
+            MessageBox.Show(error, "Configurações de captura", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+        Result = result;
+        DialogResult = true;
+    }
+
+    internal bool TryBuildResult(out CaptureSettings result, out string error)
+    {
+        result = Result; error = string.Empty;
+        var shortcuts = new[] { MonitorBox.Text.Trim(), RegionBox.Text.Trim(), WindowBox.Text.Trim(), ScrollingBox.Text.Trim() };
+        if (shortcuts.Any(item => !GlobalCaptureShortcutService.IsValid(item)))
+        {
+            error = "Use uma tecla, roda ou botão do mouse válido. A roda exige Ctrl, Alt, Shift ou Win.";
+            Sections.SelectedIndex = 1; return false;
+        }
+        if (shortcuts.Distinct(StringComparer.OrdinalIgnoreCase).Count() != shortcuts.Length)
+        {
+            error = "Cada ação precisa ter um atalho diferente.";
+            Sections.SelectedIndex = 1; return false;
+        }
         if (string.IsNullOrWhiteSpace(DirectoryBox.Text) || string.IsNullOrWhiteSpace(FileNameBox.Text))
         {
-            MessageBox.Show("Informe a pasta e o modelo de nome do arquivo.", "Regra de captura",
-                MessageBoxButton.OK, MessageBoxImage.Warning);
-            return;
+            error = "Informe a pasta e o modelo de nome do arquivo.";
+            Sections.SelectedIndex = 0; return false;
         }
         var editor = SelectedTag(AfterCaptureBox, "Direct") == "Editor";
         var copy = CopyCheckBox.IsChecked == true;
         var save = SaveCheckBox.IsChecked == true;
         if (!editor && !copy && !save)
         {
-            MessageBox.Show("No modo direto, ative Copiar após capturar, Salvar automaticamente ou ambas.",
-                "Regra de captura", MessageBoxButton.OK, MessageBoxImage.Warning);
-            return;
+            error = "No modo direto, ative Copiar após capturar, Salvar automaticamente ou ambas.";
+            Sections.SelectedIndex = 0; return false;
         }
         var quality = int.TryParse(QualityBox.Text, out var parsed) ? Math.Clamp(parsed, 1, 100) : 90;
-        Result = new CaptureSettings
+        result = new CaptureSettings
         {
-            ActiveMonitorShortcut = Result.ActiveMonitorShortcut,
-            RegionShortcut = Result.RegionShortcut,
-            WindowShortcut = Result.WindowShortcut,
-            ScrollingShortcut = Result.ScrollingShortcut,
+            ActiveMonitorShortcut = shortcuts[0],
+            RegionShortcut = shortcuts[1],
+            WindowShortcut = shortcuts[2],
+            ScrollingShortcut = shortcuts[3],
             OutputDirectoryTemplate = DirectoryBox.Text.Trim(),
             FileNameTemplate = FileNameBox.Text.Trim(),
             ImageFormat = SelectedTag(FormatBox, "PNG"),
@@ -105,9 +144,20 @@ public partial class CaptureRuleDialog : Window
             OpenEditorForMonitorAndWindow = editor,
             DelaySeconds = SelectedInt(DelayBox, 0),
             HistoryRetentionDays = SelectedInt(RetentionBox, 90),
-            Recording = _recording
+            Ocr = new CaptureOcrSettings
+            {
+                Model = SelectedTag(OcrModelBox, "Best"), Languages = SelectedTag(OcrLanguageBox, "por+eng"),
+                Layout = SelectedTag(OcrLayoutBox, "Auto"), ImproveDifficultImages = OcrImproveCheckBox.IsChecked == true
+            }.Normalize(),
+            Recording = new RecordingSettings
+            {
+                VideoFps = SelectedInt(VideoFpsBox, 30), VideoQuality = SelectedTag(VideoQualityBox, "Alta"),
+                IncludeCursor = RecordingCursorBox.IsChecked == true,
+                GifFps = SelectedInt(GifFpsBox, 10), GifQuality = SelectedInt(GifQualityBox, 128),
+                GifDurationSeconds = _recording.GifDurationSeconds, GifWidth = _recording.GifWidth
+            }
         };
-        DialogResult = true;
+        return true;
     }
 
     private void Cancel_OnClick(object sender, RoutedEventArgs e) => DialogResult = false;

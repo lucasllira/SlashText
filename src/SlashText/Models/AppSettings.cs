@@ -46,6 +46,7 @@ public sealed class CaptureSettings
     public bool IncludeCursor { get; set; }
     public bool OpenEditorForMonitorAndWindow { get; set; }
     public int HistoryRetentionDays { get; set; } = 90;
+    public CaptureOcrSettings Ocr { get; set; } = new();
     public RecordingSettings Recording { get; set; } = new();
 }
 
