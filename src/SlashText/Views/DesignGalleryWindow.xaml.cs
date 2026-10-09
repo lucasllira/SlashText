@@ -158,7 +158,7 @@ public partial class DesignGalleryWindow : Window
             Require(Descendants(FormatCombo).OfType<TextBlock>().Any(t => t.Text == "PNG — imagem" && t.Foreground.ToString() == expected), "Combo selection label must follow theme");
             await CaptureEditorEvidence(theme);
             CaptureInkPickerEvidence(theme);
-            CaptureOverlayEvidence(theme);
+            await CaptureOverlayEvidence(theme);
             CaptureCustomEmojiEvidence(theme);
             CaptureHelpEvidence(theme);
             foreach (var size in new[] { new Size(1440,900), new Size(980,680) })
@@ -226,7 +226,7 @@ public partial class DesignGalleryWindow : Window
                 Start = new Point(160 + index * 190, 250), Text = value, Size = 64
             }).ToList(), 960, 500);
         await CaptureWindowEvidence(new CaptureEditorWindow(annotated), theme, "advanced-editor", new Size(1220, 860), "Concluir");
-        await CaptureWindowEvidence(new CaptureRuleDialog(new Models.CaptureSettings()), theme, "capture-rule", new Size(580, 900), "Salvar regra");
+        await CaptureWindowEvidence(new CaptureRuleDialog(new Models.CaptureSettings()), theme, "capture-rule", new Size(700, 740), "Salvar configurações");
         await CaptureWindowEvidence(new CaptureShortcutDialog(new Models.CaptureSettings()), theme, "capture-shortcuts", new Size(510, 650), "Salvar atalhos");
         await CaptureUnifiedEditorEvidence(annotated, theme);
         await CaptureUnifiedShellEvidence(annotated, theme);
@@ -339,7 +339,7 @@ public partial class DesignGalleryWindow : Window
                 Require(ReferenceEquals(firstDocument, window.CaptureEvidenceDocument) && document!.CanUndo, "Shell normal/expanded preserve one document and undo");
                 var copy = (Button)window.FindName("CaptureCopyImageButton");
                 Require(copy.IsEnabled && copy.ActualWidth > 0, "Unified shell output actions remain usable");
-                var commands = (StackPanel)window.FindName("CaptureOutputCommands");
+                var commands = (WrapPanel)window.FindName("CaptureOutputCommands");
                 var toolbar = (Grid)window.FindName("CaptureWorkbenchToolbar");
                 Require(Grid.GetRow(commands) == (toolbar.ActualWidth < (expanded ? 1250 : 1060) ? 1 : 0),
                     $"Toolbar responsive output row: width={toolbar.ActualWidth}, row={Grid.GetRow(commands)}");
@@ -380,8 +380,8 @@ public partial class DesignGalleryWindow : Window
         if (name == "capture-shortcuts")
             Require(Descendants(host).OfType<TextBlock>().Single(t => t.Text == "Personalizar atalhos").Foreground.ToString() ==
                 (theme == "Dark" ? "#FFF3F3F3" : "#FF202024"), "Shortcuts heading must not inherit legacy ink");
-        // Save lives inside the rule's scrollable content; include it in the
-        // evidence rather than claiming visual approval for an offscreen button.
+        // Include the lower image options in the settings snapshot;
+        // Save configurations remains in the fixed footer.
         if (name == "capture-rule")
         {
             Descendants(host).OfType<ScrollViewer>().First().ScrollToBottom();
@@ -451,19 +451,23 @@ public partial class DesignGalleryWindow : Window
         using var file = File.Create(Path.Combine(_smokeOutput!, $"capture-ink-picker-{theme}.png")); png.Save(file);
     }
 
-    private void CaptureOverlayEvidence(string theme)
+    private async Task CaptureOverlayEvidence(string theme)
     {
         using var source = new System.Drawing.Bitmap(1000, 700);
         using (var g = System.Drawing.Graphics.FromImage(source))
         { g.Clear(System.Drawing.Color.White); g.FillRectangle(System.Drawing.Brushes.LightGray, 0, 0, 1000, 70); }
         var window = new RegionCaptureWindow(source, pilotVisuals: true);
         window.SetSelectionForEvidence(new Rect(120, 80, 640, 360));
+        // The approved toolbar opens owned contextual windows. Let its deferred
+        // placement create the owner HWND before detaching it for raster snapshots.
+        await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
         var toolbar = window.ToolbarForEvidence;
         LabMotion.SetReduced(toolbar, true);
         foreach (var width in new[] { 920, 440, 260 })
         {
             var compact = width != 920;
             window.SetDensityForEvidence(compact);
+            window.FitToolbarForEvidence(width - 24);
             toolbar.VerticalAlignment = VerticalAlignment.Top;
             var host = new Border { Child = toolbar, Padding = new Thickness(12), Width = width };
             host.Measure(new Size(width, double.PositiveInfinity));
@@ -476,7 +480,7 @@ public partial class DesignGalleryWindow : Window
                 if (button.ActualWidth == 0) continue;
                 var location = button.TranslatePoint(new Point(), host);
                 Require(location.X >= 0 && location.X + button.ActualWidth <= width,
-                    "Floating bar buttons fit normal/compact viewport without clipping");
+                    $"Floating bar button {System.Windows.Automation.AutomationProperties.GetName(button)} fits {width}: x={location.X}, width={button.ActualWidth}");
             }
             Require(toolbar.Background.ToString() == (theme == "Dark" ? "#FF181818" : "#FFFFFFFF"), "Floating bar follows Lab theme");
             foreach (var control in Descendants(toolbar).OfType<Control>().Where(c => c.IsVisible))
@@ -494,27 +498,37 @@ public partial class DesignGalleryWindow : Window
             host.Child = null;
         }
         window.SetDensityForEvidence(false);
-        var caneta = Descendants(toolbar).OfType<System.Windows.Controls.Primitives.ToggleButton>()
-            .Single(b => System.Windows.Automation.AutomationProperties.GetName(b) == "Caneta");
-        caneta.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
-        Require(caneta.IsChecked == true, "Floating tool click changes the real overlay mode");
-        window.AddForEvidence(new Services.CaptureAnnotation { Kind = Services.CaptureAnnotationKind.Rectangle,
-            Start = new Point(195, 125), End = new Point(205, 135), FillArgb = System.Drawing.Color.Red.ToArgb(), OutlineArgb = null });
-        using (var before = window.RenderForEvidence())
-            Require(before.GetPixel(200, 130).R > 240 && before.GetPixel(200, 130).G < 10, "Overlay preview and export share raster composition");
-        window.MoveForEvidence(new Vector(40, 20));
-        using (var after = window.RenderForEvidence())
-            Require(after.Width == 640 && after.Height == 360 && after.GetPixel(160, 110).G < 10 &&
-                after.GetPixel(200, 130).G > 240, "Moving the crop preserves drawings at their desktop positions");
-        var privacyTool = Descendants(toolbar).OfType<System.Windows.Controls.Primitives.ToggleButton>()
-            .Single(b => System.Windows.Automation.AutomationProperties.GetName(b) == "Pixelizar");
-        privacyTool.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
-        var intensity = Descendants(toolbar).OfType<Slider>().Single(s => System.Windows.Automation.AutomationProperties.GetName(s) == "Intensidade");
-        intensity.Value = 32;
-        var mark = window.FinishDragForEvidence(new Point(10, 10), new Point(100, 80));
-        Require(mark.Kind == Services.CaptureAnnotationKind.Pixelate && mark.PrivacyStrength == 32,
-            "Contextual intensity is captured in the actual output command");
-        window.Close();
+        // Interactions need a live presentation source; contextual controls now
+        // belong to a separate window instead of a persistent toolbar property row.
+        var interactionHost = new Window { Content = toolbar, Width = 920, SizeToContent = SizeToContent.Height,
+            WindowStyle = WindowStyle.None, ShowInTaskbar = false, ShowActivated = false };
+        interactionHost.Show();
+        await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
+        try
+        {
+            var caneta = Descendants(toolbar).OfType<System.Windows.Controls.Primitives.ToggleButton>()
+                .Single(b => System.Windows.Automation.AutomationProperties.GetName(b) == "Caneta");
+            caneta.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+            Require(caneta.IsChecked == true, "Floating tool click changes the real overlay mode");
+            window.AddForEvidence(new Services.CaptureAnnotation { Kind = Services.CaptureAnnotationKind.Rectangle,
+                Start = new Point(195, 125), End = new Point(205, 135), FillArgb = System.Drawing.Color.Red.ToArgb(), OutlineArgb = null });
+            using (var before = window.RenderForEvidence())
+                Require(before.GetPixel(200, 130).R > 240 && before.GetPixel(200, 130).G < 10, "Overlay preview and export share raster composition");
+            window.MoveForEvidence(new Vector(40, 20));
+            using (var after = window.RenderForEvidence())
+                Require(after.Width == 640 && after.Height == 360 && after.GetPixel(160, 110).G < 10 &&
+                    after.GetPixel(200, 130).G > 240, "Moving the crop preserves drawings at their desktop positions");
+            var privacyTool = Descendants(toolbar).OfType<System.Windows.Controls.Primitives.ToggleButton>()
+                .Single(b => System.Windows.Automation.AutomationProperties.GetName(b) == "Pixelizar");
+            privacyTool.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+            var intensity = Descendants(window.ContextForEvidence ?? throw new InvalidOperationException("Privacy tool must open its contextual panel"))
+                .OfType<Slider>().Single(s => System.Windows.Automation.AutomationProperties.GetName(s) == "Intensidade");
+            intensity.Value = 32;
+            var mark = window.FinishDragForEvidence(new Point(10, 10), new Point(100, 80));
+            Require(mark.Kind == Services.CaptureAnnotationKind.Pixelate && mark.PrivacyStrength == 32,
+                "Contextual intensity is captured in the actual output command");
+            }
+        finally { interactionHost.Content = null; interactionHost.Close(); window.Close(); }
     }
 
     private void CaptureHelpEvidence(string theme)
