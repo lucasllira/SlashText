@@ -92,7 +92,7 @@ public sealed partial class CaptureEditorDocument
 
     private int FindAnnotation(long id) => _steps.FindIndex(step => step is AnnotationStep a && (a.ObjectId == 0 ? a.Id : a.ObjectId) == id);
 
-    private static Rect AnnotationBounds(CaptureAnnotation a)
+    internal static Rect AnnotationBounds(CaptureAnnotation a)
     {
         if (a.Kind == CaptureAnnotationKind.Text)
         {

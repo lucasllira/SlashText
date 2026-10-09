@@ -1983,6 +1983,20 @@ try
     Require(annotationHistory.Items.Count == 0, "limpa todas as marcações");
     annotationHistory.Undo();
     Require(annotationHistory.Items.Count == 1, "limpeza de marcações pode ser desfeita");
+    Require(annotationHistory.HitTest(new System.Windows.Point(0, 0)) == 0 &&
+        annotationHistory.Move(0, 50, 30) && annotationHistory.Items.Single().Start == new System.Windows.Point(50, 30),
+        "move emoji existente sem criar outra anotação");
+    Require(annotationHistory.HitTest(new System.Windows.Point(0, 0)) == -1 &&
+        annotationHistory.HitTest(new System.Windows.Point(50, 30)) == 0,
+        "seleção acompanha a nova posição do emoji");
+    Require(!annotationHistory.Move(-1, 10, 10) && !annotationHistory.Move(0, double.NaN, 0) &&
+        !annotationHistory.Move(0, 0, 0), "movimentos inválidos e clique sem arraste não criam histórico");
+    annotationHistory.Undo();
+    Require(annotationHistory.Items.Single().Start == new System.Windows.Point(0, 0), "um undo reverte todo o movimento");
+    annotationHistory.Redo();
+    Require(annotationHistory.Items.Single().Start == new System.Windows.Point(50, 30) &&
+        annotationHistory.Items.Single().Text == stampAnnotation.Text && stampAnnotation.Start == new System.Windows.Point(0, 0),
+        "redo mantém conteúdo e não modifica o objeto anterior");
 
     var atomicStorageRoot = Path.Combine(root, "atomic-storage");
     Directory.CreateDirectory(atomicStorageRoot);

@@ -51,9 +51,22 @@ internal static partial class ShortcutsWorkspaceSmoke
             foreach (var topic in CaptureHelpContent.Create(new CaptureSettings()).Topics)
                 Require(topic.Target is null || window.FindName(topic.Target) is FrameworkElement, "Capture help target exists: " + topic.Id);
             var size = new Size(1440, 1000); surface.Measure(size); surface.Arrange(new Rect(size)); surface.UpdateLayout();
+            var beforeSelection = editor.Document.OperationCount;
+            editor.SelectTool(CaptureAnnotationKind.Text);
+            Require(editor.TrySelectAnnotationAt(new Point(60, 195)) && editor.SelectedAnnotation!.Id == id &&
+                editor.Document.OperationCount == beforeSelection, "Text tool selects existing text instead of duplicating it");
+            editor.SelectTool(CaptureAnnotationKind.Text);
+            Require(!editor.TrySelectAnnotationAt(new Point(60, 195), navigate: true), "Control bypass preserves editor navigation");
+            editor.InsertStamp("⭐", new Point(820, 370), 48);
+            var stampId = editor.Document.EditableAnnotations().Last().Id;
+            editor.SelectTool(CaptureAnnotationKind.Stamp);
+            Require(editor.TrySelectAnnotationAt(new Point(820, 370)) && editor.SelectedAnnotation!.Id == stampId,
+                "Emoji tool selects existing stamp for moving");
+            editor.SelectAnnotation(id); surface.UpdateLayout();
             foreach (var scale in new[] { 1d, 1.5d }) SaveImage(surface, output, $"capture-{theme}-objects-{expanded}", size, scale);
             window.DisposeCaptureEvidence(); window.Close();
         }
+        CheckOverlayObjectMoves(bitmap, theme, output);
         var originalSettings = File.Exists(AppPaths.SettingsFile) ? File.ReadAllBytes(AppPaths.SettingsFile) : null;
         var ownerRoot = new Grid(); ownerRoot.SetResourceReference(Grid.BackgroundProperty, "Lab.bg");
         var owner = new Window { Width = 980, Height = 680, Content = ownerRoot, ShowInTaskbar = false };
@@ -100,5 +113,46 @@ internal static partial class ShortcutsWorkspaceSmoke
             Require(originalSettings is null ? !File.Exists(AppPaths.SettingsFile) : originalSettings.SequenceEqual(File.ReadAllBytes(AppPaths.SettingsFile)), "History/help do not modify settings");
         }
         finally { owner.Close(); }
+    }
+
+    private static void CheckOverlayObjectMoves(System.Drawing.Bitmap bitmap, string theme, string output)
+    {
+        var overlay = new RegionCaptureWindow(bitmap, pilotVisuals: true);
+        try
+        {
+            overlay.SetSelectionForEvidence(new Rect(40, 30, 800, 420));
+            overlay.AddForEvidence(new CaptureAnnotation { Kind = CaptureAnnotationKind.Text,
+                Start = new Point(100, 180), Text = "Texto móvel", Size = 26 });
+            overlay.AddForEvidence(new CaptureAnnotation { Kind = CaptureAnnotationKind.Stamp,
+                Start = new Point(650, 280), Text = "⭐", Size = 48 });
+            Require(overlay.BeginObjectMoveForEvidence(new Point(150, 215), CaptureAnnotationKind.Text),
+                "Text tool grabs existing overlay text");
+            overlay.EndObjectMoveForEvidence(new Point(190, 235));
+            Require(overlay.AnnotationsForEvidence.Count == 2 && overlay.AnnotationsForEvidence[0].Start == new Point(140, 200),
+                "Overlay moves text without moving capture area or duplicating text");
+            overlay.UndoObjectMoveForEvidence();
+            Require(overlay.AnnotationsForEvidence[0].Start == new Point(100, 180), "Overlay text drag is one undo step");
+            overlay.RedoObjectMoveForEvidence();
+            Require(overlay.AnnotationsForEvidence[0].Start == new Point(140, 200), "Overlay text movement supports redo");
+            overlay.MoveForEvidence(new Vector(20, 10));
+            Require(!overlay.BeginObjectMoveForEvidence(new Point(690, 310), bypass: true), "Control bypass keeps crop dragging available");
+            Require(overlay.BeginObjectMoveForEvidence(new Point(690, 310), CaptureAnnotationKind.Stamp),
+                "Emoji hit testing preserves desktop coordinates after capture area moves");
+            overlay.EndObjectMoveForEvidence(new Point(590, 260));
+            Require(overlay.AnnotationsForEvidence[1].Start == new Point(550, 230), "Overlay emoji moves in original coordinate space");
+            using (var rendered = overlay.RenderForEvidence())
+            {
+                var stampBounds = CaptureEditorDocument.AnnotationBounds(overlay.AnnotationsForEvidence[1]);
+                Require(rendered.GetPixel(530, 220).ToArgb() != bitmap.GetPixel(590, 260).ToArgb() && stampBounds.Contains(new Point(550, 230)),
+                    "Export contains emoji at moved position after crop moves");
+            }
+            Require(overlay.BeginObjectMoveForEvidence(new Point(590, 260)), "Navigation tool selects moved emoji");
+            overlay.EndObjectMoveForEvidence(new Point(620, 280), commit: false);
+            Require(overlay.AnnotationsForEvidence[1].Start == new Point(550, 230), "Cancel drag preserves position and history");
+            var canvas = overlay.SelectionSurfaceForEvidence;
+            canvas.Measure(new Size(900, 480)); canvas.Arrange(new Rect(0, 0, 900, 480)); canvas.UpdateLayout();
+            foreach (var scale in new[] { 1d, 1.5d }) SaveImage(canvas, output, $"capture-overlay-objects-{theme}", new Size(900, 480), scale);
+        }
+        finally { overlay.Close(); }
     }
 }

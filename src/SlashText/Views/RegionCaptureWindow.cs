@@ -21,7 +21,7 @@ using Forms = System.Windows.Forms;
 
 namespace SlashText.Views;
 
-public sealed class RegionCaptureWindow : Window
+public sealed partial class RegionCaptureWindow : Window
 {
     private readonly bool _pilotVisuals;
     private ToggleButton? _selectButton;
@@ -256,6 +256,7 @@ public sealed class RegionCaptureWindow : Window
         MouseLeftButtonDown += OnMouseDown;
         MouseMove += OnMouseMove;
         MouseLeftButtonUp += OnMouseUp;
+        LostMouseCapture += (_, _) => { if (_objectDragStart.HasValue) FinishObjectMove(commit: false); };
         PreviewKeyDown += OnPreviewKeyDown;
     }
 
@@ -281,7 +282,7 @@ public sealed class RegionCaptureWindow : Window
         }
         var area = Group("ÁREA");
         _selectButton = new ToggleButton { Content = new LabIcon { Kind = "MousePointer2", Width = 20, Height = 20 },
-            ToolTip = "Selecionar, mover e redimensionar", Style = (Style)FindResource("Lab.Overlay.Toggle"), IsChecked = true };
+            ToolTip = "Mover área, textos e emojis · Ctrl+arraste move a área", Style = (Style)FindResource("Lab.Overlay.Toggle"), IsChecked = true };
         AutomationProperties.SetName(_selectButton, "Selecionar, mover e redimensionar");
         _selectButton.Click += (_, _) => SelectRegionTool(); area.Children.Add(_selectButton);
         _reselectButton = IconButton("CaptureIconReselect", "Refazer seleção (R)", (_, _) => ResetSelection()); area.Children.Add(_reselectButton);
@@ -494,6 +495,7 @@ public sealed class RegionCaptureWindow : Window
 
     private void SetSelection(Rect selection)
     {
+        ClearObjectSelection();
         _localSelection = selection;
         _previewDocument?.Dispose(); _previewDocument = null; _previewAnnotations = [];
         RefreshSelectionVisual(); PositionAnnotationLayer(); PositionHandles();
@@ -1314,6 +1316,7 @@ public sealed class RegionCaptureWindow : Window
             {
                 return;
             }
+            if (TryBeginObjectMove(point, Keyboard.Modifiers.HasFlag(ModifierKeys.Control))) { e.Handled = true; return; }
             if (_pilotVisuals && _selectMode) BeginSelectionTransform(e, -1);
             else BeginAnnotation(point);
             e.Handled = true;
@@ -1341,10 +1344,11 @@ public sealed class RegionCaptureWindow : Window
         }
 
         var local = e.GetPosition(_annotationLayer);
-        if (_pilotVisuals && _selectMode) { BeginSelectionTransform(e, -1); return; }
         var canvasPoint = new Point(
             _localSelection.Left + local.X,
             _localSelection.Top + local.Y);
+        if (TryBeginObjectMove(canvasPoint, Keyboard.Modifiers.HasFlag(ModifierKeys.Control))) { e.Handled = true; return; }
+        if (_pilotVisuals && _selectMode) { BeginSelectionTransform(e, -1); return; }
         BeginAnnotation(canvasPoint);
         e.Handled = true;
     }
@@ -1365,6 +1369,7 @@ public sealed class RegionCaptureWindow : Window
     private void OnMouseMove(object sender, MouseEventArgs e)
     {
         var point = e.GetPosition(_canvas);
+        if (_objectDragStart.HasValue) { UpdateObjectMove(point); return; }
         if (_movingSelection || _resizeHandle >= 0)
         {
             var delta = point - _transformStart;
@@ -1385,6 +1390,8 @@ public sealed class RegionCaptureWindow : Window
 
     private void OnMouseUp(object sender, MouseButtonEventArgs e)
     {
+        if (_objectDragStart.HasValue && e.ChangedButton == MouseButton.Left)
+        { UpdateObjectMove(e.GetPosition(_canvas)); FinishObjectMove(commit: true); e.Handled = true; return; }
         if (_movingSelection || _resizeHandle >= 0)
         {
             _movingSelection = false; _resizeHandle = -1; ReleaseMouseCapture();
@@ -1424,6 +1431,7 @@ public sealed class RegionCaptureWindow : Window
 
     private void BeginAnnotation(Point canvasPoint)
     {
+        ClearObjectSelection();
         var local = ToAnnotationPoint(canvasPoint);
         if (_tool == CaptureAnnotationKind.Text)
         {
@@ -1592,18 +1600,21 @@ public sealed class RegionCaptureWindow : Window
 
     private void Undo()
     {
+        ClearObjectSelection();
         if (_annotationHistory.Undo()) Rebuild();
         UpdateHistoryButtons();
     }
 
     private void Redo()
     {
+        ClearObjectSelection();
         if (_annotationHistory.Redo()) Rebuild();
         UpdateHistoryButtons();
     }
 
     private void ClearAllAnnotations()
     {
+        ClearObjectSelection();
         if (_annotationHistory.ClearAll()) Rebuild();
         UpdateHistoryButtons();
     }
@@ -1616,6 +1627,7 @@ public sealed class RegionCaptureWindow : Window
             using var bitmap = RenderSelection(pending);
             _annotationLayer.Children.Add(new Image { Source = CaptureBitmapSource.Create(bitmap),
                 Width = _localSelection.Width, Height = _localSelection.Height, Stretch = Stretch.Fill, IsHitTestVisible = false });
+            ShowObjectSelection();
             return;
         }
         foreach (var annotation in _annotationHistory.Items)
@@ -1626,6 +1638,7 @@ public sealed class RegionCaptureWindow : Window
         {
             AddVisual(pending);
         }
+        ShowObjectSelection();
     }
 
     private void AddVisual(CaptureAnnotation annotation)
@@ -1766,6 +1779,7 @@ public sealed class RegionCaptureWindow : Window
 
     private void UpdateToolSelection()
     {
+        ClearObjectSelection();
         foreach (var (tool, button) in _toolButtons)
         {
             var representsShape = tool == CaptureAnnotationKind.Rectangle &&
@@ -1833,6 +1847,7 @@ public sealed class RegionCaptureWindow : Window
         if (_handles.Contains(e.OriginalSource as Border)) return;
         if (_pilotVisuals && IsToolbarSource(e.OriginalSource as DependencyObject) &&
             e.Key is Key.Enter or Key.Space or Key.Left or Key.Right or Key.Up or Key.Down) return;
+        if (HandleObjectMoveKey(e)) return;
         if (_pilotVisuals && _selectionReady && _selectMode && e.Key is Key.Left or Key.Right or Key.Up or Key.Down)
         {
             var increment = Keyboard.Modifiers.HasFlag(ModifierKeys.Shift) ? 10 : 1;
@@ -1924,6 +1939,7 @@ public sealed class RegionCaptureWindow : Window
 
     private void ResetSelection()
     {
+        ClearObjectSelection();
         _dragging = false;
         _drawing = false;
         _selectionReady = false;

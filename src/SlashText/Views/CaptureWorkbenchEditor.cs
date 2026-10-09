@@ -274,14 +274,13 @@ public sealed class CaptureWorkbenchEditor : UserControl, IDisposable
         Focus(); e.Handled = true;
         _start = Clamp(e.GetPosition(_overlay));
         if (_cropTool) { _drawing = true; _crop = new Rect(_start, _start); _overlay.CaptureMouse(); return; }
+        if (TrySelectAnnotationAt(_start, Keyboard.Modifiers.HasFlag(ModifierKeys.Control)))
+        {
+            _objectDragStart = _start; _objectDragDelta = new Vector();
+            ShowSelection(); _overlay.CaptureMouse(); return;
+        }
         if (_tool is null)
         {
-            var hit = _document.HitTestAnnotation(_start, 4 / Math.Max(.05, _viewbox.Width / _surface.Width));
-            if (hit is not null && !Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
-            {
-                _selectedAnnotationId = hit.Id; RefreshSelection(); _objectDragStart = _start; _objectDragDelta = new Vector();
-                ShowSelection(); NotifyStateChanged(); _overlay.CaptureMouse(); return;
-            }
             _selectedAnnotationId = null; _overlay.Children.Clear(); NotifyStateChanged();
             _panStart = e.GetPosition(_viewport); _panLeft = _viewport.HorizontalOffset; _panTop = _viewport.VerticalOffset;
             _overlay.CaptureMouse(); return;
@@ -294,6 +293,15 @@ public sealed class CaptureWorkbenchEditor : UserControl, IDisposable
         if (_tool == CaptureAnnotationKind.Stamp) { InsertStamp(SelectedStamp, _start, StampSize); return; }
         if (_tool == CaptureAnnotationKind.Number) { InsertAnnotation(CreateAnnotation(_start)); return; }
         _drawing = true; _pencilPoints.Clear(); _pencilPoints.Add(_start); _overlay.CaptureMouse();
+    }
+
+    internal bool TrySelectAnnotationAt(Point point, bool navigate = false)
+    {
+        if (_document is null || _cropTool || navigate) return false;
+        var hit = _document.HitTestAnnotation(point, 4 / Math.Max(.05, _viewbox.Width / _surface.Width));
+        if (hit is null || _tool is not null &&
+            (_tool is not (CaptureAnnotationKind.Text or CaptureAnnotationKind.Stamp) || _tool != hit.Annotation.Kind)) return false;
+        return SelectAnnotation(hit.Id);
     }
 
     private void PointerMove(object sender, MouseEventArgs e)
