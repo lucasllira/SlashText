@@ -19,7 +19,7 @@ public enum CaptureAnnotationKind
     Pixelate
 }
 
-public sealed class CaptureAnnotation
+public sealed record CaptureAnnotation
 {
     public CaptureAnnotationKind Kind { get; init; }
     public System.Windows.Point Start { get; init; }

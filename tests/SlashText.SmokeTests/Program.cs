@@ -546,6 +546,49 @@ try
         using var resized = document.Render();
         Require(resized.GetPixel(119, 79).A == 255, "resize não introduz bordas transparentes");
     }
+    // Editing an older object must retain its identity and creation coordinate
+    // space across later geometry, cache invalidation, undo and save checkpoints.
+    using (var source = new System.Drawing.Bitmap(240, 160))
+    {
+        using (var graphics = System.Drawing.Graphics.FromImage(source)) graphics.Clear(System.Drawing.Color.White);
+        using var objects = new CaptureEditorDocument(source);
+        objects.AddAnnotation(new CaptureAnnotation { Kind = CaptureAnnotationKind.Rectangle, Start = new(40, 40), End = new(80, 80),
+            FillArgb = System.Drawing.Color.Red.ToArgb(), OutlineArgb = null });
+        var id = objects.EditableAnnotations().Single().Id;
+        using (var cached = objects.Render()) Require(cached.GetPixel(50, 50).R == 255, "primeira renderização do objeto");
+        objects.Crop(new System.Windows.Rect(20, 20, 200, 120)); objects.Resize(100, 120);
+        var transformed = objects.EditableAnnotations().Single();
+        Require(transformed.Id == id && transformed.Annotation.Start == new System.Windows.Point(10, 20) &&
+            transformed.ScaleX == .5 && transformed.ScaleY == 1, "objeto conserva identidade após recorte e resize não proporcional");
+        objects.MarkSaved();
+        Require(objects.MoveAnnotation(id, 10, 10), "mover objeto em coordenadas atuais");
+        var moved = objects.EditableAnnotations().Single();
+        Require(moved.Annotation.Start == new System.Windows.Point(20, 30), "movimento inverte transformação da sessão");
+        Require(objects.HitTestAnnotation(new(25, 35))?.Id == id, "seleção encontra objeto transformado");
+        Require(objects.UpdateAnnotation(id, moved.Annotation with { FillArgb = System.Drawing.Color.Blue.ToArgb() }), "alterar propriedades de objeto existente");
+        using (var result = objects.Render())
+            Require(result.GetPixel(25, 35).B > 240 && result.GetPixel(25, 35).R < 20 && result.GetPixel(12, 22).R > 240 && result.GetPixel(12, 22).G > 240,
+                "cache reconstrói composição editada sem manter a posição antiga");
+        objects.Undo(); Require(objects.EditableAnnotations().Single().Annotation.FillArgb == System.Drawing.Color.Red.ToArgb(), "undo restaura estilo");
+        objects.Undo(); Require(!objects.HasUnsavedChanges, "undo do movimento chega ao checkpoint");
+        objects.Redo(); objects.Redo(); Require(objects.DeleteAnnotation(id) && objects.EditableAnnotations().Count == 0, "excluir objeto");
+        objects.Undo(); Require(objects.EditableAnnotations().Single().Id == id, "undo da exclusão recupera identidade");
+        objects.DiscardChanges(); Require(objects.EditableAnnotations().Single().Annotation.Start == new System.Windows.Point(10, 20) && !objects.HasUnsavedChanges, "descartar restaura objetos do checkpoint");
+        Require(!objects.DeleteAnnotation(-1) && !objects.MoveAnnotation(id, double.NaN, 0), "operações inválidas não modificam objetos");
+        Require(source.GetPixel(50, 50).G == 255, "edição de objetos preserva fonte original");
+        objects.AddAnnotation(new CaptureAnnotation { Kind = CaptureAnnotationKind.Text, Start = new(15, 25), Text = "Texto", FontFamily = "Arial", Size = 20 });
+        var text = objects.EditableAnnotations().Last();
+        Require(objects.UpdateAnnotation(text.Id, text.Annotation with { Text = "Novo texto", Size = 32, Bold = true }) && objects.EditableAnnotations().Last().Annotation.Text == "Novo texto", "texto pode ser alterado após inserção");
+        Require(!objects.CanRedo, "alteração nova invalida ramo redo antigo");
+    }
+    var historyFixture = Enumerable.Range(0, 75).Select(i => new CaptureRecord {
+        FilePath = $"regiao-projeto-{i:000}.png", Type = "regiao", CreatedAt = new DateTimeOffset(2026, 10, 9, 12, 0, 0, TimeSpan.Zero).AddMinutes(i)
+    }).ToArray();
+    Require(CaptureHistoryQuery.Filter(historyFixture, "all", "").Count == 75, "histórico completo não é limitado aos 40 recentes");
+    Require(CaptureHistoryQuery.Filter(historyFixture, "regiao", "REGIÃO 09/10/2026").Count == 75, "busca combina tipo e data sem diferença de acentos ou caixa");
+    Require(CaptureHistoryQuery.Filter(historyFixture, "all", "projeto-074").Single().FilePath.EndsWith("074.png"), "busca pelo nome do arquivo");
+    Require(CaptureHistoryQuery.Filter(historyFixture, "video", "").Count == 0 && CaptureHistoryQuery.Filter(historyFixture, "all", "outubro").Count == 75, "filtro de mídia e mês em português");
+    Require(CaptureHistoryQuery.Filter(historyFixture, "all", "")[0] == historyFixture[74], "resultados ordenam mais recentes primeiro");
     var pilotExe = Path.Combine(root, "pilot-isolation");
     var officialData = Path.Combine(root, "pilot-local", "SlashDesk");
     Directory.CreateDirectory(officialData);
@@ -1940,6 +1983,20 @@ try
     Require(annotationHistory.Items.Count == 0, "limpa todas as marcações");
     annotationHistory.Undo();
     Require(annotationHistory.Items.Count == 1, "limpeza de marcações pode ser desfeita");
+    Require(annotationHistory.HitTest(new System.Windows.Point(0, 0)) == 0 &&
+        annotationHistory.Move(0, 50, 30) && annotationHistory.Items.Single().Start == new System.Windows.Point(50, 30),
+        "move emoji existente sem criar outra anotação");
+    Require(annotationHistory.HitTest(new System.Windows.Point(0, 0)) == -1 &&
+        annotationHistory.HitTest(new System.Windows.Point(50, 30)) == 0,
+        "seleção acompanha a nova posição do emoji");
+    Require(!annotationHistory.Move(-1, 10, 10) && !annotationHistory.Move(0, double.NaN, 0) &&
+        !annotationHistory.Move(0, 0, 0), "movimentos inválidos e clique sem arraste não criam histórico");
+    annotationHistory.Undo();
+    Require(annotationHistory.Items.Single().Start == new System.Windows.Point(0, 0), "um undo reverte todo o movimento");
+    annotationHistory.Redo();
+    Require(annotationHistory.Items.Single().Start == new System.Windows.Point(50, 30) &&
+        annotationHistory.Items.Single().Text == stampAnnotation.Text && stampAnnotation.Start == new System.Windows.Point(0, 0),
+        "redo mantém conteúdo e não modifica o objeto anterior");
 
     var atomicStorageRoot = Path.Combine(root, "atomic-storage");
     Directory.CreateDirectory(atomicStorageRoot);

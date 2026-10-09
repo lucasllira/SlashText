@@ -13,6 +13,10 @@ public static class AppPaths
     public static DistributionMode Mode => Current.Mode;
     public static bool IsPortable => Current.IsPortable;
     public static bool IsCapturePilot => Current.IsCapturePilot;
+    public static bool IsCaptureComplementsPilot => IsCapturePilot &&
+        (Assembly.GetEntryAssembly() ?? Assembly.GetExecutingAssembly())
+        .GetCustomAttributes<AssemblyMetadataAttribute>()
+        .Any(item => item.Key == "SlashDeskCaptureComplementsPilot" && item.Value == "true");
     public static bool IsShortcutsPilot => IsCapturePilot &&
         (Assembly.GetEntryAssembly() ?? Assembly.GetExecutingAssembly())
         .GetCustomAttributes<AssemblyMetadataAttribute>()

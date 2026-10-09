@@ -16,6 +16,26 @@ public sealed class CaptureAnnotationHistory
         _items.Add(annotation);
     }
 
+    public int HitTest(System.Windows.Point point, double tolerance = 4)
+    {
+        for (var i = _items.Count - 1; i >= 0; i--)
+        {
+            var bounds = CaptureEditorDocument.AnnotationBounds(_items[i]);
+            bounds.Inflate(tolerance, tolerance);
+            if (bounds.Contains(point)) return i;
+        }
+        return -1;
+    }
+
+    public bool Move(int index, double dx, double dy)
+    {
+        if (index < 0 || index >= _items.Count || !double.IsFinite(dx) || !double.IsFinite(dy) ||
+            Math.Abs(dx) + Math.Abs(dy) < .01) return false;
+        SaveUndoState();
+        _items[index] = _items[index].Transform(dx, dy);
+        return true;
+    }
+
     public bool ClearAll()
     {
         if (_items.Count == 0) return false;

@@ -132,6 +132,8 @@ internal static partial class ShortcutsWorkspaceSmoke
             Require(ModalBackdrop.IsOutside(confirmationSurface, new Point(-10, 30)) && !ModalBackdrop.IsOutside(confirmationSurface, new Point(50, 50)), "Background dismissal only targets points outside the surface");
             SaveImage(confirmationSurface, output, $"shortcuts-delete-{theme}", confirmationSize, 1); confirm.Close();
             CheckOwnedModals(theme, output);
+            CheckCaptureComplements(theme, output);
+            checks.Add($"{theme}: Capture object selection/style/geometry/undo, 75-entry full history/search/pages, real owned help and outside dismissal OK");
             await CheckTypographyAsync(theme, output);
             await CheckExtrasAsync(theme, output);
             checks.Add($"{theme}: code literal save/reopen, insert/edit undo/redo, themed code modal, expansion, duplicate, favorite/pin persistence and filters OK");

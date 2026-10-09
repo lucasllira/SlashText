@@ -201,7 +201,7 @@ jobs:
           --configuration Release
           -p:Platform=x64
           -p:PublishProfile=Portable
-          -p:CapturePilotBuild=true
+          -p:CaptureComplementsPilotBuild=true
           --no-restore
           --output publish-capture-pilot
 
@@ -210,7 +210,7 @@ jobs:
         run: |
           New-Item capture-pilot-package -ItemType Directory -Force | Out-Null
           Copy-Item publish-capture-pilot/SlashDesk.exe capture-pilot-package/SlashDesk.exe
-          Copy-Item docs/capture-editor-pilot-testing.md capture-pilot-package/LEIA-ANTES.md
+          Copy-Item docs/capture-complements-pilot-testing.md capture-pilot-package/LEIA-ANTES.md
           Set-Content -Path capture-pilot-package/Abrir-Piloto-Captura.cmd -Encoding ascii -Value '@echo off', 'start "" "%~dp0SlashDesk.exe"'
 
       - name: Validate isolated pilot clean-folder startup
@@ -270,7 +270,7 @@ jobs:
       - name: Upload capture pilot candidate
         uses: actions/upload-artifact@v4
         with:
-          name: SlashDesk-3.3.0-capture-pilot-win-x64
+          name: SlashDesk-3.3.0-capture-complements-pilot-win-x64
           path: capture-pilot-package/
           if-no-files-found: error
 
