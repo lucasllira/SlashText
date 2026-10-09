@@ -50,16 +50,21 @@ compressão e pouca definição continuam sendo limitações do Tesseract.
 
 ## Barra de captura e popup
 
-A barra mantém seleção/movimentação, ferramentas frequentes, desfazer/refazer e saídas em uma faixa menor.
-As opções de cor, tamanho e intensidade aparecem ao escolher uma ferramenta. O menu de três pontos
-mostra Desfocar/Pixelizar, Limpar marcações e Refazer seleção. Em áreas de trabalho pequenas, também
-recebe as ferramentas recolhidas; não repete as ferramentas visíveis na barra. Uma ferramenta de
-privacidade ativa aparece na barra e deixa de ser repetida no menu.
+A barra mantém os blocos **Área, Anotar, Privacidade, Histórico, OCR e Finalizar**, com títulos e separadores.
+Área reúne mover e refazer seleção; Privacidade mantém Desfocar/Pixelizar visíveis, inclusive no modo compacto.
+Extrair texto tem bloco próprio. As opções de cor, tamanho e intensidade aparecem ao escolher uma ferramenta.
+O menu de três pontos mostra Limpar marcações e, em áreas pequenas, as ferramentas de anotação recolhidas.
+Não repete mover, refazer seleção, privacidade ou as ferramentas que continuam visíveis. Blocos podem
+passar para outra linha em uma área estreita, sem cortar comandos ou esconder OCR/Privacidade.
 
 Configurações de captura fica centralizada na área do aplicativo, com o fundo cobrindo toda a janela.
 O limite de tamanho da popup não limita mais o fundo semitransparente em janelas maiores/maximizadas.
 Cancelar, Esc e clique fora continuam descartando alterações. Conferir janela normal/maximizada
 e monitores com escalas diferentes; a correção do fundo é compartilhada pelos demais diálogos.
+Na popup de configurações, a sombra agora é uma camada decorativa separada dos textos e controles.
+O conteúdo usa alinhamento aos pixels, formatação de texto Display e indicação de ClearType sobre
+o fundo opaco. Isso evita aplicar o efeito de sombra ao texto. Conferir nitidez nas escalas reais
+do Windows; imagens renderizadas em 100/125/150% não substituem o teste de DPI em hardware.
 
 ## Extrair no editor
 
@@ -106,8 +111,9 @@ Evidências WPF nos temas Claro/Preto/Windows, painel compacto e renderização 
 As quatro abas de configurações são renderizadas nos três temas. Testes cobrem Cancelar sem mutação,
 conflitos de atalhos, regra direta sem saída, preservação dos campos legados de gravação,
 salvar/reabrir as preferências, defaults antigos, opções inválidas e uso real de Fast/Best offline.
-Também são conferidos o rótulo visível do OCR, acesso às ferramentas sem duplicação na barra/menu,
-modos normal/compacto e ferramentas de privacidade ativas nos três temas. O fundo e a centralização
+Também são conferidos os seis títulos, OCR e Privacidade visíveis, acesso sem duplicação na barra/menu,
+modos normal/compacto e ferramentas de privacidade ativas nos três temas. Textos ficam fora da árvore
+do efeito de sombra, com renderizações em 100/125/150%. O fundo e a centralização
 são verificados com janelas normal/maximizada, inclusive com limites menores na popup para reproduzir o defeito.
 
 Comparação preliminar em seis imagens sintéticas: fast e best reconheceram todos os exemplos;

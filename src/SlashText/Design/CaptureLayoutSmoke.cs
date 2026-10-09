@@ -32,14 +32,17 @@ internal static class CaptureLayoutSmoke
                 var textButton = Descendants(toolbar).OfType<Button>().Single(b => AutomationProperties.GetName(b) == "Extrair texto da região");
                 Require(textButton.Content is StackPanel textContent && textContent.Children.OfType<TextBlock>().Any(t => t.Text == "Extrair texto"),
                     "OCR contains the actual text label, beyond its automation name");
+                Require(new[] { "ÁREA", "ANOTAR", "PRIVACIDADE", "HISTÓRICO", "OCR", "FINALIZAR" }
+                    .All(name => Descendants(toolbar).OfType<TextBlock>().Any(t => t.Text == name)), "Toolbar has six labeled blocks");
                 foreach (var compact in new[] { false, true })
                 {
                     await SettleAsync();
                     overlay.SetDensityForEvidence(compact);
-                    overlay.FitToolbarForEvidence(compact ? 530 : 900);
+                    toolbarHost.Width = compact ? 530 : 900;
+                    overlay.FitToolbarForEvidence(toolbarHost.Width); await SettleAsync();
                     CheckDistribution(overlay);
                     Require(textButton.Visibility == Visibility.Visible, "OCR stays visible in both densities");
-                    Save(toolbar, output, $"{theme}-toolbar-{(compact ? "compact" : "normal")}", compact ? 530 : 900);
+                    Save(toolbar, output, $"{theme}-toolbar-{(compact ? "compact" : "normal")}", toolbarHost.Width);
                     var menu = overlay.OverflowForEvidence();
                     var menuSurface = new Border { Child = menu, CornerRadius = new CornerRadius(10), Padding = new Thickness(8) };
                     menuSurface.SetResourceReference(Border.BackgroundProperty, "Lab.panel");
@@ -48,10 +51,10 @@ internal static class CaptureLayoutSmoke
                 overlay.SetDensityForEvidence(false);
                 foreach (var privacy in new[] { CaptureAnnotationKind.Blur, CaptureAnnotationKind.Pixelate })
                 {
-                    var label = privacy == CaptureAnnotationKind.Blur ? "Desfocar" : "Pixelizar";
-                    overlay.OverflowForEvidence().Children.OfType<Button>().Single(b => AutomationProperties.GetName(b) == label)
+                    overlay.ToolForEvidence(privacy)
                         .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-                    await SettleAsync(); overlay.SetDensityForEvidence(false); overlay.FitToolbarForEvidence(900);
+                    await SettleAsync(); overlay.SetDensityForEvidence(false); toolbarHost.Width = 900;
+                    overlay.FitToolbarForEvidence(900); await SettleAsync();
                     CheckDistribution(overlay);
                     Require(overlay.ToolForEvidence(privacy).Visibility == Visibility.Visible, "Active privacy tool appears in toolbar");
                     Save(toolbar, output, $"{theme}-toolbar-{privacy}", 900);
@@ -71,19 +74,28 @@ internal static class CaptureLayoutSmoke
                 var dialog = new CaptureRuleDialog(settings) { Owner = owner, MaxHeight = 400, MaxWidth = 600 };
                 LabMotion.SetReduced(dialog, true); dialog.Show(); await SettleAsync();
                 var background = (FrameworkElement)dialog.Content;
+                Require(dialog.UseLayoutRounding && dialog.SnapsToDevicePixels &&
+                    TextOptions.GetTextFormattingMode(dialog) == TextFormattingMode.Display &&
+                    RenderOptions.GetClearTypeHint(dialog.Surface) == ClearTypeHint.Enabled,
+                    "Settings uses pixel rounding and text hinting");
+                foreach (var text in Descendants(dialog.Surface).OfType<TextBlock>())
+                    for (DependencyObject? parent = text; parent is not null && parent != background; parent = VisualTreeHelper.GetParent(parent))
+                        Require(parent is not UIElement element || element.Effect is null, "Text is outside the shadow effect subtree");
                 Require(Math.Abs(background.ActualHeight - ownerRoot.ActualHeight) < 2 && Math.Abs(background.ActualWidth - ownerRoot.ActualWidth) < 2,
                     "Backdrop covers the entire owner client area, without height/width caps");
                 var center = dialog.Surface.TransformToAncestor(background).Transform(new Point(dialog.Surface.ActualWidth / 2, dialog.Surface.ActualHeight / 2));
                 Require(Math.Abs(center.X - background.ActualWidth / 2) < 2 && Math.Abs(center.Y - background.ActualHeight / 2) < 2,
                     "Settings surface is centered in normal and maximized owners");
                 Save(background, output, $"{theme}-settings-{(maximized ? "maximized" : "normal")}", background.ActualWidth, preserveLayout: true);
+                Save(background, output, $"{theme}-settings-{(maximized ? "maximized" : "normal")}-125", background.ActualWidth, preserveLayout: true, scale: 1.25);
+                Save(background, output, $"{theme}-settings-{(maximized ? "maximized" : "normal")}-150", background.ActualWidth, preserveLayout: true, scale: 1.5);
                 Require(!ModalBackdrop.DismissAt(dialog.Surface, new Point(40, 40), dialog.Close), "Inside click keeps settings open");
                 Require(ModalBackdrop.DismissAt(dialog.Surface, new Point(-10, 40), dialog.Close), "Outside click dismisses settings");
                 Require(System.Text.Json.JsonSerializer.Serialize(settings) == before, "Backdrop dismissal preserves settings");
                 owner.Close();
             }
         }
-        File.WriteAllText(Path.Combine(output, "result.txt"), "PASS: labeled OCR, toolbar/menu partition without duplicates, active privacy tools, normal/compact rendering, full backdrop and centered settings in normal/maximized owners, safe dismissal, all themes.");
+        File.WriteAllText(Path.Combine(output, "result.txt"), "PASS: six labeled blocks, dedicated OCR/privacy, toolbar/menu without duplicates, normal/compact rendering, full centered backdrop, effect-free text subtree and pixel hinting, renders at 100/125/150%, safe dismissal, all themes. Mixed-DPI hardware remains manual.");
     }
 
     private static void CheckDistribution(RegionCaptureWindow overlay)
@@ -96,8 +108,10 @@ internal static class CaptureLayoutSmoke
             ("Emotes e meus emojis", CaptureAnnotationKind.Stamp), ("Desfocar", CaptureAnnotationKind.Blur), ("Pixelizar", CaptureAnnotationKind.Pixelate) })
             Require((overlay.ToolForEvidence(tool).Visibility == Visibility.Visible ? 1 : 0) + labels.Count(value => value == label) == 1,
                 "Tool is reachable exactly once: " + label);
-        Require(!labels.Contains("Selecionar / mover") && labels.Count(value => value == "Refazer seleção · R") == 1 && labels.Count(value => value == "Limpar marcações") == 1,
-            "Selection stays in toolbar; reset/clear are only menu actions");
+        Require(overlay.ToolForEvidence(CaptureAnnotationKind.Blur).Visibility == Visibility.Visible &&
+            overlay.ToolForEvidence(CaptureAnnotationKind.Pixelate).Visibility == Visibility.Visible, "Privacy stays visible in both densities");
+        Require(!labels.Contains("Selecionar / mover") && !labels.Any(value => value.StartsWith("Refazer seleção")) && labels.Count(value => value == "Limpar marcações") == 1,
+            "Selection/reset stay in Area; clear appears only in menu");
         Require(!menu.Children.OfType<Button>().Single(b => AutomationProperties.GetName(b) == "Limpar marcações").IsEnabled,
             "Clear stays disabled with no annotations");
     }
@@ -111,7 +125,7 @@ internal static class CaptureLayoutSmoke
     }
 
     private static Task SettleAsync() => System.Windows.Application.Current.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle).Task;
-    private static void Save(FrameworkElement visual, string output, string name, double width, bool preserveLayout = false)
+    private static void Save(FrameworkElement visual, string output, string name, double width, bool preserveLayout = false, double scale = 1)
     {
         double height;
         if (preserveLayout) { width = visual.ActualWidth; height = visual.ActualHeight; }
@@ -127,10 +141,11 @@ internal static class CaptureLayoutSmoke
                 var bounds = button.TransformToAncestor(visual).TransformBounds(new Rect(button.RenderSize));
                 Require(bounds.Left >= -1 && bounds.Right <= visual.ActualWidth + 1, "Toolbar command is not clipped: " + AutomationProperties.GetName(button));
             }
-        var render = new RenderTargetBitmap((int)Math.Ceiling(width), (int)Math.Ceiling(height), 96, 96, PixelFormats.Pbgra32);
+        var render = new RenderTargetBitmap((int)Math.Ceiling(width * scale), (int)Math.Ceiling(height * scale), 96 * scale, 96 * scale, PixelFormats.Pbgra32);
         // Capture the element itself, without its centering offset in the evidence host.
         var drawing = new DrawingVisual();
-        using (var context = drawing.RenderOpen()) context.DrawRectangle(new VisualBrush(visual), null, new Rect(0, 0, width, height));
+        using (var context = drawing.RenderOpen()) context.DrawRectangle(new VisualBrush(visual) {
+            ViewboxUnits = BrushMappingMode.Absolute, Viewbox = new Rect(0, 0, width, height) }, null, new Rect(0, 0, width, height));
         render.Render(drawing); var encoder = new PngBitmapEncoder(); encoder.Frames.Add(BitmapFrame.Create(render));
         using var file = File.Create(Path.Combine(output, name + ".png")); encoder.Save(file);
     }
