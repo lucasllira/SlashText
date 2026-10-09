@@ -132,6 +132,10 @@ public partial class MainWindow : Window
     internal MainWindow(bool captureEvidence)
     {
         InitializeComponent();
+        CategoryBox.ItemsSource = ShortcutCategories.All;
+        SelectShortcutCategory("Geral");
+        InitializeShortcutFormatting();
+        ShortcutEditorPanel.SizeChanged += (_, _) => { if (_shortcutEditorExpanded) UpdateShortcutEditorHeight(); };
         CaptureInlineEditor.StateChanged += CaptureInlineEditor_OnStateChanged;
         CaptureEditorContext.Attach(CaptureInlineEditor);
         CaptureInlineEditor.SaveCopyRequested += (_, _) => SaveCapturePreview_OnClick(this, new RoutedEventArgs());
@@ -185,7 +189,7 @@ public partial class MainWindow : Window
             _settings.Capture.Recording ??= new RecordingSettings();
             if (AppPaths.IsCapturePilot)
             {
-                Title = "SlashDesk — Piloto Captura 3.3.0 · #63";
+                Title = AppPaths.IsShortcutsPilot ? "SlashDesk — Piloto Atalhos 3.3.0 · #64" : "SlashDesk — Piloto Captura 3.3.0 · #63";
                 _settings.CheckUpdatesOnStartup = false;
                 _settings.StartWithWindows = false;
                 _settings.OnboardingCompleted = true;
@@ -266,6 +270,8 @@ public partial class MainWindow : Window
             _snippetStorageAvailable = await startup.RunAsync(
                 "Atalhos",
                 async () => loaded = await _repository.LoadAsync());
+            if (_snippetStorageAvailable)
+                loaded = await ShortcutShareMessage.RenameUntouchedDefaultAsync(_repository, loaded);
             ReplaceList(loaded);
 
             startup.Run(
@@ -295,7 +301,7 @@ public partial class MainWindow : Window
                 "Atalhos globais de captura",
                 ConfigureCaptureShortcuts);
             RefreshCaptureHistory();
-            if (AppPaths.IsCapturePilot) ShowView(CaptureView, CaptureTabButton);
+            if (AppPaths.IsCapturePilot && !AppPaths.IsShortcutsPilot) ShowView(CaptureView, CaptureTabButton);
 
             if (!_settings.OnboardingCompleted)
             {
@@ -736,6 +742,8 @@ public partial class MainWindow : Window
         }
 
         var query = SearchBox.Text.Trim();
+        if (ShortcutSearchHint is not null) ShortcutSearchHint.Visibility = query.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
+        if (ShortcutSearchClearButton is not null) ShortcutSearchClearButton.Visibility = SearchBox.Text.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
         IEnumerable<Snippet> filtered = _snippets;
         if (!string.IsNullOrWhiteSpace(query))
         {
@@ -743,15 +751,18 @@ public partial class MainWindow : Window
                 item.Name.Contains(query, StringComparison.CurrentCultureIgnoreCase) ||
                 item.Trigger.Contains(query, StringComparison.OrdinalIgnoreCase) ||
                 item.Category.Contains(query, StringComparison.CurrentCultureIgnoreCase) ||
+                ShortcutCategories.Resolve(item.Category).Name.Contains(query, StringComparison.CurrentCultureIgnoreCase) ||
                 item.Content.Contains(query, StringComparison.CurrentCultureIgnoreCase));
         }
 
         if (!string.IsNullOrWhiteSpace(_selectedCategory))
         {
             filtered = filtered.Where(item =>
-                item.Category.Equals(_selectedCategory, StringComparison.CurrentCultureIgnoreCase));
+                ShortcutCategories.Resolve(item.Category).Name.Equals(_selectedCategory, StringComparison.OrdinalIgnoreCase));
         }
 
+        if (_showShortcutFavorites) filtered = filtered.Where(item => item.IsFavorite);
+        if (_showShortcutPinned) filtered = filtered.Where(item => item.IsPinned);
         if (_showMostUsed)
         {
             filtered = filtered
@@ -766,28 +777,26 @@ public partial class MainWindow : Window
             filtered = filtered.OrderBy(item => item.Trigger, StringComparer.CurrentCultureIgnoreCase);
         }
 
-        var visible = filtered.ToList();
+        var visible = filtered.OrderByDescending(item => item.IsPinned).ToList();
 
         CategoriesPanel.Children.Clear();
         CategoriesPanel.Children.Add(CreateCategoryButton(null, "Todos", _snippets.Count));
-        foreach (var group in _snippets
-                     .GroupBy(item => string.IsNullOrWhiteSpace(item.Category) ? "Geral" : item.Category)
-                     .OrderBy(item => item.Key, StringComparer.CurrentCultureIgnoreCase))
+        foreach (var category in ShortcutCategories.All)
         {
-            CategoriesPanel.Children.Add(CreateCategoryButton(group.Key, group.Key, group.Count()));
+            var count = _snippets.Count(item => ShortcutCategories.Resolve(item.Category).Name == category.Name);
+            CategoriesPanel.Children.Add(CreateCategoryButton(category.Name, category.Name, count));
         }
 
         SnippetListPanel.Children.Clear();
         if (visible.Count == 0)
         {
-            SnippetListPanel.Children.Add(new TextBlock
-            {
-                Text = "Nenhum atalho corresponde aos filtros.",
-                Margin = new Thickness(10, 14, 10, 0),
-                TextWrapping = TextWrapping.Wrap,
-                Foreground = (Brush)FindResource("MutedBrush"),
-                FontSize = 12
-            });
+            var empty = new StackPanel { Margin = new Thickness(4, 12, 4, 0) };
+            var hint = new TextBlock { Text = _snippets.Count == 0 ? "Seu primeiro texto começa aqui." : "Nenhum atalho corresponde aos filtros.", TextWrapping = TextWrapping.Wrap, FontSize = 12, Margin = new Thickness(0, 0, 0, 12) };
+            hint.SetResourceReference(TextBlock.ForegroundProperty, "Lab.muted"); empty.Children.Add(hint);
+            var action = new Button { Content = _snippets.Count == 0 ? "Criar atalho" : "Limpar filtros" };
+            action.SetResourceReference(StyleProperty, "Lab.Button");
+            action.Click += (_, _) => { if (_snippets.Count == 0) BeginNewSnippet(); else { _selectedCategory = null; _showMostUsed = false; _showShortcutFavorites = false; _showShortcutPinned = false; SearchBox.Clear(); RefreshNavigation(); } };
+            empty.Children.Add(action); SnippetListPanel.Children.Add(empty);
         }
         else
         {
@@ -802,155 +811,87 @@ public partial class MainWindow : Window
         RefreshMostUsed();
     }
 
-    private Button CreateCategoryButton(string? category, string label, int count)
-    {
-        var selected = string.Equals(category, _selectedCategory, StringComparison.CurrentCultureIgnoreCase);
-        var content = new Grid();
-        content.Children.Add(new TextBlock
-        {
-            Text = label,
-            FontWeight = selected ? FontWeights.SemiBold : FontWeights.Normal,
-            TextTrimming = TextTrimming.CharacterEllipsis
-        });
-        content.Children.Add(new TextBlock
-        {
-            Text = count.ToString(),
-            HorizontalAlignment = HorizontalAlignment.Right,
-            Foreground = (Brush)FindResource("MutedBrush")
-        });
-
-        var button = new Button
-        {
-            Style = (Style)FindResource("SidebarItemButton"),
-            Tag = category,
-            Background = selected ? (Brush)FindResource("SelectedBrush") : Brushes.Transparent,
-            BorderBrush = selected ? (Brush)FindResource("AccentBorderBrush") : Brushes.Transparent,
-            Foreground = selected ? (Brush)FindResource("AccentStrongBrush") : (Brush)FindResource("InkBrush"),
-            Content = content,
-            ToolTip = $"{label} · {count} atalhos"
-        };
-        button.Click += (_, _) =>
-        {
-            _selectedCategory = category;
-            RefreshNavigation();
-        };
-        return button;
-    }
-
-    private Button CreateSnippetButton(Snippet snippet)
-    {
-        var selected = ReferenceEquals(snippet, _selected);
-        var button = new Button
-        {
-            Style = (Style)FindResource("SidebarItemButton"),
-            HorizontalContentAlignment = HorizontalAlignment.Stretch,
-            Background = selected
-                ? (Brush)FindResource("SelectedBrush")
-                : Brushes.Transparent,
-            BorderBrush = selected
-                ? (Brush)FindResource("AccentBrush")
-                : Brushes.Transparent,
-            BorderThickness = new Thickness(1),
-            Padding = new Thickness(10, 7, 10, 7),
-            Margin = new Thickness(0, 2, 0, 0),
-            Tag = snippet,
-            Content = new StackPanel
-            {
-                Children =
-                {
-                    new TextBlock
-                    {
-                        Text = snippet.Trigger,
-                        TextTrimming = TextTrimming.CharacterEllipsis,
-                        ToolTip = snippet.Trigger,
-                        FontFamily = (FontFamily)FindResource("FontFamily.Mono"),
-                        FontWeight = FontWeights.SemiBold,
-                        Foreground = selected
-                            ? (Brush)FindResource("AccentBrush")
-                            : (Brush)FindResource("InkBrush")
-                    },
-                    new TextBlock
-                    {
-                        Text = $"{snippet.Name} · {snippet.Category}",
-                        TextTrimming = TextTrimming.CharacterEllipsis,
-                        ToolTip = $"{snippet.Name} · {snippet.Category}",
-                        FontSize = 11,
-                        Margin = new Thickness(0, 2, 0, 0),
-                        Foreground = (Brush)FindResource("MutedBrush")
-                    }
-                }
-            },
-            ToolTip = $"{snippet.Name}\n{snippet.Trigger}\nCategoria: {snippet.Category}"
-        };
-        button.Click += (_, _) => SelectSnippet((Snippet)button.Tag);
-        return button;
-    }
-
     private void RefreshMostUsed()
     {
-        ApplyDisplayFilterState(DisplayAllButton, !_showMostUsed);
+        ApplyDisplayFilterState(DisplayAllButton, !_showMostUsed && !_showShortcutFavorites && !_showShortcutPinned);
+        ApplyDisplayFilterState(DisplayFavoritesButton, _showShortcutFavorites);
+        ApplyDisplayFilterState(DisplayPinnedButton, _showShortcutPinned);
         ApplyDisplayFilterState(DisplayMostUsedButton, _showMostUsed);
     }
 
     private void DisplayAll_OnClick(object sender, RoutedEventArgs e)
     {
-        _showMostUsed = false;
+        _showMostUsed = false; _showShortcutFavorites = false; _showShortcutPinned = false;
         RefreshNavigation();
     }
 
     private void DisplayMostUsed_OnClick(object sender, RoutedEventArgs e)
     {
-        _showMostUsed = true;
+        _showMostUsed = true; _showShortcutFavorites = false; _showShortcutPinned = false;
         RefreshNavigation();
     }
 
     private void ApplyDisplayFilterState(Button button, bool selected)
     {
-        button.Background = selected ? (Brush)FindResource("SelectedBrush") : (Brush)FindResource("SurfaceBrush");
-        button.BorderBrush = selected ? (Brush)FindResource("AccentBorderBrush") : (Brush)FindResource("DividerBrush");
-        button.Foreground = selected ? (Brush)FindResource("AccentStrongBrush") : (Brush)FindResource("InkBrush");
+        button.SetResourceReference(Button.BackgroundProperty, selected ? "Lab.tint" : "Lab.shell");
+        button.SetResourceReference(Button.BorderBrushProperty, selected ? "Lab.line-strong" : "Lab.line");
+        button.SetResourceReference(Button.ForegroundProperty, selected ? "Lab.accent-text" : "Lab.muted");
         button.FontWeight = selected ? FontWeights.SemiBold : FontWeights.Normal;
     }
 
     private void SelectSnippet(Snippet snippet)
     {
+        if (ReferenceEquals(snippet, _selected) || !CanDiscardShortcutDraft()) return;
+        _loadingShortcutDraft = true;
         _selected = snippet;
+        _shortcutDuplicateSource = null;
         NameBox.Text = snippet.Name;
         TriggerBox.Text = snippet.Trigger;
-        CategoryBox.Text = snippet.Category;
+        SelectShortcutCategory(snippet.Category);
         FormatBox.SelectedIndex = snippet.Format == SnippetFormat.Markdown ? 1 : 0;
         RichTextMarkdownConverter.Load(ContentEditor, snippet.Content, snippet.Format);
         StatusText.Text = snippet.HasLegacyIncompatibleTrigger
             ? "Atalho legado preservado, mas incompatível com o monitor atual; corrija o gatilho para reativá-lo"
             : snippet.Enabled ? "Atalho ativo" : "Atalho pausado";
+        _loadingShortcutDraft = false;
+        ResetShortcutDraftBaseline();
         RefreshNavigation();
         UpdatePreview();
+        if (ShortcutEditorPanel.IsLoaded) LabMotion.PlayEntrance(ShortcutEditorPanel);
     }
 
     private void NewSnippet_OnClick(object sender, RoutedEventArgs e) =>
         BeginNewSnippet();
 
-    private void BeginNewSnippet()
+    private void BeginNewSnippet(bool discardAlreadyConfirmed = false)
     {
+        if (!discardAlreadyConfirmed && !CanDiscardShortcutDraft()) return;
+        _shortcutDuplicateSource = null;
+        _loadingShortcutDraft = true;
         _selected = null;
         NameBox.Clear();
         TriggerBox.Text = "/";
-        CategoryBox.Text = "Geral";
+        SelectShortcutCategory("Geral");
         FormatBox.SelectedIndex = 0;
         RichTextMarkdownConverter.Load(ContentEditor, string.Empty, SnippetFormat.Plain);
         StatusText.Text = "Novo atalho";
+        _loadingShortcutDraft = false;
+        ResetShortcutDraftBaseline();
         RefreshNavigation();
         NameBox.Focus();
         UpdatePreview();
     }
 
-    private async void SaveSnippet_OnClick(object sender, RoutedEventArgs e)
+    private async void SaveSnippet_OnClick(object sender, RoutedEventArgs e) => await TrySaveShortcutAsync();
+
+    private async System.Threading.Tasks.Task<bool> TrySaveShortcutAsync()
     {
         if (!EnsureSnippetStorageAvailable())
         {
-            return;
+            return false;
         }
 
+        if (_shortcutOperationInProgress) return false;
         var previous = _selected;
         var format = FormatBox.SelectedIndex == 1 ? SnippetFormat.Markdown : SnippetFormat.Plain;
         var candidate = new Snippet
@@ -958,11 +899,12 @@ public partial class MainWindow : Window
             Id = previous?.Id ?? Guid.NewGuid(),
             Name = NameBox.Text.Trim(),
             Trigger = TriggerBox.Text.Trim(),
-            Category = string.IsNullOrWhiteSpace(CategoryBox.Text) ? "Geral" : CategoryBox.Text.Trim(),
+            Category = SelectedShortcutCategory,
             Content = RichTextMarkdownConverter.Save(ContentEditor, format),
             Format = format,
-            Enabled = previous?.Enabled ?? true,
-            ConfirmKeys = previous?.ConfirmKeys.ToList() ?? ["Enter", "Tab", "Space"]
+            Enabled = previous?.Enabled ?? _shortcutDuplicateSource?.Enabled ?? true,
+            IsFavorite = previous?.IsFavorite ?? false, IsPinned = previous?.IsPinned ?? false,
+            ConfirmKeys = previous?.ConfirmKeys.ToList() ?? _shortcutDuplicateSource?.ConfirmKeys.ToList() ?? ["Enter", "Tab", "Space"]
         };
 
         if (!TriggerRule.TryValidate(candidate.Trigger, out var triggerError))
@@ -973,7 +915,7 @@ public partial class MainWindow : Window
                 MessageBoxButton.OK,
                 MessageBoxImage.Warning);
             TriggerBox.Focus();
-            return;
+            return false;
         }
 
         var nextState = _snippets
@@ -983,6 +925,8 @@ public partial class MainWindow : Window
 
         try
         {
+            _shortcutOperationInProgress = true;
+            ShortcutEditorPanel.IsEnabled = false;
             await _repository.SaveAsync(nextState);
             if (previous is null)
             {
@@ -997,7 +941,10 @@ public partial class MainWindow : Window
             _keyboardHook.UpdateSnippets(_snippets);
             RefreshNavigation();
             RefreshStatistics();
-            StatusText.Text = "Salvo em %LocalAppData%\\SlashDesk\\snippets.md";
+            ResetShortcutDraftBaseline();
+            ShortcutLegacyCategoryHint.Visibility = Visibility.Collapsed;
+            StatusText.Text = $"Salvo em {AppPaths.SnippetsFile}";
+            return true;
         }
         catch (Exception exception)
         {
@@ -1006,6 +953,13 @@ public partial class MainWindow : Window
                 "Não foi possível salvar",
                 MessageBoxButton.OK,
                 MessageBoxImage.Warning);
+            return false;
+        }
+        finally
+        {
+            _shortcutOperationInProgress = false;
+            ShortcutEditorPanel.IsEnabled = true;
+            RefreshShortcutDraftState();
         }
     }
 
@@ -1016,39 +970,45 @@ public partial class MainWindow : Window
             return;
         }
 
-        if (_selected is null)
+        if (_selected is null || _shortcutOperationInProgress)
         {
             return;
         }
 
-        if (MessageBox.Show(
-                $"Excluir o atalho {_selected.Trigger}?",
-                "SlashDesk",
-                MessageBoxButton.YesNo,
-                MessageBoxImage.Question) != MessageBoxResult.Yes)
+        var confirmation = new ShortcutConfirmationWindow("Excluir atalho?", "Este atalho será removido da sua lista.",
+            $"{_selected.Name}\n{_selected.Trigger} · {_selected.Category}", "Excluir atalho") { Owner = this };
+        LabMotion.SetReduced(confirmation, LabMotion.GetReduced(this)); confirmation.EnableBackdrop();
+        if (!ShowCaptureDialog(confirmation))
         {
             return;
         }
 
         var removed = _selected;
-        _snippets.Remove(removed);
         try
         {
-            await _repository.SaveAsync(_snippets);
+            _shortcutOperationInProgress = true; ShortcutEditorPanel.IsEnabled = false;
+            await _repository.SaveAsync(_snippets.Where(item => !ReferenceEquals(item, removed)).ToList());
+            _snippets.Remove(removed);
+            _shortcutOperationInProgress = false;
             _keyboardHook.UpdateSnippets(_snippets);
+            _shortcutDraftBaseline = null;
             BeginNewSnippet();
             RefreshStatistics();
             StatusText.Text = "Atalho excluído";
         }
         catch (Exception exception)
         {
-            _snippets.Add(removed);
             RefreshNavigation();
             MessageBox.Show(
                 exception.Message,
                 "Não foi possível excluir",
                 MessageBoxButton.OK,
                 MessageBoxImage.Warning);
+        }
+        finally
+        {
+            _shortcutOperationInProgress = false; ShortcutEditorPanel.IsEnabled = true;
+            RefreshShortcutDraftState();
         }
     }
 
@@ -1058,6 +1018,7 @@ public partial class MainWindow : Window
         {
             FormattingToolbar.Visibility =
                 FormatBox.SelectedIndex == 1 ? Visibility.Visible : Visibility.Collapsed;
+            RefreshShortcutDraftState();
             UpdatePreview();
         }
     }
@@ -1073,71 +1034,32 @@ public partial class MainWindow : Window
 
     private void FontFamilyBox_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (ContentEditor is null ||
+        if (_syncShortcutFormatting || ContentEditor is null ||
             FontFamilyBox?.SelectedItem is not ComboBoxItem { Tag: string font })
         {
             return;
         }
 
-        ContentEditor.Selection.ApplyPropertyValue(
-            TextElement.FontFamilyProperty,
-            new FontFamily(font));
-        ContentEditor.Focus();
+        ApplyShortcutFormatting(TextElement.FontFamilyProperty, new FontFamily(font));
     }
 
     private void FontSizeBox_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (ContentEditor is null ||
+        if (_syncShortcutFormatting || ContentEditor is null ||
             FontSizeBox?.SelectedItem is not ComboBoxItem { Tag: string sizeText } ||
-            !double.TryParse(
-                sizeText,
-                System.Globalization.NumberStyles.Float,
-                System.Globalization.CultureInfo.InvariantCulture,
-                out var size))
-        {
-            return;
-        }
-
-        ContentEditor.Selection.ApplyPropertyValue(TextElement.FontSizeProperty, size);
-        ContentEditor.Focus();
+            !double.TryParse(sizeText, System.Globalization.NumberStyles.Float,
+                System.Globalization.CultureInfo.InvariantCulture, out var size)) return;
+        ApplyShortcutFormatting(TextElement.FontSizeProperty, size);
     }
 
     private void Color_OnClick(object sender, RoutedEventArgs e)
     {
-        using var picker = new Forms.ColorDialog
-        {
-            FullOpen = true,
-            Color = System.Drawing.Color.FromArgb(24, 32, 43)
-        };
-        if (picker.ShowDialog() != Forms.DialogResult.OK)
-        {
-            return;
-        }
-
-        var color = picker.Color;
-        ContentEditor.Selection.ApplyPropertyValue(
-            TextElement.ForegroundProperty,
-            new SolidColorBrush(System.Windows.Media.Color.FromRgb(color.R, color.G, color.B)));
-        ContentEditor.Focus();
+        if (sender is Button anchor) ShowShortcutColorPicker(anchor, TextElement.ForegroundProperty);
     }
 
     private void Highlight_OnClick(object sender, RoutedEventArgs e)
     {
-        using var picker = new Forms.ColorDialog
-        {
-            FullOpen = true,
-            Color = System.Drawing.Color.FromArgb(255, 235, 59)
-        };
-        if (picker.ShowDialog() != Forms.DialogResult.OK)
-        {
-            return;
-        }
-
-        var color = picker.Color;
-        ContentEditor.Selection.ApplyPropertyValue(
-            TextElement.BackgroundProperty,
-            new SolidColorBrush(System.Windows.Media.Color.FromRgb(color.R, color.G, color.B)));
-        ContentEditor.Focus();
+        if (sender is Button anchor) ShowShortcutColorPicker(anchor, TextElement.BackgroundProperty);
     }
 
     private void Bullets_OnClick(object sender, RoutedEventArgs e) =>
@@ -1312,19 +1234,20 @@ public partial class MainWindow : Window
 
     private void ContentEditor_OnTextChanged(object sender, TextChangedEventArgs e)
     {
-        if (StatusText is not null)
+        if (ContentEditor is not null)
         {
-            StatusText.Text = "Alterações não salvas";
+            foreach (var block in ContentEditor.Document.Blocks.OfType<BlockUIContainer>())
+                ShortcutCodeBlockView.AttachBlock(block, view => OpenCodeBlock(view));
+            ShortcutEmojiAssets.RestoreDocument(ContentEditor.Document);
         }
+        RefreshShortcutDraftState();
+        RefreshShortcutFormatting();
         UpdatePreview();
     }
 
     private void EditorField_OnTextChanged(object sender, TextChangedEventArgs e)
     {
-        if (StatusText is not null)
-        {
-            StatusText.Text = "Alterações não salvas";
-        }
+        RefreshShortcutDraftState();
     }
 
     private void UpdatePreview()
@@ -1336,14 +1259,14 @@ public partial class MainWindow : Window
 
         var format = FormatBox.SelectedIndex == 1 ? SnippetFormat.Markdown : SnippetFormat.Plain;
         var content = RichTextMarkdownConverter.Save(ContentEditor, format);
-        var rendered = new TemplateEngine().Render(content, PreviewValues(content));
+        var rendered = new TemplateEngine().Render(content, PreviewValues(content, format), literalCodeBlocks: format == SnippetFormat.Markdown);
         RichTextMarkdownConverter.BuildPreview(PreviewDocument, rendered, format);
     }
 
-    private static IReadOnlyDictionary<string, string> PreviewValues(string template)
+    private static IReadOnlyDictionary<string, string> PreviewValues(string template, SnippetFormat format)
     {
         var engine = new TemplateEngine();
-        return engine.GetFillableFields(template)
+        return engine.GetFillableFields(template, literalCodeBlocks: format == SnippetFormat.Markdown)
             .ToDictionary(
                 item => item.Name,
                 item => item.DefaultValue ?? $"[{item.Name}]",
@@ -1421,6 +1344,7 @@ public partial class MainWindow : Window
             ? Visibility.Visible
             : Visibility.Collapsed;
 
+        if (ReferenceEquals(view, ShortcutsView) && ShortcutsView.IsLoaded) LabMotion.PlayEntrance(ShortcutsView);
         if (ReferenceEquals(view, QuickAccentView))
         {
             UpdateQuickAccentPreviewSelection();
@@ -1613,6 +1537,7 @@ public partial class MainWindow : Window
             return;
         }
 
+        if (!CanDiscardShortcutDraft()) return;
         var source = ImportSourceBox.SelectedItem is ComboBoxItem { Tag: string sourceTag } &&
                      Enum.TryParse<SnippetImportSource>(sourceTag, out var parsed)
             ? parsed
@@ -1636,6 +1561,8 @@ public partial class MainWindow : Window
 
         try
         {
+            _shortcutOperationInProgress = true; ShortcutEditorPanel.IsEnabled = false;
+            RefreshShortcutDraftState();
             var result = await _snippetImportService.ImportAsync(picker.FileName, source);
             if (result.Snippets.Count == 0)
             {
@@ -1682,8 +1609,13 @@ public partial class MainWindow : Window
                 }
             }
 
+            _shortcutOperationInProgress = true;
+            ShortcutEditorPanel.IsEnabled = false;
             await _repository.SaveAsync(merged);
             ReplaceList(merged);
+            _shortcutOperationInProgress = false;
+            _shortcutDraftBaseline = null; _selected = null;
+            if (_snippets.Count > 0) SelectSnippet(_snippets[0]); else BeginNewSnippet();
             _keyboardHook.UpdateSnippets(_snippets);
             RefreshStatistics();
             var warningSummary = result.Warnings.Count == 0
@@ -1704,6 +1636,12 @@ public partial class MainWindow : Window
                 "Não foi possível importar",
                 MessageBoxButton.OK,
                 MessageBoxImage.Warning);
+        }
+        finally
+        {
+            _shortcutOperationInProgress = false;
+            ShortcutEditorPanel.IsEnabled = true;
+            RefreshShortcutDraftState();
         }
     }
 
@@ -1802,6 +1740,7 @@ public partial class MainWindow : Window
 
     private async void RestoreBackup_OnClick(object sender, RoutedEventArgs e)
     {
+        if (!CanDiscardShortcutDraft()) return;
         var picker = new Microsoft.Win32.OpenFileDialog
         {
             Title = "Restaurar backup do SlashDesk",
@@ -1821,12 +1760,16 @@ public partial class MainWindow : Window
 
         try
         {
+            _shortcutOperationInProgress = true; ShortcutEditorPanel.IsEnabled = false;
             _backupService.RestoreSnapshot(picker.FileName);
             _settings = await _settingsStore.LoadAsync();
             ThemeService.Apply(_settings.Theme);
             var restoredSnippets = await _repository.LoadAsync();
             ReplaceList(restoredSnippets);
+            _shortcutDraftBaseline = null; _selected = null;
             _snippetStorageAvailable = true;
+            _shortcutOperationInProgress = false;
+            if (_snippets.Count > 0) SelectSnippet(_snippets[0]); else BeginNewSnippet();
             _keyboardHook.UpdateSnippets(_snippets);
             await _usageService.LoadAsync();
             RefreshStatistics();
@@ -1844,6 +1787,11 @@ public partial class MainWindow : Window
                 "Não foi possível restaurar",
                 MessageBoxButton.OK,
                 MessageBoxImage.Warning);
+        }
+        finally
+        {
+            _shortcutOperationInProgress = false; ShortcutEditorPanel.IsEnabled = true;
+            RefreshShortcutDraftState();
         }
     }
 
@@ -2615,6 +2563,7 @@ public partial class MainWindow : Window
         var guide = new ScreenHelpWindow(CaptureHelpContent.Create(_settings.Capture)) { Owner = this };
         LabMotion.SetReduced(guide, LabMotion.GetReduced(this));
         if (sender is Button button && button != CaptureHelpButton) guide.OpenTopic("zoom");
+        guide.EnableBackdrop();
         ShowCaptureDialog(guide);
         if (guide.RequestedTarget is not { } name) return;
         if (FindName(name) is not FrameworkElement target) return;
@@ -4420,14 +4369,15 @@ public partial class MainWindow : Window
         Grid.SetColumn(ShortcutSidebarPanel, 0);
         Grid.SetColumnSpan(ShortcutSidebarPanel, 1);
         Grid.SetRow(ShortcutEditorPanel, 0);
-        Grid.SetColumn(ShortcutEditorPanel, 2);
-        Grid.SetColumnSpan(ShortcutEditorPanel, 1);
+        Grid.SetColumn(ShortcutEditorPanel, _shortcutEditorExpanded ? 0 : 2);
+        Grid.SetColumnSpan(ShortcutEditorPanel, _shortcutEditorExpanded ? 5 : 1);
         Grid.SetRow(ShortcutVariablesPanel, 0);
         Grid.SetColumn(ShortcutVariablesPanel, 4);
         Grid.SetColumnSpan(ShortcutVariablesPanel, 1);
 
-        ShortcutLeftDivider.Visibility = Visibility.Visible;
-        ShortcutRightDivider.Visibility = Visibility.Visible;
+        ShortcutLeftDivider.Visibility = _shortcutEditorExpanded ? Visibility.Collapsed : Visibility.Visible;
+        ShortcutRightDivider.Visibility = !_shortcutEditorExpanded && _shortcutVariablesVisible ? Visibility.Visible : Visibility.Collapsed;
+        if (_shortcutEditorExpanded) UpdateShortcutEditorHeight();
         NormalizeShortcutColumns(width, bandChanged);
     }
 
@@ -4439,33 +4389,35 @@ public partial class MainWindow : Window
         var margin = band < 2 ? 20d : 32d;
         var editorMinimum = band == 0 ? 420d : band == 1 ? 440d : 520d;
         var available = Math.Max(0, windowWidth - (margin * 2));
+        var rightMinimum = _shortcutVariablesVisible ? ShortcutRightMinimum : 0d;
         var sideSpace = Math.Max(
-            ShortcutLeftMinimum + ShortcutRightMinimum,
-            available - ShortcutDividerSpace - editorMinimum);
+            ShortcutLeftMinimum + rightMinimum,
+            available - (_shortcutVariablesVisible ? ShortcutDividerSpace : 16d) - editorMinimum);
 
         ShortcutEditorColumn.MinWidth = editorMinimum;
         ShortcutLeftColumn.MinWidth = ShortcutLeftMinimum;
-        ShortcutRightColumn.MinWidth = ShortcutRightMinimum;
+        ShortcutRightColumn.MinWidth = rightMinimum;
         ShortcutLeftColumn.MaxWidth = Math.Max(
             ShortcutLeftMinimum,
-            Math.Min(ShortcutLeftMaximum, sideSpace - ShortcutRightMinimum));
+            Math.Min(ShortcutLeftMaximum, sideSpace - rightMinimum));
         ShortcutRightColumn.MaxWidth = Math.Max(
             ShortcutRightMinimum,
             Math.Min(ShortcutRightMaximum, sideSpace - ShortcutLeftMinimum));
 
-        var defaultLeft = band == 0 ? 240d : band == 1 ? 260d : 280d;
-        var defaultRight = band == 0 ? 240d : band == 1 ? 280d : 384d;
+        var defaultLeft = band == 0 ? 240d : band == 1 ? 260d : 300d;
+        var defaultRight = band == 0 ? 240d : 280d;
         var left = restoreDefaults ? defaultLeft : ShortcutLeftColumn.ActualWidth;
         var right = restoreDefaults ? defaultRight : ShortcutRightColumn.ActualWidth;
         if (left <= 0) left = defaultLeft;
         if (right <= 0) right = defaultRight;
 
         left = Math.Clamp(left, ShortcutLeftMinimum, ShortcutLeftColumn.MaxWidth);
-        right = Math.Clamp(right, ShortcutRightMinimum, ShortcutRightColumn.MaxWidth);
+        right = _shortcutVariablesVisible ? Math.Clamp(right, rightMinimum, ShortcutRightColumn.MaxWidth) : 0d;
+        ShortcutRightDividerColumn.Width = new GridLength(_shortcutVariablesVisible ? 16 : 0);
         var overflow = Math.Max(0, left + right - sideSpace);
         if (overflow > 0)
         {
-            var rightReduction = Math.Min(overflow, right - ShortcutRightMinimum);
+            var rightReduction = Math.Min(overflow, right - rightMinimum);
             right -= rightReduction;
             overflow -= rightReduction;
             left -= Math.Min(overflow, left - ShortcutLeftMinimum);
@@ -4522,11 +4474,11 @@ public partial class MainWindow : Window
         var band = _shortcutResponsiveBand;
         if (ReferenceEquals(splitter, ShortcutLeftDivider))
         {
-            ShortcutLeftColumn.Width = new GridLength(band == 0 ? 240 : band == 1 ? 260 : 280);
+            ShortcutLeftColumn.Width = new GridLength(band == 0 ? 240 : band == 1 ? 260 : 300);
         }
         else
         {
-            ShortcutRightColumn.Width = new GridLength(band == 0 ? 240 : band == 1 ? 280 : 384);
+            ShortcutRightColumn.Width = new GridLength(band == 0 ? 240 : 280);
         }
         NormalizeShortcutColumns(ActualWidth);
     }
@@ -4571,6 +4523,7 @@ public partial class MainWindow : Window
             return;
         }
 
+        if (!CanDiscardShortcutDraft()) { e.Cancel = true; _exitRequested = false; return; }
         _activeUpdateCancellation?.Cancel();
         if (CaptureInlineEditor.HasUnsavedChanges && MessageBox.Show("Há alterações de imagem não salvas. Sair sem salvar?", "Editor de imagem",
                 MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) != MessageBoxResult.Yes)

@@ -15,6 +15,8 @@ public sealed class Snippet
     public string Content { get; set; } = string.Empty;
     public SnippetFormat Format { get; set; } = SnippetFormat.Plain;
     public bool Enabled { get; set; } = true;
+    public bool IsFavorite { get; set; }
+    public bool IsPinned { get; set; }
     public List<string> ConfirmKeys { get; set; } = ["Enter", "Tab", "Space"];
     public bool HasLegacyIncompatibleTrigger { get; set; }
 

@@ -145,6 +145,7 @@ public sealed partial class SnippetMarkdownRepository
                 Category = string.IsNullOrWhiteSpace(metadata.Category) ? "Geral" : metadata.Category,
                 Format = format,
                 Enabled = metadata.Enabled,
+                IsFavorite = metadata.IsFavorite, IsPinned = metadata.IsPinned,
                 ConfirmKeys = metadata.ConfirmKeys?.Count > 0
                     ? metadata.ConfirmKeys
                     : ["Enter", "Tab", "Space"],
@@ -171,7 +172,7 @@ public sealed partial class SnippetMarkdownRepository
                 snippet.Category,
                 snippet.Format == SnippetFormat.Markdown ? "markdown" : "plain",
                 snippet.Enabled,
-                snippet.ConfirmKeys);
+                snippet.ConfirmKeys, snippet.IsFavorite, snippet.IsPinned);
 
             var fence = new string('`', Math.Max(3, LongestBacktickRun(snippet.Content) + 1));
             builder.Append("## ").AppendLine(snippet.Trigger);
@@ -287,5 +288,5 @@ public sealed partial class SnippetMarkdownRepository
         string Category,
         string Format,
         bool Enabled,
-        List<string>? ConfirmKeys);
+        List<string>? ConfirmKeys, bool IsFavorite = false, bool IsPinned = false);
 }

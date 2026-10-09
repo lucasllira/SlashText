@@ -23,6 +23,7 @@ $gifPreviewPath = 'src/SlashText/Views/GifPreviewWindow.cs'
 
 $xaml = Get-Content $xamlPath -Raw
 $code = Get-Content $codePath -Raw
+Get-ChildItem (Join-Path $PSScriptRoot '../src/SlashText') -Filter 'MainWindow.*.cs' | ForEach-Object { $code += "`n" + (Get-Content $_.FullName -Raw) }
 $editor = Get-Content $editorPath -Raw
 $region = Get-Content $regionPath -Raw
 $variable = Get-Content $variablePath -Raw

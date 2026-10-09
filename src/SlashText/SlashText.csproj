@@ -17,21 +17,25 @@
     <AssemblyVersion>3.2.0.0</AssemblyVersion>
     <FileVersion>3.2.0.0</FileVersion>
     <DebugType>embedded</DebugType>
+    <CapturePilotBuild Condition="'$(ShortcutsPilotBuild)' == 'true'">true</CapturePilotBuild>
     <SlashDeskDistribution Condition="'$(SlashDeskDistribution)' == ''">Installed</SlashDeskDistribution>
   </PropertyGroup>
 
   <ItemGroup>
     <AssemblyMetadata Include="SlashDeskDistribution" Value="$(SlashDeskDistribution)" />
+    <AssemblyMetadata Include="SlashDeskShortcutsPilot" Value="true" Condition="'$(ShortcutsPilotBuild)' == 'true'" />
     <AssemblyMetadata Include="SlashDeskCapturePilot" Value="true" Condition="'$(CapturePilotBuild)' == 'true'" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="ScreenRecorderLib" Version="6.6.0" />
+    <PackageReference Include="AvalonEdit" Version="6.3.1.120" />
   </ItemGroup>
 
   <ItemGroup>
     <Resource Include="Assets\SlashDesk.ico" />
     <EmbeddedResource Include="Assets\Lucide\LICENSE.txt" />
+    <EmbeddedResource Include="Assets\AvalonEdit\LICENSE.txt" />
     <Resource Include="Assets\SlashDesk.png" />
     <EmbeddedResource Include="Assets\NotoEmoji\*.png" />
     <EmbeddedResource Include="Assets\NotoEmoji\catalog.json" LogicalName="SlashText.Assets.NotoEmoji.catalog.json" />

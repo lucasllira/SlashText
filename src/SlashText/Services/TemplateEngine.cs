@@ -15,10 +15,11 @@ public sealed partial class TemplateEngine
         "semana", "usuario", "tab"
     };
 
-    public IReadOnlyList<TemplateField> GetFillableFields(string template)
+    public IReadOnlyList<TemplateField> GetFillableFields(string template, bool literalCodeBlocks = false)
     {
         var fields = new Dictionary<string, TemplateField>(StringComparer.CurrentCultureIgnoreCase);
 
+        if (literalCodeBlocks) template = CodeBlockMarkdown.Transform(template, value => value, _ => "");
         foreach (Match match in VariablePattern().Matches(template))
         {
             var expression = match.Groups["expression"].Value.Trim();
@@ -39,13 +40,14 @@ public sealed partial class TemplateEngine
     public string Render(
         string template,
         IReadOnlyDictionary<string, string>? values = null,
-        DateTimeOffset? now = null)
+        DateTimeOffset? now = null, bool literalCodeBlocks = false)
     {
         var reference = now ?? DateTimeOffset.Now;
         values ??= new Dictionary<string, string>();
 
-        return VariablePattern().Replace(template, match =>
+        string Replace(string text) => VariablePattern().Replace(text, match =>
             Resolve(match.Groups["expression"].Value.Trim(), values, reference));
+        return literalCodeBlocks ? CodeBlockMarkdown.Transform(template, Replace, span => span.Source) : Replace(template);
     }
 
     private static string Resolve(

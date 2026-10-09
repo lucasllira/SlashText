@@ -15,6 +15,19 @@ public partial class App : System.Windows.Application
 
     protected override void OnStartup(StartupEventArgs e)
     {
+        if (e.Args.Contains("--shortcuts-workspace-smoke", StringComparer.OrdinalIgnoreCase))
+        {
+            _helperMode = true; ShutdownMode = ShutdownMode.OnExplicitShutdown;
+            var index = Array.FindIndex(e.Args, arg => arg.Equals("--shortcuts-workspace-smoke", StringComparison.OrdinalIgnoreCase));
+            var output = Path.GetFullPath(index + 1 < e.Args.Length ? e.Args[index + 1] : "shortcuts-evidence");
+            base.OnStartup(e);
+            Dispatcher.BeginInvoke(new Action(async () =>
+            {
+                try { await Design.ShortcutsWorkspaceSmoke.RunAsync(output); Shutdown(0); }
+                catch (Exception exception) { Directory.CreateDirectory(output); File.WriteAllText(Path.Combine(output, "failure.txt"), exception.ToString()); Shutdown(1); }
+            }));
+            return;
+        }
         // Developer-only entry point: return before updater, AppPaths, mutex and hooks.
         if (e.Args.Contains("--design-gallery", StringComparer.OrdinalIgnoreCase) ||
             e.Args.Contains("--design-gallery-smoke", StringComparer.OrdinalIgnoreCase))

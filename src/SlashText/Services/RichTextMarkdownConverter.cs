@@ -8,6 +8,7 @@ using System.Windows.Documents;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using SlashText.Models;
+using SlashText.Views;
 using RichTextBox = System.Windows.Controls.RichTextBox;
 
 namespace SlashText.Services;
@@ -41,6 +42,9 @@ public static partial class RichTextMarkdownConverter
                         ? ApplyParagraphAlignment(paragraphText, paragraph.TextAlignment)
                         : paragraphText);
                     break;
+                case BlockUIContainer codeBlock when ShortcutCodeBlockView.TryRead(codeBlock, out var codeContent):
+                    lines.Add(format == SnippetFormat.Markdown ? CodeBlockMarkdown.Write(codeContent) : codeContent.Code);
+                    break;
                 case System.Windows.Documents.List list:
                     SerializeList(lines, list, format);
                     break;
@@ -53,11 +57,22 @@ public static partial class RichTextMarkdownConverter
         return string.Join("\n", lines).TrimEnd();
     }
 
-    public static string ToPlainText(string markdown)
+    public static string ToPlainText(string markdown) => CodeBlockMarkdown.Transform(markdown,
+        ToPlainTextOutsideCode, span => span.Content.Code);
+
+    private static string ToPlainTextOutsideCode(string markdown)
     {
         var value = markdown;
-        value = CodeFencePattern().Replace(value, match => match.Groups["code"].Value.TrimEnd());
-        value = ImagePattern().Replace(value, match => $"[Imagem: {match.Groups["alt"].Value}]");
+        value = ImagePattern().Replace(value, match =>
+        {
+            var alt = match.Groups["alt"].Value;
+            // Noto artwork is retained in HTML; a text-only target needs the Unicode
+            // sequence, including variation selectors, skin tones and joined emoji.
+            if (ShortcutEmojiAssets.Pattern().IsMatch(match.Value) &&
+                alt.StartsWith("Emoji: ", StringComparison.Ordinal) &&
+                NotoEmojiCatalog.TryGet(alt[7..], out _)) return alt[7..];
+            return $"[Imagem: {alt}]";
+        });
         value = RichSpanPattern().Replace(value, match => match.Groups["text"].Value);
         value = ParagraphPattern().Replace(value, match => match.Groups["text"].Value);
         value = LinkPattern().Replace(value, match => match.Groups["text"].Value);
@@ -80,15 +95,14 @@ public static partial class RichTextMarkdownConverter
     public static string ToHtml(string markdown)
     {
         var codeBlocks = new List<string>();
-        markdown = CodeFencePattern().Replace(markdown, match =>
+        markdown = CodeBlockMarkdown.Transform(markdown, value => value, span =>
         {
-            var language = WebUtility.HtmlEncode(match.Groups["language"].Value);
-            var code = WebUtility.HtmlEncode(match.Groups["code"].Value.TrimEnd());
+            var language = WebUtility.HtmlEncode(span.Content.Language);
+            var code = WebUtility.HtmlEncode(span.Content.Code);
             codeBlocks.Add(
                 $"<pre style=\"background:#151821;color:#F4F6FB;padding:12px;border-radius:8px;" +
-                $"font-family:Consolas,monospace;white-space:pre-wrap\"><code data-language=\"{language}\">{code}</code></pre>");
-            var prefix = match.Value.StartsWith('\n') ? "\n" : string.Empty;
-            return $"{prefix}\u001E_CODE_{codeBlocks.Count - 1}_\u001E";
+                $"font-family:Consolas,monospace;white-space:pre\"><code data-language=\"{language}\">{code}</code></pre>");
+            return $"\u001E_CODE_{codeBlocks.Count - 1}_\u001E";
         });
 
         return "<div style=\"font-family:'Segoe UI',sans-serif;font-size:11pt\">" +
@@ -118,6 +132,28 @@ public static partial class RichTextMarkdownConverter
         SnippetFormat format,
         bool includeImages)
     {
+        if (format == SnippetFormat.Markdown && CodeBlockMarkdown.Read(normalized) is { Count: > 0 } spans)
+        {
+            var position = 0;
+            foreach (var span in spans)
+            {
+                var text = normalized[position..span.Start];
+                if (position > 0 && text.StartsWith('\n')) text = text[1..];
+                if (text.Length > 0)
+                {
+                    if (text.EndsWith('\n')) text = text[..^1];
+                    // A paragraph before the fence may be intentionally empty. Keep it
+                    // distinct from the separator between two adjacent code blocks.
+                    AddMarkdownBlocks(document, text, format, includeImages);
+                }
+                document.Blocks.Add(ShortcutCodeBlockView.CreateBlock(span.Content, editable: !includeImages));
+                position = span.Start + span.Length;
+            }
+            var remainder = normalized[position..];
+            if (remainder.StartsWith('\n')) remainder = remainder[1..];
+            if (remainder.Length > 0) AddMarkdownBlocks(document, remainder, format, includeImages);
+            return;
+        }
         var lines = normalized.Split('\n');
         for (var index = 0; index < lines.Length; index++)
         {
@@ -194,6 +230,7 @@ public static partial class RichTextMarkdownConverter
             if (includeImages &&
                 format == SnippetFormat.Markdown &&
                 ImagePattern().Match(line.Trim()) is { Success: true } imageMatch &&
+                !ShortcutEmojiAssets.Pattern().IsMatch(imageMatch.Value) &&
                 TryResolveImage(imageMatch.Groups["path"].Value, out var imagePath))
             {
                 var bitmap = new BitmapImage();
@@ -406,7 +443,7 @@ public static partial class RichTextMarkdownConverter
             }
 
             var imageMatch = ImagePattern().Match(lines[index].Trim());
-            if (imageMatch.Success)
+            if (imageMatch.Success && imageMatch.Value == lines[index].Trim() && !ShortcutEmojiAssets.Pattern().IsMatch(imageMatch.Value))
             {
                 html.Append(BuildImageHtml(imageMatch));
                 continue;
@@ -442,6 +479,11 @@ public static partial class RichTextMarkdownConverter
             return $"\u001E_SPAN_{spans.Count - 1}_\u001E";
         });
 
+        var images = new List<string>();
+        value = ImagePattern().Replace(value, match =>
+        {
+            images.Add(BuildImageHtml(match)); return $"\u001E_IMAGE_{images.Count - 1}_\u001E";
+        });
         var escaped = WebUtility.HtmlEncode(value);
         escaped = EncodedLinkPattern().Replace(
             escaped,
@@ -456,6 +498,8 @@ public static partial class RichTextMarkdownConverter
                 $"<span style=\"{spans[index].Style}\">{InlineToHtml(spans[index].Text)}</span>",
                 StringComparison.Ordinal);
         }
+        for (var index = 0; index < images.Count; index++)
+            escaped = escaped.Replace(WebUtility.HtmlEncode($"\u001E_IMAGE_{index}_\u001E"), images[index], StringComparison.Ordinal);
         return escaped;
     }
 
@@ -470,7 +514,7 @@ public static partial class RichTextMarkdownConverter
 
     private static string BuildImageHtml(Match match)
     {
-        var alt = match.Groups["alt"].Value;
+        var alt = WebUtility.HtmlEncode(WebUtility.HtmlDecode(match.Groups["alt"].Value));
         var relativePath = WebUtility.HtmlDecode(match.Groups["path"].Value);
         if (!TryResolveImage(relativePath, out var fullPath))
         {
@@ -488,8 +532,8 @@ public static partial class RichTextMarkdownConverter
                 _ => "image/png"
             };
             var base64 = Convert.ToBase64String(File.ReadAllBytes(fullPath));
-            return $"<img alt=\"{alt}\" src=\"data:{mediaType};base64,{base64}\" " +
-                   "style=\"max-width:100%;height:auto\">";
+            var size = ShortcutEmojiAssets.Pattern().IsMatch(match.Value) ? "width:28px;height:28px;vertical-align:middle" : "max-width:100%;height:auto";
+            return $"<img alt=\"{alt}\" src=\"data:{mediaType};base64,{base64}\" style=\"{size}\">";
         }
         catch (IOException)
         {
@@ -533,9 +577,14 @@ public static partial class RichTextMarkdownConverter
                 target.Add(new Run(text[index..match.Index]));
             }
 
-            if (match.Groups["bold"].Success)
+            if (match.Groups["emojiToken"].Success)
             {
-                target.Add(new Bold(new Run(match.Groups["bold"].Value)));
+                var token = match.Groups["emojiToken"].Value;
+                target.Add((Inline?)ShortcutEmojiAssets.CreateInline(token) ?? new Run(token));
+            }
+            else if (match.Groups["bold"].Success)
+            {
+                var bold = new Bold(); AddMarkdownInlines(bold.Inlines, match.Groups["bold"].Value); target.Add(bold);
             }
             else if (match.Groups["italic"].Success)
             {
@@ -600,6 +649,8 @@ public static partial class RichTextMarkdownConverter
     {
         switch (inline)
         {
+            case InlineUIContainer emoji when ShortcutEmojiAssets.TryRead(emoji, out var token):
+                builder.Append(token); return;
             case LineBreak:
                 builder.Append('\n');
                 return;
@@ -752,7 +803,7 @@ public static partial class RichTextMarkdownConverter
     }
 
     [GeneratedRegex(
-        @"<span\s+style=""(?<style>[^""]+)"">(?<styleText>.*?)</span>|\*\*(?<bold>.+?)\*\*|\*(?<italic>.+?)\*|__(?<underline>.+?)__|\[(?<linkText>.+?)\]\((?<url>https?://[^\s)]+)\)|<span\s+style=""color:(?<color>#[0-9A-Fa-f]{6})"">(?<colorText>.*?)</span>",
+        @"(?<emojiToken>!\[Emoji: [^\]]*\]\(assets/emote-[0-9a-f]{64}\.png\))|<span\s+style=""(?<style>[^""]+)"">(?<styleText>.*?)</span>|\*\*(?<bold>.+?)\*\*|\*(?<italic>.+?)\*|__(?<underline>.+?)__|\[(?<linkText>.+?)\]\((?<url>https?://[^\s)]+)\)|<span\s+style=""color:(?<color>#[0-9A-Fa-f]{6})"">(?<colorText>.*?)</span>",
         RegexOptions.IgnoreCase)]
     private static partial Regex InlinePattern();
 
