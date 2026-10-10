@@ -16,6 +16,14 @@ public partial class MainWindow
     private bool _settingsOperationInProgress;
     private ScreenHelpHighlighter? _settingsHelpHighlight;
 
+    private MessageBoxResult ShowSettingsDialog(string message, string title, MessageBoxButton buttons = MessageBoxButton.OK,
+        MessageBoxImage image = MessageBoxImage.Information, string yesLabel = "Continuar", string noLabel = "Cancelar")
+    {
+        var dialog = new SettingsDialogWindow(message, title, buttons, image, yesLabel, noLabel) { Owner = this };
+        LabMotion.SetReduced(dialog, LabMotion.GetReduced(this)); dialog.EnableBackdrop(); ShowCaptureDialog(dialog);
+        return dialog.Choice;
+    }
+
     private void UpdateSettingsLayout(double width)
     {
         if (SettingsCardsGrid is null) return;
@@ -143,6 +151,7 @@ public partial class MainWindow
         await RunSettingsMaintenanceAsync("Verificando estado de operação…", async () =>
         {
             if (((FrameworkElement)Content).IsEnabled || !_settingsOperationInProgress) throw new InvalidOperationException("Maintenance gate missing");
+            if (await SetQuickAccentEnabledFromTrayAsync(!_settings.QuickAccentEnabled)) throw new InvalidOperationException("Tray bypassed maintenance gate");
             await Task.Yield();
         });
         try { await RunSettingsMaintenanceAsync("Falha de teste", () => throw new IOException("Injected maintenance failure")); }

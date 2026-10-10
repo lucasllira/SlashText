@@ -376,102 +376,7 @@ public partial class MainWindow : Window
             // O ícone da janela continua disponível mesmo se o shell não o extrair.
         }
 
-        var menu = new Forms.ContextMenuStrip();
-        menu.Font = new System.Drawing.Font("Segoe UI", 9.5f);
-        menu.ShowImageMargin = false;
-        menu.Padding = new Forms.Padding(4);
-
-        var capturesMenu = new Forms.ToolStripMenuItem("Capturas");
-        capturesMenu.DropDownItems.Add(
-            "Monitor",
-            null,
-            (_, _) => Dispatcher.BeginInvoke(new Action(() =>
-                _ = RunCaptureAsync(
-                    CaptureShortcutAction.ActiveMonitor,
-                    invokedByShortcut: true))));
-        capturesMenu.DropDownItems.Add(
-            "Região",
-            null,
-            (_, _) => Dispatcher.BeginInvoke(new Action(() =>
-                _ = RunCaptureAsync(
-                    CaptureShortcutAction.Region,
-                    invokedByShortcut: true))));
-        capturesMenu.DropDownItems.Add(
-            "Janela",
-            null,
-            (_, _) => Dispatcher.BeginInvoke(new Action(() =>
-                _ = RunCaptureAsync(
-                    CaptureShortcutAction.Window,
-                    invokedByShortcut: true))));
-        capturesMenu.DropDownItems.Add(
-            "Captura longa",
-            null,
-            (_, _) => Dispatcher.BeginInvoke(new Action(() =>
-                _ = RunScrollingCaptureAsync(invokedByShortcut: false))));
-
-        var recordingsMenu = new Forms.ToolStripMenuItem("Gravações");
-        recordingsMenu.DropDownItems.Add(
-            "Vídeo MP4",
-            null,
-            (_, _) => Dispatcher.BeginInvoke(new Action(() =>
-                StartMp4Recording_OnClick(this, new RoutedEventArgs()))));
-        recordingsMenu.DropDownItems.Add(
-            "GIF animado",
-            null,
-            (_, _) => Dispatcher.BeginInvoke(new Action(() =>
-                StartGifRecording_OnClick(this, new RoutedEventArgs()))));
-
-        var shortcutsMenu = new Forms.ToolStripMenuItem("Atalhos");
-        shortcutsMenu.DropDownItems.Add(
-            "Novo atalho",
-            null,
-            (_, _) => Dispatcher.Invoke(() =>
-            {
-                ShowFromTray();
-                BeginNewSnippet();
-            }));
-        shortcutsMenu.DropDownItems.Add(
-            "Gerenciar atalhos",
-            null,
-            (_, _) => Dispatcher.Invoke(() =>
-            {
-                ShowFromTray();
-                ShowView(ShortcutsView, ShortcutsTabButton);
-            }));
-
-        var applicationMenu = new Forms.ToolStripMenuItem("Aplicativo");
-        applicationMenu.DropDownItems.Add(
-            "Abrir SlashDesk",
-            null,
-            (_, _) => Dispatcher.Invoke(ShowFromTray));
-        applicationMenu.DropDownItems.Add(
-            "Configurações",
-            null,
-            (_, _) => Dispatcher.Invoke(() =>
-            {
-                ShowFromTray();
-                ShowView(SettingsView, SettingsTabButton);
-            }));
-        applicationMenu.DropDownItems.Add(
-            "Sobre",
-            null,
-            (_, _) => Dispatcher.Invoke(() =>
-            {
-                ShowFromTray();
-                ShowView(AboutView, AboutTabButton);
-            }));
-        applicationMenu.DropDownItems.Add(new Forms.ToolStripSeparator());
-        applicationMenu.DropDownItems.Add(
-            "Sair",
-            null,
-            (_, _) => Dispatcher.Invoke(RequestExit));
-
-        menu.Items.Add(capturesMenu);
-        menu.Items.Add(recordingsMenu);
-        menu.Items.Add(shortcutsMenu);
-        menu.Items.Add(new Forms.ToolStripSeparator());
-        menu.Items.Add(applicationMenu);
-        ApplyTrayTheme(menu);
+        var menu = CreateTrayMenu();
 
         _trayIcon = new Forms.NotifyIcon
         {
@@ -520,51 +425,7 @@ public partial class MainWindow : Window
         }
     }
 
-    private static void ApplyTrayTheme(Forms.ContextMenuStrip menu)
-    {
-        var background = ThemeService.IsDark
-            ? DrawingColor.FromArgb(15, 26, 35)
-            : DrawingColor.FromArgb(252, 253, 252);
-        var foreground = ThemeService.IsDark
-            ? DrawingColor.FromArgb(243, 246, 248)
-            : DrawingColor.FromArgb(21, 33, 43);
-        var renderer = new Forms.ToolStripProfessionalRenderer(
-            new TrayColorTable(ThemeService.IsDark));
-        menu.BackColor = background;
-        menu.ForeColor = foreground;
-        menu.Renderer = renderer;
-        ApplyTrayItemsTheme(
-            menu.Items,
-            background,
-            foreground,
-            renderer);
-    }
-
-    private static void ApplyTrayItemsTheme(
-        Forms.ToolStripItemCollection items,
-        DrawingColor background,
-        DrawingColor foreground,
-        Forms.ToolStripRenderer renderer)
-    {
-        foreach (Forms.ToolStripItem item in items)
-        {
-            item.BackColor = background;
-            item.ForeColor = foreground;
-            if (item is not Forms.ToolStripMenuItem menuItem)
-            {
-                continue;
-            }
-
-            menuItem.DropDown.BackColor = background;
-            menuItem.DropDown.ForeColor = foreground;
-            menuItem.DropDown.Renderer = renderer;
-            ApplyTrayItemsTheme(
-                menuItem.DropDownItems,
-                background,
-                foreground,
-                renderer);
-        }
-    }
+    private static void ApplyTrayTheme(Forms.ContextMenuStrip menu) => TrayMenuTheme.Apply(menu);
 
     private void StartMonitoring()
     {
@@ -1432,7 +1293,7 @@ public partial class MainWindow : Window
                 catch (Exception rollback) { SettingsOperationText.Text = "Não foi possível reverter a inicialização: " + rollback.Message; }
             }
             SettingsOperationText.Text = "Não foi possível salvar a preferência.";
-            MessageBox.Show(
+            ShowSettingsDialog(
                 exception.Message,
                 "Não foi possível salvar a configuração",
                 MessageBoxButton.OK,
@@ -1480,28 +1341,30 @@ public partial class MainWindow : Window
             var result = await _snippetImportService.ImportAsync(picker.FileName, source);
             if (result.Snippets.Count == 0)
             {
-                MessageBox.Show(
+                ShowSettingsDialog(
                     "Nenhum atalho compatível foi encontrado no arquivo.",
                     "Importação concluída",
                     MessageBoxButton.OK,
                     MessageBoxImage.Information);
+                StatusText.Text = SettingsOperationText.Text = "Nenhum atalho compatível encontrado";
                 return;
             }
 
             var conflicts = result.Snippets.Count(incoming =>
                 _snippets.Any(current =>
                     current.Trigger.Equals(incoming.Trigger, StringComparison.OrdinalIgnoreCase)));
-            var mode = MessageBox.Show(
+            var mode = ShowSettingsDialog(
                 $"{result.Snippets.Count} atalho(s) compatível(is) encontrado(s)." +
                 (conflicts == 0
                     ? "\n\nDeseja adicionar esses atalhos aos atuais?"
-                    : $"\n\n{conflicts} conflito(s) de comando. Sim substitui os conflitos; Não mantém os atuais e importa os demais."),
+                    : $"\n\n{conflicts} conflito(s) de comando. Escolha substituir os conflitos ou manter os atuais e importar somente os demais."),
                 $"Importar do {ImportSourceName(source)}",
                 conflicts == 0 ? MessageBoxButton.YesNo : MessageBoxButton.YesNoCancel,
-                MessageBoxImage.Question);
+                MessageBoxImage.Question, conflicts == 0 ? "Importar atalhos" : "Substituir conflitos", "Manter atuais");
             if (mode is MessageBoxResult.Cancel or MessageBoxResult.None ||
                 (conflicts == 0 && mode == MessageBoxResult.No))
             {
+                StatusText.Text = SettingsOperationText.Text = "Importação cancelada. Os atalhos atuais foram preservados.";
                 return;
             }
 
@@ -1536,7 +1399,7 @@ public partial class MainWindow : Window
                 ? string.Empty
                 : $"\n\n{result.Warnings.Count} aviso(s) de compatibilidade. Os primeiros:\n• " +
                   string.Join("\n• ", result.Warnings.Take(4));
-            MessageBox.Show(
+            ShowSettingsDialog(
                 $"{result.Snippets.Count} atalho(s) processado(s). O snippets.md foi atualizado e o estado anterior foi salvo em backup.{warningSummary}",
                 "Importação concluída",
                 MessageBoxButton.OK,
@@ -1549,7 +1412,7 @@ public partial class MainWindow : Window
         catch (Exception exception)
         {
             SettingsOperationText.Text = "Não foi possível importar: " + exception.Message;
-            MessageBox.Show(
+            ShowSettingsDialog(
                 exception.Message,
                 "Não foi possível importar",
                 MessageBoxButton.OK,
@@ -1577,7 +1440,7 @@ public partial class MainWindow : Window
         catch (Exception exception)
         {
             SettingsOperationText.Text = "Não foi possível criar o backup: " + exception.Message;
-            MessageBox.Show(
+            ShowSettingsDialog(
                 exception.Message,
                 "Não foi possível criar o backup",
                 MessageBoxButton.OK,
@@ -1600,23 +1463,24 @@ public partial class MainWindow : Window
             var report = await Task.Run(() => _assetMaintenanceService.Analyze(snippets));
             if (report.UnsafeReferenceCount > 0)
             {
-                MessageBox.Show(
+                ShowSettingsDialog(
                     $"A análise encontrou {report.UnsafeReferenceCount} referência(s) local(is) inválida(s). " +
                     "Por segurança, nenhuma imagem pode ser removida até que esses atalhos sejam corrigidos.",
                     "Limpeza de imagens bloqueada",
                     MessageBoxButton.OK,
                     MessageBoxImage.Warning);
+                StatusText.Text = SettingsOperationText.Text = "Limpeza bloqueada por referências inválidas";
                 return;
             }
 
             if (report.Orphans.Count == 0)
             {
-                MessageBox.Show(
+                ShowSettingsDialog(
                     "Nenhuma imagem órfã foi encontrada. Os arquivos em uso foram preservados.",
                     "Análise concluída",
                     MessageBoxButton.OK,
                     MessageBoxImage.Information);
-                StatusText.Text = "Nenhuma imagem órfã encontrada";
+                StatusText.Text = SettingsOperationText.Text = "Nenhuma imagem órfã encontrada";
                 return;
             }
 
@@ -1629,15 +1493,15 @@ public partial class MainWindow : Window
             var remaining = report.Orphans.Count > 10
                 ? $"\n• ... e mais {report.Orphans.Count - 10}"
                 : string.Empty;
-            var confirmation = MessageBox.Show(
+            var confirmation = ShowSettingsDialog(
                 $"{report.Orphans.Count} imagem(ns) sem referência ({size}):\n\n• {preview}{remaining}\n\n" +
                 "Deseja criar um backup completo e remover somente esses arquivos?",
                 "Revisar imagens órfãs",
                 MessageBoxButton.YesNo,
-                MessageBoxImage.Warning);
+                MessageBoxImage.Warning, "Criar backup e remover");
             if (confirmation != MessageBoxResult.Yes)
             {
-                StatusText.Text = "Limpeza de imagens cancelada";
+                StatusText.Text = SettingsOperationText.Text = "Limpeza de imagens cancelada";
                 return;
             }
 
@@ -1646,7 +1510,7 @@ public partial class MainWindow : Window
             RefreshBackupSummary();
             StatusText.Text = $"{result!.DeletedCount} imagem(ns) órfã(s) removida(s)";
             SettingsOperationText.Text = StatusText.Text;
-            MessageBox.Show(
+            ShowSettingsDialog(
                 $"{result.DeletedCount} imagem(ns) removida(s).\n\n" +
                 $"Backup criado antes da limpeza: {Path.GetFileName(result.BackupPath)}",
                 "Limpeza concluída",
@@ -1657,7 +1521,7 @@ public partial class MainWindow : Window
         catch (Exception exception)
         {
             SettingsOperationText.Text = "Não foi possível analisar imagens: " + exception.Message;
-            MessageBox.Show(
+            ShowSettingsDialog(
                 exception.Message,
                 "Não foi possível analisar as imagens",
                 MessageBoxButton.OK,
@@ -1677,11 +1541,11 @@ public partial class MainWindow : Window
             Multiselect = false
         };
         if (picker.ShowDialog(this) != true ||
-            MessageBox.Show(
+            ShowSettingsDialog(
                 "Restaurar este backup substituirá os dados incluídos nele, inclusive Meus emojis quando presentes. Um backup de segurança será criado antes de continuar.",
                 "Restaurar backup",
                 MessageBoxButton.YesNo,
-                MessageBoxImage.Warning) != MessageBoxResult.Yes)
+                MessageBoxImage.Warning, "Restaurar backup") != MessageBoxResult.Yes)
         {
             return;
         }
@@ -1708,7 +1572,7 @@ public partial class MainWindow : Window
             RefreshCaptureHistory();
             RefreshStatistics();
             RefreshBackupSummary();
-            MessageBox.Show(
+            ShowSettingsDialog(
                 "Backup restaurado. As preferências completas serão aplicadas na próxima abertura do SlashDesk.",
                 "Restauração concluída",
                 MessageBoxButton.OK,
@@ -1719,7 +1583,7 @@ public partial class MainWindow : Window
         catch (Exception exception)
         {
             SettingsOperationText.Text = "Não foi possível restaurar: " + exception.Message;
-            MessageBox.Show(
+            ShowSettingsDialog(
                 exception.Message,
                 "Não foi possível restaurar",
                 MessageBoxButton.OK,
@@ -1996,28 +1860,6 @@ public partial class MainWindow : Window
             SelectComboByTag(RecordingFpsBox, SelectedTag(CaptureCompactFpsBox, "30"));
             SelectComboByTag(RecordingQualityBox, SelectedTag(CaptureCompactQualityBox, "Alta"));
         }
-    }
-
-    private sealed class TrayColorTable(bool dark) : Forms.ProfessionalColorTable
-    {
-        private readonly DrawingColor _surface = dark
-            ? DrawingColor.FromArgb(15, 26, 35)
-            : DrawingColor.FromArgb(252, 253, 252);
-        private readonly DrawingColor _selected = dark
-            ? DrawingColor.FromArgb(17, 57, 68)
-            : DrawingColor.FromArgb(221, 245, 248);
-        private readonly DrawingColor _divider = dark
-            ? DrawingColor.FromArgb(36, 54, 66)
-            : DrawingColor.FromArgb(213, 222, 227);
-
-        public override DrawingColor ToolStripDropDownBackground => _surface;
-        public override DrawingColor ImageMarginGradientBegin => _surface;
-        public override DrawingColor ImageMarginGradientMiddle => _surface;
-        public override DrawingColor ImageMarginGradientEnd => _surface;
-        public override DrawingColor MenuItemSelected => _selected;
-        public override DrawingColor MenuItemBorder => _divider;
-        public override DrawingColor SeparatorDark => _divider;
-        public override DrawingColor SeparatorLight => _divider;
     }
 
     private static void AddPresetItems<T>(

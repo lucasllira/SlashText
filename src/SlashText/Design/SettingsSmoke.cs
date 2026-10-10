@@ -21,6 +21,8 @@ internal static class SettingsSmoke
         CultureInfo.CurrentCulture = CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("pt-BR");
         var checks = new List<string>();
         CheckBackups(output); checks.Add("Emojis: normalized transparent PNG/catalog identity and hashes; rollback after assets; invalid ZIP unchanged; old backup preserves collection; new empty collection clears only selected collection: PASS");
+        await CheckTrayAsync(output); checks.Add("Native themed tray: existing groups; shared icons; saved Quick Accent toggle and UI sync; save failure rollback; manage route; maintenance blocked: PASS");
+        CheckDialogs(output); checks.Add("Real owned WPF settings dialogs: light/dark; disabled owner content; cancel default; OK/Yes/No/Cancel mapping; Escape dismissal; long content scroll: PASS");
         foreach (var theme in new[] { "Light", "Dark", "System" })
         foreach (var size in new[] { new Size(1440, 900), new Size(980, 680) })
         {
@@ -120,6 +122,88 @@ internal static class SettingsSmoke
     {
         host.UpdateLayout(); var image = new RenderTargetBitmap((int)Math.Ceiling(size.Width * scale), (int)Math.Ceiling(size.Height * scale), 96 * scale, 96 * scale, PixelFormats.Pbgra32); image.Render(host);
         var encoder = new PngBitmapEncoder(); encoder.Frames.Add(BitmapFrame.Create(image)); using var file = File.Create(Path.Combine(output, $"{name}-{(int)(scale * 100)}.png")); encoder.Save(file);
+    }
+
+    private static async Task CheckTrayAsync(string output)
+    {
+        var window = new MainWindow(captureEvidence: true);
+        var preferences = new AppSettings { Theme = "Dark", QuickAccentEnabled = false, QuickAccentInputDelayMs = 777, QuickAccentExcludedApps = "game.exe" };
+        window.ConfigureSettingsEvidence(preferences, 1440); await window.SaveSettingsPreferenceEvidenceAsync();
+        using var menu = window.CreateTrayMenu();
+        Require(menu.Items.OfType<System.Windows.Forms.ToolStripMenuItem>().Select(item => item.Text).SequenceEqual(new[] { "Capturas", "Gravações", "Atalhos", "Acento Rápido", "Aplicativo" }), "All tray groups retained");
+        var accent = menu.Items.OfType<System.Windows.Forms.ToolStripMenuItem>().Single(item => item.Text == "Acento Rápido");
+        var toggle = (System.Windows.Forms.ToolStripMenuItem)accent.DropDownItems[0];
+        Require(toggle.Text == "Ativar Acento Rápido", "Disabled preference label");
+        Require(await window.SetQuickAccentEnabledFromTrayAsync(true), "Tray enables preference"); window.RefreshTrayForEvidence(menu);
+        var persisted = await new JsonFileStore<AppSettings>(AppPaths.SettingsFile).LoadAsync();
+        Require(persisted.QuickAccentEnabled && persisted.QuickAccentInputDelayMs == 777 && persisted.QuickAccentExcludedApps == "game.exe" && ((CheckBox)window.FindName("QuickAccentEnabledCheckBox")).IsChecked == true && toggle.Text == "Inativar Acento Rápido", "Saved true, unrelated options retained, UI synchronized");
+        foreach (var theme in new[] { "Light", "Dark" })
+        {
+            ThemeService.Apply(theme); TrayMenuTheme.Apply(menu);
+            void CheckIcons(System.Windows.Forms.ToolStripItemCollection items)
+            {
+                foreach (System.Windows.Forms.ToolStripMenuItem item in items.OfType<System.Windows.Forms.ToolStripMenuItem>())
+                {
+                    Require(item.Tag is string kind && System.Windows.Application.Current.TryFindResource("Lab.Icon." + kind) is Geometry && item.Image is not null, "Shared tray icon: " + item.Text);
+                    if (item.HasDropDownItems) { Require(item.DropDown.BackColor == menu.BackColor && item.DropDown.ForeColor == menu.ForeColor, "Theme applied recursively: " + item.Text); CheckIcons(item.DropDownItems); }
+                }
+            }
+            CheckIcons(menu.Items);
+            menu.Show(new System.Drawing.Point(40, 40));
+            using (var image = new System.Drawing.Bitmap(menu.Width, menu.Height)) { menu.DrawToBitmap(image, menu.ClientRectangle); image.Save(Path.Combine(output, "tray-" + theme + ".png")); }
+            accent.ShowDropDown();
+            using (var image = new System.Drawing.Bitmap(accent.DropDown.Width, accent.DropDown.Height)) { accent.DropDown.DrawToBitmap(image, accent.DropDown.ClientRectangle); image.Save(Path.Combine(output, "tray-accent-" + theme + ".png")); }
+            menu.Close();
+        }
+        var bytes = await File.ReadAllBytesAsync(AppPaths.SettingsFile);
+        File.Delete(AppPaths.SettingsFile); Directory.CreateDirectory(AppPaths.SettingsFile);
+        try { Require(!await window.SetQuickAccentEnabledFromTrayAsync(false) && preferences.QuickAccentEnabled && ((CheckBox)window.FindName("QuickAccentEnabledCheckBox")).IsChecked == true, "Failed persistence preserves preference/UI"); }
+        finally { Directory.Delete(AppPaths.SettingsFile); await File.WriteAllBytesAsync(AppPaths.SettingsFile, bytes); }
+        Require(await window.SetQuickAccentEnabledFromTrayAsync(false), "Tray disables preference"); window.RefreshTrayForEvidence(menu);
+        Require(!(await new JsonFileStore<AppSettings>(AppPaths.SettingsFile).LoadAsync()).QuickAccentEnabled && toggle.Text == "Ativar Acento Rápido", "Saved false and refreshed label");
+        // Same real screen persistence path is observed when the menu next opens.
+        ((CheckBox)window.FindName("QuickAccentEnabledCheckBox")).IsChecked = true;
+        await window.SaveQuickAccentForEvidence(); window.RefreshTrayForEvidence(menu);
+        Require(toggle.Text == "Inativar Acento Rápido", "Screen changes synchronize tray");
+        window.OpenQuickAccentFromTray(); Require(((FrameworkElement)window.FindName("QuickAccentView")).Visibility == Visibility.Visible, "Manage opens correct view"); window.Hide();
+        await window.TestSettingsBusyEvidenceAsync(); window.Close();
+    }
+
+    private static void CheckDialogs(string output)
+    {
+        foreach (var theme in new[] { "Light", "Dark" })
+        {
+            ThemeService.Apply(theme);
+            var owner = new Window { Width = 800, Height = 600, ShowInTaskbar = false, Content = new Border { IsEnabled = false }, WindowStartupLocation = WindowStartupLocation.CenterScreen };
+            owner.Show();
+            try
+            {
+                foreach (var result in new[] { MessageBoxResult.Cancel, MessageBoxResult.Yes, MessageBoxResult.No, MessageBoxResult.OK, MessageBoxResult.None })
+                {
+                    var buttons = result == MessageBoxResult.OK ? MessageBoxButton.OK : MessageBoxButton.YesNoCancel;
+                    var dialog = new SettingsDialogWindow(result == MessageBoxResult.OK ? "Nenhuma imagem órfã foi encontrada. Os arquivos em uso foram preservados." : "20 atalhos compatíveis encontrados.\n\n2 conflitos de comando. Escolha substituir os conflitos ou manter os atuais e importar somente os demais." + (result == MessageBoxResult.No ? "\n\n" + string.Join("\n", Enumerable.Repeat("Aviso de compatibilidade — descrição extensa para revisar.", 40)) : ""), result == MessageBoxResult.OK ? "Análise concluída" : "Importar do Text Blaze", buttons, MessageBoxImage.Question, "Substituir conflitos", "Manter atuais") { Owner = owner };
+                    LabMotion.SetReduced(dialog, true); dialog.EnableBackdrop();
+                    Exception? failure = null;
+                    dialog.Loaded += (_, _) => dialog.Dispatcher.BeginInvoke(new Action(() =>
+                    {
+                        try
+                        {
+                            Require(dialog.DefaultButton.IsDefault && dialog.DefaultButton.IsEnabled && dialog.DefaultButton.Content?.ToString() == (buttons == MessageBoxButton.OK ? "Entendi" : "Cancelar"), "Safe default and independent modal content");
+                            dialog.UpdateLayout();
+                            foreach (var button in dialog.Actions)
+                            { var bounds = button.TransformToAncestor(dialog.Surface).TransformBounds(new Rect(button.RenderSize)); Require(bounds.Bottom <= dialog.Surface.ActualHeight && bounds.Top >= 0, "Actions remain reachable with long content"); }
+                            SaveImage((FrameworkElement)dialog.Content, output, $"dialog-{theme}-{result}", new Size(dialog.Width, dialog.Height), 1);
+                            if (result == MessageBoxResult.None) dialog.RaiseEvent(new System.Windows.Input.KeyEventArgs(System.Windows.Input.Keyboard.PrimaryDevice, System.Windows.PresentationSource.FromVisual(dialog)!, 0, System.Windows.Input.Key.Escape) { RoutedEvent = System.Windows.Input.Keyboard.PreviewKeyDownEvent });
+                            else dialog.Actions.Single(button => button.Content?.ToString() == (result switch { MessageBoxResult.Yes => "Substituir conflitos", MessageBoxResult.No => "Manter atuais", MessageBoxResult.OK => "Entendi", _ => "Cancelar" })).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                        }
+                        catch (Exception exception) { failure = exception; dialog.Close(); }
+                    }));
+                    dialog.ShowDialog(); if (failure is not null) throw failure;
+                    Require(dialog.Choice == (result == MessageBoxResult.None ? MessageBoxResult.Cancel : result), "Actual modal choice: " + result);
+                }
+            }
+            finally { owner.Close(); }
+        }
     }
     private static void Require(bool condition, string scenario) { if (!condition) throw new InvalidOperationException("Settings smoke: " + scenario); }
 }
