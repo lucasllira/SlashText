@@ -153,6 +153,12 @@ internal static class SettingsSmoke
             using (var image = new System.Drawing.Bitmap(menu.Width, menu.Height)) { menu.DrawToBitmap(image, menu.ClientRectangle); image.Save(Path.Combine(output, "tray-" + theme + ".png")); }
             accent.ShowDropDown();
             using (var image = new System.Drawing.Bitmap(accent.DropDown.Width, accent.DropDown.Height)) { accent.DropDown.DrawToBitmap(image, accent.DropDown.ClientRectangle); image.Save(Path.Combine(output, "tray-accent-" + theme + ".png")); }
+            accent.HideDropDown();
+            var application = menu.Items.OfType<System.Windows.Forms.ToolStripMenuItem>().Single(item => item.Text == "Aplicativo");
+            application.Select(); application.ShowDropDown();
+            application.DropDownItems.OfType<System.Windows.Forms.ToolStripMenuItem>().Single(item => item.Text == "Configurações").Select();
+            using (var image = new System.Drawing.Bitmap(menu.Width, menu.Height)) { menu.DrawToBitmap(image, menu.ClientRectangle); image.Save(Path.Combine(output, "tray-selected-" + theme + ".png")); }
+            using (var image = new System.Drawing.Bitmap(application.DropDown.Width, application.DropDown.Height)) { application.DropDown.DrawToBitmap(image, application.DropDown.ClientRectangle); image.Save(Path.Combine(output, "tray-application-selected-" + theme + ".png")); }
             menu.Close();
         }
         var bytes = await File.ReadAllBytesAsync(AppPaths.SettingsFile);

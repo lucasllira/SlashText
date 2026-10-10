@@ -93,7 +93,14 @@ internal static class TrayMenuTheme
             using var pen = new Pen(Color("Lab.accent")); e.Graphics.DrawPath(pen, shape);
         }
         protected override void OnRenderItemText(Forms.ToolStripItemTextRenderEventArgs e)
-        { e.TextColor = Color(e.Item.Enabled ? "Lab.text" : "Lab.muted"); base.OnRenderItemText(e); }
+        {
+            // Native text bounds retain their old vertical origin after adding item padding.
+            // Keep the native horizontal layout, but align the label to the whole row like its icon.
+            e.TextRectangle = new Rectangle(e.TextRectangle.X, 0, e.TextRectangle.Width, e.Item.Height);
+            e.TextFormat = (e.TextFormat & ~Forms.TextFormatFlags.Bottom) | Forms.TextFormatFlags.VerticalCenter | Forms.TextFormatFlags.SingleLine;
+            e.TextColor = Color(e.Item.Enabled ? "Lab.text" : "Lab.muted");
+            base.OnRenderItemText(e);
+        }
         protected override void OnRenderSeparator(Forms.ToolStripSeparatorRenderEventArgs e)
         { using var pen = new Pen(Color("Lab.line")); e.Graphics.DrawLine(pen, 8, e.Item.Height / 2, e.Item.Width - 8, e.Item.Height / 2); }
         protected override void OnRenderArrow(Forms.ToolStripArrowRenderEventArgs e)

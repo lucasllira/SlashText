@@ -47,3 +47,8 @@ A bandeja mantém `NotifyIcon` e os menus nativos, preservando posicionamento, t
 O teste real inclui diálogos com dono e conteúdo do dono desativado, respostas OK/Yes/No/Cancel, Escape, mensagens longas, renderização Claro/Preto; menus nativos renderizados nos dois temas; persistência, sincronia com a tela, erro real de gravação, bloqueio durante manutenção e navegação para Acento Rápido. Não instala NotifyIcon nem hooks nos fixtures. As imagens de menu são dos componentes reais, mas não representam um clique físico no ícone da bandeja.
 
 Na avaliação manual da v2, confira os três avisos dos prints, importação com/sem conflitos e cancelamento; menu principal e submenus em Claro/Preto/Seguir Windows; ativação/inativação pela bandeja, persistência ao reabrir, mudança feita pela tela e Gerenciar Acento Rápido com janela oculta. Confira Escape/clique fora e diferentes monitores/escala do Windows. DPI misto físico permanece na validação integrada #70.
+
+## Revisão v3 — alinhamento da bandeja
+
+O texto dos itens usa a altura completa da linha para centralização vertical, preservando o posicionamento horizontal nativo, ícones, espaçamento e ações. O fixture visual inclui Aplicativo e Configurações selecionados, além dos menus principal/Acento Rápido nos temas Claro/Preto. Confira também estes estados no menu real da bandeja, conforme os prints de avaliação da v2.
+
