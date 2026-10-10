@@ -49,6 +49,16 @@ Require(
         excludedApp: false),
     "Acento Rápido respeita estado inativo e aplicativos excluídos");
 var startupCoordinator = new StartupModuleCoordinator();
+Require(QuickAccentService.ResolveRuntimeState(false, true, true) == QuickAccentRuntimeState.Disabled &&
+        QuickAccentService.ResolveRuntimeState(true, false, true) == QuickAccentRuntimeState.Unavailable &&
+        QuickAccentService.ResolveRuntimeState(true, true, true) == QuickAccentRuntimeState.Paused &&
+        QuickAccentService.ResolveRuntimeState(true, true, false) == QuickAccentRuntimeState.Ready,
+    "status distingue preferencia, inicializacao nativa e exclusao do aplicativo");
+Require(QuickAccentService.IsProcessExcluded("GAME", "mstsc.exe; game.exe\nterminal") &&
+        QuickAccentService.IsProcessExcluded("terminal", " terminal \r\n") &&
+        !QuickAccentService.IsProcessExcluded("gamehelper", "game.exe") &&
+        !QuickAccentService.IsProcessExcluded("game", null),
+    "status e ativacao compartilham exclusoes exatas, sem diferenca de caixa ou falso positivo por prefixo");
 var healthyModuleStarted = false;
 Require(
     !await startupCoordinator.RunAsync(

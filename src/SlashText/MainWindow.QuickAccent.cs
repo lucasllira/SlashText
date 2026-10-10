@@ -16,6 +16,9 @@ public partial class MainWindow
     private readonly SemaphoreSlim _quickAccentSaveGate = new(1, 1);
     private ScreenHelpHighlighter? _quickAccentHelpHighlight;
     private string _quickAccentPreviewCharacters = string.Empty;
+    private DispatcherTimer? _quickAccentStatusTimer;
+    private bool _quickAccentStartupCompleted;
+    private QuickAccentRuntimeState? _quickAccentRuntimeForEvidence;
 
     private void LoadQuickAccentControls()
     {
@@ -27,7 +30,6 @@ public partial class MainWindow
             SelectComboByTag(QuickAccentPositionBox, _settings.QuickAccentToolbarPosition);
             QuickAccentUnicodeCheckBox.IsChecked = _settings.QuickAccentShowUnicode;
             QuickAccentSortCheckBox.IsChecked = _settings.QuickAccentSortByUsage;
-            QuickAccentDelaySlider.Value = Math.Clamp(_settings.QuickAccentInputDelayMs, 0, 2000);
             QuickAccentDelayBox.Text = _settings.QuickAccentInputDelayMs.ToString();
             QuickAccentDelayErrorText.Visibility = Visibility.Collapsed;
             QuickAccentDelayBox.SetResourceReference(Control.BorderBrushProperty, "Lab.line");
@@ -43,10 +45,10 @@ public partial class MainWindow
         if (_initialized && !_updatingQuickAccentControls) await SaveQuickAccentSettingsAsync();
     }
 
-    private async void QuickAccentDelaySlider_OnValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    private async void QuickAccentDelayPreset_OnClick(object sender, RoutedEventArgs e)
     {
-        if (QuickAccentDelayBox is null || _updatingQuickAccentControls) return;
-        QuickAccentDelayBox.Text = ((int)Math.Round(e.NewValue)).ToString();
+        if (sender is not Button { Tag: string value }) return;
+        QuickAccentDelayBox.Text = value;
         if (_initialized) await SaveQuickAccentSettingsAsync();
     }
 
@@ -71,9 +73,6 @@ public partial class MainWindow
             if (validDelay)
             {
                 _settings.QuickAccentInputDelayMs = delay;
-                _updatingQuickAccentControls = true;
-                try { QuickAccentDelaySlider.Value = delay; }
-                finally { _updatingQuickAccentControls = false; }
             }
             _settings.QuickAccentEnabled = QuickAccentEnabledCheckBox.IsChecked == true;
             _settings.QuickAccentActivationKey = SelectedTag(QuickAccentActivationBox, "Space");
@@ -134,10 +133,10 @@ public partial class MainWindow
         _quickAccentPreviewCharacters = _quickAccentService.GetPreviewChoices(char.ToLowerInvariant(letter));
         _quickAccentPreviewIndex = Math.Clamp(_quickAccentPreviewIndex, 0, Math.Max(0, _quickAccentPreviewCharacters.Length - 1));
         var enabled = _settings.QuickAccentEnabled;
-        QuickAccentStateText.Text = enabled ? "Ativo" : "Inativo";
-        QuickAccentStateText.SetResourceReference(TextBlock.ForegroundProperty, enabled ? "Lab.accent-text" : "Lab.muted");
-        QuickAccentStateBadge.SetResourceReference(Border.BackgroundProperty, enabled ? "Lab.tint" : "Lab.raised");
-        QuickAccentPreviewActivationText.Text = " + " + (_settings.QuickAccentActivationKey switch { "Left" => "←", "Right" => "→", _ => "Espaço" });
+        var activation = _settings.QuickAccentActivationKey switch { "Left" => "←", "Right" => "→", _ => "Espaço" };
+        QuickAccentPreviewActivationText.Text = $"Segure {char.ToLowerInvariant(letter)} + toque em {activation} · solte a letra para inserir.";
+        QuickAccentPreviewActivationText.Visibility = enabled ? Visibility.Visible : Visibility.Collapsed;
+        QuickAccentPreviewDisabledText.Visibility = enabled ? Visibility.Collapsed : Visibility.Visible;
         QuickAccentTestBox.IsEnabled = QuickAccentClearTestButton.IsEnabled = enabled;
         QuickAccentPreviewEmptyText.Visibility = _quickAccentPreviewCharacters.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
         var buttons = QuickAccentPreviewButtons();
@@ -155,7 +154,7 @@ public partial class MainWindow
             content.Children.Add(characterText);
             if (_settings.QuickAccentShowUnicode)
             {
-                var unicodeText = new TextBlock { Text = $"U+{(int)character:X4}", FontSize = 9, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 5, 0, 0) };
+                var unicodeText = new TextBlock { Text = $"U+{(int)character:X4}", FontSize = 11, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 3, 0, 0) };
                 unicodeText.SetResourceReference(TextBlock.ForegroundProperty, selected ? "Lab.accent-text" : "Lab.muted");
                 content.Children.Add(unicodeText);
             }
@@ -166,17 +165,80 @@ public partial class MainWindow
             button.SetResourceReference(Control.BorderBrushProperty, selected ? "Lab.accent" : "Lab.line");
             button.SetResourceReference(Control.ForegroundProperty, selected ? "Lab.accent-text" : "Lab.text");
         }
+        UpdateQuickAccentSummaries();
+        UpdateQuickAccentStatus();
     }
 
     private void UpdateQuickAccentLayout(double width)
     {
-        if (QuickAccentCards is null) return;
+        if (QuickAccentPreviewBody is null) return;
         var narrow = width < 1100;
-        QuickAccentCards.ColumnDefinitions[1].Width = new GridLength(narrow ? 0 : 18);
-        QuickAccentCards.ColumnDefinitions[2].Width = narrow ? new GridLength(0) : new GridLength(1, GridUnitType.Star);
-        Grid.SetColumn(QuickAccentSetsPanel, narrow ? 0 : 2);
-        Grid.SetRow(QuickAccentSetsPanel, narrow ? 1 : 0);
-        QuickAccentSetsPanel.Margin = new Thickness(0, narrow ? 18 : 0, 0, 0);
+        QuickAccentLanguageGrid.Columns = width < 900 ? 2 : 3;
+        QuickAccentPreviewBody.ColumnDefinitions[0].Width = narrow ? new GridLength(1, GridUnitType.Star) : GridLength.Auto;
+        QuickAccentPreviewBody.ColumnDefinitions[1].Width = narrow ? new GridLength(0) : new GridLength(1, GridUnitType.Star);
+        Grid.SetColumn(QuickAccentTestPanel, narrow ? 0 : 1);
+        Grid.SetRow(QuickAccentTestPanel, narrow ? 1 : 0);
+        QuickAccentTestPanel.Margin = narrow ? new Thickness(0, 6, 0, 0) : new Thickness(14, 0, 0, 6);
+    }
+
+    private void UpdateQuickAccentSummaries()
+    {
+        QuickAccentEnabledCheckBox.Content = _settings.QuickAccentEnabled ? "Ativado" : "Desativado";
+        QuickAccentUnicodeCheckBox.Content = _settings.QuickAccentShowUnicode ? "Ativado" : "Desativado";
+        QuickAccentSortCheckBox.Content = _settings.QuickAccentSortByUsage ? "Ativado" : "Desativado";
+        QuickAccentPositionSummaryText.Text = _settings.QuickAccentToolbarPosition switch
+        { "TopCenter" => "Centro superior", "Center" => "Centro da tela", _ => "Centro inferior" };
+        var count = (_settings.QuickAccentExcludedApps ?? string.Empty).Split(['\r', '\n', ',', ';'],
+            StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Distinct(StringComparer.OrdinalIgnoreCase).Count();
+        QuickAccentExcludedSummaryText.Text = count == 0 ? "Nenhum aplicativo" : count == 1 ? "1 aplicativo" : $"{count} aplicativos";
+        foreach (var button in new[] { QuickAccentDelayPreset100Button, QuickAccentDelayPreset200Button, QuickAccentDelayPreset500Button })
+        {
+            var selected = button.Tag?.ToString() == _settings.QuickAccentInputDelayMs.ToString();
+            button.SetResourceReference(Control.BackgroundProperty, selected ? "Lab.tint" : "Lab.panel");
+            button.SetResourceReference(Control.ForegroundProperty, selected ? "Lab.accent-text" : "Lab.text");
+            button.SetResourceReference(Control.BorderBrushProperty, selected ? "Lab.accent" : "Lab.line");
+            System.Windows.Automation.AutomationProperties.SetHelpText(button, selected ? "Atraso atual" : "Aplicar este atraso");
+        }
+    }
+
+    private void StartQuickAccentStatusMonitor()
+    {
+        _quickAccentStartupCompleted = true;
+        _quickAccentStatusTimer = new DispatcherTimer(DispatcherPriority.Background) { Interval = TimeSpan.FromMilliseconds(500) };
+        _quickAccentStatusTimer.Tick += QuickAccentStatus_OnTick;
+        _quickAccentStatusTimer.Start();
+        UpdateQuickAccentStatus();
+    }
+
+    private void QuickAccentStatus_OnTick(object? sender, EventArgs e)
+    {
+        if (IsVisible && QuickAccentView.Visibility == Visibility.Visible && !_servicesDisposed) UpdateQuickAccentStatus();
+    }
+
+    private void StopQuickAccentStatusMonitor()
+    {
+        if (_quickAccentStatusTimer is null) return;
+        _quickAccentStatusTimer.Stop(); _quickAccentStatusTimer.Tick -= QuickAccentStatus_OnTick; _quickAccentStatusTimer = null;
+    }
+
+    private void UpdateQuickAccentStatus()
+    {
+        if (QuickAccentStateText is null) return;
+        var state = !_settings.QuickAccentEnabled ? QuickAccentRuntimeState.Disabled :
+            _quickAccentRuntimeForEvidence ?? _quickAccentService.GetRuntimeState();
+        var activation = _settings.QuickAccentActivationKey switch { "Left" => "←", "Right" => "→", _ => "Espaço" };
+        QuickAccentStateText.Text = !_quickAccentStartupCompleted && _settings.QuickAccentEnabled
+            ? "Preparando o Acento Rápido…"
+            : state switch
+            {
+                QuickAccentRuntimeState.Disabled => "Desativado · suas preferências estão preservadas.",
+                QuickAccentRuntimeState.Ready => $"Pronto para usar · segure a letra e toque em {activation}.",
+                QuickAccentRuntimeState.Paused => "Pausado neste aplicativo · está na lista de exclusões.",
+                _ => "Indisponível · não foi possível ativar o recurso."
+            };
+        QuickAccentStateText.SetResourceReference(TextBlock.ForegroundProperty,
+            state == QuickAccentRuntimeState.Ready ? "Lab.accent-text" : state == QuickAccentRuntimeState.Unavailable && _quickAccentStartupCompleted ? "Lab.error" : "Lab.muted");
+        System.Windows.Automation.AutomationProperties.SetHelpText(QuickAccentEnabledCheckBox, QuickAccentStateText.Text);
     }
 
     private void OpenQuickAccentHelp_OnClick(object sender, RoutedEventArgs e)
@@ -186,6 +248,10 @@ public partial class MainWindow
         LabMotion.SetReduced(guide, LabMotion.GetReduced(this));
         guide.EnableBackdrop(); ShowCaptureDialog(guide);
         if (guide.RequestedTarget is not { } name || FindName(name) is not FrameworkElement target) return;
+        if (name is "QuickAccentPositionBox" or "QuickAccentUnicodeCheckBox" or "QuickAccentSortCheckBox") QuickAccentBehaviorExpander.IsExpanded = true;
+        if (name is "QuickAccentSetsPanel") QuickAccentSetsExpander.IsExpanded = true;
+        if (name is "QuickAccentExcludedAppsBox") QuickAccentExcludedExpander.IsExpanded = true;
+        QuickAccentPage.UpdateLayout();
         target.BringIntoView();
         Dispatcher.BeginInvoke(new Action(() =>
         { if (target.IsVisible) { target.Focus(); _quickAccentHelpHighlight = ScreenHelpHighlighter.Show(target); } }), DispatcherPriority.Loaded);
@@ -193,11 +259,13 @@ public partial class MainWindow
 
     internal void PrepareQuickAccentEvidence(AppSettings settings, double width)
     {
-        _settings = settings; LoadQuickAccentControls();
+        _settings = settings; _quickAccentStartupCompleted = true; LoadQuickAccentControls();
         ShowView(QuickAccentView, QuickAccentTabButton); UpdateQuickAccentLayout(width);
         _initialized = true; // Exercise real change handlers; this fixture never runs Loaded/startup hooks.
     }
     internal Task SaveQuickAccentForEvidence() => SaveQuickAccentSettingsAsync();
     internal bool QuickAccentHookRunningForEvidence => _quickAccentService.IsRunning;
     internal string QuickAccentChoicesForEvidence => _quickAccentPreviewCharacters;
+    internal void SetQuickAccentRuntimeForEvidence(QuickAccentRuntimeState? state)
+    { _quickAccentRuntimeForEvidence = state; UpdateQuickAccentStatus(); }
 }

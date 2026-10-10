@@ -35,18 +35,24 @@ internal static class QuickAccentSmoke
             window.PrepareQuickAccentEvidence(settings, size.Width); Layout();
             await Application.Current.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle); Layout();
             Require(!window.QuickAccentHookRunningForEvidence, "Fixture must not install a global keyboard hook");
+            Require(Control<TextBlock>("QuickAccentStateText").Text.StartsWith("Indisponível"), "An enabled preference without a hook never claims readiness");
+            window.SetQuickAccentRuntimeForEvidence(QuickAccentRuntimeState.Ready);
+            Require(Control<TextBlock>("QuickAccentStateText").Text.StartsWith("Pronto para usar"), "Ready status reflects the service state");
+            window.SetQuickAccentRuntimeForEvidence(QuickAccentRuntimeState.Paused);
+            Require(Control<TextBlock>("QuickAccentStateText").Text.StartsWith("Pausado") && Control<CheckBox>("QuickAccentEnabledCheckBox").IsChecked == true, "Temporary exclusion keeps the feature enabled");
+            window.SetQuickAccentRuntimeForEvidence(QuickAccentRuntimeState.Ready);
             Require(window.QuickAccentChoicesForEvidence == "áàâã", "PT-BR preview uses the real engine choices");
-            Require(Control<TextBox>("QuickAccentDelayBox").Text == "2000" && Control<Slider>("QuickAccentDelaySlider").Value == 2000, "Loading 2000 ms never truncates the saved preference");
-            Control<Slider>("QuickAccentDelaySlider").Value = 150;
+            Require(Control<TextBox>("QuickAccentDelayBox").Text == "2000", "Loading 2000 ms never truncates the saved preference");
+            Control<Button>("QuickAccentDelayPreset100Button").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
             await window.SaveQuickAccentForEvidence();
-            Require(Control<TextBox>("QuickAccentDelayBox").Text == "150" && (await new JsonFileStore<AppSettings>(AppPaths.SettingsFile).LoadAsync()).QuickAccentInputDelayMs == 150,
-                "Native slider change handler updates field and persistence");
-            foreach (var delay in new[] { 0, 100, 200, 2000 })
+            Require(Control<TextBox>("QuickAccentDelayBox").Text == "100" && (await new JsonFileStore<AppSettings>(AppPaths.SettingsFile).LoadAsync()).QuickAccentInputDelayMs == 100,
+                "Preset click uses the real change handler and persistence");
+            foreach (var delay in new[] { 0, 100, 200, 500, 150, 2000 })
             {
                 Control<TextBox>("QuickAccentDelayBox").Text = delay.ToString();
                 await window.SaveQuickAccentForEvidence();
                 var reopened = await new JsonFileStore<AppSettings>(AppPaths.SettingsFile).LoadAsync();
-                Require(reopened.QuickAccentInputDelayMs == delay && Control<Slider>("QuickAccentDelaySlider").Value == delay, "Delay survives real save/reopen: " + delay);
+                Require(reopened.QuickAccentInputDelayMs == delay, "Delay survives real save/reopen: " + delay);
                 window.PrepareQuickAccentEvidence(reopened, size.Width);
                 Require(Control<TextBox>("QuickAccentDelayBox").Text == delay.ToString(), "Restart restores both delay controls: " + delay);
             }
@@ -58,6 +64,7 @@ internal static class QuickAccentSmoke
                 var saved = await new JsonFileStore<AppSettings>(AppPaths.SettingsFile).LoadAsync();
                 Require(saved.QuickAccentInputDelayMs == 2000 && !saved.QuickAccentEnabled && Control<TextBlock>("QuickAccentDelayErrorText").Visibility == Visibility.Visible, "Invalid delay preserves last value while allowing disable: " + invalid);
                 Require(!Control<Button>("QuickAccentPreviewChoice0").IsEnabled && !Control<TextBox>("QuickAccentTestBox").IsEnabled, "Disabled preview follows actual feature state");
+                Require(Control<TextBlock>("QuickAccentStateText").Text.StartsWith("Desativado"), "Disabled preference takes precedence over ready runtime");
             }
             Control<TextBox>("QuickAccentDelayBox").Text = "200";
             Control<CheckBox>("QuickAccentEnabledCheckBox").IsChecked = true;
@@ -93,13 +100,33 @@ internal static class QuickAccentSmoke
                 Require(saved.QuickAccentActivationKey == key && saved.QuickAccentToolbarPosition == position && saved.QuickAccentExcludedApps == settings.QuickAccentExcludedApps, "Activation, real position and exclusions survive persistence");
             }
             Layout();
-            Require(Grid.GetRow(Control<Border>("QuickAccentSetsPanel")) == (size.Width < 1100 ? 1 : 0), "Narrow window stacks cards without clipping controls");
+            Require(Grid.GetRow(Control<Grid>("QuickAccentTestPanel")) == (size.Width < 1100 ? 1 : 0), "Narrow window stacks preview and test field without clipping");
             Require(Control<Border>("QuickAccentActivationPanel").ActualWidth > 300 && Control<Border>("QuickAccentSetsPanel").ActualWidth > 300, "Both cards retain usable width");
+            Require(Control<Border>("QuickAccentActivationPanel").CornerRadius.TopLeft == 4 && Control<Border>("QuickAccentSetsPanel").Margin.Bottom == 14, "Approved radius and spacing are retained");
+            Require(Control<Expander>("QuickAccentSetsExpander").IsExpanded && !Control<Expander>("QuickAccentBehaviorExpander").IsExpanded && !Control<Expander>("QuickAccentExcludedExpander").IsExpanded, "Advanced sections start collapsed while languages remain visible");
+            Require(Control<CheckBox>("QuickAccentPortugueseCheckBox").ActualWidth > 150 && Control<CheckBox>("QuickAccentPortugueseCheckBox").ActualHeight >= 32, "Language checkboxes remain readable and reachable");
+            Require(Control<Grid>("QuickAccentTestPanel").ActualWidth >= 250, "Test field remains usable with all characters and Unicode");
+            SaveImage(host, output, $"accent-{theme}-{size.Width}-all-sets", size, 1);
+            window.PrepareQuickAccentEvidence(new AppSettings { QuickAccentEnabled = true, Theme = theme }, size.Width);
+            Layout();
             foreach (var scale in new[] { 1d, 1.25d, 1.5d, 2d })
                 SaveImage(host, output, $"accent-{theme}-{size.Width}", size, scale);
+            Control<Expander>("QuickAccentBehaviorExpander").IsExpanded = true;
+            Control<Expander>("QuickAccentExcludedExpander").IsExpanded = true;
             var viewer = Control<ScrollViewer>("QuickAccentView"); viewer.ScrollToBottom(); Layout();
             Require(viewer.HorizontalOffset == 0 && Control<TextBox>("QuickAccentExcludedAppsBox").ActualWidth > 300, "Exclusions stay reachable with no horizontal scrolling");
             SaveImage(host, output, $"accent-{theme}-{size.Width}-bottom", size, 1);
+            Control<Expander>("QuickAccentBehaviorExpander").IsExpanded = false;
+            Control<Expander>("QuickAccentExcludedExpander").IsExpanded = false;
+            viewer.ScrollToTop();
+            if (theme == "Light" && size.Width == 1440)
+                foreach (var state in Enum.GetValues<QuickAccentRuntimeState>())
+                {
+                    window.PrepareQuickAccentEvidence(new AppSettings { QuickAccentEnabled = state != QuickAccentRuntimeState.Disabled }, size.Width);
+                    window.SetQuickAccentRuntimeForEvidence(state); Layout();
+                    SaveImage(host, output, $"accent-status-{state}", size, 1);
+                }
+            window.SetQuickAccentRuntimeForEvidence(QuickAccentRuntimeState.Ready);
             // Loading no sets must use the existing fallback rather than leaving a dead feature.
             window.PrepareQuickAccentEvidence(new AppSettings { QuickAccentEnabled = true, QuickAccentCharacterSets = [] }, size.Width);
             Require(Control<CheckBox>("QuickAccentPortugueseCheckBox").IsChecked == true && window.QuickAccentChoicesForEvidence == "áàâã", "Empty stored set selection falls back to PT-BR");
@@ -107,7 +134,7 @@ internal static class QuickAccentSmoke
             Require(window.QuickAccentChoicesForEvidence == "" && Control<TextBlock>("QuickAccentPreviewEmptyText").Visibility == Visibility.Visible, "Missing character choices show a real empty state");
             foreach (var topic in QuickAccentHelpContent.Create().Topics)
                 Require(window.FindName(topic.Target!) is FrameworkElement, "Help anchor resolves: " + topic.Target);
-            checks.Add($"{theme} {size}: real sets, Unicode, caret, clear, disabled/empty states, delays, exclusions, activation/position, persistence, responsive cards, rendered 100/125/150/200% OK");
+            checks.Add($"{theme} {size}: real sets, Unicode, caret, clear, runtime statuses, disabled/empty states, presets/delays, exclusions, activation/position, persistence, compact rows/expanders, rendered 100/125/150/200% OK");
             window.DisposeShortcutsEvidence(); window.Close();
         }
         var help = new ScreenHelpWindow(QuickAccentHelpContent.Create()); help.SearchForEvidence("ativacao");

@@ -180,7 +180,7 @@ public partial class MainWindow : Window
             _settings.Capture.Recording ??= new RecordingSettings();
             if (AppPaths.IsCapturePilot)
             {
-                Title = AppPaths.IsCaptureOcrPilot ? "SlashDesk — Piloto Captura + OCR 3.3.0" : AppPaths.IsCaptureComplementsPilot ? "SlashDesk — Piloto Complementos da Captura 3.3.0 · #74" : AppPaths.IsShortcutsPilot ? "SlashDesk — Piloto Atalhos 3.3.0 · #64" : "SlashDesk — Piloto Captura 3.3.0 · #63";
+                Title = AppPaths.IsQuickAccentPilot ? "SlashDesk — Piloto Acento Rápido 3.3.0 · #65" : AppPaths.IsCaptureOcrPilot ? "SlashDesk — Piloto Captura + OCR 3.3.0" : AppPaths.IsCaptureComplementsPilot ? "SlashDesk — Piloto Complementos da Captura 3.3.0 · #74" : AppPaths.IsShortcutsPilot ? "SlashDesk — Piloto Atalhos 3.3.0 · #64" : "SlashDesk — Piloto Captura 3.3.0 · #63";
                 _settings.CheckUpdatesOnStartup = false;
                 _settings.StartWithWindows = false;
                 _settings.OnboardingCompleted = true;
@@ -252,6 +252,7 @@ public partial class MainWindow : Window
             startup.Run(
                 "Acento Rápido",
                 _quickAccentService.Start);
+            StartQuickAccentStatusMonitor();
 
             if (_snippets.Count > 0)
             {
@@ -270,7 +271,8 @@ public partial class MainWindow : Window
                 "Atalhos globais de captura",
                 ConfigureCaptureShortcuts);
             RefreshCaptureHistory();
-            if (AppPaths.IsCapturePilot && !AppPaths.IsShortcutsPilot) ShowView(CaptureView, CaptureTabButton);
+            if (AppPaths.IsQuickAccentPilot) ShowView(QuickAccentView, QuickAccentTabButton);
+            else if (AppPaths.IsCapturePilot && !AppPaths.IsShortcutsPilot) ShowView(CaptureView, CaptureTabButton);
 
             if (!_settings.OnboardingCompleted)
             {
@@ -1314,6 +1316,14 @@ public partial class MainWindow : Window
             ? Visibility.Visible
             : Visibility.Collapsed;
 
+        var monitorReady = _keyboardHook.IsRunning;
+        MonitorStatusText.Text = monitorReady
+            ? ReferenceEquals(view, QuickAccentView) ? "Monitor de atalhos ativo" : "Monitoramento ativo"
+            : "Monitor de atalhos indisponível";
+        ShellStatusText.Text = MonitorStatusText.Text;
+        MonitorStatusDot.SetResourceReference(System.Windows.Shapes.Shape.FillProperty, monitorReady ? "SuccessBrush" : "MutedBrush");
+        ShellMonitorStatusDot.SetResourceReference(System.Windows.Shapes.Shape.FillProperty, monitorReady ? "SuccessBrush" : "MutedBrush");
+
         if (ReferenceEquals(view, ShortcutsView) && ShortcutsView.IsLoaded) LabMotion.PlayEntrance(ShortcutsView);
         if (ReferenceEquals(view, QuickAccentView))
         {
@@ -1858,6 +1868,12 @@ public partial class MainWindow : Window
         _quickAccentService.ExcludedApps = _settings.QuickAccentExcludedApps;
         _quickAccentService.SetCharacterSets(_settings.QuickAccentCharacterSets);
         _quickAccentService.SetUsage(_usageService.QuickAccentCharacterCounts());
+        if (_settings.QuickAccentEnabled && _quickAccentStatusTimer is not null && !_quickAccentService.IsRunning)
+        {
+            try { _quickAccentService.Start(); }
+            catch (Exception exception)
+            { AppDiagnosticLog.Write("quick-accent.start_failed", ("exceptionType", exception.GetType().Name)); }
+        }
         UpdateQuickAccentCharacterSetPreview();
         UpdateQuickAccentPreviewSelection();
         if (!_settings.QuickAccentEnabled)
@@ -1913,8 +1929,7 @@ public partial class MainWindow : Window
 
     private void UpdateQuickAccentCharacterSetPreview()
     {
-        if (QuickAccentSetSummaryText is null ||
-            QuickAccentCharactersPreviewText is null)
+        if (QuickAccentSetSummaryText is null)
         {
             return;
         }
@@ -1922,12 +1937,8 @@ public partial class MainWindow : Window
         var selected = SelectedQuickAccentCharacterSets();
         QuickAccentSetSummaryText.Text = selected.Count == 1 &&
                                          selected[0] == "PortugueseBrazil"
-            ? "Somente acentuação comum do PT-BR"
-            : $"{selected.Count} conjunto(s) selecionado(s)";
-        var preview = QuickAccentService.PreviewCharacters(selected);
-        QuickAccentCharactersPreviewText.Text = string.IsNullOrEmpty(preview)
-            ? "Nenhum caractere disponível"
-            : string.Join("  ", preview.Select(character => character.ToString()));
+            ? "Português (Brasil)"
+            : selected.Count == 9 ? "Todos os conjuntos" : $"{selected.Count} conjuntos";
     }
 
     private static string SelectedTag(ComboBox box, string fallback) =>
@@ -4428,6 +4439,7 @@ public partial class MainWindow : Window
         }
 
         _servicesDisposed = true;
+        StopQuickAccentStatusMonitor();
         StopUpdateMonitor();
         Activated -= MainWindow_OnActivated;
         _keyboardHook.ExpansionRequested -= KeyboardHook_OnExpansionRequested;
