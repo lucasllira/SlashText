@@ -51,4 +51,3 @@ Na avaliação manual da v2, confira os três avisos dos prints, importação co
 ## Revisão v3 — alinhamento da bandeja
 
 O texto dos itens usa a altura completa da linha para centralização vertical, preservando o posicionamento horizontal nativo, ícones, espaçamento e ações. O fixture visual inclui Aplicativo e Configurações selecionados, além dos menus principal/Acento Rápido nos temas Claro/Preto. Confira também estes estados no menu real da bandeja, conforme os prints de avaliação da v2.
-
