@@ -1,0 +1,73 @@
+name: Quick Accent Pilot Windows
+
+on:
+  push:
+    branches: [feat/3.3.0-quick-accent]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Restore and build isolated pilot
+        shell: pwsh
+        run: |
+          dotnet restore SlashText.sln -p:Platform=x64
+          if ($LASTEXITCODE -ne 0) { throw 'Restore failed' }
+          dotnet build SlashText.sln -c Release --no-restore -p:Platform=x64 -p:QuickAccentPilotBuild=true
+          if ($LASTEXITCODE -ne 0) { throw 'Build failed' }
+      - name: Real WPF controls and persistence
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem src/SlashText/bin -Recurse -Filter SlashDesk.exe | Select-Object -First 1
+          $output = Join-Path $PWD 'quick-accent-evidence'
+          $process = Start-Process $exe.FullName -ArgumentList "--quick-accent-smoke `"$output`"" -WindowStyle Hidden -PassThru
+          if (-not $process.WaitForExit(60000)) { $process.Kill(); throw 'Quick Accent WPF timeout' }
+          if ($process.ExitCode -ne 0) { Get-Content "$output/failure.txt" -ErrorAction SilentlyContinue; throw 'Quick Accent WPF failed' }
+          Get-Content "$output/result.txt"
+      - name: Publish portable pilot
+        shell: pwsh
+        run: |
+          dotnet restore src/SlashText/SlashText.csproj --runtime win-x64 -p:Platform=x64
+          if ($LASTEXITCODE -ne 0) { throw 'Runtime restore failed' }
+          dotnet publish src/SlashText/SlashText.csproj -c Release -p:Platform=x64 -p:PublishProfile=Portable -p:QuickAccentPilotBuild=true --no-restore --output publish-accent
+          if ($LASTEXITCODE -ne 0) { throw 'Publish failed' }
+          $files = @(Get-ChildItem publish-accent -Force)
+          if ($files.Count -ne 1 -or $files[0].Name -ne 'SlashDesk.exe') { throw 'Portable must contain only SlashDesk.exe' }
+      - name: Validate published EXE and package
+        shell: pwsh
+        run: |
+          $output = Join-Path $PWD 'quick-accent-evidence/portable'
+          $exe = (Resolve-Path publish-accent/SlashDesk.exe).Path
+          $process = Start-Process $exe -ArgumentList "--quick-accent-smoke `"$output`"" -WindowStyle Hidden -PassThru
+          if (-not $process.WaitForExit(60000)) { $process.Kill(); throw 'Published WPF timeout' }
+          if ($process.ExitCode -ne 0) { Get-Content "$output/failure.txt" -ErrorAction SilentlyContinue; throw 'Published WPF failed' }
+          New-Item quick-accent-pilot-package -ItemType Directory -Force | Out-Null
+          Copy-Item publish-accent/SlashDesk.exe quick-accent-pilot-package/SlashDesk.exe
+          Copy-Item docs/quick-accent-pilot-testing.md quick-accent-pilot-package/LEIA-ANTES.md
+          Set-Content quick-accent-pilot-package/Abrir-Piloto-Acento-Rapido.cmd -Encoding ascii -Value '@echo off','start "" "%~dp0SlashDesk.exe"'
+          $probe = Join-Path $env:RUNNER_TEMP 'SlashDesk Acento çã com espaços'
+          New-Item $probe -ItemType Directory -Force | Out-Null
+          Copy-Item publish-accent/SlashDesk.exe "$probe/SlashDesk.exe"
+          $process = Start-Process "$probe/SlashDesk.exe" -ArgumentList '--portable-smoke' -WindowStyle Hidden -PassThru -Wait
+          if ($process.ExitCode -ne 0) { throw 'Isolated startup failed' }
+          if (-not (Test-Path "$probe/SlashDeskPilotData/snippets.md") -or (Test-Path "$probe/SlashDeskData")) { throw 'Pilot isolation failed' }
+          Get-FileHash quick-accent-pilot-package/SlashDesk.exe -Algorithm SHA256
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: SlashDesk-quick-accent-evidence
+          path: quick-accent-evidence/
+          if-no-files-found: warn
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SlashDesk-3.3.0-quick-accent-pilot-win-x64
+          path: quick-accent-pilot-package/
+          if-no-files-found: error

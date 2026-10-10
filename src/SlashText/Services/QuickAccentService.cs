@@ -127,12 +127,32 @@ public sealed class QuickAccentService : IDisposable
 
     public QuickAccentService() => _callback = HookCallback;
 
-    public bool Enabled { get; set; }
+    private volatile bool _enabled;
+    public bool Enabled
+    {
+        get => _enabled;
+        set { _enabled = value; if (!value) ResetPendingState(); }
+    }
     public string ActivationKey { get; set; } = "Space";
     public bool SortByUsage { get; set; } = true;
     public int InputDelayMs { get; set; } = 200;
     public string ExcludedApps { get; set; } = string.Empty;
     public bool IsRunning => _hook != IntPtr.Zero;
+
+    // The preference and the native hook are separate: enabled alone is not readiness.
+    public QuickAccentRuntimeState GetRuntimeState() => ResolveRuntimeState(
+        Enabled, IsRunning, Enabled && IsRunning && IsExcludedApp());
+
+    internal static QuickAccentRuntimeState ResolveRuntimeState(bool enabled, bool running, bool excluded) =>
+        !enabled ? QuickAccentRuntimeState.Disabled :
+        !running ? QuickAccentRuntimeState.Unavailable :
+        excluded ? QuickAccentRuntimeState.Paused : QuickAccentRuntimeState.Ready;
+
+    internal static bool IsProcessExcluded(string processName, string? excludedApps) =>
+        !string.IsNullOrWhiteSpace(processName) && !string.IsNullOrWhiteSpace(excludedApps) &&
+        excludedApps.Split(['\r', '\n', ',', ';'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Any(item => item.Equals(processName, StringComparison.OrdinalIgnoreCase) ||
+                         item.Equals($"{processName}.exe", StringComparison.OrdinalIgnoreCase));
 
     public event EventHandler<QuickAccentChangedEventArgs>? Changed;
     public event EventHandler<QuickAccentCharacterInsertedEventArgs>? CharacterInserted;
@@ -468,6 +488,19 @@ public sealed class QuickAccentService : IDisposable
         _ => 0x20
     };
 
+    /// <summary>Read-only preview of the same sets, case and usage order as activation.
+    /// Does not change pending keys, timers, insertion or usage statistics.</summary>
+    public string GetPreviewChoices(char baseLetter)
+    {
+        lock (_stateSync)
+        {
+            var choices = MatchCase(ChoicesFor(char.ToUpperInvariant(baseLetter)), char.IsUpper(baseLetter));
+            return SortByUsage
+                ? new string(choices.OrderByDescending(character => _usage.GetValueOrDefault(character)).ToArray())
+                : choices;
+        }
+    }
+
     private string ChoicesFor(int virtualKey)
     {
         var result = new List<char>();
@@ -502,11 +535,9 @@ public sealed class QuickAccentService : IDisposable
         {
             var window = GetForegroundWindow();
             _ = GetWindowThreadProcessId(window, out var processId);
-            var processName = Process.GetProcessById((int)processId).ProcessName;
-            return ExcludedApps
-                .Split(['\r', '\n', ',', ';'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                .Any(item => item.Equals(processName, StringComparison.OrdinalIgnoreCase) ||
-                             item.Equals($"{processName}.exe", StringComparison.OrdinalIgnoreCase));
+            using var foregroundProcess = Process.GetProcessById((int)processId);
+            var processName = foregroundProcess.ProcessName;
+            return IsProcessExcluded(processName, ExcludedApps);
         }
         catch
         {
@@ -655,6 +686,8 @@ public sealed class QuickAccentService : IDisposable
     [DllImport("user32.dll")]
     private static extern uint GetWindowThreadProcessId(IntPtr window, out uint processId);
 }
+
+public enum QuickAccentRuntimeState { Disabled, Ready, Paused, Unavailable }
 
 internal sealed class QuickAccentDelayController : IDisposable
 {

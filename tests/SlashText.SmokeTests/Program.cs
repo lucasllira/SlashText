@@ -49,6 +49,16 @@ Require(
         excludedApp: false),
     "Acento Rápido respeita estado inativo e aplicativos excluídos");
 var startupCoordinator = new StartupModuleCoordinator();
+Require(QuickAccentService.ResolveRuntimeState(false, true, true) == QuickAccentRuntimeState.Disabled &&
+        QuickAccentService.ResolveRuntimeState(true, false, true) == QuickAccentRuntimeState.Unavailable &&
+        QuickAccentService.ResolveRuntimeState(true, true, true) == QuickAccentRuntimeState.Paused &&
+        QuickAccentService.ResolveRuntimeState(true, true, false) == QuickAccentRuntimeState.Ready,
+    "status distingue preferencia, inicializacao nativa e exclusao do aplicativo");
+Require(QuickAccentService.IsProcessExcluded("GAME", "mstsc.exe; game.exe\nterminal") &&
+        QuickAccentService.IsProcessExcluded("terminal", " terminal \r\n") &&
+        !QuickAccentService.IsProcessExcluded("gamehelper", "game.exe") &&
+        !QuickAccentService.IsProcessExcluded("game", null),
+    "status e ativacao compartilham exclusoes exatas, sem diferenca de caixa ou falso positivo por prefixo");
 var healthyModuleStarted = false;
 Require(
     !await startupCoordinator.RunAsync(
@@ -127,6 +137,25 @@ using (var quickAccentDelay = new QuickAccentDelayController())
     Require(
         deduplicatedCount == 1,
         "reagendamento não produz abertura dupla");
+}
+
+using (var previewService = new QuickAccentService())
+{
+    var previewEvents = 0;
+    previewService.Changed += (_, _) => previewEvents++;
+    previewService.CharacterInserted += (_, _) => previewEvents++;
+    Require(previewService.GetPreviewChoices('a') == "áàâã" && previewService.GetPreviewChoices('A') == "ÁÀÂÃ",
+        "prévia usa escolhas reais e distingue maiúsculas sem consultar o teclado físico");
+    previewService.SetUsage(new Dictionary<char, long> { ['ã'] = 10, ['à'] = 5 });
+    Require(previewService.GetPreviewChoices('a') == "ãàáâ", "prévia usa a prioridade real de uso e conserva empates");
+    previewService.SortByUsage = false;
+    Require(previewService.GetPreviewChoices('a') == "áàâã", "desativar prioridade restaura a ordem dos conjuntos");
+    previewService.SetCharacterSets(["Currency", "Special"]);
+    Require(previewService.GetPreviewChoices('e') == "€" && previewService.GetPreviewChoices('c') == "¢©" && previewService.GetPreviewChoices('a') == "",
+        "prévia respeita moedas, símbolos e letras sem opções");
+    previewService.SetCharacterSets([]);
+    Require(previewService.GetPreviewChoices('a') == "áàâã" && previewEvents == 0 && !previewService.IsRunning,
+        "consultar a prévia não instala hook, dispara eventos nem altera a digitação");
 }
 
 var portugueseCharacters = QuickAccentService.PreviewCharacters(["PortugueseBrazil"]);

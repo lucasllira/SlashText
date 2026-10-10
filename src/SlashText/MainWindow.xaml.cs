@@ -60,9 +60,7 @@ public partial class MainWindow : Window
     private bool _snippetStorageAvailable = true;
     private bool _updatingQuickAccentSets;
     private bool _updatingCaptureRecordingCompact;
-    private readonly DispatcherTimer _quickAccentPreviewTimer =
-        new() { Interval = TimeSpan.FromMilliseconds(900) };
-    private int _quickAccentPreviewIndex = 1;
+    private int _quickAccentPreviewIndex;
     private ScreenRecordingService? _recordingService;
     private GifRecordingSession? _gifRecordingSession;
     private RecordingControlWindow? _recordingControl;
@@ -158,13 +156,6 @@ public partial class MainWindow : Window
         _quickAccentService.Changed += QuickAccentService_OnChanged;
         _quickAccentService.CharacterInserted += QuickAccentService_OnCharacterInserted;
         _captureShortcuts.Triggered += CaptureShortcuts_OnTriggered;
-        _quickAccentPreviewTimer.Tick += (_, _) =>
-        {
-            _quickAccentPreviewIndex = _quickAccentPreviewIndex >= 7
-                ? 1
-                : _quickAccentPreviewIndex + 1;
-            UpdateQuickAccentPreviewSelection();
-        };
     }
 
     private async void MainWindow_OnLoaded(object sender, RoutedEventArgs e)
@@ -189,7 +180,7 @@ public partial class MainWindow : Window
             _settings.Capture.Recording ??= new RecordingSettings();
             if (AppPaths.IsCapturePilot)
             {
-                Title = AppPaths.IsCaptureOcrPilot ? "SlashDesk — Piloto Captura + OCR 3.3.0" : AppPaths.IsCaptureComplementsPilot ? "SlashDesk — Piloto Complementos da Captura 3.3.0 · #74" : AppPaths.IsShortcutsPilot ? "SlashDesk — Piloto Atalhos 3.3.0 · #64" : "SlashDesk — Piloto Captura 3.3.0 · #63";
+                Title = AppPaths.IsQuickAccentPilot ? "SlashDesk — Piloto Acento Rápido 3.3.0 · #65" : AppPaths.IsCaptureOcrPilot ? "SlashDesk — Piloto Captura + OCR 3.3.0" : AppPaths.IsCaptureComplementsPilot ? "SlashDesk — Piloto Complementos da Captura 3.3.0 · #74" : AppPaths.IsShortcutsPilot ? "SlashDesk — Piloto Atalhos 3.3.0 · #64" : "SlashDesk — Piloto Captura 3.3.0 · #63";
                 _settings.CheckUpdatesOnStartup = false;
                 _settings.StartWithWindows = false;
                 _settings.OnboardingCompleted = true;
@@ -230,29 +221,7 @@ public partial class MainWindow : Window
                 RefreshUpdateStatusAsync);
 
             SelectComboByTag(ThemeBox, _settings.Theme);
-            QuickAccentEnabledCheckBox.IsChecked =
-                _settings.QuickAccentEnabled;
-            SelectComboByTag(
-                QuickAccentActivationBox,
-                _settings.QuickAccentActivationKey);
-            SelectComboByTag(
-                QuickAccentPositionBox,
-                _settings.QuickAccentToolbarPosition);
-            QuickAccentUnicodeCheckBox.IsChecked =
-                _settings.QuickAccentShowUnicode;
-            QuickAccentSortCheckBox.IsChecked =
-                _settings.QuickAccentSortByUsage;
-            QuickAccentDelayBox.Text =
-                _settings.QuickAccentInputDelayMs.ToString();
-            QuickAccentDelaySlider.Value = Math.Clamp(
-                _settings.QuickAccentInputDelayMs,
-                (int)QuickAccentDelaySlider.Minimum,
-                (int)QuickAccentDelaySlider.Maximum);
-            QuickAccentExcludedAppsBox.Text =
-                _settings.QuickAccentExcludedApps;
-            ApplyQuickAccentCharacterSetSelection(
-                _settings.QuickAccentCharacterSets);
-            ApplyQuickAccentSettings();
+            LoadQuickAccentControls();
 
             await startup.RunAsync(
                 "Histórico de captura",
@@ -283,6 +252,7 @@ public partial class MainWindow : Window
             startup.Run(
                 "Acento Rápido",
                 _quickAccentService.Start);
+            StartQuickAccentStatusMonitor();
 
             if (_snippets.Count > 0)
             {
@@ -301,7 +271,8 @@ public partial class MainWindow : Window
                 "Atalhos globais de captura",
                 ConfigureCaptureShortcuts);
             RefreshCaptureHistory();
-            if (AppPaths.IsCapturePilot && !AppPaths.IsShortcutsPilot) ShowView(CaptureView, CaptureTabButton);
+            if (AppPaths.IsQuickAccentPilot) ShowView(QuickAccentView, QuickAccentTabButton);
+            else if (AppPaths.IsCapturePilot && !AppPaths.IsShortcutsPilot) ShowView(CaptureView, CaptureTabButton);
 
             if (!_settings.OnboardingCompleted)
             {
@@ -628,6 +599,7 @@ public partial class MainWindow : Window
         {
             await _usageService.RecordQuickAccentAsync(e.Character);
             _quickAccentService.SetUsage(_usageService.QuickAccentCharacterCounts());
+            if (QuickAccentView.Visibility == Visibility.Visible) UpdateQuickAccentPreviewSelection();
             RefreshStatistics();
         }));
     }
@@ -1344,15 +1316,20 @@ public partial class MainWindow : Window
             ? Visibility.Visible
             : Visibility.Collapsed;
 
+        var monitorReady = _keyboardHook.IsRunning;
+        MonitorStatusText.Text = monitorReady
+            ? ReferenceEquals(view, QuickAccentView) ? "Monitor de atalhos ativo" : "Monitoramento ativo"
+            : "Monitor de atalhos indisponível";
+        ShellStatusText.Text = MonitorStatusText.Text;
+        MonitorStatusDot.SetResourceReference(System.Windows.Shapes.Shape.FillProperty, monitorReady ? "SuccessBrush" : "MutedBrush");
+        ShellMonitorStatusDot.SetResourceReference(System.Windows.Shapes.Shape.FillProperty, monitorReady ? "SuccessBrush" : "MutedBrush");
+
         if (ReferenceEquals(view, ShortcutsView) && ShortcutsView.IsLoaded) LabMotion.PlayEntrance(ShortcutsView);
         if (ReferenceEquals(view, QuickAccentView))
         {
+            UpdateQuickAccentLayout(ActualWidth);
             UpdateQuickAccentPreviewSelection();
-            _quickAccentPreviewTimer.Start();
-        }
-        else
-        {
-            _quickAccentPreviewTimer.Stop();
+            if (QuickAccentView.IsLoaded) LabMotion.PlayEntrance(QuickAccentView);
         }
     }
 
@@ -1839,79 +1816,6 @@ public partial class MainWindow : Window
         ShowView(SettingsView, SettingsTabButton);
     }
 
-    private async void QuickAccentSettings_OnChanged(object sender, RoutedEventArgs e)
-    {
-        if (!_initialized)
-        {
-            return;
-        }
-
-        await SaveQuickAccentSettingsAsync();
-    }
-
-    private async void QuickAccentDelaySlider_OnValueChanged(
-        object sender,
-        RoutedPropertyChangedEventArgs<double> e)
-    {
-        if (QuickAccentDelayBox is null)
-        {
-            return;
-        }
-
-        QuickAccentDelayBox.Text = ((int)Math.Round(e.NewValue)).ToString();
-        if (_initialized)
-        {
-            await SaveQuickAccentSettingsAsync();
-        }
-    }
-
-    private void QuickAccentPreviewChoice_OnMouseLeftButtonDown(
-        object sender,
-        MouseButtonEventArgs e)
-    {
-        if (sender is Border { Tag: string value } &&
-            int.TryParse(value, out var index))
-        {
-            _quickAccentPreviewIndex = Math.Clamp(index, 0, 7);
-            UpdateQuickAccentPreviewSelection();
-            _quickAccentPreviewTimer.Stop();
-            _quickAccentPreviewTimer.Start();
-        }
-    }
-
-    private void UpdateQuickAccentPreviewSelection()
-    {
-        if (QuickAccentPreviewChoice0 is null)
-        {
-            return;
-        }
-
-        var choices = new[]
-        {
-            QuickAccentPreviewChoice0,
-            QuickAccentPreviewChoice1,
-            QuickAccentPreviewChoice2,
-            QuickAccentPreviewChoice3,
-            QuickAccentPreviewChoice4,
-            QuickAccentPreviewChoice5,
-            QuickAccentPreviewChoice6,
-            QuickAccentPreviewChoice7
-        };
-        for (var index = 0; index < choices.Length; index++)
-        {
-            var selected = index == _quickAccentPreviewIndex;
-            choices[index].Background = (Brush)FindResource(
-                selected ? "AccentSubtleBrush" : "ControlBrush");
-            choices[index].BorderBrush = (Brush)FindResource(
-                selected ? "AccentBrush" : "DividerBrush");
-            if (choices[index].Child is TextBlock text)
-            {
-                text.Foreground = (Brush)FindResource(
-                    selected ? "AccentBrush" : "InkBrush");
-            }
-        }
-    }
-
     private async void QuickAccentCharacterSet_OnChanged(
         object sender,
         RoutedEventArgs e)
@@ -1955,33 +1859,6 @@ public partial class MainWindow : Window
         }
     }
 
-    private async Task SaveQuickAccentSettingsAsync()
-    {
-        _settings.QuickAccentEnabled = QuickAccentEnabledCheckBox.IsChecked == true;
-        _settings.QuickAccentActivationKey = SelectedTag(QuickAccentActivationBox, "Space");
-        _settings.QuickAccentToolbarPosition = SelectedTag(
-            QuickAccentPositionBox,
-            "BottomCenter");
-        _settings.QuickAccentShowUnicode = QuickAccentUnicodeCheckBox.IsChecked == true;
-        _settings.QuickAccentSortByUsage = QuickAccentSortCheckBox.IsChecked == true;
-        _settings.QuickAccentInputDelayMs = int.TryParse(
-            QuickAccentDelayBox.Text,
-            out var delay)
-            ? Math.Clamp(delay, 0, 2000)
-            : 200;
-        if (QuickAccentDelaySlider is not null)
-        {
-            QuickAccentDelaySlider.Value = Math.Clamp(
-                _settings.QuickAccentInputDelayMs,
-                (int)QuickAccentDelaySlider.Minimum,
-                (int)QuickAccentDelaySlider.Maximum);
-        }
-        _settings.QuickAccentExcludedApps = QuickAccentExcludedAppsBox.Text;
-        _settings.QuickAccentCharacterSets = SelectedQuickAccentCharacterSets();
-        ApplyQuickAccentSettings();
-        await _settingsStore.SaveAsync(_settings);
-    }
-
     private void ApplyQuickAccentSettings()
     {
         _quickAccentService.Enabled = _settings.QuickAccentEnabled;
@@ -1991,7 +1868,14 @@ public partial class MainWindow : Window
         _quickAccentService.ExcludedApps = _settings.QuickAccentExcludedApps;
         _quickAccentService.SetCharacterSets(_settings.QuickAccentCharacterSets);
         _quickAccentService.SetUsage(_usageService.QuickAccentCharacterCounts());
+        if (_settings.QuickAccentEnabled && _quickAccentStatusTimer is not null && !_quickAccentService.IsRunning)
+        {
+            try { _quickAccentService.Start(); }
+            catch (Exception exception)
+            { AppDiagnosticLog.Write("quick-accent.start_failed", ("exceptionType", exception.GetType().Name)); }
+        }
         UpdateQuickAccentCharacterSetPreview();
+        UpdateQuickAccentPreviewSelection();
         if (!_settings.QuickAccentEnabled)
         {
             _quickAccentWindow.Hide();
@@ -2045,8 +1929,7 @@ public partial class MainWindow : Window
 
     private void UpdateQuickAccentCharacterSetPreview()
     {
-        if (QuickAccentSetSummaryText is null ||
-            QuickAccentCharactersPreviewText is null)
+        if (QuickAccentSetSummaryText is null)
         {
             return;
         }
@@ -2054,12 +1937,8 @@ public partial class MainWindow : Window
         var selected = SelectedQuickAccentCharacterSets();
         QuickAccentSetSummaryText.Text = selected.Count == 1 &&
                                          selected[0] == "PortugueseBrazil"
-            ? "Somente acentuação comum do PT-BR"
-            : $"{selected.Count} conjunto(s) selecionado(s)";
-        var preview = QuickAccentService.PreviewCharacters(selected);
-        QuickAccentCharactersPreviewText.Text = string.IsNullOrEmpty(preview)
-            ? "Nenhum caractere disponível"
-            : string.Join("  ", preview);
+            ? "Português (Brasil)"
+            : selected.Count == 9 ? "Todos os conjuntos" : $"{selected.Count} conjuntos";
     }
 
     private static string SelectedTag(ComboBox box, string fallback) =>
@@ -4344,6 +4223,7 @@ public partial class MainWindow : Window
     private void MainWindow_OnSizeChanged(object sender, SizeChangedEventArgs e)
     {
         UpdateResponsiveLayout(e.NewSize.Width);
+        UpdateQuickAccentLayout(e.NewSize.Width);
         if (_captureEditorExpanded) UpdateCaptureEditorViewport();
     }
 
@@ -4559,6 +4439,7 @@ public partial class MainWindow : Window
         }
 
         _servicesDisposed = true;
+        StopQuickAccentStatusMonitor();
         StopUpdateMonitor();
         Activated -= MainWindow_OnActivated;
         _keyboardHook.ExpansionRequested -= KeyboardHook_OnExpansionRequested;

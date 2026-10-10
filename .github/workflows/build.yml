@@ -58,6 +58,26 @@ jobs:
           path: shortcuts-evidence/
           if-no-files-found: warn
 
+      - name: Quick Accent real WPF controls and persistence
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem src/SlashText/bin -Recurse -Filter SlashDesk.exe | Select-Object -First 1
+          if (-not $exe) { throw 'Build executable not found' }
+          $output = Join-Path $PWD 'quick-accent-evidence'
+          $process = Start-Process -FilePath $exe.FullName -ArgumentList "--quick-accent-smoke `"$output`"" -WindowStyle Hidden -PassThru
+          if (-not $process.WaitForExit(60000)) { $process.Kill(); throw 'Quick Accent smoke timed out' }
+          if ($process.ExitCode -ne 0) { Get-Content "$output/failure.txt" -ErrorAction SilentlyContinue; throw 'Quick Accent smoke failed' }
+          if (-not (Test-Path "$output/result.txt")) { throw 'Quick Accent smoke produced no result' }
+          Get-Content "$output/result.txt"
+
+      - name: Upload Quick Accent evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: SlashDesk-quick-accent-controls-evidence
+          path: quick-accent-evidence/
+          if-no-files-found: warn
+
       - name: Visual foundation contract and gallery smoke
         shell: pwsh
         run: |
@@ -65,7 +85,9 @@ jobs:
           $exe = Get-ChildItem src/SlashText/bin -Recurse -Filter SlashDesk.exe | Select-Object -First 1
           if (-not $exe) { throw 'Build executable not found' }
           $output = Join-Path $PWD 'gallery-evidence'
-          $process = Start-Process -FilePath $exe.FullName -ArgumentList "--design-gallery-smoke `"$output`"" -PassThru
+          $stderr = Join-Path $PWD 'gallery-stderr.txt'
+          $stdout = Join-Path $PWD 'gallery-stdout.txt'
+          $process = Start-Process -FilePath $exe.FullName -ArgumentList "--design-gallery-smoke `"$output`"" -WindowStyle Hidden -RedirectStandardError $stderr -RedirectStandardOutput $stdout -PassThru
           if (-not $process.WaitForExit(90000)) { $process.Kill(); throw 'Gallery smoke timed out' }
           if ($process.ExitCode -ne 0) {
             if (Test-Path "$output/failure.txt") { Get-Content "$output/failure.txt" }

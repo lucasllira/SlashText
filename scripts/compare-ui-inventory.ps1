@@ -21,7 +21,18 @@ $currentHandlers = [regex]::Matches(
     '(?:Click|Loaded|Closing|Closed|Activated|SizeChanged|StateChanged|TextChanged|SelectionChanged|ValueChanged|Checked|Unchecked|LostFocus|MouseLeftButtonDown)="([A-Za-z_][A-Za-z0-9_]*)"'
 ) | ForEach-Object { $_.Groups[1].Value } | Sort-Object -Unique
 
-$missingControls = @($baseline.namedControls | Where-Object { $_ -notin $currentControls })
+# Approved #65 compact-row replacements retain the original behavior with new controls.
+$accentControlReplacements = @{
+    QuickAccentDelaySlider = @('QuickAccentDelayBox', 'QuickAccentDelayPreset100Button', 'QuickAccentDelayPreset200Button', 'QuickAccentDelayPreset500Button')
+    QuickAccentCharactersPreviewText = @('QuickAccentPreviewChoicesPanel', 'QuickAccentPreviewChoice0')
+}
+$missingControls = @($baseline.namedControls | Where-Object {
+    if ($_ -in $currentControls) { return $false }
+    if ($accentControlReplacements.ContainsKey($_)) {
+        return @($accentControlReplacements[$_] | Where-Object { $_ -notin $currentControls }).Count -gt 0
+    }
+    return $true
+})
 $relayedCaptureHandlers = @(
     'CaptureActiveMonitor_OnClick',
     'CaptureRegion_OnClick',
@@ -30,6 +41,7 @@ $relayedCaptureHandlers = @(
 )
 $missingHandlers = @($baseline.handlers | Where-Object {
     $_ -notin $currentHandlers -and
+    ($_ -ne 'QuickAccentDelaySlider_OnValueChanged' -or 'QuickAccentDelayPreset_OnClick' -notin $currentHandlers) -and
     ($_ -notin $relayedCaptureHandlers -or -not $code.Contains("$_(sender, e)"))
 })
 $missingViews = @($baseline.requiredViews | Where-Object {

@@ -542,7 +542,10 @@ if (-not $keyboard.Contains('ToUnicodeNoStateChange') -or
 
 foreach ($control in @(
     'QuickAccentPreviewChoice0',
-    'QuickAccentDelaySlider',
+    'QuickAccentDelayBox',
+    'QuickAccentDelayPreset100Button',
+    'QuickAccentDelayPreset200Button',
+    'QuickAccentDelayPreset500Button',
     'CapturePreviewImage',
     'CaptureTotalText',
     'CaptureRegionTotalText',
