@@ -12,7 +12,7 @@ public static class QuickAccentHelpContent
             "Os cliques da prévia são locais e não registram uso global. O campo também permite testar a ativação real quando o piloto estiver aberto.", "QuickAccentPreviewLetterBox", Demo: "accent-preview"),
         new("preferences", "PERSONALIZAR", "Atraso e posição", "Clock3", "Adapte o painel ao seu ritmo.",
             ["Escolha 100, 200 ou 500 ms, ou informe um valor de 0 a 2.000 milissegundos. Enter confirma o número.", "Abra Aparência e ordem dos caracteres para escolher a posição do painel.", "Mostrar código Unicode identifica o caractere; priorizar mais usados usa o histórico de digitação real."],
-            "As preferências são salvas automaticamente. Valores inválidos mostram um aviso e preservam o último atraso válido.", "QuickAccentDelayBox", Demo: "accent-preferences"),
+            "As preferências são salvas automaticamente. O campo aceita até quatro dígitos entre 0 e 2.000; entradas inválidas são recusadas por inteiro, inclusive ao colar. Você pode apagar o campo para redigitar; deixá-lo vazio preserva o último atraso salvo.", "QuickAccentDelayBox", Demo: "accent-preferences"),
         new("sets", "PERSONALIZAR", "Conjuntos de caracteres", "Languages", "Selecione idiomas, moedas e símbolos.",
             ["Abra Conjuntos de caracteres e use Somente PT-BR ou Selecionar todos para os nove conjuntos.", "Marque os idiomas, moedas e símbolos que usa.", "A prévia é atualizada com as opções reais para a letra escolhida."],
             "Ao desmarcar o último conjunto, Português (Brasil) permanece selecionado. Letras sem opções mostram uma mensagem.", "QuickAccentSetsPanel", Demo: "accent-sets"),

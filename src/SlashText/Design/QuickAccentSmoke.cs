@@ -1,6 +1,7 @@
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
@@ -47,7 +48,7 @@ internal static class QuickAccentSmoke
             await window.SaveQuickAccentForEvidence();
             Require(Control<TextBox>("QuickAccentDelayBox").Text == "100" && (await new JsonFileStore<AppSettings>(AppPaths.SettingsFile).LoadAsync()).QuickAccentInputDelayMs == 100,
                 "Preset click uses the real change handler and persistence");
-            foreach (var delay in new[] { 0, 100, 200, 500, 150, 2000 })
+            foreach (var delay in new[] { 0, 100, 200, 500, 150, 1999, 2000 })
             {
                 Control<TextBox>("QuickAccentDelayBox").Text = delay.ToString();
                 await window.SaveQuickAccentForEvidence();
@@ -56,16 +57,58 @@ internal static class QuickAccentSmoke
                 window.PrepareQuickAccentEvidence(reopened, size.Width);
                 Require(Control<TextBox>("QuickAccentDelayBox").Text == delay.ToString(), "Restart restores both delay controls: " + delay);
             }
-            foreach (var invalid in new[] { "-1", "2001", "abc", "" })
+            var delayBox = Control<TextBox>("QuickAccentDelayBox");
+            Require(delayBox.MaxLength == 4, "Delay field limits keyboard entry to four digits");
+            var oversizedDelay = "9999999999999999999999999999988888888888888888888888888888888888888888888888888888";
+            foreach (var invalid in new[] { "-1", "2001", "9999", "abc", "1.5", "+200", " 200", "200\n", oversizedDelay })
             {
-                Control<TextBox>("QuickAccentDelayBox").Text = invalid;
+                delayBox.Text = "2000";
+                delayBox.SelectAll();
+                var typing = new TextCompositionEventArgs(Keyboard.PrimaryDevice,
+                    new TextComposition(InputManager.Current, delayBox, invalid))
+                    { RoutedEvent = TextCompositionManager.PreviewTextInputEvent };
+                delayBox.RaiseEvent(typing);
+                Require(typing.Handled && delayBox.Text == "2000" && delayBox.SelectionLength == 4,
+                    "Invalid typing is refused without changing the selection: " + invalid);
+                var paste = new DataObjectPastingEventArgs(new DataObject(DataFormats.UnicodeText, invalid), false, DataFormats.UnicodeText)
+                    { RoutedEvent = DataObject.PastingEvent };
+                delayBox.RaiseEvent(paste);
+                Require(paste.CommandCancelled && delayBox.Text == "2000" && delayBox.SelectionLength == 4,
+                    "Invalid paste is refused in full: " + invalid);
+                delayBox.Text = invalid;
+                Require(delayBox.Text == "2000" && Control<TextBlock>("QuickAccentDelayErrorText").Visibility == Visibility.Visible,
+                    "Other text edits cannot bypass the range: " + invalid);
+                await window.SaveQuickAccentForEvidence();
+                Require((await new JsonFileStore<AppSettings>(AppPaths.SettingsFile).LoadAsync()).QuickAccentInputDelayMs == 2000,
+                    "Rejected edits never change the saved delay");
+            }
+            delayBox.Text = "200";
+            delayBox.Select(0, 1);
+            var replacement = new DataObjectPastingEventArgs(new DataObject(DataFormats.UnicodeText, "1"), false, DataFormats.UnicodeText)
+                { RoutedEvent = DataObject.PastingEvent };
+            delayBox.RaiseEvent(replacement);
+            Require(!replacement.CommandCancelled, "Paste validates the resulting text including its selection");
+            delayBox.SelectedText = "1";
+            Require(delayBox.Text == "100", "A valid partial replacement preserves the remaining digits");
+            delayBox.SelectAll();
+            var boundaryPaste = new DataObjectPastingEventArgs(new DataObject(DataFormats.UnicodeText, "2000"), false, DataFormats.UnicodeText)
+                { RoutedEvent = DataObject.PastingEvent };
+            delayBox.RaiseEvent(boundaryPaste);
+            Require(!boundaryPaste.CommandCancelled, "Maximum delay can replace all selected text");
+            delayBox.SelectedText = "2000";
+            await window.SaveQuickAccentForEvidence();
+            delayBox.CaretIndex = delayBox.Text.Length;
+            var fifthDigit = new TextCompositionEventArgs(Keyboard.PrimaryDevice, new TextComposition(InputManager.Current, delayBox, "0"))
+                { RoutedEvent = TextCompositionManager.PreviewTextInputEvent };
+            delayBox.RaiseEvent(fifthDigit);
+            Require(fifthDigit.Handled && delayBox.Text == "2000", "A fifth digit cannot append to the maximum delay");
+                delayBox.Text = "";
                 Control<CheckBox>("QuickAccentEnabledCheckBox").IsChecked = false;
                 await window.SaveQuickAccentForEvidence();
                 var saved = await new JsonFileStore<AppSettings>(AppPaths.SettingsFile).LoadAsync();
-                Require(saved.QuickAccentInputDelayMs == 2000 && !saved.QuickAccentEnabled && Control<TextBlock>("QuickAccentDelayErrorText").Visibility == Visibility.Visible, "Invalid delay preserves last value while allowing disable: " + invalid);
+                Require(saved.QuickAccentInputDelayMs == 2000 && !saved.QuickAccentEnabled && Control<TextBlock>("QuickAccentDelayErrorText").Visibility == Visibility.Visible, "Empty draft preserves last value while allowing disable");
                 Require(!Control<Button>("QuickAccentPreviewChoice0").IsEnabled && !Control<TextBox>("QuickAccentTestBox").IsEnabled, "Disabled preview follows actual feature state");
                 Require(Control<TextBlock>("QuickAccentStateText").Text.StartsWith("Desativado"), "Disabled preference takes precedence over ready runtime");
-            }
             Control<TextBox>("QuickAccentDelayBox").Text = "200";
             Control<CheckBox>("QuickAccentEnabledCheckBox").IsChecked = true;
             Control<CheckBox>("QuickAccentUnicodeCheckBox").IsChecked = true;

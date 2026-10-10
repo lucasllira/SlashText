@@ -13,6 +13,8 @@ namespace SlashText;
 public partial class MainWindow
 {
     private bool _updatingQuickAccentControls;
+    private string _quickAccentAcceptedDelayText = "200";
+    private bool _restoringQuickAccentDelayText;
     private readonly SemaphoreSlim _quickAccentSaveGate = new(1, 1);
     private ScreenHelpHighlighter? _quickAccentHelpHighlight;
     private string _quickAccentPreviewCharacters = string.Empty;
@@ -54,9 +56,67 @@ public partial class MainWindow
 
     private async void QuickAccentDelay_OnKeyDown(object sender, KeyEventArgs e)
     {
+        if (e.Key == Key.Space)
+        {
+            e.Handled = true;
+            ShowQuickAccentDelayInputError();
+            return;
+        }
         if (e.Key != Key.Enter || !_initialized) return;
         e.Handled = true;
         await SaveQuickAccentSettingsAsync();
+    }
+
+    private static bool IsQuickAccentDelayDraft(string text) => text.Length == 0 ||
+        (text.Length <= 4 && text.All(character => character is >= '0' and <= '9') &&
+         int.TryParse(text, out var value) && value <= 2000);
+
+    private bool CanInsertQuickAccentDelay(string text) => text.Length <= 4 && IsQuickAccentDelayDraft(
+        QuickAccentDelayBox.Text.Remove(QuickAccentDelayBox.SelectionStart, QuickAccentDelayBox.SelectionLength)
+            .Insert(QuickAccentDelayBox.SelectionStart, text));
+
+    private void ShowQuickAccentDelayInputError()
+    {
+        QuickAccentDelayErrorText.Text = "Informe um número inteiro entre 0 e 2.000 ms.";
+        QuickAccentDelayErrorText.Visibility = Visibility.Visible;
+        QuickAccentDelayBox.SetResourceReference(Control.BorderBrushProperty, "Lab.error");
+    }
+
+    private void QuickAccentDelay_OnPreviewTextInput(object sender, TextCompositionEventArgs e)
+    {
+        if (CanInsertQuickAccentDelay(e.Text)) return;
+        e.Handled = true;
+        ShowQuickAccentDelayInputError();
+    }
+
+    private void QuickAccentDelay_OnPasting(object sender, DataObjectPastingEventArgs e)
+    {
+        if (e.DataObject.GetData(DataFormats.UnicodeText) is string text && CanInsertQuickAccentDelay(text)) return;
+        // Reject the whole paste: truncating it could silently change the requested delay.
+        e.CancelCommand();
+        ShowQuickAccentDelayInputError();
+    }
+
+    private void QuickAccentDelay_OnTextChanged(object sender, TextChangedEventArgs e)
+    {
+        if (_restoringQuickAccentDelayText || sender is not TextBox box) return;
+        if (IsQuickAccentDelayDraft(box.Text))
+        {
+            _quickAccentAcceptedDelayText = box.Text;
+            QuickAccentDelayErrorText.Visibility = Visibility.Collapsed;
+            box.SetResourceReference(Control.BorderBrushProperty, "Lab.line");
+            return;
+        }
+        // Covers drop, undo and programmatic/accessibility edits as well as keyboard/paste.
+        var caret = box.CaretIndex;
+        _restoringQuickAccentDelayText = true;
+        try
+        {
+            box.Text = _quickAccentAcceptedDelayText;
+            box.CaretIndex = Math.Min(caret, box.Text.Length);
+        }
+        finally { _restoringQuickAccentDelayText = false; }
+        ShowQuickAccentDelayInputError();
     }
 
     private async Task SaveQuickAccentSettingsAsync()
@@ -64,7 +124,7 @@ public partial class MainWindow
         await _quickAccentSaveGate.WaitAsync();
         try
         {
-            // Invalid delay stays visible for correction; unrelated switches still save,
+            // An empty draft stays visible for correction; unrelated switches still save,
             // especially disabling the feature. Never replace a valid delay with a default.
             var validDelay = int.TryParse(QuickAccentDelayBox.Text, out var delay) && delay is >= 0 and <= 2000;
             QuickAccentDelayErrorText.Text = "Informe um número inteiro entre 0 e 2.000 ms.";
