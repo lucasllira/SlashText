@@ -180,11 +180,14 @@ public partial class MainWindow : Window
             _settings.Capture.Recording ??= new RecordingSettings();
             if (AppPaths.IsCapturePilot)
             {
-                Title = AppPaths.IsStatisticsPilot ? "SlashDesk — Piloto Estatísticas 3.3.0 · #66" : AppPaths.IsQuickAccentPilot ? "SlashDesk — Piloto Acento Rápido 3.3.0 · #65" : AppPaths.IsCaptureOcrPilot ? "SlashDesk — Piloto Captura + OCR 3.3.0" : AppPaths.IsCaptureComplementsPilot ? "SlashDesk — Piloto Complementos da Captura 3.3.0 · #74" : AppPaths.IsShortcutsPilot ? "SlashDesk — Piloto Atalhos 3.3.0 · #64" : "SlashDesk — Piloto Captura 3.3.0 · #63";
-                _settings.CheckUpdatesOnStartup = false;
-                _settings.StartWithWindows = false;
+                Title = AppPaths.IsSettingsPilot ? "SlashDesk — Piloto Configurações 3.3.0 · #67" : AppPaths.IsStatisticsPilot ? "SlashDesk — Piloto Estatísticas 3.3.0 · #66" : AppPaths.IsQuickAccentPilot ? "SlashDesk — Piloto Acento Rápido 3.3.0 · #65" : AppPaths.IsCaptureOcrPilot ? "SlashDesk — Piloto Captura + OCR 3.3.0" : AppPaths.IsCaptureComplementsPilot ? "SlashDesk — Piloto Complementos da Captura 3.3.0 · #74" : AppPaths.IsShortcutsPilot ? "SlashDesk — Piloto Atalhos 3.3.0 · #64" : "SlashDesk — Piloto Captura 3.3.0 · #63";
+                if (!AppPaths.IsSettingsPilot)
+                {
+                    _settings.CheckUpdatesOnStartup = false;
+                    _settings.StartWithWindows = false;
+                }
                 _settings.OnboardingCompleted = true;
-                _settings.CloseToTray = false;
+                if (!AppPaths.IsSettingsPilot) _settings.CloseToTray = false;
                 if (!File.Exists(AppPaths.SettingsFile))
                     _settings.Capture.OutputDirectoryTemplate = Path.Combine(AppPaths.DataDirectory, "Capturas", "{year}", "{month}");
                 StartWithWindowsCheckBox.IsEnabled = false;
@@ -271,7 +274,8 @@ public partial class MainWindow : Window
                 "Atalhos globais de captura",
                 ConfigureCaptureShortcuts);
             RefreshCaptureHistory();
-            if (AppPaths.IsStatisticsPilot) ShowView(StatisticsView, StatisticsTabButton);
+            if (AppPaths.IsSettingsPilot) ShowView(SettingsView, SettingsTabButton);
+            else if (AppPaths.IsStatisticsPilot) ShowView(StatisticsView, StatisticsTabButton);
             else if (AppPaths.IsQuickAccentPilot) ShowView(QuickAccentView, QuickAccentTabButton);
             else if (AppPaths.IsCapturePilot && !AppPaths.IsShortcutsPilot) ShowView(CaptureView, CaptureTabButton);
 
@@ -1326,6 +1330,11 @@ public partial class MainWindow : Window
         ShellMonitorStatusDot.SetResourceReference(System.Windows.Shapes.Shape.FillProperty, monitorReady ? "SuccessBrush" : "MutedBrush");
 
         if (ReferenceEquals(view, ShortcutsView) && ShortcutsView.IsLoaded) LabMotion.PlayEntrance(ShortcutsView);
+        if (ReferenceEquals(view, SettingsView))
+        {
+            RefreshSettingsPresentation(); UpdateSettingsLayout(ActualWidth);
+            if (SettingsView.IsLoaded) LabMotion.PlayEntrance(SettingsView);
+        }
         if (ReferenceEquals(view, StatisticsView))
         {
             UpdateStatisticsLayout(ActualWidth);
@@ -1369,12 +1378,17 @@ public partial class MainWindow : Window
 
     private async void Settings_OnClick(object sender, RoutedEventArgs e)
     {
+        if (!_initialized || _settingsOperationInProgress) return;
+        var previousClose = _settings.CloseToTray;
+        var previousSuggestions = _settings.ShowSuggestions;
         var previousStart = _settings.StartWithWindows;
+        var requestedStart = StartWithWindowsCheckBox.IsChecked == true;
         var previousUpdateMonitoring = _settings.CheckUpdatesOnStartup;
         _settings.CloseToTray = CloseToTrayCheckBox.IsChecked == true;
         _settings.StartWithWindows = StartWithWindowsCheckBox.IsChecked == true;
         _settings.ShowSuggestions = ShowSuggestionsCheckBox.IsChecked == true;
         _settings.CheckUpdatesOnStartup = CheckUpdatesCheckBox.IsChecked == true;
+        _settingsOperationInProgress = true; SettingsCardsGrid.IsEnabled = false;
 
         try
         {
@@ -1400,23 +1414,36 @@ public partial class MainWindow : Window
             {
                 _suggestionWindow.Hide();
             }
+            SettingsOperationText.Text = "Preferência salva.";
         }
         catch (Exception exception)
         {
+            _settings.CloseToTray = previousClose;
+            _settings.ShowSuggestions = previousSuggestions;
             _settings.StartWithWindows = previousStart;
             _settings.CheckUpdatesOnStartup = previousUpdateMonitoring;
             StartWithWindowsCheckBox.IsChecked = previousStart;
             CheckUpdatesCheckBox.IsChecked = previousUpdateMonitoring;
+            CloseToTrayCheckBox.IsChecked = previousClose;
+            ShowSuggestionsCheckBox.IsChecked = previousSuggestions;
+            if (!AppPaths.IsCapturePilot && previousStart != requestedStart)
+            {
+                try { StartupService.SetEnabled(previousStart); }
+                catch (Exception rollback) { SettingsOperationText.Text = "Não foi possível reverter a inicialização: " + rollback.Message; }
+            }
+            SettingsOperationText.Text = "Não foi possível salvar a preferência.";
             MessageBox.Show(
                 exception.Message,
                 "Não foi possível salvar a configuração",
                 MessageBoxButton.OK,
                 MessageBoxImage.Warning);
         }
+        finally { _settingsOperationInProgress = false; SettingsCardsGrid.IsEnabled = true; }
     }
 
     private async void ImportSnippets_OnClick(object sender, RoutedEventArgs e)
     {
+        if (_settingsOperationInProgress || _shortcutOperationInProgress) return;
         if (!EnsureSnippetStorageAvailable())
         {
             return;
@@ -1446,6 +1473,8 @@ public partial class MainWindow : Window
 
         try
         {
+            await RunSettingsMaintenanceAsync("Importando e protegendo os atalhos…", async () =>
+            {
             _shortcutOperationInProgress = true; ShortcutEditorPanel.IsEnabled = false;
             RefreshShortcutDraftState();
             var result = await _snippetImportService.ImportAsync(picker.FileName, source);
@@ -1476,7 +1505,7 @@ public partial class MainWindow : Window
                 return;
             }
 
-            _backupService.CreateManualSnapshot();
+            await _usageService.RunMaintenanceAsync(() => _backupService.CreateManualSnapshot());
             var replaceConflicts = mode == MessageBoxResult.Yes;
             var incomingTriggers = result.Snippets
                 .Select(item => item.Trigger)
@@ -1513,9 +1542,13 @@ public partial class MainWindow : Window
                 MessageBoxButton.OK,
                 result.Warnings.Count == 0 ? MessageBoxImage.Information : MessageBoxImage.Warning);
             StatusText.Text = $"Importação do {ImportSourceName(source)} concluída";
+            SettingsOperationText.Text = StatusText.Text;
+            RefreshBackupSummary();
+            });
         }
         catch (Exception exception)
         {
+            SettingsOperationText.Text = "Não foi possível importar: " + exception.Message;
             MessageBox.Show(
                 exception.Message,
                 "Não foi possível importar",
@@ -1530,16 +1563,20 @@ public partial class MainWindow : Window
         }
     }
 
-    private void CreateBackup_OnClick(object sender, RoutedEventArgs e)
+    private async void CreateBackup_OnClick(object sender, RoutedEventArgs e)
     {
         try
         {
-            var path = _backupService.CreateManualSnapshot();
+            string? path = null;
+            await RunSettingsMaintenanceAsync("Criando e verificando o backup…", () =>
+                _usageService.RunMaintenanceAsync(() => path = _backupService.CreateManualSnapshot()));
             RefreshBackupSummary();
             StatusText.Text = $"Backup criado: {Path.GetFileName(path)}";
+            SettingsOperationText.Text = StatusText.Text;
         }
         catch (Exception exception)
         {
+            SettingsOperationText.Text = "Não foi possível criar o backup: " + exception.Message;
             MessageBox.Show(
                 exception.Message,
                 "Não foi possível criar o backup",
@@ -1548,7 +1585,7 @@ public partial class MainWindow : Window
         }
     }
 
-    private void AnalyzeAssets_OnClick(object sender, RoutedEventArgs e)
+    private async void AnalyzeAssets_OnClick(object sender, RoutedEventArgs e)
     {
         if (!EnsureSnippetStorageAvailable())
         {
@@ -1557,7 +1594,10 @@ public partial class MainWindow : Window
 
         try
         {
-            var report = _assetMaintenanceService.Analyze(_snippets);
+            await RunSettingsMaintenanceAsync("Analisando imagens dos atalhos…", async () =>
+            {
+            var snippets = _snippets.ToList();
+            var report = await Task.Run(() => _assetMaintenanceService.Analyze(snippets));
             if (report.UnsafeReferenceCount > 0)
             {
                 MessageBox.Show(
@@ -1601,20 +1641,22 @@ public partial class MainWindow : Window
                 return;
             }
 
-            var result = _assetMaintenanceService.DeleteOrphansAfterBackup(
-                report,
-                _backupService.CreateManualSnapshot);
+            AssetCleanupResult? result = null;
+            await _usageService.RunMaintenanceAsync(() => result = _assetMaintenanceService.DeleteOrphansAfterBackup(report, _backupService.CreateManualSnapshot));
             RefreshBackupSummary();
-            StatusText.Text = $"{result.DeletedCount} imagem(ns) órfã(s) removida(s)";
+            StatusText.Text = $"{result!.DeletedCount} imagem(ns) órfã(s) removida(s)";
+            SettingsOperationText.Text = StatusText.Text;
             MessageBox.Show(
                 $"{result.DeletedCount} imagem(ns) removida(s).\n\n" +
                 $"Backup criado antes da limpeza: {Path.GetFileName(result.BackupPath)}",
                 "Limpeza concluída",
                 MessageBoxButton.OK,
                 MessageBoxImage.Information);
+            });
         }
         catch (Exception exception)
         {
+            SettingsOperationText.Text = "Não foi possível analisar imagens: " + exception.Message;
             MessageBox.Show(
                 exception.Message,
                 "Não foi possível analisar as imagens",
@@ -1625,6 +1667,7 @@ public partial class MainWindow : Window
 
     private async void RestoreBackup_OnClick(object sender, RoutedEventArgs e)
     {
+        if (_settingsOperationInProgress || _shortcutOperationInProgress) return;
         if (!CanDiscardShortcutDraft()) return;
         var picker = new Microsoft.Win32.OpenFileDialog
         {
@@ -1635,7 +1678,7 @@ public partial class MainWindow : Window
         };
         if (picker.ShowDialog(this) != true ||
             MessageBox.Show(
-                "Restaurar este backup substituirá atalhos, preferências e estatísticas atuais. Um backup de segurança será criado antes de continuar.",
+                "Restaurar este backup substituirá os dados incluídos nele, inclusive Meus emojis quando presentes. Um backup de segurança será criado antes de continuar.",
                 "Restaurar backup",
                 MessageBoxButton.YesNo,
                 MessageBoxImage.Warning) != MessageBoxResult.Yes)
@@ -1645,10 +1688,14 @@ public partial class MainWindow : Window
 
         try
         {
+            await RunSettingsMaintenanceAsync("Verificando e restaurando o backup…", async () =>
+            {
             _shortcutOperationInProgress = true; ShortcutEditorPanel.IsEnabled = false;
-            _backupService.RestoreSnapshot(picker.FileName);
+            await _usageService.RunMaintenanceAsync(() => _backupService.RestoreSnapshot(picker.FileName));
+            CaptureStampCatalog.InvalidateCurrent();
             _settings = await _settingsStore.LoadAsync();
             ThemeService.Apply(_settings.Theme);
+            SyncSettingsControls();
             var restoredSnippets = await _repository.LoadAsync();
             ReplaceList(restoredSnippets);
             _shortcutDraftBaseline = null; _selected = null;
@@ -1657,6 +1704,8 @@ public partial class MainWindow : Window
             if (_snippets.Count > 0) SelectSnippet(_snippets[0]); else BeginNewSnippet();
             _keyboardHook.UpdateSnippets(_snippets);
             await _usageService.LoadAsync();
+            await _captureService.LoadAsync();
+            RefreshCaptureHistory();
             RefreshStatistics();
             RefreshBackupSummary();
             MessageBox.Show(
@@ -1664,9 +1713,12 @@ public partial class MainWindow : Window
                 "Restauração concluída",
                 MessageBoxButton.OK,
                 MessageBoxImage.Information);
+            SettingsOperationText.Text = "Backup restaurado. Reabra o app para aplicar todas as preferências.";
+            });
         }
         catch (Exception exception)
         {
+            SettingsOperationText.Text = "Não foi possível restaurar: " + exception.Message;
             MessageBox.Show(
                 exception.Message,
                 "Não foi possível restaurar",
@@ -1709,12 +1761,16 @@ public partial class MainWindow : Window
 
     private async void ThemeBox_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (!_initialized || ThemeBox.SelectedItem is not ComboBoxItem { Tag: string theme })
+        if (!_initialized || _settingsOperationInProgress || ThemeBox.SelectedItem is not ComboBoxItem { Tag: string theme })
         {
             return;
         }
 
+        var previous = _settings.Theme;
         _settings.Theme = theme;
+        _settingsOperationInProgress = true; SettingsCardsGrid.IsEnabled = false;
+        try
+        {
         ThemeService.Apply(theme);
         if (_trayIcon?.ContextMenuStrip is { } trayMenu)
         {
@@ -1722,6 +1778,14 @@ public partial class MainWindow : Window
         }
         await _settingsStore.SaveAsync(_settings);
         ShowView(SettingsView, SettingsTabButton);
+        SettingsOperationText.Text = "Tema salvo.";
+        }
+        catch (Exception exception)
+        {
+            _settings.Theme = previous; ThemeService.Apply(previous); SyncSettingsControls();
+            SettingsOperationText.Text = "Não foi possível salvar o tema: " + exception.Message;
+        }
+        finally { _settingsOperationInProgress = false; SettingsCardsGrid.IsEnabled = true; }
     }
 
     private async void QuickAccentCharacterSet_OnChanged(
@@ -2721,6 +2785,7 @@ public partial class MainWindow : Window
 
     private async void StartMp4Recording_OnClick(object sender, RoutedEventArgs e)
     {
+        if (_settingsOperationInProgress) return;
         if (_recordingControl is not null || _recordingService?.IsRecording == true)
         {
             _recordingControl?.Activate();
@@ -2829,6 +2894,7 @@ public partial class MainWindow : Window
 
     private async void StartGifRecording_OnClick(object sender, RoutedEventArgs e)
     {
+        if (_settingsOperationInProgress) return;
         if (_recordingControl is not null)
         {
             _recordingControl.Activate();
@@ -4133,6 +4199,7 @@ public partial class MainWindow : Window
         UpdateResponsiveLayout(e.NewSize.Width);
         UpdateQuickAccentLayout(e.NewSize.Width);
         UpdateStatisticsLayout(e.NewSize.Width);
+        UpdateSettingsLayout(e.NewSize.Width);
         if (_captureEditorExpanded) UpdateCaptureEditorViewport();
     }
 
@@ -4300,6 +4367,7 @@ public partial class MainWindow : Window
 
     private void MainWindow_OnClosing(object? sender, CancelEventArgs e)
     {
+        if (_settingsOperationInProgress) { e.Cancel = true; _exitRequested = false; StatusText.Text = "Aguarde a manutenção em andamento antes de sair."; return; }
         if (!_exitRequested && _settings.CloseToTray)
         {
             e.Cancel = true;
