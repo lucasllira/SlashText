@@ -10,6 +10,10 @@ nas seis telas, bandeja, barras, diálogos, mensagens e ajuda do SlashDesk.
    `Abrir-Piloto-Idiomas.cmd`. O app inicia em Configurações.
 2. Em Aparência, use **Idioma da interface** e escolha English ou Español.
    A preferência é salva e a mensagem informa que é necessário reabrir o app.
+   Ao escolher um idioma diferente do atual, o aviso pulsa em vermelho três vezes
+   durante 3,6 segundos e permanece vermelho e em destaque até reabrir.
+   Com movimentos reduzidos no Windows, o aviso fica estático. Se voltar ao
+   idioma atual antes de sair, o destaque é retirado.
 3. Saia pelo menu **Aplicativo → Sair** da bandeja e abra novamente.
    Fechar a janela pode apenas mantê-la na bandeja. Salve ou finalize seu trabalho antes de sair.
 4. Percorra Atalhos, Captura, Acento Rápido, Estatísticas, Configurações e Sobre.

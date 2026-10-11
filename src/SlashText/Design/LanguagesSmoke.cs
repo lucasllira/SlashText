@@ -89,6 +89,34 @@ internal static class LanguagesSmoke
                 Require(selector.Items.Cast<ComboBoxItem>().Select(i => (string)i.Tag).SequenceEqual(new[] { "pt-BR", "en", "es" }), "Selector uses stable language codes");
                 Require(selector.ActualWidth > 200 && selector.ActualHeight > 20, "Language selector is reachable");
                 Require(((TextBlock)window.FindName("LanguageRestartText")).Text == UiText.Get("O idioma escolhido será aplicado ao reabrir o SlashDesk."), "Restart instruction in active language");
+                var restart = (TextBlock)window.FindName("LanguageRestartText");
+                var chosen = language == "en" ? "es" : "en";
+                selector.SelectedItem = selector.Items.Cast<ComboBoxItem>().Single(item => item.Tag as string == chosen);
+                Require(await window.SaveLanguagePreferenceAsync(chosen), "Different language saved");
+                Require(restart.Text == UiText.Get("Idioma salvo. Reabra o SlashDesk para aplicar.") &&
+                    ReferenceEquals(restart.Foreground, Application.Current.FindResource("Lab.error")) && restart.FontWeight == FontWeights.SemiBold,
+                    "Pending restart highlighted in themed red");
+                Require(restart.Opacity == 1 && !restart.HasAnimatedProperties && UiText.Language == language,
+                    "Reduced motion keeps restart notice static and current interface unchanged");
+                if (theme != "System") Save(host, Path.Combine(output, $"{language}-{theme}-{size.Width}-RestartNotice.png"), size, 1);
+                if (language == "pt-BR" && theme == "Light" && size.Width == 1440)
+                {
+                    LabMotion.SetReduced(root, false);
+                    Require(await window.SaveLanguagePreferenceAsync(chosen), "Repeated selection replaces notification");
+                    Require(restart.HasAnimatedProperties == LabMotion.Allowed(restart), "Pulse respects Windows motion setting");
+                    if (LabMotion.Allowed(restart))
+                    {
+                        await Task.Delay(350);
+                        Require(restart.Opacity >= .55 && restart.Opacity < .95, "Restart pulse stays readable");
+                        await Task.Delay(3650);
+                        Require(restart.Opacity == 1 && ReferenceEquals(restart.Foreground, Application.Current.FindResource("Lab.error")), "Finite pulse ends at full opacity and retains themed red");
+                    }
+                    LabMotion.SetReduced(root, true);
+                }
+                Require(await window.SaveLanguagePreferenceAsync(language), "Revert to active language saved");
+                selector.SelectedItem = selector.Items.Cast<ComboBoxItem>().Single(item => item.Tag as string == language);
+                Require(restart.Opacity == 1 && !restart.HasAnimatedProperties && ReferenceEquals(restart.Foreground, Application.Current.FindResource("Lab.muted")),
+                    "Reverting to active language clears restart emphasis");
                 foreach (var scale in new[] { 1.25, 1.5, 2 })
                     if (theme == "Light" && size.Width == 980) Save(host, Path.Combine(output, $"{language}-{scale}-Settings.png"), size, scale);
                 using (var tray = window.CreateTrayMenu())
