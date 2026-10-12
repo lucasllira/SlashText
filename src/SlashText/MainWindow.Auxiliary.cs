@@ -13,10 +13,10 @@ public partial class MainWindow
     internal void OpenNotificationEvidence() => OpenPendingCaptureNotification();
     private MessageBoxResult ShowAppDialog(string message, string title = "SlashDesk",
         MessageBoxButton buttons = MessageBoxButton.OK, MessageBoxImage image = MessageBoxImage.Information,
-        MessageBoxResult defaultResult = MessageBoxResult.None)
+        MessageBoxResult defaultResult = MessageBoxResult.None, string? yesLabel = null)
     {
         var dialog = new SettingsDialogWindow(message, title, buttons, image,
-            yesLabel: buttons == MessageBoxButton.YesNoCancel ? UiText.Get("Excluir arquivo") : UiText.Get("Continuar"),
+            yesLabel: yesLabel ?? (buttons == MessageBoxButton.YesNoCancel ? UiText.Get("Excluir arquivo") : UiText.Get("Continuar")),
             noLabel: UiText.Get("Remover do histórico"));
         LabMotion.SetReduced(dialog, LabMotion.GetReduced(this));
         if (IsVisible)

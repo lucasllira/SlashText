@@ -28,6 +28,9 @@ public sealed class RecordingControlWindow : Window
     private readonly TaskCompletionSource<bool> _start = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private bool _preparing, _checkingAudio, _changingAudio;
     private int _stopRequested;
+    private readonly Button _emergencyExit;
+    internal event EventHandler? EmergencyExitRequested;
+    internal bool RecoveryVisible => _emergencyExit.Visibility == Visibility.Visible;
 
     internal RecordingControlWindow(IRecordingController service, string mediaName, RecordingSettings? settings = null)
     {
@@ -111,7 +114,17 @@ public sealed class RecordingControlWindow : Window
             Text = _preparing ? UiText.Get("Escolha o áudio e clique em Iniciar.") : UiText.Format($"Gravando {_mediaName}"),
             FontSize = 11, Foreground = Brush("MutedBrush"), Margin = new Thickness(0, 5, 0, 0), TextWrapping = TextWrapping.Wrap
         };
-        layout.Children.Add(bar); layout.Children.Add(_status); root.Child = layout; Content = root;
+        _emergencyExit = new Button
+        {
+            Content = UiText.Get("Encerrar SlashDesk"), Height = 36,
+            HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 12, 0, 0),
+            Visibility = Visibility.Collapsed, Style = (Style)Application.Current.FindResource("Lab.Pilot.PrimaryButton")
+        };
+        AutomationProperties.SetName(_emergencyExit, UiText.Get("Encerrar SlashDesk"));
+        _emergencyExit.Click += (_, _) => EmergencyExitRequested?.Invoke(this, EventArgs.Empty);
+        AutomationProperties.SetLiveSetting(_status, AutomationLiveSetting.Assertive);
+        layout.Children.Add(bar); layout.Children.Add(_status); layout.Children.Add(_emergencyExit);
+        root.Child = layout; Content = root;
         MouseLeftButtonDown += (_, args) =>
         {
             if (args.ChangedButton != MouseButton.Left || _checkingAudio) return;
@@ -138,7 +151,16 @@ public sealed class RecordingControlWindow : Window
         SourceInitialized += (_, _) => SetWindowDisplayAffinity(new WindowInteropHelper(this).Handle, 0x11);
         _service.ProgressChanged += OnProgress;
         _timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(200) };
-        _timer.Tick += (_, _) => { if (!_preparing) UpdateElapsed(_service.Elapsed); };
+        _timer.Tick += (_, _) => { if (!_preparing) { UpdateElapsed(_service.Elapsed); UpdateRecovery(); } };
+        Closing += (_, args) =>
+        {
+            if (!_preparing && _service is ScreenRecordingService { IsRecording: true })
+            {
+                args.Cancel = true;
+                StopOnce();
+                UpdateRecovery();
+            }
+        };
         _timer.Start();
         Closed += (_, _) =>
         {
@@ -164,7 +186,7 @@ public sealed class RecordingControlWindow : Window
         if (_audioPopup is not null) _audioPopup.IsOpen = false;
         if (_audioMenu is not null) _audioMenu.IsEnabled = false;
         _finish.Content = UiText.Get("Finalizar"); _pause.Visibility = Visibility.Visible; _close.Visibility = Visibility.Collapsed;
-        _pause.IsEnabled = _finish.IsEnabled = false;
+        _pause.IsEnabled = false; _finish.IsEnabled = true;
         _status.Text = UiText.Get("Inicializando MP4…");
         UpdateAudioButtons();
     }
@@ -259,11 +281,29 @@ public sealed class RecordingControlWindow : Window
             _pause.ToolTip = progress.IsPaused ? UiText.Get("Continuar · Espaço") : UiText.Get("Pausar · Espaço");
             AutomationProperties.SetName(_pause, progress.IsPaused ? UiText.Get("Continuar") : UiText.Get("Pausar"));
             var ready = _service is not ScreenRecordingService recorder || recorder.State is ScreenRecordingState.Recording or ScreenRecordingState.Paused;
-            _pause.IsEnabled = _finish.IsEnabled = ready && Volatile.Read(ref _stopRequested) == 0;
+            _pause.IsEnabled = ready && Volatile.Read(ref _stopRequested) == 0;
+            _finish.IsEnabled = (ready || _service is ScreenRecordingService { State: ScreenRecordingState.Starting }) && Volatile.Read(ref _stopRequested) == 0;
             UpdateAudioButtons();
+            UpdateRecovery();
         }
         if (Dispatcher.CheckAccess()) Update(); else _ = Dispatcher.BeginInvoke(Update);
     }
+    private void UpdateRecovery()
+    {
+        if (_service is not ScreenRecordingService { IsStopUnconfirmed: true }) return;
+        var first = !RecoveryVisible;
+        _status.Text = UiText.Get("Parada não confirmada. Tela e áudio podem continuar sendo capturados. Encerre o SlashDesk para interromper o processo gravador.");
+        _status.SetResourceReference(TextBlock.ForegroundProperty, "DangerBrush");
+        _indicator.SetResourceReference(Border.BackgroundProperty, "DangerBrush");
+        _pause.IsEnabled = _finish.IsEnabled = false;
+        _emergencyExit.Visibility = Visibility.Visible;
+        _emergencyExit.IsEnabled = true;
+        Width = Math.Min(540, SystemParameters.WorkArea.Width - 32);
+        SizeToContent = SizeToContent.Height;
+        UpdateAudioButtons();
+        if (first) { FloatingWindowPlacement.Place(this, FloatingWindowPlacement.ForegroundScreen(), "BottomCenter"); _emergencyExit.Focus(); }
+    }
+
     private void UpdateElapsed(TimeSpan elapsed) => _time.Text = $"{(int)elapsed.TotalHours:00}:{elapsed.Minutes:00}:{elapsed.Seconds:00}";
     private void StopOnce()
     {

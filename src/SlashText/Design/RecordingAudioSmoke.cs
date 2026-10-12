@@ -68,6 +68,7 @@ internal static class RecordingAudioSmoke
                 "Unified settings preserve all audio preferences without mutating the original");
             dialog.Close();
         }
+        await RecordingRecoverySmoke.RunAsync(output);
         if (native) await NativeAsync(output);
         File.WriteAllText(Path.Combine(output, "result.txt"), "Recording audio WPF: OK\nNative: " + (native ? "executed (see native.json)" : "not requested"));
     }

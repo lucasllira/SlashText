@@ -114,6 +114,23 @@ public static class AppDiagnosticLog
         }
     }
 
+    public static void MarkRecordingStopUnconfirmed()
+    {
+        try
+        {
+            lock (Gate)
+            {
+                var marker = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(ActiveRecordingMarker));
+                if (marker is not null)
+                {
+                    marker["state"] = "StopUnconfirmed";
+                    File.WriteAllText(ActiveRecordingMarker, marker.ToJsonString(), new UTF8Encoding(false));
+                }
+            }
+        }
+        catch { /* The live warning must work even when diagnostics cannot be written. */ }
+    }
+
     public static void MarkRecordingEnded() => TryDelete(ActiveRecordingMarker);
 
     private static void EnsureInitialized()

@@ -1704,5 +1704,12 @@
   "Ui.066C6C983965EC63": "O arquivo não está disponível ou foi bloqueado. O histórico aceita PNG, JPEG, GIF e MP4 locais, sem links ou redirecionamentos. Você pode remover somente a entrada do histórico.",
   "Ui.DD9FF4F756A75B0C": "Este registro é antigo ou veio de um backup. Confirme o arquivo antes de permitir acesso nesta sessão:\n\n{0}\n\nAutorizar este arquivo?",
   "Ui.3F46B105353FF59D": "Confirme o arquivo do histórico",
-  "Ui.BD514F84E7B8B774": "Confirmar arquivo do histórico"
+  "Ui.BD514F84E7B8B774": "Confirmar arquivo do histórico",
+  "Ui.30E18D1AD4F6C3C3": "Parada não confirmada. Tela e áudio podem continuar sendo capturados. Encerre o SlashDesk para interromper o processo gravador.",
+  "Ui.3B1E90D18E8AE7C8": "O gravador confirmou a liberação após o atraso. O arquivo temporário foi preservado, mas pode estar incompleto.",
+  "Ui.347B5EF9B9D75D65": "Encerrar SlashDesk",
+  "Ui.74D6B793E39C5199": "Encerramento de emergência",
+  "Ui.4F0E1AB5AF3B3769": "Aguarde a parada da gravação. Se ela não for confirmada, use Encerrar SlashDesk no controle de gravação.",
+  "Ui.5349EDC17DBC2FD5": "A parada de tela e áudio ainda não foi confirmada. Encerrar o SlashDesk termina o processo que contém o gravador. Alterações não salvas serão perdidas. O vídeo temporário será mantido, mas pode estar incompleto. Deseja encerrar agora?",
+  "Ui.62BB7F098D8B090A": "Não foi possível encerrar o processo. A parada segue sem confirmação. Use o Gerenciador de Tarefas para encerrar o SlashDesk."
 }
