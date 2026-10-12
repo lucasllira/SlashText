@@ -3493,9 +3493,11 @@ public partial class MainWindow : Window
         }
         grid.Children.Add(thumbnail);
 
-        var title = string.IsNullOrWhiteSpace(path)
+        // Display metadata without granting access for a thumbnail or other file action.
+        var displayPath = CapturePathResolver.Resolve(record, AppPaths.Current);
+        var title = string.IsNullOrWhiteSpace(displayPath)
             ? CaptureTypeLabel(record)
-            : Path.GetFileNameWithoutExtension(path);
+            : Path.GetFileNameWithoutExtension(displayPath);
         var duration = record.DurationSeconds > 0
             ? $" · {TimeSpan.FromSeconds(record.DurationSeconds):mm\\:ss}"
             : string.Empty;
