@@ -1579,6 +1579,8 @@ public partial class MainWindow : Window
             _keyboardHook.UpdateSnippets(_snippets);
             await _usageService.LoadAsync();
             await _captureService.LoadAsync();
+            // Preserve edited pixels, but a restore must not retain authority to overwrite the old path.
+            _captureWorkbenchPath = null; _captureWorkbenchRecord = null;
             RefreshCaptureHistory();
             RefreshStatistics();
             RefreshBackupSummary();
@@ -2884,6 +2886,7 @@ public partial class MainWindow : Window
         CaptureRecord? record,
         string details)
     {
+        if (record is not null && !string.Equals(_captureService.ResolveFilePath(record), path, StringComparison.OrdinalIgnoreCase)) return false;
         if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
         {
             return false;
@@ -3506,7 +3509,9 @@ public partial class MainWindow : Window
         });
         copy.Children.Add(new TextBlock
         {
-            Text = $"{CaptureTypeLabel(record)} · {record.CreatedAt:dd/MM HH:mm}{duration}",
+            Text = record.RequiresFileApproval && string.IsNullOrEmpty(path)
+                ? UiText.Get("Confirme o arquivo do histórico")
+                : $"{CaptureTypeLabel(record)} · {record.CreatedAt:dd/MM HH:mm}{duration}",
             Margin = new Thickness(0, 6, 0, 0),
             Foreground = (Brush)FindResource("MutedBrush"),
             FontSize = 11,
@@ -3540,13 +3545,10 @@ public partial class MainWindow : Window
         {
             return;
         }
-        var path = _captureService.ResolveFilePath(record);
+        if (!TryAuthorizeHistoryFile(record, out var path)) return;
         if (!record.MediaKind.Equals("image", StringComparison.OrdinalIgnoreCase))
         {
-            if (File.Exists(path))
-            {
-                Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
-            }
+            OpenHistoryItem_OnClick(new Button { Tag = record }, new RoutedEventArgs());
             return;
         }
         if (LoadCaptureWorkbenchImage(path, record,
@@ -3696,21 +3698,10 @@ public partial class MainWindow : Window
 
     private void OpenHistoryItem_OnClick(object sender, RoutedEventArgs e)
     {
-        if (sender is not Button { Tag: CaptureRecord record })
-        {
-            return;
-        }
-        var path = _captureService.ResolveFilePath(record);
-        if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
-        {
-            ShowAppDialog(
-                UiText.Get("O arquivo não está mais disponível."),
-                UiText.Get("Histórico"),
-                MessageBoxButton.OK,
-                MessageBoxImage.Information);
-            return;
-        }
-        Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
+        if (sender is not Button { Tag: CaptureRecord record } || !TryAuthorizeHistoryFile(record, out var path)) return;
+        try { Process.Start(new ProcessStartInfo(path) { UseShellExecute = true }); }
+        catch (Exception exception)
+        { ShowAppDialog(exception.Message, UiText.Get("Histórico"), MessageBoxButton.OK, MessageBoxImage.Information); }
     }
 
     private void CopyHistoryItem_OnClick(object sender, RoutedEventArgs e)
@@ -3721,7 +3712,7 @@ public partial class MainWindow : Window
         }
         try
         {
-            var path = _captureService.ResolveFilePath(record);
+            if (!TryAuthorizeHistoryFile(record, out var path)) return;
             CaptureService.CopyFileToClipboard(path);
             StatusText.Text = UiText.Format($"Captura copiada: {Path.GetFileName(path)}");
         }
@@ -3741,7 +3732,8 @@ public partial class MainWindow : Window
         {
             return;
         }
-        if (LoadCaptureWorkbenchImage(_captureService.ResolveFilePath(record), record,
+        if (!TryAuthorizeHistoryFile(record, out var path)) return;
+        if (LoadCaptureWorkbenchImage(path, record,
                 $"{CaptureTypeLabel(record)} · {record.Width}×{record.Height}"))
         {
             ShowView(CaptureView, CaptureTabButton);
@@ -3765,10 +3757,14 @@ public partial class MainWindow : Window
         {
             return;
         }
-        await _captureService.DeleteAsync(
-            record.Id,
-            deleteFile: choice == MessageBoxResult.Yes);
-        RefreshCaptureHistory();
+        if (choice == MessageBoxResult.Yes && !TryAuthorizeHistoryFile(record, out _)) return;
+        try
+        {
+            await _captureService.DeleteAsync(record.Id, deleteFile: choice == MessageBoxResult.Yes);
+            RefreshCaptureHistory();
+        }
+        catch (Exception exception)
+        { ShowAppDialog(exception.Message, UiText.Get("Histórico"), MessageBoxButton.OK, MessageBoxImage.Information); }
     }
 
     private async void CleanCaptureHistory_OnClick(object sender, RoutedEventArgs e)
