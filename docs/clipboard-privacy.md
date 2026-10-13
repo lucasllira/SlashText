@@ -41,8 +41,10 @@ Snapshots duplicate Win32 handles while the clipboard is locked, including
 externally supplied Unicode/ANSI/OEM text, locale and opaque registered bytes.
 They do not convert the previous clipboard into WPF objects or deserialize
 arbitrary editor-specific formats. Valid zero-byte movable markers are retained.
-Only OLE's `DataObject` / `Ole Private Data` owner bookkeeping is omitted; it is
-not portable data and is recreated by the next OLE owner. The native test uses
+OLE's `DataObject` / `Ole Private Data` owner bookkeeping is omitted; it is
+not portable data and is recreated by the next OLE owner. An unrenderable WPF
+`System.Drawing.Bitmap` alias is omitted only when concrete CF_BITMAP is present;
+the concrete bitmap itself must be successfully copied. The native test uses
 both OLE publishers and direct Win32 publishers, then pastes long, multiline
 and rich payloads into a real private multiline EDIT control. The 12 combinations
 also restore native Unicode/ANSI text, empty clipboard and previous bitmap.

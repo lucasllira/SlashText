@@ -43,6 +43,10 @@ internal sealed class WindowsExpansionClipboard : IExpansionClipboard
                     format == (uint)DataFormats.GetDataFormat("Ole Private Data").Id) continue;
                 if (format is >= 0x200 and <= 0x3ff or 0x80) throw CannotPreserve();
                 var handle = GetClipboardData(format);
+                // WPF advertises this unrenderable derived alias alongside the
+                // real CF_BITMAP. Preserve the concrete native bitmap instead.
+                if (handle == IntPtr.Zero && format == (uint)DataFormats.GetDataFormat("System.Drawing.Bitmap").Id &&
+                    IsClipboardFormatAvailable(2)) continue;
                 if (handle == IntPtr.Zero) throw CannotPreserve();
                 content.Add(NativeItem.Duplicate(format, handle, StorageFor(format)));
             }
@@ -201,6 +205,7 @@ internal sealed class WindowsExpansionClipboard : IExpansionClipboard
     [DllImport("user32.dll")] private static extern uint GetClipboardSequenceNumber();
     [DllImport("user32.dll", SetLastError = true)] private static extern uint EnumClipboardFormats(uint format);
     [DllImport("user32.dll", SetLastError = true)] private static extern IntPtr GetClipboardData(uint format);
+    [DllImport("user32.dll")] [return: MarshalAs(UnmanagedType.Bool)] private static extern bool IsClipboardFormatAvailable(uint format);
     [DllImport("user32.dll")] private static extern IntPtr GetClipboardOwner();
     [DllImport("ole32.dll")] private static extern IntPtr OleDuplicateData(IntPtr source, ushort format, uint flags);
     [DllImport("ole32.dll")] internal static extern void ReleaseStgMedium(ref STGMEDIUM medium);
