@@ -150,16 +150,9 @@ internal sealed class WindowsExpansionClipboard : IExpansionClipboard
         internal static NativeItem Duplicate(uint format, IntPtr handle, TYMED kind)
         {
             var bytes = EstimateBytes(format, handle, kind);
-            if (handle == IntPtr.Zero || bytes > 64UL * 1024 * 1024) throw CannotPreserve();
-            // A registered marker can be a valid zero-byte movable HGLOBAL.
-            // Preserve it without inventing a payload or rejecting plain text.
-            if (bytes == 0)
-            {
-                if (kind != TYMED.TYMED_HGLOBAL || GlobalFlags(handle) == 0x8000) throw CannotPreserve();
-                var empty = GlobalAlloc(2, UIntPtr.Zero);
-                if (empty == IntPtr.Zero) throw CannotPreserve();
-                return new NativeItem(format, empty, kind, 0);
-            }
+            // A zero-byte GlobalAlloc handle is discarded, and Windows rejects
+            // it at SetClipboardData. Refuse it before deleting the trigger.
+            if (handle == IntPtr.Zero || bytes == 0 || bytes > 64UL * 1024 * 1024) throw CannotPreserve();
             var cloneFormat = format switch { 0x82 => 2u, 0x83 => 3u, _ => format };
             var duplicate = kind == TYMED.TYMED_ENHMF ? CopyEnhMetaFile(handle, null) : OleDuplicateData(handle, unchecked((ushort)cloneFormat), 2);
             if (duplicate == IntPtr.Zero) throw CannotPreserve();
@@ -210,8 +203,6 @@ internal sealed class WindowsExpansionClipboard : IExpansionClipboard
     [DllImport("ole32.dll")] private static extern IntPtr OleDuplicateData(IntPtr source, ushort format, uint flags);
     [DllImport("ole32.dll")] internal static extern void ReleaseStgMedium(ref STGMEDIUM medium);
     [DllImport("kernel32.dll", SetLastError = true)] private static extern UIntPtr GlobalSize(IntPtr handle);
-    [DllImport("kernel32.dll")] private static extern uint GlobalFlags(IntPtr handle);
-    [DllImport("kernel32.dll")] private static extern IntPtr GlobalAlloc(uint flags, UIntPtr size);
     [DllImport("kernel32.dll")] private static extern IntPtr GlobalLock(IntPtr handle);
     [DllImport("kernel32.dll")] [return: MarshalAs(UnmanagedType.Bool)] private static extern bool GlobalUnlock(IntPtr handle);
     [DllImport("gdi32.dll", EntryPoint = "GetObjectW")] private static extern int GetObject(IntPtr handle, int size, out NativeBitmap bitmap);

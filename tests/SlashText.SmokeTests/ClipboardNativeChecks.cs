@@ -240,7 +240,7 @@ internal static class ClipboardNativeChecks
                             PutBytes(16, BitConverter.GetBytes(0x0409u));
                         }
                         PutBytes(opaque, opaqueBytes);
-                        PutBytes((uint)System.Windows.DataFormats.GetDataFormat("SlashDesk.Fixture.EmptyEditorMarker").Id, []);
+                        PutBytes((uint)System.Windows.DataFormats.GetDataFormat("SlashDesk.Fixture.NulEditorMarker").Id, [0]);
                     }
                     finally { CloseClipboard(); }
                 }
@@ -271,7 +271,7 @@ internal static class ClipboardNativeChecks
                     try
                     {
                         Check(ClipboardPrivacyChecks.ReadGlobal(GetClipboardData(opaque)).SequenceEqual(opaqueBytes), "opaque editor bytes restored without conversion");
-                        Check(GetClipboardData((uint)System.Windows.DataFormats.GetDataFormat("SlashDesk.Fixture.EmptyEditorMarker").Id) != IntPtr.Zero, "empty editor marker preserved");
+                        Check(ClipboardPrivacyChecks.ReadGlobal(GetClipboardData((uint)System.Windows.DataFormats.GetDataFormat("SlashDesk.Fixture.NulEditorMarker").Id)).SequenceEqual(new byte[] { 0 }), "NUL editor marker preserved");
                     }
                     finally { CloseClipboard(); }
                 }

@@ -95,8 +95,12 @@ internal static class ClipboardPrivacyChecks
         var emptyHandle = GlobalAlloc(2, UIntPtr.Zero);
         try
         {
-            using var emptyCopy = WindowsExpansionClipboard.NativeItem.Duplicate((uint)WpfFormats.GetDataFormat("SlashDesk.Fixture.EmptyMarker").Id, emptyHandle, System.Runtime.InteropServices.ComTypes.TYMED.TYMED_HGLOBAL);
-            Check(emptyCopy.Handle != IntPtr.Zero && emptyCopy.Handle != emptyHandle && emptyCopy.Bytes == 0, "valid empty native marker independently copied");
+            try
+            {
+                using var emptyCopy = WindowsExpansionClipboard.NativeItem.Duplicate((uint)WpfFormats.GetDataFormat("SlashDesk.Fixture.EmptyMarker").Id, emptyHandle, System.Runtime.InteropServices.ComTypes.TYMED.TYMED_HGLOBAL);
+                throw new Exception("Discarded native handle must be refused before publication");
+            }
+            catch (InvalidOperationException) { Check(true, "discarded zero-byte native handle refused before publication"); }
         }
         finally { GlobalFree(emptyHandle); }
         using var bitmap = new System.Drawing.Bitmap(8, 8);
