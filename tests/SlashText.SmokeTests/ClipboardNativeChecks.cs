@@ -33,7 +33,8 @@ internal static class ClipboardNativeChecks
         {
             // Select a new, noninteractive window station BEFORE any WPF window.
             // Its clipboard is separate from the user's interactive clipboard.
-            var station = CreateWindowStation("SlashDeskClipboardFixture-" + Guid.NewGuid().ToString("N"), 0, 0x002E, IntPtr.Zero);
+            var stationName = "SlashDeskClipboardFixture-" + Guid.NewGuid().ToString("N");
+            var station = CreateWindowStation(stationName, 0, 0x002E, IntPtr.Zero);
             if (station == IntPtr.Zero) throw new Win32Exception(Marshal.GetLastPInvokeError(), "CreateWindowStation for fixture failed");
             if (!SetProcessWindowStation(station)) throw new Win32Exception(Marshal.GetLastPInvokeError(), "SetProcessWindowStation for fixture failed");
             // Explicit creator-only DACL avoids inheriting station-specific access
@@ -52,12 +53,58 @@ internal static class ClipboardNativeChecks
             }
             finally { if (attributesPointer != IntPtr.Zero) Marshal.FreeHGlobal(attributesPointer); if (descriptor != IntPtr.Zero) LocalFree(descriptor); }
             if (desktop == IntPtr.Zero) throw new Win32Exception();
+            isolationReady = true;
+            var exit = StartWorker(stationName + "\\Default", output);
+            if (exit != 0) throw new InvalidOperationException(File.Exists(Path.Combine(output, "result.txt")) ? File.ReadAllText(Path.Combine(output, "result.txt")) : "Native worker failed before writing its result");
+            GC.KeepAlive(station); GC.KeepAlive(desktop);
+        }
+        catch (Exception e) { failure = e; }
+        // The child exits immediately; OS closes its station/desktop and native
+        // fixture handles. Never switch back and write to the user's station.
+        var unavailable = !isolationReady && failure is Win32Exception { NativeErrorCode: 5 };
+        File.WriteAllText(Path.Combine(output, "result.txt"), unavailable ?
+            "Clipboard native: UNAVAILABLE (Windows denied creation/selection of an isolated station; interactive clipboard was not accessed. Native/Win+V pilot validation remains required)." : failure?.ToString() ??
+            "Clipboard native: PASS (separate noninteractive Windows station; raw flags, empty/text/rich/image restoration, concurrent copy and locked retry).");
+        return unavailable ? 2 : failure is null ? 0 : 1;
+    }
+
+    private static int StartWorker(string desktop, string output)
+    {
+        var executable = Environment.ProcessPath!;
+        var arguments = "\"" + executable + "\" ";
+        if (Path.GetFileNameWithoutExtension(executable).Equals("dotnet", StringComparison.OrdinalIgnoreCase))
+            arguments += "\"" + System.Reflection.Assembly.GetEntryAssembly()!.Location + "\" ";
+        arguments += "--clipboard-native-worker \"" + output + "\"";
+        var startup = new StartupInfo { Size = Marshal.SizeOf<StartupInfo>(), Desktop = desktop, Flags = 1, ShowWindow = 0 };
+        if (!CreateProcess(executable, new StringBuilder(arguments), IntPtr.Zero, IntPtr.Zero, false, 0x08000000, IntPtr.Zero, null, ref startup, out var process))
+            throw new Win32Exception();
+        try
+        {
+            if (WaitForSingleObject(process.Process, 25000) != 0) { TerminateProcess(process.Process, 1); throw new TimeoutException("Own native fixture worker timed out"); }
+            if (!GetExitCodeProcess(process.Process, out var code)) throw new Win32Exception();
+            return unchecked((int)code);
+        }
+        finally { CloseHandle(process.Thread); CloseHandle(process.Process); }
+    }
+
+    internal static int RunWorker(string output)
+    {
+        Directory.CreateDirectory(output);
+        Exception? failure = null;
+        try
+        {
+            // The worker's initial desktop is chosen by CreateProcess before CLR
+            // STA/OLE initialization. Refuse manual invocation on WinSta0.
+            var station = GetProcessWindowStation();
+            var name = new StringBuilder(256);
+            if (!GetUserObjectName(station, 2, name, 512, out _) || !name.ToString().StartsWith("SlashDeskClipboardFixture-", StringComparison.Ordinal))
+                throw new InvalidOperationException("Native worker requires its private fixture station");
+            if (!GetUserObjectFlags(station, 1, out var flags, Marshal.SizeOf<UserObjectFlags>(), out _) || (flags.Flags & 1) != 0)
+                throw new InvalidOperationException("Native worker refuses an interactive window station");
             var thread = new Thread(() =>
             {
                 try
                 {
-                    if (!SetThreadDesktop(desktop)) throw new Win32Exception();
-                    isolationReady = true;
                     var dispatcher = Dispatcher.CurrentDispatcher;
                     SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext(dispatcher));
                     dispatcher.BeginInvoke(new Action(async () =>
@@ -71,16 +118,10 @@ internal static class ClipboardNativeChecks
                 catch (Exception e) { failure = e; }
             });
             thread.SetApartmentState(ApartmentState.STA); thread.Start(); thread.Join();
-            GC.KeepAlive(station); GC.KeepAlive(desktop);
         }
         catch (Exception e) { failure = e; }
-        // The child exits immediately; OS closes its station/desktop and native
-        // fixture handles. Never switch back and write to the user's station.
-        var unavailable = !isolationReady && failure is Win32Exception { NativeErrorCode: 5 };
-        File.WriteAllText(Path.Combine(output, "result.txt"), unavailable ?
-            "Clipboard native: UNAVAILABLE (Windows denied creation/selection of an isolated station; interactive clipboard was not accessed. Native/Win+V pilot validation remains required)." : failure?.ToString() ??
-            "Clipboard native: PASS (separate noninteractive Windows station; raw flags, empty/text/rich/image restoration, concurrent copy and locked retry).");
-        return unavailable ? 2 : failure is null ? 0 : 1;
+        File.WriteAllText(Path.Combine(output, "result.txt"), failure?.ToString() ?? "Clipboard native worker: PASS");
+        return failure is null ? 0 : 1;
     }
 
     private static void Check(bool value, string name) { if (!value) throw new InvalidOperationException("Native clipboard: " + name); }
@@ -160,7 +201,18 @@ internal static class ClipboardNativeChecks
     [DllImport("user32.dll", EntryPoint = "CreateWindowStationW", CharSet = CharSet.Unicode, SetLastError = true)] private static extern IntPtr CreateWindowStation(string name, uint flags, uint access, IntPtr security);
     [DllImport("user32.dll", SetLastError = true)] [return: MarshalAs(UnmanagedType.Bool)] private static extern bool SetProcessWindowStation(IntPtr station);
     [DllImport("user32.dll", EntryPoint = "CreateDesktopW", CharSet = CharSet.Unicode, SetLastError = true)] private static extern IntPtr CreateDesktop(string name, string? device, IntPtr mode, uint flags, uint access, IntPtr security);
-    [DllImport("user32.dll", SetLastError = true)] [return: MarshalAs(UnmanagedType.Bool)] private static extern bool SetThreadDesktop(IntPtr desktop);
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)] private struct StartupInfo
+    { internal int Size; internal string? Reserved, Desktop, Title; internal int X, Y, Width, Height, CharsX, CharsY, FillAttribute, Flags; internal short ShowWindow, ReservedSize; internal IntPtr ReservedBytes, Input, Output, Error; }
+    [StructLayout(LayoutKind.Sequential)] private struct ProcessInfo { internal IntPtr Process, Thread; internal int ProcessId, ThreadId; }
+    [StructLayout(LayoutKind.Sequential)] private struct UserObjectFlags { internal int Inherit, Reserved; internal uint Flags; }
+    [DllImport("kernel32.dll", EntryPoint = "CreateProcessW", CharSet = CharSet.Unicode, SetLastError = true)] [return: MarshalAs(UnmanagedType.Bool)] private static extern bool CreateProcess(string application, StringBuilder command, IntPtr processSecurity, IntPtr threadSecurity, [MarshalAs(UnmanagedType.Bool)] bool inherit, uint flags, IntPtr environment, string? directory, ref StartupInfo startup, out ProcessInfo process);
+    [DllImport("kernel32.dll")] private static extern uint WaitForSingleObject(IntPtr handle, uint milliseconds);
+    [DllImport("kernel32.dll")] [return: MarshalAs(UnmanagedType.Bool)] private static extern bool GetExitCodeProcess(IntPtr process, out uint code);
+    [DllImport("kernel32.dll")] [return: MarshalAs(UnmanagedType.Bool)] private static extern bool TerminateProcess(IntPtr process, uint code);
+    [DllImport("kernel32.dll")] [return: MarshalAs(UnmanagedType.Bool)] private static extern bool CloseHandle(IntPtr handle);
+    [DllImport("user32.dll")] private static extern IntPtr GetProcessWindowStation();
+    [DllImport("user32.dll", EntryPoint = "GetUserObjectInformationW", CharSet = CharSet.Unicode)] [return: MarshalAs(UnmanagedType.Bool)] private static extern bool GetUserObjectName(IntPtr handle, int index, StringBuilder name, int length, out int needed);
+    [DllImport("user32.dll", EntryPoint = "GetUserObjectInformationW")] [return: MarshalAs(UnmanagedType.Bool)] private static extern bool GetUserObjectFlags(IntPtr handle, int index, out UserObjectFlags flags, int length, out int needed);
     [StructLayout(LayoutKind.Sequential)] private struct SecurityAttributes { internal int Length; internal IntPtr Descriptor; internal int Inherit; }
     [DllImport("advapi32.dll", EntryPoint = "ConvertStringSecurityDescriptorToSecurityDescriptorW", CharSet = CharSet.Unicode, SetLastError = true)] [return: MarshalAs(UnmanagedType.Bool)] private static extern bool ConvertStringSecurityDescriptorToSecurityDescriptor(string sddl, uint revision, out IntPtr descriptor, out uint size);
     [DllImport("kernel32.dll")] private static extern IntPtr LocalFree(IntPtr memory);

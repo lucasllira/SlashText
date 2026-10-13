@@ -13,6 +13,11 @@ if (args.Length == 1 && args[0] == "--clipboard-payload-smoke")
     ClipboardPrivacyChecks.Run(clipboardRoot);
     return;
 }
+if (args.Length == 2 && args[0] == "--clipboard-native-worker")
+{
+    Environment.Exit(ClipboardNativeChecks.RunWorker(args[1]));
+    return;
+}
 if (args.Length == 2 && args[0] == "--clipboard-native-isolated")
 {
     Environment.Exit(ClipboardNativeChecks.RunIsolated(args[1]));
