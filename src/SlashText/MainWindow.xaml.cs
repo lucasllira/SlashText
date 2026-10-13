@@ -1381,7 +1381,7 @@ public partial class MainWindow : Window
                 return;
             }
 
-            await _usageService.RunMaintenanceAsync(() => _backupService.CreateManualSnapshot(token));
+            await _usageService.RunMaintenanceAsync(() => _backupService.CreateManualSnapshot(token), token);
             var replaceConflicts = mode == MessageBoxResult.Yes;
             var incomingTriggers = result.Snippets
                 .Select(item => item.Trigger)
@@ -1574,7 +1574,8 @@ public partial class MainWindow : Window
             await RunSettingsMaintenanceAsync(UiText.Get("Verificando e restaurando o backup…"), async () =>
             {
             _shortcutOperationInProgress = true; ShortcutEditorPanel.IsEnabled = false;
-            await _usageService.RunMaintenanceAsync(() => _backupService.RestoreSnapshot(picker.FileName, _settingsCancellation?.Token ?? default));
+            var token = _settingsCancellation?.Token ?? default;
+            await _usageService.RunMaintenanceAsync(() => _backupService.RestoreSnapshot(picker.FileName, token), token);
             _settingsProgress?.PreventCancellation();
             CaptureStampCatalog.InvalidateCurrent();
             _settings = await _settingsStore.LoadAsync();

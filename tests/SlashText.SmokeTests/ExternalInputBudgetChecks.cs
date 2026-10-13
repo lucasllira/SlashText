@@ -42,6 +42,11 @@ internal static class ExternalInputBudgetChecks
             }
             using var canceled = new CancellationTokenSource(); canceled.Cancel();
             Reject(() => new BoundedInputStream(new MemoryStream(new byte[1]), 32, canceled.Token).ReadByte(), "cancel before reading");
+            var usage=new UsageService();
+            var gate=(SemaphoreSlim)typeof(UsageService).GetField("_writeLock",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic)!.GetValue(usage)!;
+            await gate.WaitAsync();
+            try { await RejectAsync(()=>usage.RunMaintenanceAsync(()=>throw new Exception("Canceled work must not run"),canceled.Token),"cancel while maintenance waits for a writer"); }
+            finally { gate.Release(); }
 
             var archive = Path.Combine(root, "valid.zip");
             WriteZip(archive, new() { ["snippets.md"] = "old", ["settings.json"] = "{}" });
