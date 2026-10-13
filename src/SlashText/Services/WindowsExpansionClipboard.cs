@@ -70,7 +70,13 @@ internal sealed class WindowsExpansionClipboard : IExpansionClipboard
             {
                 var id = (uint)DataFormats.GetDataFormat(name).Id;
                 var descriptor = new FORMATETC { cfFormat = unchecked((short)id), dwAspect = DVASPECT.DVASPECT_CONTENT,
-                    lindex = -1, tymed = TYMED.TYMED_HGLOBAL | TYMED.TYMED_GDI | TYMED.TYMED_ENHMF | TYMED.TYMED_MFPICT };
+                    lindex = -1, tymed = id switch
+                    {
+                        2 or 9 or 0x82 => TYMED.TYMED_GDI,
+                        3 or 0x83 => TYMED.TYMED_MFPICT,
+                        14 or 0x8e => TYMED.TYMED_ENHMF,
+                        _ => TYMED.TYMED_HGLOBAL
+                    } };
                 ((ComDataObject)data).GetData(ref descriptor, out var medium);
                 try { content.Add(NativeItem.Duplicate(id, medium.unionmember, medium.tymed)); }
                 finally { ReleaseStgMedium(ref medium); }

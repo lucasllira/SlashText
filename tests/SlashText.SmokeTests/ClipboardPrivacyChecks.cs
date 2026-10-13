@@ -41,6 +41,8 @@ internal static class ClipboardPrivacyChecks
             var raw = ReadGlobal(native.Items.Single(i => i.Format == (uint)WpfFormats.GetDataFormat(WpfFormats.Html).Id).Handle);
             Check(Encoding.UTF8.GetString(raw).TrimEnd('\0') == html, "native HTML retains embedded image");
             var explicitCapture = CaptureService.CreateClipboardData(path);
+            using var nativeCapture = WindowsExpansionClipboard.PrepareNative(explicitCapture);
+            Check(nativeCapture.Items.Single(i => i.Format == 2).Kind == System.Runtime.InteropServices.ComTypes.TYMED.TYMED_GDI, "bitmap requests GDI storage and preserves handle lifetime");
             Check(explicitCapture.GetFormats(false).Contains(WpfFormats.Bitmap) && explicitCapture.GetFormats(false).Contains(WpfFormats.FileDrop), "capture explicit copy retains image and file formats");
             Check(!explicitCapture.GetFormats(false).Any(f => f is ClipboardPrivacy.ExcludeMonitoring or ClipboardPrivacy.IncludeHistory or ClipboardPrivacy.UploadCloud), "explicit capture preserves Windows history/cloud policy");
         }
