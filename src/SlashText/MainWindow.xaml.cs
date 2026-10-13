@@ -2948,7 +2948,7 @@ public partial class MainWindow : Window
             return true;
         }
         catch (OperationCanceledException) { StatusText.Text = UiText.Get("Operação cancelada. Os dados atuais foram preservados."); return false; }
-        catch (Exception exception) when (exception is IOException or NotSupportedException or ArgumentException or System.Runtime.InteropServices.ExternalException)
+        catch (Exception exception) when (exception is InvalidDataException or IOException or NotSupportedException or ArgumentException or System.Runtime.InteropServices.ExternalException)
         {
             StatusText.Text = UiText.Get("Não foi possível abrir a imagem selecionada") + ": " + exception.Message;
             return false;
@@ -3639,7 +3639,7 @@ public partial class MainWindow : Window
             image = loaded;
             return true;
         }
-        catch (Exception exception) when (exception is IOException or NotSupportedException or ArgumentException or System.Runtime.InteropServices.COMException)
+        catch (Exception exception) when (exception is InvalidDataException or IOException or NotSupportedException or ArgumentException or System.Runtime.InteropServices.COMException)
         {
             return false;
         }
