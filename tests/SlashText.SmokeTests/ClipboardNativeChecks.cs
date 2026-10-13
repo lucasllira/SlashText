@@ -13,6 +13,7 @@ using WpfClipboard = System.Windows.Clipboard;
 
 internal static class ClipboardNativeChecks
 {
+    private static readonly StringBuilder NativeTrace = new();
     internal static async Task RunChildAsync(string root)
     {
         var output = Path.Combine(root, "isolated-clipboard");
@@ -120,7 +121,7 @@ internal static class ClipboardNativeChecks
             thread.SetApartmentState(ApartmentState.STA); thread.Start(); thread.Join();
         }
         catch (Exception e) { failure = e; }
-        File.WriteAllText(Path.Combine(output, "result.txt"), failure?.ToString() ?? "Clipboard native worker: PASS");
+        File.WriteAllText(Path.Combine(output, "result.txt"), failure is null ? "Clipboard native worker: PASS" : failure + Environment.NewLine + NativeTrace);
         return failure is null ? 0 : 1;
     }
 
@@ -129,7 +130,7 @@ internal static class ClipboardNativeChecks
     private static async Task CheckRealBackendAsync()
     {
         WpfClipboard.Clear();
-        using (var session = await ExpansionClipboardSession.CaptureAsync(new WindowsExpansionClipboard(), CancellationToken.None))
+        using (var session = await ExpansionClipboardSession.CaptureAsync(new TracedClipboard(), CancellationToken.None))
         {
             await session.PublishAsync(Payload(), CancellationToken.None);
             Check(WpfClipboard.GetText() == "fixture\ntransient", "native publication readable by WPF");
@@ -198,6 +199,25 @@ internal static class ClipboardNativeChecks
         }
         WpfClipboard.Clear();
     }
+    private sealed class TracedClipboard : IExpansionClipboard
+    {
+        private readonly WindowsExpansionClipboard _inner = new();
+        public ClipboardSnapshot Capture()
+        {
+            var snapshot = _inner.Capture();
+            NativeTrace.AppendLine($"capture: sequence={snapshot.Sequence}, formats={((WindowsExpansionClipboard.NativeContent)snapshot.Content).Items.Count}");
+            return snapshot;
+        }
+        public IClipboardContent Prepare(System.Windows.DataObject data) => _inner.Prepare(data);
+        public ClipboardWriteResult TryWrite(IClipboardContent content, uint expectedSequence, bool requireOwned)
+        {
+            NativeTrace.AppendLine($"before: expected={expectedSequence}, current={GetClipboardSequenceNumber()}, formats={CountClipboardFormats()}, requireOwned={requireOwned}");
+            var result = _inner.TryWrite(content, expectedSequence, requireOwned);
+            NativeTrace.AppendLine($"after: result={result.Status}, returned={result.Sequence}, current={GetClipboardSequenceNumber()}, formats={CountClipboardFormats()}");
+            return result;
+        }
+        public void Dispose() => _inner.Dispose();
+    }
     [DllImport("user32.dll", EntryPoint = "CreateWindowStationW", CharSet = CharSet.Unicode, SetLastError = true)] private static extern IntPtr CreateWindowStation(string name, uint flags, uint access, IntPtr security);
     [DllImport("user32.dll", SetLastError = true)] [return: MarshalAs(UnmanagedType.Bool)] private static extern bool SetProcessWindowStation(IntPtr station);
     [DllImport("user32.dll", EntryPoint = "CreateDesktopW", CharSet = CharSet.Unicode, SetLastError = true)] private static extern IntPtr CreateDesktop(string name, string? device, IntPtr mode, uint flags, uint access, IntPtr security);
@@ -220,6 +240,8 @@ internal static class ClipboardNativeChecks
     [DllImport("user32.dll")] [return: MarshalAs(UnmanagedType.Bool)] private static extern bool CloseClipboard();
     [DllImport("user32.dll")] [return: MarshalAs(UnmanagedType.Bool)] private static extern bool EmptyClipboard();
     [DllImport("user32.dll")] private static extern IntPtr GetClipboardData(uint format);
+    [DllImport("user32.dll")] private static extern uint GetClipboardSequenceNumber();
+    [DllImport("user32.dll")] private static extern int CountClipboardFormats();
     [DllImport("user32.dll")] private static extern IntPtr SetClipboardData(uint format, IntPtr handle);
     [DllImport("kernel32.dll")] private static extern IntPtr GlobalAlloc(uint flags, UIntPtr size);
     [DllImport("kernel32.dll")] private static extern IntPtr GlobalLock(IntPtr handle);
