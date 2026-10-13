@@ -43,6 +43,14 @@ internal sealed class WindowsExpansionClipboard : IExpansionClipboard
                     format == (uint)DataFormats.GetDataFormat("Ole Private Data").Id) continue;
                 if (format is >= 0x200 and <= 0x3ff or 0x80) throw CannotPreserve();
                 var handle = GetClipboardData(format);
+                var readError = Marshal.GetLastPInvokeError();
+                // Notepad/Windows may advertise this optional EDP hint without
+                // a renderable value. Omit only that no-error/null placeholder;
+                // nonempty identity bytes and access errors remain mandatory.
+                if (handle == IntPtr.Zero && readError == 0 && format == EmptyEnterpriseMetadataFormat)
+                {
+                    continue;
+                }
                 // WPF advertises this unrenderable derived alias alongside the
                 // real CF_BITMAP. Preserve the concrete native bitmap instead.
                 if (handle == IntPtr.Zero && format == (uint)DataFormats.GetDataFormat("System.Drawing.Bitmap").Id &&
@@ -66,6 +74,8 @@ internal sealed class WindowsExpansionClipboard : IExpansionClipboard
         14 or 0x8e => TYMED.TYMED_ENHMF,
         _ => TYMED.TYMED_HGLOBAL
     };
+
+    private static uint EmptyEnterpriseMetadataFormat => (uint)DataFormats.GetDataFormat("EnterpriseDataProtectionId").Id;
 
     public IClipboardContent Prepare(WpfDataObject data) => PrepareNative(data);
 

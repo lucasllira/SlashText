@@ -66,7 +66,7 @@ internal static class ClipboardNativeChecks
         var unavailable = !isolationReady && failure is Win32Exception { NativeErrorCode: 5 };
         File.WriteAllText(Path.Combine(output, "result.txt"), unavailable ?
             "Clipboard native: UNAVAILABLE (Windows denied creation/selection of an isolated station; interactive clipboard was not accessed. Native/Win+V pilot validation remains required)." : failure?.ToString() ??
-            "Clipboard native: PASS (separate noninteractive Windows station; raw flags, empty/text/rich/image restoration, concurrent copy, locked retry and 12 native editor paste/restoration combinations).");
+            "Clipboard native: PASS (separate noninteractive Windows station; raw flags, empty/text/rich/image restoration, concurrent copy, locked retry and 18 native editor paste/restoration combinations including empty/present EnterpriseDataProtectionId).");
         return unavailable ? 2 : failure is null ? 0 : 1;
     }
 
@@ -172,6 +172,24 @@ internal static class ClipboardNativeChecks
             if (kind == "image") { var image = WpfClipboard.GetImage()!; var pixels = new byte[16]; image.CopyPixels(pixels, 8, 0); Check(image.PixelWidth == 2 && pixels.SequenceEqual(previousPixels!), "restore bitmap pixels"); }
         }
         await CheckNativeEditorCopiesAsync();
+        using (var owner = new HwndSource(new HwndSourceParameters("FixtureUnreadableMetadata") { ParentWindow = new IntPtr(-3), WindowStyle = 0 }))
+        {
+            Check(OpenClipboard(owner.Handle), "open unknown unavailable fixture");
+            try
+            {
+                Check(EmptyClipboard(), "empty unknown unavailable fixture");
+                PutBytes(13, Encoding.Unicode.GetBytes("prior fixture\0"));
+                var unknown = (uint)System.Windows.DataFormats.GetDataFormat("SlashDesk.Fixture.UnavailableFormat").Id;
+                Check(SetClipboardData(unknown, IntPtr.Zero) == IntPtr.Zero && Marshal.GetLastPInvokeError() == 0, "declare unknown unrenderable format");
+            }
+            finally { CloseClipboard(); }
+            try
+            {
+                using var session = await ExpansionClipboardSession.CaptureAsync(new WindowsExpansionClipboard(), CancellationToken.None);
+                throw new Exception("Unknown unavailable data must not be discarded");
+            }
+            catch (InvalidOperationException) { Check(WpfClipboard.GetText() == "prior fixture", "unknown format refusal keeps original clipboard unchanged"); }
+        }
         WpfClipboard.SetText("old");
         using (var session = await ExpansionClipboardSession.CaptureAsync(new WindowsExpansionClipboard(), CancellationToken.None))
         {
@@ -221,7 +239,7 @@ internal static class ClipboardNativeChecks
         SendMessage(edit, 0x00C5, new IntPtr(1024 * 1024), IntPtr.Zero); // EM_SETLIMITTEXT
         try
         {
-            foreach (var prior in new[] { "native-unicode", "native-ansi", "empty", "image" })
+            foreach (var prior in new[] { "native-unicode", "native-ansi", "native-edp-empty", "native-edp-present", "empty", "image" })
             foreach (var payload in new[] { "long", "multiline", "rich" })
             {
                 const string sentinel = "SENTINELA CLIP107 — conteúdo fictício anterior.";
@@ -233,7 +251,7 @@ internal static class ClipboardNativeChecks
                     try
                     {
                         Check(EmptyClipboard(), "empty editor clipboard");
-                        if (prior == "native-unicode") PutBytes(13, Encoding.Unicode.GetBytes(sentinel + "\0"));
+                        if (prior != "native-ansi") PutBytes(13, Encoding.Unicode.GetBytes(sentinel + "\0"));
                         else
                         {
                             // A classic editor supplies ANSI/OEM plus locale;
@@ -244,6 +262,12 @@ internal static class ClipboardNativeChecks
                         }
                         PutBytes(opaque, opaqueBytes);
                         PutBytes((uint)System.Windows.DataFormats.GetDataFormat("SlashDesk.Fixture.NulEditorMarker").Id, [0]);
+                        var edp = (uint)System.Windows.DataFormats.GetDataFormat("EnterpriseDataProtectionId").Id;
+                        if (prior == "native-edp-empty")
+                        {
+                            Check(SetClipboardData(edp, IntPtr.Zero) == IntPtr.Zero && Marshal.GetLastPInvokeError() == 0, "advertise empty EDP metadata");
+                        }
+                        else if (prior == "native-edp-present") PutBytes(edp, Encoding.Unicode.GetBytes("fixture.invalid\0"));
                     }
                     finally { CloseClipboard(); }
                 }
@@ -270,12 +294,19 @@ internal static class ClipboardNativeChecks
                 Check(await session.RestoreAsync(), "restore editor clipboard: " + prior + "/" + payload);
                 if (prior.StartsWith("native-", StringComparison.Ordinal))
                 {
-                    Check(WpfClipboard.GetText() == (prior == "native-unicode" ? sentinel : "SENTINELA ASCII"), "restore external text");
+                    Check(WpfClipboard.GetText() == (prior == "native-ansi" ? "SENTINELA ASCII" : sentinel), "restore external text");
                     Check(OpenClipboard(owner.Handle), "inspect restored opaque bytes");
                     try
                     {
                         Check(ClipboardPrivacyChecks.ReadGlobal(GetClipboardData(opaque)).SequenceEqual(opaqueBytes), "opaque editor bytes restored without conversion");
                         Check(ClipboardPrivacyChecks.ReadGlobal(GetClipboardData((uint)System.Windows.DataFormats.GetDataFormat("SlashDesk.Fixture.NulEditorMarker").Id)).SequenceEqual(new byte[] { 0 }), "NUL editor marker preserved");
+                        var edp = (uint)System.Windows.DataFormats.GetDataFormat("EnterpriseDataProtectionId").Id;
+                        if (prior == "native-edp-empty")
+                        {
+                            Check(!IsClipboardFormatAvailable(edp), "unrenderable empty hint not reintroduced as fake enterprise identity");
+                        }
+                        else if (prior == "native-edp-present")
+                            Check(ClipboardPrivacyChecks.ReadGlobal(GetClipboardData(edp)).SequenceEqual(Encoding.Unicode.GetBytes("fixture.invalid\0")), "nonempty EDP identity bytes retained exactly");
                     }
                     finally { CloseClipboard(); }
                 }
@@ -343,7 +374,8 @@ internal static class ClipboardNativeChecks
     [DllImport("user32.dll")] private static extern IntPtr GetClipboardData(uint format);
     [DllImport("user32.dll")] private static extern uint GetClipboardSequenceNumber();
     [DllImport("user32.dll")] private static extern int CountClipboardFormats();
-    [DllImport("user32.dll")] private static extern IntPtr SetClipboardData(uint format, IntPtr handle);
+    [DllImport("user32.dll", SetLastError = true)] private static extern IntPtr SetClipboardData(uint format, IntPtr handle);
+    [DllImport("user32.dll")] [return: MarshalAs(UnmanagedType.Bool)] private static extern bool IsClipboardFormatAvailable(uint format);
     [DllImport("kernel32.dll")] private static extern IntPtr GlobalAlloc(uint flags, UIntPtr size);
     [DllImport("kernel32.dll")] private static extern IntPtr GlobalLock(IntPtr handle);
     [DllImport("kernel32.dll")] [return: MarshalAs(UnmanagedType.Bool)] private static extern bool GlobalUnlock(IntPtr handle);

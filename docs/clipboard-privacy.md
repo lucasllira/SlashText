@@ -51,6 +51,15 @@ both OLE publishers and direct Win32 publishers, then pastes long, multiline
 and rich payloads into a real private multiline EDIT control. The 12 combinations
 also restore native Unicode/ANSI text, empty clipboard and previous bitmap.
 
+Modern Notepad can additionally advertise `EnterpriseDataProtectionId` while
+`GetClipboardData` returns NULL with error zero (observed in the user's Windows
+build 26300). This exact unavailable optional hint is omitted. A non-null value
+is preserved byte-for-byte; explicit access failures and unknown unavailable
+formats still refuse expansion before the trigger is deleted. No enterprise
+identity is fabricated, and no Windows policy is modified. Additional native
+tests exercise long/multiline/rich paste and restoration with the unavailable
+hint and with a populated synthetic identity (18 total editor combinations).
+
 Busy access has eight bounded retries. If cleanup cannot regain access, a
 completed expansion reports that the text was inserted but the clipboard could
 not be restored; diagnostic output records only the event, not clipboard data.
