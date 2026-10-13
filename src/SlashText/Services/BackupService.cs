@@ -589,6 +589,7 @@ public sealed class BackupService
         CancellationToken cancellationToken)
     {
         var files = new List<BackupManifestFile>();
+        long actualSourceBytes = 0;
         using (var archive = ZipFile.Open(path, ZipArchiveMode.Create))
         {
             foreach (var source in sources.OrderBy(
@@ -606,6 +607,10 @@ public sealed class BackupService
                     FileShare.Read,
                     bufferSize: 81920,
                     FileOptions.SequentialScan);
+                var sourceLimit = source.ArchivePath.Contains('/') ? BackupInputBudget.EntryBytes : BackupInputBudget.MetadataBytes;
+                if (input.Length > sourceLimit || actualSourceBytes > BackupInputBudget.TotalBytes - input.Length)
+                    throw ExternalInputBudget.Exceeded();
+                actualSourceBytes += input.Length;
                 using var output = entry.Open();
                 using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
                 var buffer = new byte[81920];
