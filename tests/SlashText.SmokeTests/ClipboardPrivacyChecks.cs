@@ -72,6 +72,9 @@ internal static class ClipboardPrivacyChecks
             Check(ReadGlobal(native.Items.Single(i => i.Format == (uint)WpfFormats.GetDataFormat(ClipboardPrivacy.ExpansionMarker).Id).Handle).SequenceEqual(marker.ToByteArray()), "opaque expansion identity unchanged");
             var textBytes = ReadGlobal(native.Items.Single(i => i.Format == 13).Handle);
             Check(Encoding.Unicode.GetString(textBytes).TrimEnd('\0') == plain, "native Unicode exact");
+            Check(ReadGlobal(native.Items.Single(i => i.Format == 16).Handle).Length == 4, "locale present before CloseClipboard");
+            var oem = ReadGlobal(native.Items.Single(i => i.Format == 7).Handle);
+            Check(oem.Length > 0 && oem[^1] == 0 && (value.Any(c => c > 127) || Encoding.ASCII.GetString(oem).TrimEnd('\0') == plain), "OEM fallback present before CloseClipboard");
             if (format == SnippetFormat.Markdown)
             {
                 var html = (string)data.GetData(WpfFormats.Html)!;

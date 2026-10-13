@@ -22,6 +22,9 @@ internal sealed class WindowsExpansionClipboard : IExpansionClipboard
         {
             for (uint format = 0; (format = EnumClipboardFormats(format)) != 0;)
             {
+                // These ranges need an owner-specific destroy callback. Do not
+                // transfer them to a short-lived generic clipboard window.
+                if (format is >= 0x200 and <= 0x3ff or 0x80) throw CannotPreserve();
                 if (content.Items.Count >= 256) throw CannotPreserve();
                 var handle = GetClipboardData(format);
                 if (handle == IntPtr.Zero) throw CannotPreserve();

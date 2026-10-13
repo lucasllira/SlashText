@@ -13,6 +13,11 @@ data. Native handles are prepared before emptying the clipboard; Windows owns
 only handles successfully passed to `SetClipboardData`. Saved handles are
 separate copies and are released after cleanup.
 
+OEM text and the input locale are included explicitly. Windows otherwise adds
+these formats on close, advancing the sequence after the guarded write; that
+must not be mistaken for a concurrent user copy. The isolated native test
+checks empty restoration after closing and reading the real clipboard.
+
 The previous clipboard is captured before deleting the trigger. An empty
 clipboard is a valid snapshot, including an initial sequence number of zero.
 Each publish/restore compares the sequence number, and after publication also
@@ -28,7 +33,7 @@ more than 256 formats, an individual native item above 64 MiB or a combined
 snapshot above 128 MiB refuses clipboard expansion before deleting the trigger.
 This does not truncate or clear the user's original clipboard. Ordinary text,
 HTML/RTF, bitmaps/DIB, file lists and copyable registered byte formats retain
-their representations. Special owner-display or unrenderable formats may be
+their representations. Owner-managed private formats (0x200–0x3ff), owner-display or unrenderable formats may be
 refused. Snapshots are temporary process memory, not app files or logs.
 
 Busy access has eight bounded retries. If cleanup cannot regain access, a

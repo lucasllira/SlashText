@@ -1,4 +1,5 @@
 using System.IO;
+using System.ComponentModel;
 using System.Runtime.InteropServices;
 using SlashText.Models;
 using System.Windows;
@@ -24,10 +25,26 @@ internal static class ClipboardPrivacy
         var plain = format == SnippetFormat.Markdown ? RichTextMarkdownConverter.ToPlainText(value) : value;
         data.SetData(DataFormats.UnicodeText, plain);
         data.SetData(DataFormats.Text, plain);
+        // CloseClipboard synthesizes OEM text and locale when missing, changing
+        // the sequence after our guarded write. Publish both explicitly so that
+        // only a subsequent external copy invalidates ownership.
+        data.SetData(DataFormats.OemText, new MemoryStream(EncodeOem(plain), writable: false), autoConvert: false);
+        data.SetData(DataFormats.Locale, new MemoryStream(BitConverter.GetBytes((uint)(GetKeyboardLayout(0).ToInt64() & 0xffff)), writable: false), autoConvert: false);
         if (format == SnippetFormat.Markdown)
             data.SetData(DataFormats.Html, HtmlClipboardFormatter.Create(RichTextMarkdownConverter.ToHtml(value)));
         return data;
     }
+
+    private static byte[] EncodeOem(string text)
+    {
+        var length = WideCharToMultiByte(1, 0, text, text.Length + 1, null, 0, IntPtr.Zero, IntPtr.Zero);
+        if (length == 0) throw new Win32Exception();
+        var bytes = new byte[length];
+        if (WideCharToMultiByte(1, 0, text, text.Length + 1, bytes, bytes.Length, IntPtr.Zero, IntPtr.Zero) != length) throw new Win32Exception();
+        return bytes;
+    }
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)] private static extern int WideCharToMultiByte(uint page, uint flags, string text, int characters, byte[]? bytes, int byteCount, IntPtr defaultCharacter, IntPtr usedDefault);
+    [DllImport("user32.dll")] private static extern IntPtr GetKeyboardLayout(uint thread);
 }
 
 internal interface IClipboardContent : IDisposable { }
