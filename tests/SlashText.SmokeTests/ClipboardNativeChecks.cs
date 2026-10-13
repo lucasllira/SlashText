@@ -14,6 +14,7 @@ using WpfClipboard = System.Windows.Clipboard;
 internal static class ClipboardNativeChecks
 {
     private static readonly StringBuilder NativeTrace = new();
+    private static string? TracePath;
     internal static async Task RunChildAsync(string root)
     {
         var output = Path.Combine(root, "isolated-clipboard");
@@ -56,7 +57,7 @@ internal static class ClipboardNativeChecks
             if (desktop == IntPtr.Zero) throw new Win32Exception();
             isolationReady = true;
             var exit = StartWorker(stationName + "\\Default", output);
-            if (exit != 0) throw new InvalidOperationException(File.Exists(Path.Combine(output, "result.txt")) ? File.ReadAllText(Path.Combine(output, "result.txt")) : "Native worker failed before writing its result");
+            if (exit != 0) throw new InvalidOperationException(File.Exists(Path.Combine(output, "result.txt")) ? File.ReadAllText(Path.Combine(output, "result.txt")) : $"Native worker failed (0x{exit:X8}) before writing its result. " + (File.Exists(Path.Combine(output, "trace.txt")) ? File.ReadAllText(Path.Combine(output, "trace.txt")) : "No trace"));
             GC.KeepAlive(station); GC.KeepAlive(desktop);
         }
         catch (Exception e) { failure = e; }
@@ -102,6 +103,7 @@ internal static class ClipboardNativeChecks
                 throw new InvalidOperationException("Native worker requires its private fixture station");
             if (!GetUserObjectFlags(station, 1, out var flags, Marshal.SizeOf<UserObjectFlags>(), out _) || (flags.Flags & 1) != 0)
                 throw new InvalidOperationException("Native worker refuses an interactive window station");
+            TracePath = Path.Combine(output, "trace.txt");
             var thread = new Thread(() =>
             {
                 try
@@ -126,6 +128,8 @@ internal static class ClipboardNativeChecks
     }
 
     private static void Check(bool value, string name) { if (!value) throw new InvalidOperationException("Native clipboard: " + name); }
+    private static void Trace(string value)
+    { NativeTrace.AppendLine(value); if (TracePath is not null) File.AppendAllText(TracePath, value + Environment.NewLine); }
     private static System.Windows.DataObject Payload() => ClipboardPrivacy.CreateExpansionData("fixture\ntransient", SnippetFormat.Plain, Guid.NewGuid());
     private static async Task CheckRealBackendAsync()
     {
@@ -155,12 +159,15 @@ internal static class ClipboardNativeChecks
             WpfClipboard.SetDataObject(data, true);
             var logical = WpfClipboard.GetDataObject()!;
             foreach (var format in logical.GetFormats(false))
-                NativeTrace.AppendLine($"prior {kind}: format={format}, type={logical.GetData(format, false)?.GetType().Name ?? "null"}");
+                Trace($"prior {kind}: format={format}, type={logical.GetData(format, false)?.GetType().Name ?? "null"}");
             byte[]? previousPixels = null;
             if (kind == "image") { previousPixels = new byte[16]; WpfClipboard.GetImage()!.CopyPixels(previousPixels, 8, 0); }
             using var session = await ExpansionClipboardSession.CaptureAsync(new WindowsExpansionClipboard(), CancellationToken.None);
+            Trace($"prior {kind}: capture complete");
             await session.PublishAsync(Payload(), CancellationToken.None);
+            Trace($"prior {kind}: publish complete");
             Check(await session.RestoreAsync() && WpfClipboard.GetText() == "prior fixture", "restore prior " + kind);
+            Trace($"prior {kind}: restore complete");
             if (kind == "rich") Check((string)WpfClipboard.GetData(System.Windows.DataFormats.Html)! == html, "restore HTML byte offsets");
             if (kind == "image") { var image = WpfClipboard.GetImage()!; var pixels = new byte[16]; image.CopyPixels(pixels, 8, 0); Check(image.PixelWidth == 2 && pixels.SequenceEqual(previousPixels!), "restore bitmap pixels"); }
         }
@@ -208,15 +215,15 @@ internal static class ClipboardNativeChecks
         public ClipboardSnapshot Capture()
         {
             var snapshot = _inner.Capture();
-            NativeTrace.AppendLine($"capture: sequence={snapshot.Sequence}, formats={((WindowsExpansionClipboard.NativeContent)snapshot.Content).Items.Count}");
+            Trace($"capture: sequence={snapshot.Sequence}, formats={((WindowsExpansionClipboard.NativeContent)snapshot.Content).Items.Count}");
             return snapshot;
         }
         public IClipboardContent Prepare(System.Windows.DataObject data) => _inner.Prepare(data);
         public ClipboardWriteResult TryWrite(IClipboardContent content, uint expectedSequence, bool requireOwned)
         {
-            NativeTrace.AppendLine($"before: expected={expectedSequence}, current={GetClipboardSequenceNumber()}, formats={CountClipboardFormats()}, requireOwned={requireOwned}");
+            Trace($"before: expected={expectedSequence}, current={GetClipboardSequenceNumber()}, formats={CountClipboardFormats()}, requireOwned={requireOwned}");
             var result = _inner.TryWrite(content, expectedSequence, requireOwned);
-            NativeTrace.AppendLine($"after: result={result.Status}, returned={result.Sequence}, current={GetClipboardSequenceNumber()}, formats={CountClipboardFormats()}");
+            Trace($"after: result={result.Status}, returned={result.Sequence}, current={GetClipboardSequenceNumber()}, formats={CountClipboardFormats()}");
             return result;
         }
         public void Dispose() => _inner.Dispose();

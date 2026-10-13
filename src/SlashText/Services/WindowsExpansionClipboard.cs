@@ -2,6 +2,7 @@ using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.ComTypes;
 using System.Windows;
 using System.Windows.Interop;
+using System.Windows.Media.Imaging;
 using ComDataObject = System.Runtime.InteropServices.ComTypes.IDataObject;
 using WpfDataObject = System.Windows.DataObject;
 
@@ -35,6 +36,19 @@ internal sealed class WindowsExpansionClipboard : IExpansionClipboard
                 // value. The concrete Bitmap representation remains mandatory.
                 if (value is null && name == "System.Drawing.Bitmap" && source.GetDataPresent(DataFormats.Bitmap, autoConvert: false)) continue;
                 if (value is null) throw CannotPreserve();
+                if (value is BitmapSource bitmap)
+                {
+                    // InteropBitmap may reference memory owned by the current
+                    // clipboard. Snapshot pixels before EmptyClipboard frees it.
+                    var stride = ((long)bitmap.PixelWidth * bitmap.Format.BitsPerPixel + 7) / 8;
+                    var bytes = stride * bitmap.PixelHeight;
+                    if (stride <= 0 || bytes <= 0 || bytes > 64L * 1024 * 1024) throw CannotPreserve();
+                    var pixels = new byte[(int)bytes];
+                    bitmap.CopyPixels(pixels, (int)stride, 0);
+                    var detached = BitmapSource.Create(bitmap.PixelWidth, bitmap.PixelHeight, bitmap.DpiX, bitmap.DpiY,
+                        bitmap.Format, bitmap.Palette, pixels, (int)stride);
+                    detached.Freeze(); value = detached;
+                }
                 copy.SetData(name, value, autoConvert: false);
             }
         }
