@@ -60,7 +60,7 @@ internal static class ClipboardPrivacyChecks
         {
             var marker = Guid.NewGuid();
             var data = ClipboardPrivacy.CreateExpansionData(value, format, marker);
-            var plain = format == SnippetFormat.Markdown ? RichTextMarkdownConverter.ToPlainText(value) : value;
+            var plain = (format == SnippetFormat.Markdown ? RichTextMarkdownConverter.ToPlainText(value) : value).ReplaceLineEndings("\r\n");
             Check((string)data.GetData(WpfFormats.UnicodeText)! == plain, "plain text unchanged");
             Check((string)data.GetData(WpfFormats.Text)! == plain, "ANSI fallback retained");
             using var native = WindowsExpansionClipboard.PrepareNative(data);
@@ -87,6 +87,18 @@ internal static class ClipboardPrivacyChecks
         }
         var explicitCopy = new WpfDataObject(); explicitCopy.SetText("explicit fixture");
         Check(!explicitCopy.GetFormats(false).Contains(ClipboardPrivacy.ExcludeMonitoring), "ordinary explicit copies keep Windows policy");
+        foreach (var input in new[] { "one\ntwo", "one\r\ntwo", "one\rtwo", "one\r\ntwo\nthree" })
+        {
+            var payload = ClipboardPrivacy.CreateExpansionData(input, SnippetFormat.Plain, Guid.NewGuid());
+            Check((string)payload.GetData(WpfFormats.UnicodeText)! == input.ReplaceLineEndings("\r\n"), "canonical Windows line endings without doubled CR");
+        }
+        var emptyHandle = GlobalAlloc(2, UIntPtr.Zero);
+        try
+        {
+            using var emptyCopy = WindowsExpansionClipboard.NativeItem.Duplicate((uint)WpfFormats.GetDataFormat("SlashDesk.Fixture.EmptyMarker").Id, emptyHandle, System.Runtime.InteropServices.ComTypes.TYMED.TYMED_HGLOBAL);
+            Check(emptyCopy.Handle != IntPtr.Zero && emptyCopy.Handle != emptyHandle && emptyCopy.Bytes == 0, "valid empty native marker independently copied");
+        }
+        finally { GlobalFree(emptyHandle); }
         using var bitmap = new System.Drawing.Bitmap(8, 8);
         using (var graphics = System.Drawing.Graphics.FromImage(bitmap)) graphics.Clear(System.Drawing.Color.Blue);
         var originalHandle = bitmap.GetHbitmap();
@@ -112,7 +124,7 @@ internal static class ClipboardPrivacyChecks
             var fake = new FakeClipboard(original);
             using var session = await ExpansionClipboardSession.CaptureAsync(fake, CancellationToken.None);
             await session.PublishAsync(ClipboardPrivacy.CreateExpansionData("one\ntwo", SnippetFormat.Plain, Guid.NewGuid()), CancellationToken.None);
-            Check(fake.Text == "one\ntwo", "transient payload published");
+            Check(fake.Text == "one\r\ntwo", "transient payload published with Windows line endings");
             Check(await session.RestoreAsync() && fake.Text == original && fake.Formats == (original.Length == 0 ? 0 : 1), "restoration including originally empty clipboard");
             Check(await session.RestoreAsync(), "cleanup idempotent");
         }
@@ -192,6 +204,8 @@ internal static class ClipboardPrivacyChecks
         public void Dispose() { }
     }
     [DllImport("kernel32.dll")] private static extern UIntPtr GlobalSize(IntPtr handle);
+    [DllImport("kernel32.dll")] private static extern IntPtr GlobalAlloc(uint flags, UIntPtr size);
+    [DllImport("kernel32.dll")] private static extern IntPtr GlobalFree(IntPtr handle);
     [DllImport("kernel32.dll")] private static extern IntPtr GlobalLock(IntPtr handle);
     [DllImport("kernel32.dll")] [return: MarshalAs(UnmanagedType.Bool)] private static extern bool GlobalUnlock(IntPtr handle);
     [DllImport("gdi32.dll")] [return: MarshalAs(UnmanagedType.Bool)] private static extern bool DeleteObject(IntPtr handle);

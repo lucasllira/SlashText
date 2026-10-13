@@ -66,7 +66,7 @@ internal static class ClipboardNativeChecks
         var unavailable = !isolationReady && failure is Win32Exception { NativeErrorCode: 5 };
         File.WriteAllText(Path.Combine(output, "result.txt"), unavailable ?
             "Clipboard native: UNAVAILABLE (Windows denied creation/selection of an isolated station; interactive clipboard was not accessed. Native/Win+V pilot validation remains required)." : failure?.ToString() ??
-            "Clipboard native: PASS (separate noninteractive Windows station; raw flags, empty/text/rich/image restoration, concurrent copy and locked retry).");
+            "Clipboard native: PASS (separate noninteractive Windows station; raw flags, empty/text/rich/image restoration, concurrent copy, locked retry and 12 native editor paste/restoration combinations).");
         return unavailable ? 2 : failure is null ? 0 : 1;
     }
 
@@ -137,7 +137,7 @@ internal static class ClipboardNativeChecks
         using (var session = await ExpansionClipboardSession.CaptureAsync(new TracedClipboard(), CancellationToken.None))
         {
             await session.PublishAsync(Payload(), CancellationToken.None);
-            Check(WpfClipboard.GetText() == "fixture\ntransient", "native publication readable by WPF");
+            Check(WpfClipboard.GetText() == "fixture\r\ntransient", "native publication readable by WPF");
             Check(OpenClipboard(IntPtr.Zero), "read native flags");
             try
             {
@@ -171,6 +171,7 @@ internal static class ClipboardNativeChecks
             if (kind == "rich") Check((string)WpfClipboard.GetData(System.Windows.DataFormats.Html)! == html, "restore HTML byte offsets");
             if (kind == "image") { var image = WpfClipboard.GetImage()!; var pixels = new byte[16]; image.CopyPixels(pixels, 8, 0); Check(image.PixelWidth == 2 && pixels.SequenceEqual(previousPixels!), "restore bitmap pixels"); }
         }
+        await CheckNativeEditorCopiesAsync();
         WpfClipboard.SetText("old");
         using (var session = await ExpansionClipboardSession.CaptureAsync(new WindowsExpansionClipboard(), CancellationToken.None))
         {
@@ -208,6 +209,92 @@ internal static class ClipboardNativeChecks
             Check(WpfClipboard.GetText() == "copy during busy retry", "new copy survives actual locked retry");
         }
         WpfClipboard.Clear();
+    }
+
+    private static async Task CheckNativeEditorCopiesAsync()
+    {
+        using var owner = new HwndSource(new HwndSourceParameters("FixtureNativeEditor") { ParentWindow = new IntPtr(-3), WindowStyle = 0 });
+        var edit = CreateWindowEx(0, "EDIT", "", 0x80000000 | 0x0004, 0, 0, 400, 200, owner.Handle, IntPtr.Zero, IntPtr.Zero, IntPtr.Zero);
+        Check(edit != IntPtr.Zero, "create private multiline paste destination");
+        try
+        {
+            foreach (var prior in new[] { "native-unicode", "native-ansi", "empty", "image" })
+            foreach (var payload in new[] { "long", "multiline", "rich" })
+            {
+                const string sentinel = "SENTINELA CLIP107 — conteúdo fictício anterior.";
+                var opaque = (uint)System.Windows.DataFormats.GetDataFormat("SlashDesk.Fixture.OpaqueEditorFormat").Id;
+                var opaqueBytes = new byte[] { 0xff, 0, 0x81, 0x7f, 0x22 };
+                if (prior.StartsWith("native-", StringComparison.Ordinal))
+                {
+                    Check(OpenClipboard(owner.Handle), "open editor clipboard");
+                    try
+                    {
+                        Check(EmptyClipboard(), "empty editor clipboard");
+                        if (prior == "native-unicode") PutBytes(13, Encoding.Unicode.GetBytes(sentinel + "\0"));
+                        else
+                        {
+                            // A classic editor supplies ANSI/OEM plus locale;
+                            // Windows synthesizes Unicode for other consumers.
+                            PutBytes(1, Encoding.ASCII.GetBytes("SENTINELA ASCII\0"));
+                            PutBytes(7, Encoding.ASCII.GetBytes("SENTINELA ASCII\0"));
+                            PutBytes(16, BitConverter.GetBytes(0x0409u));
+                        }
+                        PutBytes(opaque, opaqueBytes);
+                        PutBytes((uint)System.Windows.DataFormats.GetDataFormat("SlashDesk.Fixture.EmptyEditorMarker").Id, []);
+                    }
+                    finally { CloseClipboard(); }
+                }
+                else if (prior == "image")
+                    WpfClipboard.SetImage(BitmapSource.Create(2, 2, 96, 96, PixelFormats.Bgra32, null, Enumerable.Repeat((byte)0xA3, 16).ToArray(), 8));
+                else WpfClipboard.Clear();
+
+                var value = payload switch
+                {
+                    "long" => new string('a', 2400),
+                    "multiline" => "CLIP107 LINHA UM\nCLIP107 LINHA DOIS\nCLIP107 LINHA TRÊS",
+                    _ => "**CLIP107 FORMATADO**\n\nTexto em *itálico*."
+                };
+                var format = payload == "rich" ? SnippetFormat.Markdown : SnippetFormat.Plain;
+                var expected = (format == SnippetFormat.Markdown ? RichTextMarkdownConverter.ToPlainText(value) : value).ReplaceLineEndings("\r\n");
+                using var session = await ExpansionClipboardSession.CaptureAsync(new WindowsExpansionClipboard(), CancellationToken.None);
+                await session.PublishAsync(ClipboardPrivacy.CreateExpansionData(value, format, Guid.NewGuid()), CancellationToken.None);
+                Check(SetWindowText(edit, ""), "clear private edit fixture");
+                SendMessage(edit, 0x0302, IntPtr.Zero, IntPtr.Zero); // WM_PASTE; no interactive input.
+                var inserted = new StringBuilder(expected.Length + 1);
+                GetWindowText(edit, inserted, inserted.Capacity);
+                Check(inserted.ToString() == expected, "actual edit paste: " + prior + "/" + payload);
+                Check(await session.RestoreAsync(), "restore editor clipboard: " + prior + "/" + payload);
+                if (prior.StartsWith("native-", StringComparison.Ordinal))
+                {
+                    Check(WpfClipboard.GetText() == (prior == "native-unicode" ? sentinel : "SENTINELA ASCII"), "restore external text");
+                    Check(OpenClipboard(owner.Handle), "inspect restored opaque bytes");
+                    try
+                    {
+                        Check(ClipboardPrivacyChecks.ReadGlobal(GetClipboardData(opaque)).SequenceEqual(opaqueBytes), "opaque editor bytes restored without conversion");
+                        Check(GetClipboardData((uint)System.Windows.DataFormats.GetDataFormat("SlashDesk.Fixture.EmptyEditorMarker").Id) != IntPtr.Zero, "empty editor marker preserved");
+                    }
+                    finally { CloseClipboard(); }
+                }
+                else if (prior == "image") Check(WpfClipboard.GetImage()?.PixelWidth == 2, "restore image after actual paste");
+                else Check(CountClipboardFormats() == 0, "restore empty after actual paste");
+                Trace("editor paste PASS: " + prior + "/" + payload);
+            }
+        }
+        finally { DestroyWindow(edit); }
+    }
+
+    private static void PutBytes(uint format, byte[] bytes)
+    {
+        var handle = GlobalAlloc(2, (UIntPtr)bytes.Length);
+        Check(handle != IntPtr.Zero, "allocate fixture bytes");
+        if (bytes.Length > 0)
+        {
+            var pointer = GlobalLock(handle);
+            if (pointer == IntPtr.Zero) { GlobalFree(handle); throw new InvalidOperationException("Cannot lock fixture bytes"); }
+            try { Marshal.Copy(bytes, 0, pointer, bytes.Length); }
+            finally { GlobalUnlock(handle); }
+        }
+        if (SetClipboardData(format, handle) == IntPtr.Zero) { GlobalFree(handle); throw new InvalidOperationException("Cannot publish fixture bytes"); }
     }
     private sealed class TracedClipboard : IExpansionClipboard
     {
@@ -256,4 +343,10 @@ internal static class ClipboardNativeChecks
     [DllImport("kernel32.dll")] private static extern IntPtr GlobalAlloc(uint flags, UIntPtr size);
     [DllImport("kernel32.dll")] private static extern IntPtr GlobalLock(IntPtr handle);
     [DllImport("kernel32.dll")] [return: MarshalAs(UnmanagedType.Bool)] private static extern bool GlobalUnlock(IntPtr handle);
+    [DllImport("kernel32.dll")] private static extern IntPtr GlobalFree(IntPtr handle);
+    [DllImport("user32.dll", EntryPoint = "CreateWindowExW", CharSet = CharSet.Unicode)] private static extern IntPtr CreateWindowEx(uint extendedStyle, string className, string title, uint style, int x, int y, int width, int height, IntPtr parent, IntPtr menu, IntPtr instance, IntPtr parameter);
+    [DllImport("user32.dll")] [return: MarshalAs(UnmanagedType.Bool)] private static extern bool DestroyWindow(IntPtr window);
+    [DllImport("user32.dll", EntryPoint = "SendMessageW")] private static extern IntPtr SendMessage(IntPtr window, uint message, IntPtr wparam, IntPtr lparam);
+    [DllImport("user32.dll", EntryPoint = "SetWindowTextW", CharSet = CharSet.Unicode)] [return: MarshalAs(UnmanagedType.Bool)] private static extern bool SetWindowText(IntPtr window, string text);
+    [DllImport("user32.dll", EntryPoint = "GetWindowTextW", CharSet = CharSet.Unicode)] private static extern int GetWindowText(IntPtr window, StringBuilder text, int maxCount);
 }

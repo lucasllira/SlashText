@@ -2,7 +2,6 @@ using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.ComTypes;
 using System.Windows;
 using System.Windows.Interop;
-using System.Windows.Media.Imaging;
 using ComDataObject = System.Runtime.InteropServices.ComTypes.IDataObject;
 using WpfDataObject = System.Windows.DataObject;
 
@@ -17,46 +16,52 @@ internal sealed class WindowsExpansionClipboard : IExpansionClipboard
 
     public ClipboardSnapshot Capture()
     {
-        var sequence = GetClipboardSequenceNumber();
-        var source = System.Windows.Clipboard.GetDataObject();
-        var copy = new WpfDataObject();
-        // OLE exposes the application's logical formats, not the native
-        // unrenderable DataObject/Ole Private Data ownership bookkeeping.
-        if (source is not null)
+        if (!OpenClipboard(_window.Handle)) throw new ExternalException("Clipboard is busy while capturing");
+        var content = new NativeContent();
+        uint sequence;
+        try
         {
-            var formats = source.GetFormats(autoConvert: false);
-            if (formats.Length > 256) throw CannotPreserve();
-            foreach (var name in formats)
+            // Preserve the original native representation. Re-exporting an
+            // external editor's formats through WPF can change their storage
+            // types (OEM/locale/custom formats) or deserialize arbitrary data.
+            // GetClipboardData may ask the owner to render delayed data, but the
+            // clipboard remains locked until all independent copies are ready.
+            uint format = 0;
+            var count = 0;
+            while (true)
             {
-                if (name is "DataObject" or "Ole Private Data") continue;
-                var format = (uint)DataFormats.GetDataFormat(name).Id;
-                if (format is >= 0x200 and <= 0x3ff or 0x80) throw CannotPreserve();
-                var value = source.GetData(name, autoConvert: false);
-                // WPF/OLE can enumerate this derived alias without a readable
-                // value. The concrete Bitmap representation remains mandatory.
-                if (value is null && name == "System.Drawing.Bitmap" && source.GetDataPresent(DataFormats.Bitmap, autoConvert: false)) continue;
-                if (value is null) throw CannotPreserve();
-                if (value is BitmapSource bitmap)
+                Marshal.SetLastPInvokeError(0);
+                format = EnumClipboardFormats(format);
+                if (format == 0)
                 {
-                    // InteropBitmap may reference memory owned by the current
-                    // clipboard. Snapshot pixels before EmptyClipboard frees it.
-                    var stride = ((long)bitmap.PixelWidth * bitmap.Format.BitsPerPixel + 7) / 8;
-                    var bytes = stride * bitmap.PixelHeight;
-                    if (stride <= 0 || bytes <= 0 || bytes > 64L * 1024 * 1024) throw CannotPreserve();
-                    var pixels = new byte[(int)bytes];
-                    bitmap.CopyPixels(pixels, (int)stride, 0);
-                    var detached = BitmapSource.Create(bitmap.PixelWidth, bitmap.PixelHeight, bitmap.DpiX, bitmap.DpiY,
-                        bitmap.Format, bitmap.Palette, pixels, (int)stride);
-                    detached.Freeze(); value = detached;
+                    if (Marshal.GetLastPInvokeError() != 0) throw new ExternalException("Clipboard format enumeration failed");
+                    break;
                 }
-                copy.SetData(name, value, autoConvert: false);
+                if (++count > 256) throw CannotPreserve();
+                // OLE ownership bookkeeping cannot be restored as ordinary data.
+                if (format == (uint)DataFormats.GetDataFormat("DataObject").Id ||
+                    format == (uint)DataFormats.GetDataFormat("Ole Private Data").Id) continue;
+                if (format is >= 0x200 and <= 0x3ff or 0x80) throw CannotPreserve();
+                var handle = GetClipboardData(format);
+                if (handle == IntPtr.Zero) throw CannotPreserve();
+                content.Add(NativeItem.Duplicate(format, handle, StorageFor(format)));
             }
+            sequence = GetClipboardSequenceNumber();
         }
-        var content = PrepareNative(copy);
+        catch { content.Dispose(); throw; }
+        finally { CloseClipboard(); }
         if (GetClipboardSequenceNumber() == sequence) return new ClipboardSnapshot(content, sequence);
         content.Dispose();
-        throw new ExternalException("Clipboard changed while capturing its logical formats");
+        throw new ExternalException("Clipboard changed while capturing its native formats");
     }
+
+    private static TYMED StorageFor(uint format) => format switch
+    {
+        2 or 9 or 0x82 => TYMED.TYMED_GDI,
+        3 or 0x83 => TYMED.TYMED_MFPICT,
+        14 or 0x8e => TYMED.TYMED_ENHMF,
+        _ => TYMED.TYMED_HGLOBAL
+    };
 
     public IClipboardContent Prepare(WpfDataObject data) => PrepareNative(data);
 
@@ -70,13 +75,7 @@ internal sealed class WindowsExpansionClipboard : IExpansionClipboard
             {
                 var id = (uint)DataFormats.GetDataFormat(name).Id;
                 var descriptor = new FORMATETC { cfFormat = unchecked((short)id), dwAspect = DVASPECT.DVASPECT_CONTENT,
-                    lindex = -1, tymed = id switch
-                    {
-                        2 or 9 or 0x82 => TYMED.TYMED_GDI,
-                        3 or 0x83 => TYMED.TYMED_MFPICT,
-                        14 or 0x8e => TYMED.TYMED_ENHMF,
-                        _ => TYMED.TYMED_HGLOBAL
-                    } };
+                    lindex = -1, tymed = StorageFor(id) };
                 ((ComDataObject)data).GetData(ref descriptor, out var medium);
                 try { content.Add(NativeItem.Duplicate(id, medium.unionmember, medium.tymed)); }
                 finally { ReleaseStgMedium(ref medium); }
@@ -147,7 +146,16 @@ internal sealed class WindowsExpansionClipboard : IExpansionClipboard
         internal static NativeItem Duplicate(uint format, IntPtr handle, TYMED kind)
         {
             var bytes = EstimateBytes(format, handle, kind);
-            if (bytes == 0 || bytes > 64UL * 1024 * 1024) throw CannotPreserve();
+            if (handle == IntPtr.Zero || bytes > 64UL * 1024 * 1024) throw CannotPreserve();
+            // A registered marker can be a valid zero-byte movable HGLOBAL.
+            // Preserve it without inventing a payload or rejecting plain text.
+            if (bytes == 0)
+            {
+                if (kind != TYMED.TYMED_HGLOBAL || GlobalFlags(handle) == 0x8000) throw CannotPreserve();
+                var empty = GlobalAlloc(2, UIntPtr.Zero);
+                if (empty == IntPtr.Zero) throw CannotPreserve();
+                return new NativeItem(format, empty, kind, 0);
+            }
             var cloneFormat = format switch { 0x82 => 2u, 0x83 => 3u, _ => format };
             var duplicate = kind == TYMED.TYMED_ENHMF ? CopyEnhMetaFile(handle, null) : OleDuplicateData(handle, unchecked((ushort)cloneFormat), 2);
             if (duplicate == IntPtr.Zero) throw CannotPreserve();
@@ -191,10 +199,14 @@ internal sealed class WindowsExpansionClipboard : IExpansionClipboard
     [DllImport("user32.dll", SetLastError = true)] [return: MarshalAs(UnmanagedType.Bool)] private static extern bool EmptyClipboard();
     [DllImport("user32.dll", SetLastError = true)] private static extern IntPtr SetClipboardData(uint format, IntPtr handle);
     [DllImport("user32.dll")] private static extern uint GetClipboardSequenceNumber();
+    [DllImport("user32.dll", SetLastError = true)] private static extern uint EnumClipboardFormats(uint format);
+    [DllImport("user32.dll", SetLastError = true)] private static extern IntPtr GetClipboardData(uint format);
     [DllImport("user32.dll")] private static extern IntPtr GetClipboardOwner();
     [DllImport("ole32.dll")] private static extern IntPtr OleDuplicateData(IntPtr source, ushort format, uint flags);
     [DllImport("ole32.dll")] internal static extern void ReleaseStgMedium(ref STGMEDIUM medium);
     [DllImport("kernel32.dll", SetLastError = true)] private static extern UIntPtr GlobalSize(IntPtr handle);
+    [DllImport("kernel32.dll")] private static extern uint GlobalFlags(IntPtr handle);
+    [DllImport("kernel32.dll")] private static extern IntPtr GlobalAlloc(uint flags, UIntPtr size);
     [DllImport("kernel32.dll")] private static extern IntPtr GlobalLock(IntPtr handle);
     [DllImport("kernel32.dll")] [return: MarshalAs(UnmanagedType.Bool)] private static extern bool GlobalUnlock(IntPtr handle);
     [DllImport("gdi32.dll", EntryPoint = "GetObjectW")] private static extern int GetObject(IntPtr handle, int size, out NativeBitmap bitmap);

@@ -7,8 +7,9 @@ values for `CanIncludeInClipboardHistory` and `CanUploadToCloudClipboard`. WPF
 publishes these registered formats as byte streams, not boxed .NET values.
 These are the [official Windows clipboard privacy formats](https://learn.microsoft.com/en-us/windows/win32/dataxchg/clipboard-formats#cloud-clipboard-and-clipboard-history-formats).
 
-Unicode text, ANSI fallback, CF_HTML offsets and embedded local images keep the
-existing renderer. A dedicated message-only window publishes immediate native
+CF_UNICODETEXT, ANSI and OEM fallback use Windows CRLF line endings (including
+plain multiline snippets); existing CRLF is not doubled. CF_HTML offsets and
+embedded local images keep the existing renderer. A dedicated message-only window publishes immediate native
 data. Native handles are prepared before emptying the clipboard; Windows owns
 only handles successfully passed to `SetClipboardData`. Saved handles are
 separate copies and are released after cleanup.
@@ -35,6 +36,16 @@ This does not truncate or clear the user's original clipboard. Ordinary text,
 HTML/RTF, bitmaps/DIB, file lists and copyable registered byte formats retain
 their representations. Owner-managed private formats (0x200–0x3ff), owner-display or unrenderable formats may be
 refused. Snapshots are temporary process memory, not app files or logs.
+
+Snapshots duplicate Win32 handles while the clipboard is locked, including
+externally supplied Unicode/ANSI/OEM text, locale and opaque registered bytes.
+They do not convert the previous clipboard into WPF objects or deserialize
+arbitrary editor-specific formats. Valid zero-byte movable markers are retained.
+Only OLE's `DataObject` / `Ole Private Data` owner bookkeeping is omitted; it is
+not portable data and is recreated by the next OLE owner. The native test uses
+both OLE publishers and direct Win32 publishers, then pastes long, multiline
+and rich payloads into a real private multiline EDIT control. The 12 combinations
+also restore native Unicode/ANSI text, empty clipboard and previous bitmap.
 
 Busy access has eight bounded retries. If cleanup cannot regain access, a
 completed expansion reports that the text was inserted but the clipboard could

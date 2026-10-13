@@ -22,7 +22,10 @@ internal static class ClipboardPrivacy
         data.SetData(IncludeHistory, new MemoryStream([0, 0, 0, 0], writable: false), autoConvert: false);
         data.SetData(UploadCloud, new MemoryStream([0, 0, 0, 0], writable: false), autoConvert: false);
         data.SetData(ExpansionMarker, new MemoryStream(marker.ToByteArray(), writable: false), autoConvert: false);
-        var plain = format == SnippetFormat.Markdown ? RichTextMarkdownConverter.ToPlainText(value) : value;
+        // CF_UNICODETEXT and CF_TEXT use CRLF line endings. LF-only plain text
+        // may be ignored or flattened by Windows edit controls.
+        var plain = (format == SnippetFormat.Markdown ? RichTextMarkdownConverter.ToPlainText(value) : value)
+            .ReplaceLineEndings("\r\n");
         data.SetData(DataFormats.UnicodeText, plain);
         data.SetData(DataFormats.Text, plain);
         // CloseClipboard synthesizes OEM text and locale when missing, changing
