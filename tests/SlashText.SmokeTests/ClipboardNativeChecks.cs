@@ -153,6 +153,9 @@ internal static class ClipboardNativeChecks
             if (kind == "rich") { data.SetData(System.Windows.DataFormats.Html, html); data.SetData(System.Windows.DataFormats.Rtf, "{\\rtf1 prior fixture}"); }
             if (kind == "image") data.SetImage(BitmapSource.Create(2, 2, 96, 96, PixelFormats.Bgra32, null, Enumerable.Repeat((byte)0xA3, 16).ToArray(), 8));
             WpfClipboard.SetDataObject(data, true);
+            var logical = WpfClipboard.GetDataObject()!;
+            foreach (var format in logical.GetFormats(false))
+                NativeTrace.AppendLine($"prior {kind}: format={format}, type={logical.GetData(format, false)?.GetType().Name ?? "null"}");
             byte[]? previousPixels = null;
             if (kind == "image") { previousPixels = new byte[16]; WpfClipboard.GetImage()!.CopyPixels(previousPixels, 8, 0); }
             using var session = await ExpansionClipboardSession.CaptureAsync(new WindowsExpansionClipboard(), CancellationToken.None);
