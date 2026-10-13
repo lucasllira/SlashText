@@ -783,6 +783,7 @@ public sealed class BackupService
 
     private static void EnsureAllowedArchivePath(string path)
     {
+        if (path.Length > 32_767) throw ExternalInputBudget.Exceeded();
         var normalized = NormalizeArchivePath(path);
         if (string.IsNullOrWhiteSpace(normalized) ||
             normalized.StartsWith('/') ||

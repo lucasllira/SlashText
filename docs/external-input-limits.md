@@ -7,6 +7,7 @@ These limits apply to imported files and backups selected for restoration. Rejec
 | Backup ZIP on disk | 2 GiB + 64 MiB for container overhead |
 | ZIP central directory | 16 MiB; at most 10,001 records including the manifest/directories |
 | Manifest | 8 MiB, declared and actual bytes; JSON default maximum depth 64 |
+| Archive paths | 32,767 characters, including manifest references |
 | Expanded backup files | 256 MiB per asset, 64 MiB per root data file, 2 GiB total including manifest |
 | External Markdown/JSON/YAML import | 64 MiB actual encoded bytes |
 | Imported shortcuts | 10,000 source items; 1,048,576 content characters per item |

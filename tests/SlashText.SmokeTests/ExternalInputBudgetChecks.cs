@@ -74,6 +74,8 @@ internal static class ExternalInputBudgetChecks
             }
             WriteZip(forged, new() { ["snippets.md"] = "tiny" }, manifest: "{");
             Reject(() => BackupService.ValidateSnapshot(forged), "small malformed manifest");
+            WriteZip(forged,new(){["snippets.md"]="tiny"},JsonSerializer.Serialize(new{schemaVersion=2,files=new[]{new{path=new string('x',32768),size=4,sha256=new string('0',64)}}}));
+            ExpectEarlyBudget(forged,"oversize manifest path before feedback or hashes");
 
             var active = Path.Combine(root,"active"); var backups=Path.Combine(root,"backups"); Directory.CreateDirectory(active); Directory.CreateDirectory(backups);
             var snippets = Path.Combine(active,"snippets.md"); var settings=Path.Combine(active,"settings.json");
