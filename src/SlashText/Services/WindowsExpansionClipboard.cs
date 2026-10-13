@@ -16,26 +16,29 @@ internal sealed class WindowsExpansionClipboard : IExpansionClipboard
 
     public ClipboardSnapshot Capture()
     {
-        if (!OpenClipboard(_window.Handle)) throw new ExternalException("Clipboard busy");
-        var content = new NativeContent();
-        try
+        var sequence = GetClipboardSequenceNumber();
+        var source = System.Windows.Clipboard.GetDataObject();
+        var copy = new WpfDataObject();
+        // OLE exposes the application's logical formats, not the native
+        // unrenderable DataObject/Ole Private Data ownership bookkeeping.
+        if (source is not null)
         {
-            for (uint format = 0; (format = EnumClipboardFormats(format)) != 0;)
+            var formats = source.GetFormats(autoConvert: false);
+            if (formats.Length > 256) throw CannotPreserve();
+            foreach (var name in formats)
             {
-                // These ranges need an owner-specific destroy callback. Do not
-                // transfer them to a short-lived generic clipboard window.
+                if (name is "DataObject" or "Ole Private Data") continue;
+                var format = (uint)DataFormats.GetDataFormat(name).Id;
                 if (format is >= 0x200 and <= 0x3ff or 0x80) throw CannotPreserve();
-                if (content.Items.Count >= 256) throw CannotPreserve();
-                var handle = GetClipboardData(format);
-                if (handle == IntPtr.Zero) throw CannotPreserve();
-                content.Add(NativeItem.Duplicate(format, handle, MediumFor(format)));
+                var value = source.GetData(name, autoConvert: false);
+                if (value is null) throw CannotPreserve();
+                copy.SetData(name, value, autoConvert: false);
             }
-            if (Marshal.GetLastPInvokeError() != 0) throw CannotPreserve();
-            var sequence = GetClipboardSequenceNumber();
-            return new ClipboardSnapshot(content, sequence);
         }
-        catch { content.Dispose(); throw; }
-        finally { CloseClipboard(); }
+        var content = PrepareNative(copy);
+        if (GetClipboardSequenceNumber() == sequence) return new ClipboardSnapshot(content, sequence);
+        content.Dispose();
+        throw new ExternalException("Clipboard changed while capturing its logical formats");
     }
 
     public IClipboardContent Prepare(WpfDataObject data) => PrepareNative(data);
@@ -91,13 +94,6 @@ internal sealed class WindowsExpansionClipboard : IExpansionClipboard
 
     public void Dispose() => _window.Dispose();
     private static InvalidOperationException CannotPreserve() => new(UiText.Get("Não foi possível preservar a área de transferência. Copie outro conteúdo e tente expandir novamente."));
-    private static TYMED MediumFor(uint format) => format switch
-    {
-        2 or 9 or 0x82 => TYMED.TYMED_GDI,
-        3 or 0x83 => TYMED.TYMED_MFPICT,
-        14 or 0x8e => TYMED.TYMED_ENHMF,
-        _ => TYMED.TYMED_HGLOBAL
-    };
 
     internal sealed class NativeContent : IClipboardContent
     {
@@ -170,8 +166,6 @@ internal sealed class WindowsExpansionClipboard : IExpansionClipboard
     [DllImport("user32.dll", SetLastError = true)] [return: MarshalAs(UnmanagedType.Bool)] private static extern bool OpenClipboard(IntPtr window);
     [DllImport("user32.dll")] [return: MarshalAs(UnmanagedType.Bool)] private static extern bool CloseClipboard();
     [DllImport("user32.dll", SetLastError = true)] [return: MarshalAs(UnmanagedType.Bool)] private static extern bool EmptyClipboard();
-    [DllImport("user32.dll", SetLastError = true)] private static extern uint EnumClipboardFormats(uint format);
-    [DllImport("user32.dll", SetLastError = true)] private static extern IntPtr GetClipboardData(uint format);
     [DllImport("user32.dll", SetLastError = true)] private static extern IntPtr SetClipboardData(uint format, IntPtr handle);
     [DllImport("user32.dll")] private static extern uint GetClipboardSequenceNumber();
     [DllImport("user32.dll")] private static extern IntPtr GetClipboardOwner();
