@@ -214,8 +214,11 @@ internal static class ClipboardNativeChecks
     private static async Task CheckNativeEditorCopiesAsync()
     {
         using var owner = new HwndSource(new HwndSourceParameters("FixtureNativeEditor") { ParentWindow = new IntPtr(-3), WindowStyle = 0 });
-        var edit = CreateWindowEx(0, "EDIT", "", 0x80000000 | 0x0004, 0, 0, 400, 200, owner.Handle, IntPtr.Zero, IntPtr.Zero, IntPtr.Zero);
+        // Match an editor: without ES_AUTOVSCROLL a multiline EDIT refuses
+        // pasted text beyond its visible area; that is not a clipboard failure.
+        var edit = CreateWindowEx(0, "EDIT", "", 0x80000000 | 0x0004 | 0x0040 | 0x0080, 0, 0, 400, 200, owner.Handle, IntPtr.Zero, IntPtr.Zero, IntPtr.Zero);
         Check(edit != IntPtr.Zero, "create private multiline paste destination");
+        SendMessage(edit, 0x00C5, new IntPtr(1024 * 1024), IntPtr.Zero); // EM_SETLIMITTEXT
         try
         {
             foreach (var prior in new[] { "native-unicode", "native-ansi", "empty", "image" })
@@ -262,6 +265,7 @@ internal static class ClipboardNativeChecks
                 SendMessage(edit, 0x0302, IntPtr.Zero, IntPtr.Zero); // WM_PASTE; no interactive input.
                 var inserted = new StringBuilder(expected.Length + 1);
                 GetWindowText(edit, inserted, inserted.Capacity);
+                Trace($"editor paste counts: prior={prior}, payload={payload}, expected={expected.Length}, actual={GetWindowTextLength(edit)}");
                 Check(inserted.ToString() == expected, "actual edit paste: " + prior + "/" + payload);
                 Check(await session.RestoreAsync(), "restore editor clipboard: " + prior + "/" + payload);
                 if (prior.StartsWith("native-", StringComparison.Ordinal))
@@ -349,4 +353,5 @@ internal static class ClipboardNativeChecks
     [DllImport("user32.dll", EntryPoint = "SendMessageW")] private static extern IntPtr SendMessage(IntPtr window, uint message, IntPtr wparam, IntPtr lparam);
     [DllImport("user32.dll", EntryPoint = "SetWindowTextW", CharSet = CharSet.Unicode)] [return: MarshalAs(UnmanagedType.Bool)] private static extern bool SetWindowText(IntPtr window, string text);
     [DllImport("user32.dll", EntryPoint = "GetWindowTextW", CharSet = CharSet.Unicode)] private static extern int GetWindowText(IntPtr window, StringBuilder text, int maxCount);
+    [DllImport("user32.dll", EntryPoint = "GetWindowTextLengthW")] private static extern int GetWindowTextLength(IntPtr window);
 }
