@@ -33,7 +33,7 @@ internal static class RecordingTargetSmoke
             { var box = Control<ComboBox>(control); box.SelectedItem = box.Items.OfType<ComboBoxItem>().Single(item => item.Tag as string == tag); }
             Click("CaptureVideoMediaButton");
             Select("CaptureCompactFpsBox", "60"); Select("CaptureCompactQualityBox", "Muito alta");
-            var audioBefore = Control<CheckBox>("RecordingCursorCheckBox").IsChecked;
+            var cursorBefore = Control<CheckBox>("RecordingCursorCheckBox").IsChecked;
             foreach (var kind in new[] { RecordingTargetKind.Window, RecordingTargetKind.Region, RecordingTargetKind.Monitor, RecordingTargetKind.Region })
             {
                 var tile = kind switch { RecordingTargetKind.Window => "CaptureWindowModeButton", RecordingTargetKind.Monitor => "CaptureMonitorModeButton", _ => "CaptureRegionModeButton" };
@@ -57,7 +57,7 @@ internal static class RecordingTargetSmoke
                 }
                 Require(Control<ComboBox>("CaptureCompactFpsBox").SelectedItem is ComboBoxItem fps && fps.Tag as string == "60" &&
                     Control<ComboBox>("CaptureCompactQualityBox").SelectedItem is ComboBoxItem quality && quality.Tag as string == "Muito alta" &&
-                    Control<CheckBox>("RecordingCursorCheckBox").IsChecked == audioBefore, "target changes preserve FPS quality and cursor");
+                    Control<CheckBox>("RecordingCursorCheckBox").IsChecked == cursorBefore, "target changes preserve FPS quality and cursor");
             }
             foreach (var kind in new[] { RecordingTargetKind.Window, RecordingTargetKind.Monitor, RecordingTargetKind.Region })
             {
@@ -68,6 +68,11 @@ internal static class RecordingTargetSmoke
             Click("CaptureImageMediaButton"); Click("CaptureScrollingModeButton"); Click("CaptureVideoMediaButton");
             Require(window.SelectedVideoTargetKind == RecordingTargetKind.Region && !Control<RadioButton>("CaptureScrollingModeButton").IsEnabled, "unsupported long capture cannot silently become fullscreen MP4");
             Click("CaptureWindowModeButton");
+            window.ConfigureLanguageEvidence("Capture", 1100);
+            Require(window.SelectedVideoTargetKind == RecordingTargetKind.Window &&
+                Control<ComboBox>("RecordingTargetBox").SelectedItem is ComboBoxItem legacy && legacy.Tag as string == "Window" &&
+                Control<ComboBox>("CaptureCompactTargetBox").SelectedItem is ComboBoxItem compact && compact.Tag as string == "Window",
+                "reloading capture preferences retains the selected target");
             var root = (FrameworkElement)window.Content; window.Content = null; LabMotion.SetReduced(root, true);
             var size = new Size(1100, 840); var host = new Border { Child = root, Width = size.Width, Height = size.Height };
             host.SetResourceReference(Border.BackgroundProperty, "Lab.bg");

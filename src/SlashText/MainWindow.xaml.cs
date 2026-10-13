@@ -1974,7 +1974,7 @@ public partial class MainWindow : Window
             capture.OpenEditorForMonitorAndWindow ? "Editor" : "Direct");
         SelectComboByTag(CaptureDelayBox, capture.DelaySeconds.ToString());
         SelectComboByTag(CaptureRetentionBox, capture.HistoryRetentionDays.ToString());
-        SelectComboByTag(RecordingTargetBox, "Monitor");
+        SelectComboByTag(RecordingTargetBox, _captureMediaMode == CaptureMediaMode.Video ? SelectedVideoTargetKind.ToString() : "Monitor");
         SelectComboByTag(RecordingFpsBox, capture.Recording.VideoFps.ToString());
         SelectComboByTag(RecordingQualityBox, capture.Recording.VideoQuality);
         RecordingCursorCheckBox.IsChecked = capture.Recording.IncludeCursor;
