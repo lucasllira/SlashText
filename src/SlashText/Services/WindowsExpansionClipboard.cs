@@ -31,6 +31,9 @@ internal sealed class WindowsExpansionClipboard : IExpansionClipboard
                 var format = (uint)DataFormats.GetDataFormat(name).Id;
                 if (format is >= 0x200 and <= 0x3ff or 0x80) throw CannotPreserve();
                 var value = source.GetData(name, autoConvert: false);
+                // WPF/OLE can enumerate this derived alias without a readable
+                // value. The concrete Bitmap representation remains mandatory.
+                if (value is null && name == "System.Drawing.Bitmap" && source.GetDataPresent(DataFormats.Bitmap, autoConvert: false)) continue;
                 if (value is null) throw CannotPreserve();
                 copy.SetData(name, value, autoConvert: false);
             }
