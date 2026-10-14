@@ -6,6 +6,14 @@ using System.IO.Compression;
 using System.Diagnostics;
 using ScreenRecorderLib;
 
+if (args.Length == 2 && args[0] == "--backup-compatibility-smoke")
+{
+    await BackupCompatibilityChecks.RunAsync(args[1]); return;
+}
+if (args.Length == 2 && args[0] == "--backup-compatibility-fixtures")
+{
+    BackupCompatibilityChecks.CreatePilotFixtures(args[1]); return;
+}
 if (args.Length == 4 && args[0] == "--restore-recovery-worker")
 {
     RestoreRecoveryChecks.Worker(args);
@@ -469,6 +477,7 @@ try
     Directory.CreateDirectory(root);
 await CaptureHistoryTrustChecks.RunAsync(root);
 await RestoreRecoveryChecks.RunAsync(root);
+await BackupCompatibilityChecks.RunAsync(root);
     await ExternalInputBudgetChecks.RunAsync(root);
     await RetentionPrivacyChecks.RunAsync(root);
     ClipboardPrivacyChecks.Run(root);
