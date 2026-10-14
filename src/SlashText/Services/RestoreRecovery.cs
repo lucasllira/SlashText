@@ -183,7 +183,15 @@ internal sealed class RestoreRecovery : IDisposable
         foreach (var item in _journal.Items)
             if (!Matches(Target(item.Label), item.Replacement)) throw new IOException();
         Checkpoint?.Invoke("before-commit", _journal.StartedIndex);
-        _journal.Phase = "Committed"; SaveJournal(); Checkpoint?.Invoke("committed", _journal.StartedIndex);
+        _journal.Phase = "Committed";
+        try { SaveJournal(); }
+        catch
+        {
+            // An in-memory phase is not a durable commit. Retain recovery on a failed write.
+            _journal.Phase = "Applying";
+            throw;
+        }
+        Checkpoint?.Invoke("committed", _journal.StartedIndex);
         FinishTerminal();
         // Cleanup errors do not turn a confirmed commit into a failed restore or destroy its journal.
         TryCleanup();

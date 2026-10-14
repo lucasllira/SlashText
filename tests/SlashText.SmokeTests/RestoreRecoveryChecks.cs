@@ -117,6 +117,23 @@ internal static class RestoreRecoveryChecks
             var recovery = RestoreRecovery.RecoverPending(lockedFixture.Data);
             Check(recovery.RecoveredCount == 1 && Same(lockedFixture.Before, Hashes(lockedFixture.Data)), "second failure recovers after lock released");
 
+            var commitBox = Path.Combine(root, "commit-journal-write-failure"); var commitFixture = Fixture(commitBox);
+            var commitService = Service(commitFixture.Data); FileStream? commitLock = null;
+            commitService.RestoreCheckpoint = (phase, _) =>
+            {
+                if (phase != "before-commit") return;
+                var folder = Directory.GetDirectories(Path.Combine(commitFixture.Data, "Backups"), ".restore-transaction-*").Single();
+                commitLock = new FileStream(Path.Combine(folder, "journal.json"), FileMode.Open, FileAccess.Read, FileShare.Read);
+            };
+            try { commitService.RestoreSnapshot(commitFixture.Archive); throw new InvalidOperationException("unrecorded commit must not discard recovery"); }
+            catch (RestoreRecoveryRequiredException) { _checks++; }
+            finally { commitLock?.Dispose(); }
+            var commitFolder = Directory.GetDirectories(Path.Combine(commitFixture.Data, "Backups"), ".restore-transaction-*").Single();
+            Check(Hash(Path.Combine(commitFolder, "originals", "snippets.md")) == commitFixture.Before["snippets.md"], "unrecorded commit retains original bytes");
+            await RefuseWrites(commitFixture.Data);
+            AppPaths.EnsureDataLayout();
+            Check(AppPaths.LastRestoreRecovery.RecoveredCount == 1 && Same(commitFixture.Before, Hashes(commitFixture.Data)), "failed commit journal write recovers previous data on restart");
+
             foreach (var failure in new[] { "original", "journal", "changed-target", "missing-backups", "identity", "pointer", "journal-null", "journal-path" })
             {
                 var box = Path.Combine(root, failure); var fixture = Fixture(box); await Interrupt(box, "after-apply", 2);
