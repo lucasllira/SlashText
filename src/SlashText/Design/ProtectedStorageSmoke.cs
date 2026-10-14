@@ -43,7 +43,12 @@ internal static class ProtectedStorageSmoke
                 var hash = Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(historyPath))).ToLowerInvariant();
                 Directory.CreateDirectory(historyPath + ".corrupt-" + hash[..16] + ".bak");
             }
-            File.WriteAllText(Path.Combine(data, "snippets.md"), "# Meus atalhos\n\n## /fixture116\n<!-- slashtext:{\"id\":\"fixture116\",\"name\":\"Teste fictício 116\",\"category\":\"Geral\",\"format\":\"plain\",\"enabled\":true} -->\n```text\nTESTE FICTÍCIO 116\n```\n");
+            File.WriteAllText(Path.Combine(data, "snippets.md"), SnippetMarkdownRepository.Serialize([
+                new Snippet { Id = Guid.Parse("11600000-0000-4000-8000-000000000001"), Name = "Teste fictício 116",
+                    Trigger = "/fixture116", Category = "Geral", Content = "TESTE FICTÍCIO 116" }
+            ]));
+            if (SnippetMarkdownRepository.ReadRequired(File.ReadAllText(Path.Combine(data, "snippets.md"))).Single().Trigger != "/fixture116")
+                throw new InvalidDataException("The fixture must load through the actual shortcut reader.");
             var target = mode == "settings" ? "settings.json" : "capture-history.json";
             var manifest = new { target, sha256 = Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(Path.Combine(data, target)))).ToLowerInvariant(),
                 imageSha256 = Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(Path.Combine(data, "azul.png")))).ToLowerInvariant() };
@@ -63,6 +68,8 @@ internal static class ProtectedStorageSmoke
             var root = Path.Combine(output, language + "-" + theme + "-" + mode);
             CreateFixtures(root);
             AppPaths.Initialize(new AppDataEnvironment(DistributionMode.Portable, Path.Combine(root, mode), Path.Combine(root, "unused"), true));
+            AppPaths.EnsureDataLayout();
+            Require((await new SnippetMarkdownRepository().LoadAsync()).Single().Trigger == "/fixture116", "healthy shortcut startup reader " + mode);
             UiText.Apply(language); ThemeService.Apply(theme);
             var original = File.ReadAllBytes(mode == "settings" ? AppPaths.SettingsFile : AppPaths.CaptureHistoryFile);
             var window = new MainWindow(captureEvidence: true) { Width = 980, Height = 680 };
@@ -96,12 +103,36 @@ internal static class ProtectedStorageSmoke
                 var encoder = new PngBitmapEncoder(); encoder.Frames.Add(BitmapFrame.Create(image));
                 using var stream = File.Create(Path.Combine(output, language + "-" + theme + "-" + mode + ".png")); encoder.Save(stream);
             }
-            if (mode == "history")
+            if (mode == "blocked")
+            {
+                var historyPath = AppPaths.CaptureHistoryFile;
+                var hash = Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(historyPath))).ToLowerInvariant();
+                var blocker = historyPath + ".corrupt-" + hash[..16] + ".bak";
+                Directory.Move(blocker, blocker + ".fixture-bloqueada");
+                await window.LoadStorageProtectionEvidenceAsync();
+                Require(Control<Button>("StorageRecoverHistoryButton").IsEnabled, "reread enables recovery after unblocking " + language + theme);
+                Require(Control<Border>("StorageProtectionPanel").Visibility == Visibility.Visible, "unblocking alone does not release original");
+            }
+            if (mode is "history" or "blocked")
             {
                 await window.RecoverStorageHistoryEvidenceAsync();
                 await window.LoadStorageProtectionEvidenceAsync();
                 Require(Control<Border>("StorageProtectionPanel").Visibility == Visibility.Collapsed, "successful recovery clears notice " + language + theme);
             }
+            if (mode == "settings")
+            {
+                var store = new JsonFileStore<AppSettings>(AppPaths.SettingsFile);
+                await store.RecoverAsync(new AppSettings { OnboardingCompleted = true });
+                await window.LoadStorageProtectionEvidenceAsync();
+                Require(Control<Border>("StorageProtectionPanel").Visibility == Visibility.Collapsed, "settings recovery clears notice " + language + theme);
+            }
+            // Execute startup readers afresh after recovery; never rely solely on enabled UI controls.
+            Require((await new SnippetMarkdownRepository().LoadAsync()).Single().Trigger == "/fixture116", "healthy shortcut reopens " + mode);
+            var reopenedSettings = new JsonFileStore<AppSettings>(AppPaths.SettingsFile);
+            await reopenedSettings.LoadAsync();
+            Require(reopenedSettings.ReadState == StoredReadState.Valid && !reopenedSettings.IsProtected, "preferences reopen after recovery " + mode);
+            var reopened = new CaptureService(); await reopened.LoadAsync();
+            Require(!reopened.IsHistoryProtected && reopened.History.Single().Id == "legivel-116", "history reopens after recovery " + mode);
             host.Child = null;
         }
         UiText.Apply("pt-BR");

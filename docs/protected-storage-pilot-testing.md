@@ -2,6 +2,14 @@
 
 Este pacote usa apenas dados fictícios nas pastas `TESTES`. Não importe esses arquivos no aplicativo oficial. Nenhuma atualização ou inicialização com o Windows será ativada.
 
+## Objetivo dos testes
+
+Os cenários simulam uma falha nos arquivos de preferências ou do histórico, usando dados fictícios. Antes da recuperação, o app deve proteger o original. Depois de confirmar a recuperação, deve abrir normalmente e conservar o que foi recuperado. No terceiro cenário, uma pasta vazia impede propositalmente criar a cópia; o comando de desbloqueio remove esse obstáculo fictício, e **Tentar ler novamente** verifica a cópia antes de habilitar a recuperação.
+
+O aviso **SlashDesk iniciado em modo reduzido — Atalhos** não faz parte do resultado esperado. A revisão 2 corrige o arquivo de atalhos fictícios do pacote anterior.
+
+Se você já concluiu a recuperação nos três cenários do pacote anterior, use a correção pequena entregue junto dele: encerre o app, extraia os arquivos da correção na mesma pasta que contém `SlashDesk.exe` e `TESTES`, execute `Corrigir-Atalhos-Ficticios.cmd` e reabra os três cenários. Não é necessário repetir as recuperações já concluídas. Essa correção só substitui o arquivo fictício inválido conhecido, guardando uma cópia; não modifica preferências nem histórico.
+
 ## Preparação
 
 1. Salve seu trabalho e encerre o SlashDesk anterior usando **Aplicativo → Sair** na bandeja.
