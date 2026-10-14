@@ -27,7 +27,7 @@ internal static class ProtectedStorageSmoke
             settings.Capture.OutputDirectoryTemplate = Path.Combine(data, "Captures");
             var json = mode == "settings" ? "{\"theme\":" : JsonSerializer.Serialize(settings);
             File.WriteAllText(Path.Combine(data, "settings.json"), json);
-            var record = new CaptureRecord { Id = "legivel-116", CreatedAt = mode == "settings" ? DateTimeOffset.UtcNow : DateTimeOffset.UtcNow.AddDays(-180),
+            var record = new CaptureRecord { Id = "legivel-116", CreatedAt = DateTimeOffset.UtcNow,
                 FilePath = Path.Combine(data, "azul.png"), PortableRelativePath = "SlashDeskPilotData/azul.png",
                 RequiresFileApproval = true, Width = 32, Height = 24 };
             using (var bitmap = new System.Drawing.Bitmap(32, 24))

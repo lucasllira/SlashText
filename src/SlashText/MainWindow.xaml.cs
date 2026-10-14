@@ -192,7 +192,7 @@ public partial class MainWindow : Window
                 }
                 _settings.OnboardingCompleted = true;
                 if (!AppPaths.IsSettingsPilot && !AppPaths.IsAboutPilot && !AppPaths.IsAuxiliaryPilot && !AppPaths.IsLanguagesPilot && !AppPaths.IsBackupCompatibilityPilot && !AppPaths.IsProtectedStoragePilot) _settings.CloseToTray = false;
-                if (!File.Exists(AppPaths.SettingsFile) || _settingsStore.IsProtected)
+                if (!File.Exists(AppPaths.SettingsFile) || _settingsStore.IsProtected || AppPaths.IsProtectedStoragePilot)
                     _settings.Capture.OutputDirectoryTemplate = Path.Combine(AppPaths.DataDirectory, "Capturas", "{year}", "{month}");
                 StartWithWindowsCheckBox.IsEnabled = false;
                 CheckUpdatesCheckBox.IsEnabled = false;
