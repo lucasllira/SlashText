@@ -1784,5 +1784,10 @@
   "Ui.F2EB0F4B354596CA": "Preparing recording…",
   "Ui.49D8D781CC69A426": "Recording preparation cancelled.",
   "Ui.FF8E288671C302E9": "Cancel preparation",
-  "Ui.785023A1E997A17F": "The OCR components failed verification. Reinstall SlashDesk from the official package."
+  "Ui.785023A1E997A17F": "The OCR components failed verification. Reinstall SlashDesk from the official package.",
+  "Ui.2766571A19B26EF9": "Third-party notices",
+  "Ui.0C605CF19F36B378": "Licenses and attributions included in the app. Available offline.",
+  "Ui.75926F8261AD70EB": "Component",
+  "Ui.3227D7EFCEADEF83": "License text",
+  "Ui.97C5EA9F13C00DC4": "Could not load third-party notices."
 }

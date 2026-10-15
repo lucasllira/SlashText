@@ -1,0 +1,268 @@
+{
+  "schemaVersion": 1,
+  "documents": [
+    {
+      "id": "NOTICE",
+      "name": "SlashDesk - Third-party notices",
+      "version": "distribution notices",
+      "license": "attributions and scope",
+      "file": "NOTICE.txt",
+      "sha256": "f613af6c30b8333ddf15ca2d8c23bd769983b5a19d6230f2b4934532fe17776d",
+      "source": "https://github.com/lucasllira/SlashText",
+      "package": null
+    },
+    {
+      "id": "ScreenRecorderLib",
+      "name": "ScreenRecorderLib",
+      "version": "6.6.0",
+      "license": "MIT",
+      "file": "ScreenRecorderLib.txt",
+      "sha256": "9aad4239954f3f4b1bae22011ca72e00fe5ad9218068cd44375a1a5306f7cf32",
+      "source": "https://www.nuget.org/packages/ScreenRecorderLib/6.6.0",
+      "package": "ScreenRecorderLib"
+    },
+    {
+      "id": "AvalonEdit",
+      "name": "AvalonEdit",
+      "version": "6.3.1.120",
+      "license": "MIT",
+      "file": "AvalonEdit.txt",
+      "sha256": "7cfe74f11eaef7a239e7c63d33595f924e7922fb3e3f3651014389620b228a07",
+      "source": "https://raw.githubusercontent.com/icsharpcode/AvalonEdit/862415d51eddc9eac93f462dbc522ffbf929cd52/LICENSE",
+      "package": "AvalonEdit"
+    },
+    {
+      "id": "Tesseract-wrapper",
+      "name": "Tesseract .NET / Charles Weld",
+      "version": "5.2.0",
+      "license": "Apache-2.0",
+      "file": "Tesseract-wrapper.txt",
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+      "source": "https://raw.githubusercontent.com/charlesw/tesseract/5.2.0/LICENSE.txt",
+      "package": "Tesseract"
+    },
+    {
+      "id": "InteropDotNet",
+      "name": "InteropDotNet / Andrey Akinshin",
+      "version": "vendored in Tesseract 5.2.0",
+      "license": "MIT",
+      "file": "InteropDotNet.txt",
+      "sha256": "8fb016cd2a9efaa281ecce3075f69d20ffa8314ba8ecf8586d6744dd346cea25",
+      "source": "https://raw.githubusercontent.com/AndreyAkinshin/InteropDotNet/06e625b1bb0b7fd56fd58b9bb8d6d633cfd6eaf4/LICENSE.md",
+      "package": null
+    },
+    {
+      "id": "Tesseract-native",
+      "name": "Tesseract native",
+      "version": "5.0.0 (export; source/backports unattested)",
+      "license": "Apache-2.0",
+      "file": "Tesseract-native.txt",
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+      "source": "https://raw.githubusercontent.com/tesseract-ocr/tesseract/5.0.0/LICENSE",
+      "package": null
+    },
+    {
+      "id": "Tesseract-authors",
+      "name": "Tesseract contributors",
+      "version": "5.0.0 upstream source snapshot",
+      "license": "attribution",
+      "file": "Tesseract-authors.txt",
+      "sha256": "720862b7253993b348fe15f37ed6e0d4feb0fc8df8324284d75975d54dd29923",
+      "source": "https://raw.githubusercontent.com/tesseract-ocr/tesseract/5.0.0/AUTHORS",
+      "package": null
+    },
+    {
+      "id": "Leptonica",
+      "name": "Leptonica",
+      "version": "1.82.0",
+      "license": "BSD-2-Clause",
+      "file": "Leptonica.txt",
+      "sha256": "87829abb5bbb00b55a107365da89e9a33f86c4250169e5a1e5588505be7d5806",
+      "source": "https://raw.githubusercontent.com/DanBloomberg/leptonica/f4138265b390f1921b9891d6669674d3157887d8/leptonica-license.txt",
+      "package": null
+    },
+    {
+      "id": "libjpeg-turbo",
+      "name": "libjpeg-turbo",
+      "version": "2.1.4",
+      "license": "IJG AND BSD-3-Clause AND Zlib",
+      "file": "libjpeg-turbo.txt",
+      "sha256": "ee1eaf194d5924b6360af8a6ba6a4e1554037091f7505943300cdeec65f1aebb",
+      "source": "https://raw.githubusercontent.com/libjpeg-turbo/libjpeg-turbo/2.1.4/LICENSE.md",
+      "package": null
+    },
+    {
+      "id": "IJG",
+      "name": "Independent JPEG Group",
+      "version": "libjpeg-turbo 2.1.4 / JPEG API 6b",
+      "license": "IJG",
+      "file": "IJG.txt",
+      "sha256": "4b7b9f8c03bb8d60270dfd12684e70ab21e4abfd27e73905cd1a7c4cae6f5cdb",
+      "source": "https://raw.githubusercontent.com/libjpeg-turbo/libjpeg-turbo/2.1.4/README.ijg",
+      "package": null
+    },
+    {
+      "id": "libpng",
+      "name": "libpng",
+      "version": "1.6.37",
+      "license": "PNG Reference Library License v2; retained earlier notices",
+      "file": "libpng.txt",
+      "sha256": "bf5e22b9dce8464064ae17a48ea1133c3369ac9e1d80ef9e320e5219aa14ea9b",
+      "source": "https://raw.githubusercontent.com/pnggroup/libpng/a40189cf881e9f0db80511c382292a5604c3c3d1/LICENSE",
+      "package": null
+    },
+    {
+      "id": "libtiff",
+      "name": "libtiff",
+      "version": "4.4.0",
+      "license": "libtiff",
+      "file": "libtiff.txt",
+      "sha256": "fbd6fed7938541d2c809c0826225fc85e551fdbfa8732b10f0c87e0847acafd7",
+      "source": "https://gitlab.com/libtiff/libtiff/-/raw/v4.4.0/COPYRIGHT",
+      "package": null
+    },
+    {
+      "id": "zlib",
+      "name": "zlib",
+      "version": "1.2.13",
+      "license": "Zlib",
+      "file": "zlib.txt",
+      "sha256": "845efc77857d485d91fb3e0b884aaa929368c717ae8186b66fe1ed2495753243",
+      "source": "https://raw.githubusercontent.com/madler/zlib/v1.2.13/LICENSE",
+      "package": null
+    },
+    {
+      "id": "liblzma",
+      "name": "liblzma / XZ Utils",
+      "version": "unattested; supplemental 5.2.7 upstream notices",
+      "license": "see upstream COPYING (library/public-domain; tool terms distinct)",
+      "file": "liblzma.txt",
+      "sha256": "bcb02973ef6e87ea73d331b3a80df7748407f17efdb784b61b47e0e610d3bb5c",
+      "source": "https://raw.githubusercontent.com/tukaani-project/xz/v5.2.7/COPYING",
+      "package": null
+    },
+    {
+      "id": "WPF",
+      "name": ".NET WPF third-party notices",
+      "version": "10.0.12 and 10.0.13 upstream snapshots (identical text)",
+      "license": "upstream notices",
+      "file": "WPF.txt",
+      "sha256": "d23dba2fee20c6b59d8f7088ee9ed372459c952a319b7ca90f3eec370cc76eb9",
+      "source": "https://raw.githubusercontent.com/dotnet/wpf/v10.0.13/THIRD-PARTY-NOTICES.TXT",
+      "package": null
+    },
+    {
+      "id": "WinForms",
+      "name": ".NET Windows Forms third-party notices",
+      "version": "10.0.12 and 10.0.13 upstream snapshots (identical text)",
+      "license": "upstream notices",
+      "file": "WinForms.txt",
+      "sha256": "5a412b38efae0b162dc0893b319023f4cd14a8985a0f9f9ae01ac052b37a36eb",
+      "source": "https://raw.githubusercontent.com/dotnet/winforms/v10.0.13/THIRD-PARTY-NOTICES.TXT",
+      "package": null
+    },
+    {
+      "id": "giflib",
+      "name": "giflib",
+      "version": "5.2.1",
+      "license": "MIT",
+      "file": "giflib.txt",
+      "source": "https://deb.debian.org/debian/pool/main/g/giflib/giflib_5.2.1.orig.tar.gz",
+      "package": null,
+      "sha256": "0c9b7990ecdca88b676db232c226548ac408b279f550d424d996f0d83591dd8e",
+      "evidence": "Upstream COPYING from source archive SHA256 31da5562f44c5f15d63340a09a4fd62b48c45620cd302f77a6d9acf0077879bd"
+    },
+    {
+      "id": "SlashDesk",
+      "name": "SlashDesk",
+      "version": "project license",
+      "license": "MIT",
+      "sourcePath": "LICENSE",
+      "source": "https://github.com/lucasllira/SlashText",
+      "package": null,
+      "sha256": "ea6cfb3785ce15c1677fd2882e1b8d5dafc3d02a22ecdc34e22331300f1ff89b"
+    },
+    {
+      "id": "Lucide",
+      "name": "Lucide / Feather",
+      "version": "vendored vector paths",
+      "license": "ISC / MIT; see text",
+      "sourcePath": "src/SlashText/Assets/Lucide/LICENSE.txt",
+      "source": "https://github.com/lucide-icons/lucide",
+      "package": null,
+      "sha256": "b495047bd93a9b06913511076f504daba17d5bbeb3e0650f3bb53a4220329c57"
+    },
+    {
+      "id": "Noto-license",
+      "name": "Noto Emoji",
+      "version": "e20cbc2bbec1926686be9f9bee7d1d2cfa1fea0e",
+      "license": "Apache-2.0",
+      "sourcePath": "src/SlashText/Assets/NotoEmoji/LICENSE.txt",
+      "source": "https://github.com/googlefonts/noto-emoji",
+      "package": null,
+      "sha256": "500bb1ccf43df7bbb522112f9133a52b16e1c35e809632f5d8609b179152de5b"
+    },
+    {
+      "id": "Noto-notice",
+      "name": "Noto Emoji / metadata attribution",
+      "version": "catalog snapshot",
+      "license": "upstream notices",
+      "sourcePath": "src/SlashText/Assets/NotoEmoji/NOTICE.md",
+      "source": "https://github.com/googlefonts/noto-emoji",
+      "package": null,
+      "sha256": "30255e0254129d8672cf06d225cb8b2c98913269a45991d14230090bd8549ae7"
+    },
+    {
+      "id": "Unicode",
+      "name": "Unicode / CLDR metadata",
+      "version": "see Noto notice",
+      "license": "Unicode-3.0",
+      "sourcePath": "src/SlashText/Assets/NotoEmoji/UNICODE-LICENSE.txt",
+      "source": "https://github.com/unicode-org/cldr-json",
+      "package": null,
+      "sha256": "220ba0e1c43b99530d2d5bdb892a99dca0989414f51ab695ecd90163eaa1ec3b"
+    },
+    {
+      "id": "Flags",
+      "name": "Noto region flags",
+      "version": "catalog snapshot",
+      "license": "see upstream exemptions",
+      "sourcePath": "src/SlashText/Assets/NotoEmoji/FLAGS-LICENSE.txt",
+      "source": "https://github.com/googlefonts/noto-emoji/tree/e20cbc2bbec1926686be9f9bee7d1d2cfa1fea0e/third_party/region-flags",
+      "package": null,
+      "sha256": "73af5be6e2ea006b75bebfd2f463f252c5ce8c94024c639dbdd97f0456272a5a"
+    },
+    {
+      "id": "OCR-models",
+      "name": "Tesseract eng/por models Best/Fast",
+      "version": "see OCR NOTICE snapshots",
+      "license": "Apache-2.0",
+      "sourcePath": "src/SlashText/Assets/Ocr/LICENSE.txt",
+      "source": "https://github.com/tesseract-ocr/tessdata_best",
+      "package": null,
+      "sha256": "a6d9cdf3a765ed591b547f1df5209f1e9aee3d4b5ee6a879cd304feb08714066"
+    },
+    {
+      "id": "OCR-notice",
+      "name": "Offline OCR attribution",
+      "version": "see text",
+      "license": "upstream notices",
+      "sourcePath": "src/SlashText/Assets/Ocr/NOTICE.md",
+      "source": "https://github.com/charlesw/tesseract",
+      "package": null,
+      "sha256": "b7481b0f13ce18e85d78e30b320a7b78ab4350160cec88e590fc0eef2e2bdc73"
+    },
+    {
+      "id": "ScreenRecorderLib-fifo_map",
+      "name": "fifo_map / Niels Lohmann",
+      "version": "vendored in ScreenRecorderLib 6.6.0",
+      "license": "MIT",
+      "file": "ScreenRecorderLib-fifo_map.txt",
+      "source": "https://github.com/sskodje/ScreenRecorderLib/blob/v6.6.0/ScreenRecorderLibNative/fifo_map.h",
+      "package": null,
+      "sha256": "be59142f79e1cf2c34400a57920e13761ef0f94e31ef78d1a282ac99cb00ce7b"
+    }
+  ],
+  "validatedDesktopRuntimeVersions": ["10.0.12", "10.0.13"],
+  "normalization": "UTF-8 without BOM; LF line endings; all other upstream text preserved"
+}

@@ -52,6 +52,12 @@ jobs:
       - name: Inventory installed components
         shell: pwsh
         run: ./scripts/security-inventory.ps1 -Executable publish-security-installed/SlashDesk.exe -OutputDirectory security-evidence/installed -Layout directory
+      - name: Verify offline notices in portable and installed distributions
+        shell: pwsh
+        run: |
+          ./scripts/third-party-notices-smoke.ps1 -Executable publish-security/SlashDesk.exe -OutputDirectory security-evidence/notices-portable
+          ./scripts/third-party-notices-smoke.ps1 -Executable publish-security-installed/SlashDesk.exe -OutputDirectory security-evidence/notices-installed
+
       - name: Upload non-secret security evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2

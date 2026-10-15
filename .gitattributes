@@ -1,2 +1,5 @@
 # Frozen Visual Lab source: hashes refer to original ZIP bytes, not platform line endings.
 docs/design/3.3.0/contract/** -text
+
+# Preserve reviewed upstream license whitespace; canonical hashing only normalizes encoding/EOL.
+src/SlashText/Assets/ThirdParty/*.txt whitespace=-blank-at-eol,-blank-at-eof

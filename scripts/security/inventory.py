@@ -120,6 +120,56 @@ def cache_index(assets_path):
     return index, packages
 
 
+def validate_notices(root, resources, packages):
+    manifest = resources.get("thirdPartyManifest")
+    if not manifest or manifest.get("schemaVersion") != 1:
+        raise ValueError("Published third-party notice catalog missing or unsupported")
+    source = json.loads((root / "src/SlashText/Assets/ThirdParty/catalog.json").read_text(encoding="utf-8-sig"))
+    documents = manifest.get("documents", [])
+    by_id = {d["id"]: d for d in documents}
+    if len(by_id) != len(documents) or not documents:
+        raise ValueError("Duplicate or empty notice catalog")
+    entries = [r for r in resources["entries"] if r["name"].startswith("SlashText.ThirdParty.notices.zip!/")]
+    by_entry = {r["name"].split("!/", 1)[1]: r for r in entries}
+    if len(entries) != len(documents) or len(by_entry) != len(entries):
+        raise ValueError("Published notice archive count differs")
+    for document in documents:
+        entry = by_entry.get(document["entry"])
+        if not entry or entry["sha256"] != document["sha256"] or entry["length"] != document["length"]:
+            raise ValueError("Published notice digest or length differs")
+    for expected in source["documents"]:
+        document = by_id.get(expected["id"])
+        if not document or any(document[field] != expected[field] for field in ("sha256", "version", "name", "source", "license")):
+            raise ValueError("Published notice differs from reviewed source catalog: " + expected["id"])
+        relative = expected.get("sourcePath", "src/SlashText/Assets/ThirdParty/" + expected.get("file", ""))
+        text = (root / relative).read_text(encoding="utf-8-sig").replace("\r\n", "\n").replace("\r", "\n")
+        if sha(text.encode("utf-8")) != expected["sha256"]:
+            raise ValueError("Reviewed license source hash differs: " + expected["id"])
+    covered = {(p["name"].lower(), p["version"]) for p in manifest.get("packages", [])}
+    for package in packages.values():
+        if (package["name"].lower(), package["version"]) not in covered:
+            raise ValueError("Shipped package has no matching notice coverage: " + package["name"])
+    # Recompute runtime notice hashes from the exact restored runtime package,
+    # rather than trusting a manifest that names a different patch's texts.
+    assets = json.loads((root / "src/SlashText/obj/project.assets.json").read_text(encoding="utf-8-sig"))
+    for package in manifest.get("packages", []):
+        if not package["name"].lower().startswith("microsoft."):
+            continue
+        folders = [pathlib.Path(p) / package["name"].lower() / package["version"] for p in assets["packageFolders"]]
+        folder = next((p for p in folders if p.is_dir()), None)
+        if folder is None:
+            raise ValueError("Runtime notice source package missing")
+        for file in folder.iterdir():
+            if file.name.lower() not in ("license", "license.txt", "third-party-notices.txt"):
+                continue
+            identifier = re.sub("[^A-Za-z0-9_-]", "_", package["name"] + "-" + file.name)
+            doc = by_id.get(identifier)
+            expected = sha(file.read_text(encoding="utf-8-sig").replace("\r\n", "\n").replace("\r", "\n").encode("utf-8"))
+            if not doc or doc["sha256"] != expected or doc["version"] != package["version"] or doc["source"] != f'https://www.nuget.org/packages/{package["name"]}/{package["version"]}':
+                raise ValueError("Runtime license does not match resolved package")
+    return manifest
+
+
 def build_inventory(executable, root, resources, layout="single-file"):
     data = executable.read_bytes()
     if layout == "single-file":
@@ -157,6 +207,8 @@ def build_inventory(executable, root, resources, layout="single-file"):
         files.append(dict(path=entry["path"], size=entry["size"], sha256=digest, kind=entry["kind"],
                           sources=candidates, native_evidence=native_versions.get(digest),
                           version_source="resolved package/hash" if candidates else "published bytes; origin unresolved"))
+    notices = validate_notices(root, resources, {p: packages[p] for p in sorted(used)})
+    notice_documents = {d["entry"]: d for d in notices["documents"]}
     catalog_path = root / "src/SlashText/Assets/NotoEmoji/catalog.json"
     catalog = json.loads(catalog_path.read_text(encoding="utf-8-sig"))
     embedded_catalog = next(r for r in resources["entries"] if r["name"] == "SlashText.Assets.NotoEmoji.catalog.json")
@@ -193,13 +245,16 @@ def build_inventory(executable, root, resources, layout="single-file"):
                 raise ValueError("Published OCR model differs from restored source")
             origin = f'https://github.com/tesseract-ocr/{repository}/blob/{version}/{language}.traineddata'
             license_value = "Apache-2.0"
+        elif name.startswith("SlashText.ThirdParty.notices.zip!/"):
+            document = notice_documents[name.split("!/", 1)[1]]
+            origin, version, license_value = document["source"], document["version"], document["license"]
         asset_entries.append(dict(**resource, origin=origin, version=version, license=license_value))
     return dict(schema_version=1, source_commit=commit, layout=layout, executable=executable.name, executable_sha256=sha(data),
                 executed=False, frameworks=runtime["runtimeOptions"].get("includedFrameworks", []),
                 deps_libraries=deps["libraries"], packages={p: packages[p] for p in sorted(used)},
-                bundle_files=files, embedded_resources=asset_entries,
+                bundle_files=files, embedded_resources=asset_entries, third_party_notices=notices,
                 limitations=["NuGet version is not native upstream version; OCR native review tracked by issue #97.",
-                             "Unresolved origin/license is explicit, tracked by issue #96; no inferred blanket license.",
+                             "Known notices are verified against sources and resolved packages; native source/build graph remains unattested (#97), including the liblzma version. No inferred blanket license for unresolved platform bytes.",
                              "Bundle/resources inspected without executing app/native code. WPF .g.resources includes compiled UI assets."])
 
 

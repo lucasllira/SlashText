@@ -10,6 +10,7 @@ public partial class MainWindow
 {
     private static readonly string ProjectUrl = $"https://github.com/{UpdateService.Repository}";
     private Action<Uri>? _aboutEvidenceLinkLauncher;
+    private Action<Views.ThirdPartyNoticesWindow>? _aboutEvidenceNoticesLauncher;
     private bool _manualUpdateCheckInProgress;
 
     private void RefreshAboutPresentation()
@@ -63,6 +64,26 @@ public partial class MainWindow
     private void AboutCurrentReleaseNotes_OnClick(object sender, RoutedEventArgs e) => OpenAboutLink($"{ProjectUrl}/releases/tag/v{ProductVersion()}");
     private void AboutReportIssue_OnClick(object sender, RoutedEventArgs e) => OpenAboutLink($"{ProjectUrl}/issues/new/choose");
     private void AboutLicense_OnClick(object sender, RoutedEventArgs e) => OpenAboutLink($"{ProjectUrl}/blob/main/LICENSE");
+    private void AboutThirdPartyNotices_OnClick(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var dialog = new Views.ThirdPartyNoticesWindow();
+            if (_aboutEvidenceNoticesLauncher is { } evidence) evidence(dialog);
+            else
+            {
+                dialog.Owner = this;
+                dialog.EnableBackdrop();
+                dialog.ShowDialog();
+            }
+        }
+        catch (Exception exception)
+        {
+            AppDiagnosticLog.WriteException("about.notices.failed", exception);
+            new Views.SettingsDialogWindow(UiText.Get("Não foi possível carregar os avisos de terceiros."),
+                UiText.Get("Avisos de terceiros"), image: MessageBoxImage.Error) { Owner = this }.ShowDialog();
+        }
+    }
 
     private async Task<UpdateCheckResult> CheckUpdatesAndRefreshAsync()
     {
@@ -82,4 +103,5 @@ public partial class MainWindow
     }
 
     internal Task<UpdateCheckResult> CheckAboutUpdatesEvidenceAsync() => CheckUpdatesAndRefreshAsync();
+    internal void ConfigureAboutNoticesEvidence(Action<Views.ThirdPartyNoticesWindow> launcher) => _aboutEvidenceNoticesLauncher=launcher;
 }

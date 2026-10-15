@@ -4,7 +4,7 @@ import struct
 import tempfile
 import unittest
 import zlib
-from inventory import MARKER, bundle, content, cyclonedx, cache_index, build_inventory, sha
+from inventory import MARKER, bundle, content, cyclonedx, cache_index, build_inventory, sha, validate_notices
 from unittest.mock import patch
 import json
 
@@ -21,6 +21,53 @@ def fixture(path="x64/component.dll", payload=b"independent component bytes", co
 
 
 class InventoryTests(unittest.TestCase):
+    def notice_fixture(self, root):
+        folder = root / "src/SlashText/Assets/ThirdParty"
+        folder.mkdir(parents=True, exist_ok=True)
+        text = b"Copyright example contributor. MIT fixture license text."
+        (folder / "example.txt").write_bytes(text)
+        doc = dict(id="example",name="Example",version="1.0",license="MIT",source="https://example.invalid/source",entry="example.txt",sha256=sha(text),length=len(text))
+        (folder / "catalog.json").write_text(json.dumps(dict(documents=[dict(doc,file="example.txt")])))
+        assets = root / "src/SlashText/obj/project.assets.json"
+        assets.parent.mkdir(parents=True, exist_ok=True)
+        if not assets.exists():
+            assets.write_text('{"packageFolders":{}}')
+        return dict(thirdPartyManifest=dict(schemaVersion=1,documents=[doc],packages=[]),
+                    entries=[dict(name="SlashText.ThirdParty.notices.zip!/example.txt",sha256=sha(text),length=len(text))])
+
+    def test_notice_archive_and_package_coverage_are_verified(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = pathlib.Path(tmp)
+            fixture = self.notice_fixture(root)
+            self.assertEqual(len(validate_notices(root, fixture, {})["documents"]), 1)
+            bad = copy.deepcopy(fixture)
+            bad["entries"][0]["sha256"] = "0" * 64
+            with self.assertRaisesRegex(ValueError, "digest"):
+                validate_notices(root, bad, {})
+            bad = copy.deepcopy(fixture)
+            bad["entries"] = []
+            with self.assertRaisesRegex(ValueError, "count"):
+                validate_notices(root, bad, {})
+            with self.assertRaisesRegex(ValueError, "no matching notice coverage"):
+                validate_notices(root, fixture, {"Recorder/2.0":dict(name="Recorder",version="2.0")})
+            bad = copy.deepcopy(fixture)
+            bad["thirdPartyManifest"]["documents"][0]["version"] = "stale"
+            with self.assertRaisesRegex(ValueError, "reviewed source"):
+                validate_notices(root, bad, {})
+            bad = copy.deepcopy(fixture)
+            bad["thirdPartyManifest"]["documents"][0]["source"] = "https://example.invalid/wrong-origin"
+            with self.assertRaisesRegex(ValueError, "reviewed source"):
+                validate_notices(root, bad, {})
+            with self.assertRaisesRegex(ValueError, "catalog missing"):
+                validate_notices(root, {"entries":[]}, {})
+            bad = copy.deepcopy(fixture)
+            bad["thirdPartyManifest"]["documents"].append(bad["thirdPartyManifest"]["documents"][0])
+            with self.assertRaisesRegex(ValueError, "Duplicate"):
+                validate_notices(root, bad, {})
+            (root / "src/SlashText/Assets/ThirdParty/example.txt").write_text("changed source")
+            with self.assertRaisesRegex(ValueError, "source hash"):
+                validate_notices(root, fixture, {})
+
     def test_real_format_bytes_round_trip(self):
         for compressed in (False, True):
             data = fixture(compressed=compressed)
@@ -98,9 +145,12 @@ class InventoryTests(unittest.TestCase):
             (executable.parent / "SlashDesk.runtimeconfig.json").write_text('{"runtimeOptions":{"includedFrameworks":[]}}')
             resources = dict(entries=[dict(name="SlashText.Assets.NotoEmoji.catalog.json", sha256=sha(catalog_bytes)),
                                       dict(name="SlashText.Assets.NotoEmoji.catalog-assets.zip!/one.png", sha256="c" * 64, gitBlobSha1="a" * 40)])
+            notices = self.notice_fixture(root)
+            resources["thirdPartyManifest"] = notices["thirdPartyManifest"]
+            resources["entries"].extend(notices["entries"])
             with patch("inventory.subprocess.check_output", return_value="d" * 40):
                 result = build_inventory(executable, root, resources, "directory")
-                self.assertEqual(len(result["embedded_resources"]), 2)
+                self.assertEqual(len(result["embedded_resources"]), 3)
                 stale_catalog = copy.deepcopy(resources)
                 stale_catalog["entries"][0]["sha256"] = "0" * 64
                 with self.assertRaisesRegex(ValueError, "catalog differs"):
@@ -110,7 +160,7 @@ class InventoryTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "Git blob"):
                     build_inventory(executable, root, stale_png, "directory")
                 missing_png = copy.deepcopy(resources)
-                missing_png["entries"].pop()
+                missing_png["entries"].pop(1)
                 with self.assertRaisesRegex(ValueError, "set differs"):
                     build_inventory(executable, root, missing_png, "directory")
 
