@@ -45,7 +45,7 @@ foreach ($line in Get-Content -LiteralPath $RuntimePacksFile) {
     if ($fields.Count -ne 3) { throw 'Invalid resolved runtime pack metadata.' }
     $name, $version, $path = $fields
     if ($name -notin @('Microsoft.NETCore.App.Runtime.win-x64','Microsoft.WindowsDesktop.App.Runtime.win-x64')) { continue }
-    if ($version -ne $catalog.validatedDesktopRuntimeVersion) { throw "Review upstream runtime notices for $name/$version before changing the validated runtime version." }
+    if ($version -notin $catalog.validatedDesktopRuntimeVersions) { throw "Review upstream runtime notices for $name/$version before changing the validated runtime versions." }
     $files = @(Get-ChildItem -LiteralPath $path -File | Where-Object { $_.Name -imatch '^(LICENSE(?:\.TXT)?|THIRD-PARTY-NOTICES\.TXT)$' })
     if (-not @($files | Where-Object { $_.Name -imatch '^LICENSE' }).Count) { throw 'Resolved runtime license missing.' }
     if ($name -eq 'Microsoft.NETCore.App.Runtime.win-x64' -and -not @($files | Where-Object { $_.Name -imatch '^THIRD-PARTY' }).Count) { throw 'Runtime transitive notices missing.' }

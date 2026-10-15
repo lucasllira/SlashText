@@ -12,7 +12,7 @@ try {
     $hash=[Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($bytes)).ToLowerInvariant()
     $file=Join-Path $docs 'Recorder.txt';[IO.File]::WriteAllBytes($file,$bytes)
     [IO.File]::WriteAllBytes((Join-Path $cache 'LICENSE'),$bytes)
-    $catalog=[ordered]@{schemaVersion=1;normalization='UTF-8/LF';validatedDesktopRuntimeVersion='10.0.12';documents=@([ordered]@{id='Recorder';name='Recorder';version='6.6.0';license='MIT';file='Recorder.txt';sha256=$hash;source='https://example.invalid/source';package='ScreenRecorderLib'})}
+    $catalog=[ordered]@{schemaVersion=1;normalization='UTF-8/LF';validatedDesktopRuntimeVersions=@('10.0.12','10.0.13');documents=@([ordered]@{id='Recorder';name='Recorder';version='6.6.0';license='MIT';file='Recorder.txt';sha256=$hash;source='https://example.invalid/source';package='ScreenRecorderLib'})}
     $catalogPath=Join-Path $docs 'catalog.json';$catalog | ConvertTo-Json -Depth 6 | Set-Content $catalogPath
     $assetsPath=Join-Path $root 'assets.json'
     $assets=[ordered]@{libraries=@{'ScreenRecorderLib/6.6.0'=@{path='screenrecorderlib/6.6.0'}};packageFolders=@{(Join-Path $root 'cache')=@{}}}
@@ -35,8 +35,15 @@ try {
     Rejected 'Changed package version accepted with stale license review.'
     $assets.libraries=@{'ScreenRecorderLib/6.6.0'=@{path='screenrecorderlib/6.6.0'}};$assets | ConvertTo-Json -Depth 6 | Set-Content $assetsPath
     Set-Content (Join-Path $cache 'LICENSE') 'different NuGet license';Rejected 'NuGet recorder license mismatch accepted.';[IO.File]::WriteAllBytes((Join-Path $cache 'LICENSE'),$bytes)
-    Set-Content $packs "Microsoft.NETCore.App.Runtime.win-x64|10.0.13|$cache";Rejected 'Unreviewed runtime notice version accepted.'
+    Set-Content $packs "Microsoft.NETCore.App.Runtime.win-x64|10.0.14|$cache";Rejected 'Unreviewed runtime notice version accepted.'
     Set-Content $packs "Microsoft.NETCore.App.Runtime.win-x64|10.0.12|$cache";Rejected 'Runtime without transitive notices accepted.'
+    [IO.File]::WriteAllBytes((Join-Path $cache 'THIRD-PARTY-NOTICES.TXT'),$bytes)
+    foreach($version in @('10.0.12','10.0.13')) {
+        Set-Content $packs "Microsoft.NETCore.App.Runtime.win-x64|$version|$cache";Generate
+        $runtimeManifest=Get-Content (Join-Path $output 'catalog.json') -Raw | ConvertFrom-Json
+        $runtimeDocs=@($runtimeManifest.documents | Where-Object version -eq $version)
+        Check ($runtimeDocs.Count -eq 2 -and @($runtimeDocs.name | Select-Object -Unique).Count -eq 2 -and @($runtimeDocs | Where-Object source -ne "https://www.nuget.org/packages/Microsoft.NETCore.App.Runtime.win-x64/$version").Count -eq 0) 'Reviewed runtime notices lost identity or exact resolved version.'
+    }
     Set-Content $packs '';Generate
     Write-Output "Third-party notice generation: PASS ($count cases; original text retained; modified/missing/stale package/runtime notices rejected; no network)"
 } finally {

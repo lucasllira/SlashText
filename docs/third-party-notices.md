@@ -10,9 +10,11 @@ notices. Self-contained portable and installed builds additionally include
 LICENSE and THIRD-PARTY-NOTICES files from the exact resolved
 Microsoft.NETCore.App / Microsoft.WindowsDesktop.App runtime packs. The latter's
 NuGet package omits its upstream WPF/Windows Forms transitive notice files, so
-those reviewed upstream texts are included explicitly. Runtime 10.0.12 was
-reviewed for this change. A different runtime patch fails the generator until
-its desktop notices and `validatedDesktopRuntimeVersion` are reviewed/updated;
+those reviewed upstream texts are included explicitly. Runtime patches 10.0.12
+and 10.0.13 were reviewed; WPF and Windows Forms notice bodies are identical
+between these upstream tags (the catalog preserves their verified hashes).
+An unreviewed runtime patch fails the generator until
+its desktop notices and `validatedDesktopRuntimeVersions` are reviewed/updated;
 do not downgrade the runtime or bypass the gate to get a green build.
 
 The catalog preserves component versions/source references and SHA-256 of each

@@ -144,21 +144,21 @@
     {
       "id": "WPF",
       "name": ".NET WPF third-party notices",
-      "version": "10.0.12 upstream snapshot",
+      "version": "10.0.12 and 10.0.13 upstream snapshots (identical text)",
       "license": "upstream notices",
       "file": "WPF.txt",
       "sha256": "d23dba2fee20c6b59d8f7088ee9ed372459c952a319b7ca90f3eec370cc76eb9",
-      "source": "https://raw.githubusercontent.com/dotnet/wpf/v10.0.12/THIRD-PARTY-NOTICES.TXT",
+      "source": "https://raw.githubusercontent.com/dotnet/wpf/v10.0.13/THIRD-PARTY-NOTICES.TXT",
       "package": null
     },
     {
       "id": "WinForms",
       "name": ".NET Windows Forms third-party notices",
-      "version": "10.0.12 upstream snapshot",
+      "version": "10.0.12 and 10.0.13 upstream snapshots (identical text)",
       "license": "upstream notices",
       "file": "WinForms.txt",
       "sha256": "5a412b38efae0b162dc0893b319023f4cd14a8985a0f9f9ae01ac052b37a36eb",
-      "source": "https://raw.githubusercontent.com/dotnet/winforms/v10.0.12/THIRD-PARTY-NOTICES.TXT",
+      "source": "https://raw.githubusercontent.com/dotnet/winforms/v10.0.13/THIRD-PARTY-NOTICES.TXT",
       "package": null
     },
     {
@@ -263,6 +263,6 @@
       "sha256": "be59142f79e1cf2c34400a57920e13761ef0f94e31ef78d1a282ac99cb00ce7b"
     }
   ],
-  "validatedDesktopRuntimeVersion": "10.0.12",
+  "validatedDesktopRuntimeVersions": ["10.0.12", "10.0.13"],
   "normalization": "UTF-8 without BOM; LF line endings; all other upstream text preserved"
 }
