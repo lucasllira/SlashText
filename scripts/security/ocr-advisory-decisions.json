@@ -1,0 +1,187 @@
+{
+  "schema": 1,
+  "reviewed_on": "2026-10-15",
+  "decision": "Mitigate model trust and verify native identity; no claim that existing binaries have upstream security backports.",
+  "release_gate": "Before #70, explicit residual-risk acceptance or a separately verified native update is required. Clean Windows/VC++ prerequisite validation remains in #70.",
+  "runtime": "LstmOnly; embedded SHA-256/length allowlist for all eng/por Best/Fast models; read-only files and directories pinned through worker lifetime; Windows x64 native allowlist; separate same-user worker with 45s timeout, cancellation and cleanup.",
+  "entries": [
+    {
+      "id": "GHSA-9vwv-49m8-jv9m",
+      "component": "Tesseract",
+      "condition": "Modelo LSTM treinado adulterado durante inicializacao; leitura fora de limites em IntSimdMatrix.",
+      "reported_affected": "5.5.3",
+      "status": "none-listed",
+      "mitigation": "Reject arbitrary model roots; verify and hold the approved model files/directory through engine lifetime or use an equally protected per-worker extraction.",
+      "sources": [
+        "https://github.com/tesseract-ocr/tesseract/security/advisories/GHSA-9vwv-49m8-jv9m"
+      ]
+    },
+    {
+      "id": "GHSA-357f-833m-3f83",
+      "component": "Tesseract",
+      "condition": "Engine legado, pre-adapted templates ativados e arquivo .a gravavel associado a saida.",
+      "reported_affected": "< 5.5.3",
+      "status": "none-listed-incomplete-related-fix",
+      "mitigation": "Preserve explicit LstmOnly; reject arbitrary model roots and pin expected models throughout native load. Do not allow untrusted adapted templates.",
+      "sources": [
+        "https://github.com/tesseract-ocr/tesseract/security/advisories/GHSA-357f-833m-3f83"
+      ]
+    },
+    {
+      "id": "GHSA-96jm-jc65-f968",
+      "component": "Tesseract",
+      "condition": "Modelo inttemp adulterado com identificadores invalidos e engine legado selecionado.",
+      "reported_affected": "<= 5.5.3",
+      "status": "none-listed-incomplete-related-fix",
+      "mitigation": "Preserve explicit LstmOnly; reject arbitrary model roots and pin expected models throughout native load. Do not allow untrusted adapted templates.",
+      "sources": [
+        "https://github.com/tesseract-ocr/tesseract/security/advisories/GHSA-96jm-jc65-f968"
+      ]
+    },
+    {
+      "id": "GHSA-5j2p-r5vc-q7f3",
+      "component": "Tesseract",
+      "condition": "NORMPROTO adulterado carregado pelo engine legado; efeito depende tambem do toolchain.",
+      "reported_affected": "< 5.5.4",
+      "status": "patched-version-declared-not-current-release",
+      "mitigation": "Preserve explicit LstmOnly; reject arbitrary model roots and pin expected models throughout native load. Do not allow untrusted adapted templates.",
+      "sources": [
+        "https://github.com/tesseract-ocr/tesseract/security/advisories/GHSA-5j2p-r5vc-q7f3"
+      ]
+    },
+    {
+      "id": "GHSA-f6h7-cqr4-6fx4",
+      "component": "Tesseract",
+      "condition": "Estrutura LSTM vazia em modelo adulterado provoca falha durante carga.",
+      "reported_affected": "<= 5.5.3",
+      "status": "none-listed",
+      "mitigation": "Reject arbitrary model roots; verify and hold the approved model files/directory through engine lifetime or use an equally protected per-worker extraction.",
+      "sources": [
+        "https://github.com/tesseract-ocr/tesseract/security/advisories/GHSA-f6h7-cqr4-6fx4"
+      ]
+    },
+    {
+      "id": "GHSA-q44c-23p6-5mw6",
+      "component": "Tesseract",
+      "condition": "Dimensoes de camada FullyConnected e matriz inconsistentes em modelo adulterado.",
+      "reported_affected": "<= 5.5.3",
+      "status": "none-listed",
+      "mitigation": "Reject arbitrary model roots; verify and hold the approved model files/directory through engine lifetime or use an equally protected per-worker extraction.",
+      "sources": [
+        "https://github.com/tesseract-ocr/tesseract/security/advisories/GHSA-q44c-23p6-5mw6"
+      ]
+    },
+    {
+      "id": "GHSA-jgq8-pprg-vc68",
+      "component": "Tesseract",
+      "condition": "Modelo LSTM adulterado possui dimensoes de estado e matrizes de gates inconsistentes.",
+      "reported_affected": "<= 5.5.3",
+      "status": "none-listed",
+      "mitigation": "Reject arbitrary model roots; verify and hold the approved model files/directory through engine lifetime or use an equally protected per-worker extraction.",
+      "sources": [
+        "https://github.com/tesseract-ocr/tesseract/security/advisories/GHSA-jgq8-pprg-vc68"
+      ]
+    },
+    {
+      "id": "GHSA-7v9h-3q3m-w68g",
+      "component": "Tesseract",
+      "condition": "Recoder LSTM de modelo adulterado possui valores de codigo invalidos.",
+      "reported_affected": "<= 5.5.3",
+      "status": "none-listed",
+      "mitigation": "Reject arbitrary model roots; verify and hold the approved model files/directory through engine lifetime or use an equally protected per-worker extraction.",
+      "sources": [
+        "https://github.com/tesseract-ocr/tesseract/security/advisories/GHSA-7v9h-3q3m-w68g"
+      ]
+    },
+    {
+      "id": "GHSA-2hm8-q5c7-c373",
+      "component": "Tesseract",
+      "condition": "Unicharset de modelo adulterado gera contagem e insercao inconsistentes na inicializacao.",
+      "reported_affected": "<= 5.5.3",
+      "status": "none-listed",
+      "mitigation": "Reject arbitrary model roots; verify and hold the approved model files/directory through engine lifetime or use an equally protected per-worker extraction.",
+      "sources": [
+        "https://github.com/tesseract-ocr/tesseract/security/advisories/GHSA-2hm8-q5c7-c373"
+      ]
+    },
+    {
+      "id": "GHSA-88qp-4g94-3rf3",
+      "component": "Tesseract",
+      "condition": "Modelo inttemp adulterado alcança leitura de vetor de fontes no classificador legado.",
+      "reported_affected": "<= 5.5.3",
+      "status": "patched-version-declared-not-current-release",
+      "mitigation": "Preserve explicit LstmOnly; reject arbitrary model roots and pin expected models throughout native load. Do not allow untrusted adapted templates.",
+      "sources": [
+        "https://github.com/tesseract-ocr/tesseract/security/advisories/GHSA-88qp-4g94-3rf3"
+      ]
+    },
+    {
+      "id": "GHSA-rphx-x795-5qjv",
+      "component": "Tesseract",
+      "condition": "Contagens inttemp adulteradas carregadas pelo classificador legado.",
+      "reported_affected": "<= 5.5.3",
+      "status": "none-listed-related-partial-fix",
+      "mitigation": "Preserve explicit LstmOnly; reject arbitrary model roots and pin expected models throughout native load. Do not allow untrusted adapted templates.",
+      "sources": [
+        "https://github.com/tesseract-ocr/tesseract/security/advisories/GHSA-rphx-x795-5qjv"
+      ]
+    },
+    {
+      "id": "GHSA-7j76-5rq5-5jg8",
+      "component": "Tesseract",
+      "condition": "Modelo LSTM adulterado com dimensoes de Convolve/Reconfig invalidas.",
+      "reported_affected": "< 5.5.3",
+      "status": "patched-version-and-merged-pr",
+      "mitigation": "Reject arbitrary model roots; verify and hold the approved model files/directory through engine lifetime or use an equally protected per-worker extraction.",
+      "sources": [
+        "https://github.com/tesseract-ocr/tesseract/security/advisories/GHSA-7j76-5rq5-5jg8"
+      ]
+    },
+    {
+      "id": "GHSA-x3vq-7rr7-5x3h",
+      "component": "Tesseract",
+      "condition": "Dicionario DAWG adulterado no modelo gera leitura fora dos limites durante carga.",
+      "reported_affected": "< 5.5.3",
+      "status": "metadata-none-body-merged-pr-in-release",
+      "mitigation": "Reject arbitrary model roots; verify and hold the approved model files/directory through engine lifetime or use an equally protected per-worker extraction.",
+      "sources": [
+        "https://github.com/tesseract-ocr/tesseract/security/advisories/GHSA-x3vq-7rr7-5x3h"
+      ]
+    },
+    {
+      "id": "OSV-2022-69",
+      "component": "Leptonica",
+      "condition": "pixCountPixels/pixCountPixelsInRect; o commit explica ponteiro tab8 invalido fornecido pelo proprio fuzzer e corrige tambem clipping dispendioso.",
+      "reported_affected": "OSV lista 1.81.0, 1.81.1 e 1.82.0 em faixa GIT",
+      "status": "source-fix-known; bundled-build-unattested; input-reachability-not-demonstrated",
+      "mitigation": "Manter reencodificacao/limites/timeout/worker e registrar triagem contextual. Atualizacao de Leptonica deve vir de fonte/build fixados e ser validada com wrapper.",
+      "sources": [
+        "https://osv.dev/vulnerability/OSV-2022-69",
+        "https://github.com/DanBloomberg/leptonica/commit/748723a795e48ce0ec0ce2fa78082ef0c62aac9c"
+      ]
+    },
+    {
+      "id": "OSV-2022-91",
+      "component": "Leptonica",
+      "condition": "pixCountArbInRect acessava amostras com profundidade incorreta; alcance depende de chamar a funcao com a combinacao pertinente.",
+      "reported_affected": "OSV lista 1.81.0, 1.81.1 e 1.82.0 em faixa GIT",
+      "status": "source-fix-known; bundled-build-unattested; input-reachability-not-demonstrated",
+      "mitigation": "Manter limites e worker; preferir Leptonica de proveniencia verificavel com este commit quando houver pacote/ABI validados. Nao anunciar correção somente pela troca de numero de versao.",
+      "sources": [
+        "https://osv.dev/vulnerability/OSV-2022-91",
+        "https://github.com/DanBloomberg/leptonica/commit/f694a026b400a5f501f055e536eff2bfaa3c1bc1"
+      ]
+    },
+    {
+      "id": "CVE-2022-38266",
+      "component": "Leptonica",
+      "condition": "Divisao por zero em block convolution para dimensoes pequenas.",
+      "reported_affected": "Triagem A registrou commit fix anterior ao tag upstream1.82.0; esta rodada nao refez a comparacao de ancestralidade.",
+      "status": "source-fix-rechecked; prior-ancestry-evidence-not-rerun; binary-provenance-limited",
+      "mitigation": "Manter evidencia de fonte e nao afirmar DLL vulneravel/corrigida sem vinculo entre binario e commit.",
+      "sources": [
+        "https://github.com/DanBloomberg/leptonica/commit/f062b42c0ea8dddebdc6a152fd16152de215d614"
+      ]
+    }
+  ]
+}
