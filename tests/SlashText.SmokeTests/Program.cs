@@ -6,6 +6,25 @@ using System.IO.Compression;
 using System.Diagnostics;
 using ScreenRecorderLib;
 
+if (args.Length == 2 && args[0] == "--capture-stamp-path-smoke")
+{
+    var output = Path.GetFullPath(args[1]);
+    Directory.CreateDirectory(output);
+    try
+    {
+        CaptureStampLongPathChecks.Run(output);
+        File.WriteAllText(Path.Combine(output, "result.json"), "{\"status\":\"PASS\"}");
+    }
+    catch (Exception exception)
+    {
+        File.WriteAllText(Path.Combine(output, "result.json"), System.Text.Json.JsonSerializer.Serialize(new
+        { status = "FAIL", exceptionType = exception.GetType().Name, exception.HResult }));
+        Console.Error.WriteLine(exception);
+        Environment.ExitCode = 1;
+    }
+    return;
+}
+
 if (args.Length == 2 && args[0] == "--snippet-batch-smoke")
 {
     await SnippetBatchChecks.RunAsync(args[1]); return;
@@ -545,6 +564,7 @@ await BackupCompatibilityChecks.RunAsync(root);
         {
             CaptureEditorPerformanceChecks.Run();
             CaptureCustomStampChecks.Run();
+            CaptureStampLongPathChecks.Run(Path.Combine(root, "stamp-long-paths"));
             using var bitmap = new System.Drawing.Bitmap(800, 400);
             using (var graphics = System.Drawing.Graphics.FromImage(bitmap))
             {
