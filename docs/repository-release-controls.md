@@ -39,8 +39,9 @@ is allowed so that this maintainer can approve a run they initiated; administrat
 bypass is disabled. There are no environment secrets added by these controls.
 
 Only workflow refs matching branch `main` or tags `v*` can use this environment.
-For manual release dispatches, the selected workflow ref is `main`; the release
-input separately chooses an existing tag, which is validated before checkout.
+For manual release dispatches, the selected workflow ref must be the intended
+release tag and match the release input, so OIDC source identity matches the
+actual build. See [release provenance](release-provenance.md).
 These environment ref restrictions do not replace SemVer, project-version and
 main-history checks.
 
@@ -51,7 +52,8 @@ For a real release:
 3. Dispatch Tag Stable Release from main with the intended stable version. After
    validation, the authorized maintainer reviews the run and approves its
    `release-approval` deployment before the tag is created.
-4. Dispatch Release Windows from main for that existing tag. Tags pushed with
+4. Dispatch Release Windows from that existing tag (select the tag as the workflow
+   ref and provide the same `release_tag` input). Tags pushed with
    GITHUB_TOKEN do not automatically start another workflow; do not introduce a
    PAT just to evade that behavior. A tag created by another authorized mechanism
    may trigger the existing tag-push workflow.
@@ -78,6 +80,10 @@ Verify the effective server state with authenticated GitHub API reads:
 - `/actions/permissions`, `/actions/permissions/selected-actions` and
   `/actions/permissions/workflow`: SHA required, only the four reviewed Actions,
   read-only token default and no Action PR approval.
+
+The publication job additionally generates and verifies artifact provenance after
+approval. Its OIDC/attestations permissions and the exact `actions/attest` SHA are
+the narrowly scoped exception documented in [release provenance](release-provenance.md).
 
 Local/CI tests also run `actions-policy-smoke.ps1`,
 `actions-policy-regression.ps1` and `release-workflow-smoke.ps1` (17 invalid policy

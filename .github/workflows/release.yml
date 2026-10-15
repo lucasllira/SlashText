@@ -26,6 +26,9 @@ jobs:
       sha: ${{ steps.source.outputs.sha }}
       portableZip: ${{ steps.package.outputs.portableZip }}
       portableChecksum: ${{ steps.package.outputs.portableChecksum }}
+      portableHash: ${{ steps.package.outputs.portableHash }}
+      installedHash: ${{ steps.package.outputs.installedHash }}
+      executableHash: ${{ steps.package.outputs.executableHash }}
 
     steps:
       - name: Resolve and validate release tag
@@ -49,6 +52,9 @@ jobs:
             if ($identifier -cmatch '\A[0-9]+\z' -and $identifier.Length -gt 1 -and $identifier[0] -eq '0') {
               throw 'Identificador numérico prerelease não pode começar com zero.'
             }
+          }
+          if ($env:GITHUB_REF -cne "refs/tags/$tag") {
+            throw 'Execute Release Windows a partir da própria tag escolhida, inclusive em workflow_dispatch.'
           }
           "tag=$tag" >> $env:GITHUB_OUTPUT
           "version=$($tag.Substring(1))" >> $env:GITHUB_OUTPUT
@@ -81,6 +87,7 @@ jobs:
           $headSha = git rev-parse HEAD
           if ($LASTEXITCODE -ne 0) { throw 'Não foi possível resolver o checkout.' }
           if ($tagSha -ne $headSha) { throw 'O checkout não corresponde ao commit da tag.' }
+          if ($env:GITHUB_SHA -cne $headSha) { throw 'A identidade do workflow não corresponde ao commit da tag.' }
           git fetch origin main
           if ($LASTEXITCODE -ne 0) { throw 'Não foi possível conferir o histórico da main.' }
           git merge-base --is-ancestor $tagSha origin/main
@@ -174,6 +181,9 @@ jobs:
 
           "portableZip=$portableZip" >> $env:GITHUB_OUTPUT
           "portableChecksum=$portableZip.sha256" >> $env:GITHUB_OUTPUT
+          "portableHash=$portableHash" >> $env:GITHUB_OUTPUT
+          "installedHash=$installedHash" >> $env:GITHUB_OUTPUT
+          "executableHash=$((Get-FileHash publish-portable/SlashDesk.exe -Algorithm SHA256).Hash.ToLowerInvariant())" >> $env:GITHUB_OUTPUT
 
       - name: Upload temporary Actions artifacts
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -187,6 +197,8 @@ jobs:
     runs-on: windows-latest
     permissions:
       contents: write
+      id-token: write
+      attestations: write
     environment: release-approval
 
     steps:
@@ -201,6 +213,54 @@ jobs:
         with:
           name: SlashDesk-${{ needs.validate-build-release.outputs.version }}-release-validation
           path: release-assets/
+
+      - name: Prepare exact attestation subjects
+        shell: pwsh
+        env:
+          PORTABLE_ZIP: ${{ needs.validate-build-release.outputs.portableZip }}
+          RELEASE_VERSION: ${{ needs.validate-build-release.outputs.version }}
+          EXPECTED_PORTABLE_HASH: ${{ needs.validate-build-release.outputs.portableHash }}
+          EXPECTED_INSTALLED_HASH: ${{ needs.validate-build-release.outputs.installedHash }}
+          EXPECTED_EXECUTABLE_HASH: ${{ needs.validate-build-release.outputs.executableHash }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $installedZip = "release-assets/SlashDesk-$env:RELEASE_VERSION-installed-staging-win-x64.zip"
+          foreach ($item in @(@($env:PORTABLE_ZIP, $env:EXPECTED_PORTABLE_HASH), @($installedZip, $env:EXPECTED_INSTALLED_HASH))) {
+            if ($item[1] -cnotmatch '\A[0-9a-f]{64}\z' -or (Get-FileHash -LiteralPath $item[0] -Algorithm SHA256).Hash.ToLowerInvariant() -cne $item[1]) {
+              throw 'O pacote recebido difere do build validado; proveniência não será emitida.'
+            }
+          }
+          Expand-Archive -LiteralPath $env:PORTABLE_ZIP -DestinationPath attestation-subjects
+          $files = @(Get-ChildItem attestation-subjects -Force -Recurse)
+          if ($files.Count -ne 1 -or $files[0].Name -cne 'SlashDesk.exe' -or $files[0].PSIsContainer) {
+            throw 'O ZIP validado deixou de conter somente SlashDesk.exe.'
+          }
+          if ($env:EXPECTED_EXECUTABLE_HASH -cnotmatch '\A[0-9a-f]{64}\z' -or (Get-FileHash -LiteralPath $files[0].FullName -Algorithm SHA256).Hash.ToLowerInvariant() -cne $env:EXPECTED_EXECUTABLE_HASH) {
+            throw 'O executável recebido difere do build validado.'
+          }
+
+      - name: Attest validated release artifacts
+        id: provenance
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: |
+            release-assets/*.zip
+            attestation-subjects/SlashDesk.exe
+
+      - name: Verify provenance before publication
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.validate-build-release.outputs.tag }}
+          RELEASE_VERSION: ${{ needs.validate-build-release.outputs.version }}
+          RELEASE_COMMIT: ${{ needs.validate-build-release.outputs.sha }}
+          ATTESTATION_BUNDLE: ${{ steps.provenance.outputs.bundle-path }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          foreach ($file in @(Get-ChildItem release-assets -Filter '*.zip') + @(Get-Item attestation-subjects/SlashDesk.exe)) {
+            ./scripts/verify-release-provenance.ps1 -Artifact $file.FullName -Tag $env:RELEASE_TAG -Commit $env:RELEASE_COMMIT -Bundle $env:ATTESTATION_BUNDLE
+          }
+          Copy-Item -LiteralPath $env:ATTESTATION_BUNDLE -Destination "release-assets/SlashDesk-$env:RELEASE_VERSION-provenance.json"
 
       - name: Create GitHub Release
         shell: pwsh
@@ -218,6 +278,7 @@ jobs:
             'release', 'create', $env:RELEASE_TAG,
             $env:PORTABLE_ZIP,
             $env:PORTABLE_CHECKSUM,
+            "release-assets/SlashDesk-$env:RELEASE_VERSION-provenance.json",
             '--repo', $env:GITHUB_REPOSITORY,
             '--verify-tag',
             '--title', "SlashDesk $env:RELEASE_VERSION"

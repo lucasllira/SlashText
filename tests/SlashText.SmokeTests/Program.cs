@@ -6,6 +6,11 @@ using System.IO.Compression;
 using System.Diagnostics;
 using ScreenRecorderLib;
 
+if (args.Length == 1 && args[0] == "--release-trust-smoke")
+{
+    await ReleaseTrustChecks.RunAsync();
+    return;
+}
 if (args.Length >= 3 && args[0] == "--capture-ocr-worker")
 {
     if (Environment.GetEnvironmentVariable("SLASHDESK_TEST_OCR_MODE") == "wait")
@@ -145,6 +150,7 @@ if (args.Length == 2 && args[0] == "--clipboard-native-isolated")
 }
 
 var root = Path.Combine(Path.GetTempPath(), $"slashtext-smoke-{Guid.NewGuid():N}");
+await ReleaseTrustChecks.RunAsync();
 AppPaths.Initialize(new AppDataEnvironment(DistributionMode.Portable, Path.Combine(root, "initial-app"), root, isCapturePilot: true));
 await OcrTrustChecks.RunAsync(Path.Combine(root, "ocr-trust"), native: false);
 await SnippetBatchChecks.RunAsync(Path.Combine(root, "snippet-batch"));

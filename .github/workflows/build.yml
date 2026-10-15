@@ -26,6 +26,10 @@ jobs:
           ./scripts/actions-policy-smoke.ps1
           ./scripts/actions-policy-regression.ps1
 
+      - name: Verify provenance cryptography with pinned inert fixtures
+        shell: pwsh
+        run: ./scripts/release-provenance-crypto-smoke.ps1
+
       - name: Create artifact transport probe
         id: artifact-probe
         shell: pwsh

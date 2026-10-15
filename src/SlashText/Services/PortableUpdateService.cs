@@ -296,13 +296,11 @@ internal sealed class PortableUpdateService
         IProgress<UpdateProgress>? progress,
         CancellationToken cancellationToken)
     {
-        ValidateAssetUrl(asset.DownloadUrl);
         var partial = destination + ".partial";
         try
         {
-            using var response = await _client.GetAsync(
-                asset.DownloadUrl, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
-            response.EnsureSuccessStatusCode();
+            using var response = await ReleaseDownloadPolicy.GetAsync(
+                _client, new Uri(asset.DownloadUrl), cancellationToken);
             var total = response.Content.Headers.ContentLength ?? (asset.Size > 0 ? asset.Size : null);
             long received = 0;
             await using (var source = await response.Content.ReadAsStreamAsync(cancellationToken))
@@ -390,19 +388,8 @@ internal sealed class PortableUpdateService
         {
             throw new InvalidDataException(UiText.Get("Os artefatos da Release não correspondem ao portátil win-x64."));
         }
-        ValidateAssetUrl(release.PortableAsset.DownloadUrl);
-        ValidateAssetUrl(release.ChecksumAsset.DownloadUrl);
-    }
-
-    private static void ValidateAssetUrl(string value)
-    {
-        if (!Uri.TryCreate(value, UriKind.Absolute, out var uri) ||
-            uri.Scheme != Uri.UriSchemeHttps ||
-            !(uri.Host.Equals("github.com", StringComparison.OrdinalIgnoreCase) ||
-              uri.Host.EndsWith(".githubusercontent.com", StringComparison.OrdinalIgnoreCase)))
-        {
-            throw new InvalidDataException(UiText.Get("A URL do artefato não pertence ao GitHub via HTTPS."));
-        }
+        ReleaseDownloadPolicy.ValidateAsset(release.PortableAsset.DownloadUrl, version.ToString(), expected);
+        ReleaseDownloadPolicy.ValidateAsset(release.ChecksumAsset.DownloadUrl, version.ToString(), expected + ".sha256");
     }
 
     internal static void ValidateManifest(PortableUpdateManifest manifest, string manifestPath)
@@ -583,7 +570,7 @@ internal sealed class PortableUpdateService
         }
     }
 
-    private static HttpClient CreateClient() => new()
+    private static HttpClient CreateClient() => new(new HttpClientHandler { AllowAutoRedirect = false })
     {
         Timeout = TimeSpan.FromMinutes(10)
     };
