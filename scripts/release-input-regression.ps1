@@ -36,6 +36,7 @@ $scripts = @{
     source = Get-WorkflowScript $releaseWorkflow 'Validate project version and tag source'
     publish = Get-WorkflowScript $releaseWorkflow 'Create GitHub Release'
     package = Get-WorkflowScript $releaseWorkflow 'Package and calculate SHA-256'
+    subjects = Get-WorkflowScript $releaseWorkflow 'Prepare exact attestation subjects'
 }
 
 foreach ($workflow in @($tagWorkflow, $releaseWorkflow)) {
@@ -59,7 +60,7 @@ foreach ($step in $releaseSteps) {
 
 $sha = '1234567890123456789012345678901234567890'
 $otherSha = 'abcdefabcdefabcdefabcdefabcdefabcdefabcd'
-$environmentNames = @('RELEASE_TAG', 'RELEASE_VERSION', 'VALIDATED_SHA', 'RELEASE_TAG_INPUT', 'RELEASE_BASE_VERSION', 'RELEASE_PRERELEASE', 'PORTABLE_ZIP', 'PORTABLE_CHECKSUM', 'GITHUB_OUTPUT', 'GITHUB_EVENT_NAME', 'GITHUB_REF_NAME', 'GITHUB_REPOSITORY')
+$environmentNames = @('RELEASE_TAG', 'RELEASE_VERSION', 'VALIDATED_SHA', 'RELEASE_TAG_INPUT', 'RELEASE_BASE_VERSION', 'RELEASE_PRERELEASE', 'PORTABLE_ZIP', 'PORTABLE_CHECKSUM', 'EXPECTED_PORTABLE_HASH', 'EXPECTED_INSTALLED_HASH', 'EXPECTED_EXECUTABLE_HASH', 'GITHUB_OUTPUT', 'GITHUB_EVENT_NAME', 'GITHUB_REF_NAME', 'GITHUB_REF', 'GITHUB_SHA', 'GITHUB_REPOSITORY')
 $savedEnvironment = @{}
 foreach ($name in $environmentNames) { $savedEnvironment[$name] = [Environment]::GetEnvironmentVariable($name, 'Process') }
 $savedExitCode = $global:LASTEXITCODE
@@ -107,6 +108,8 @@ function Invoke-Case([string]$Kind, [string]$Tag, [hashtable]$Options = @{}) {
     $env:RELEASE_PRERELEASE = 'false'
     $env:GITHUB_EVENT_NAME = 'workflow_dispatch'
     $env:GITHUB_REF_NAME = $Tag
+    $env:GITHUB_REF = "refs/tags/$Tag"
+    $env:GITHUB_SHA = $sha
     $env:GITHUB_REPOSITORY = 'example/SlashText'
     $env:PORTABLE_ZIP = 'release-assets/SlashDesk-3.2.0-portable-win-x64.zip'
     $env:PORTABLE_CHECKSUM = "$env:PORTABLE_ZIP.sha256"
@@ -158,9 +161,13 @@ try {
             Assert-Condition ($result.outputs.prerelease -eq ($tag.Contains('-')).ToString().ToLowerInvariant()) 'Incorrect prerelease flag.'
         }
     }
-    $result = Invoke-Case release 'ignored invalid manual input' @{ GITHUB_EVENT_NAME = 'push'; GITHUB_REF_NAME = 'v3.2.0' }
+    $result = Invoke-Case release 'ignored invalid manual input' @{ GITHUB_EVENT_NAME = 'push'; GITHUB_REF_NAME = 'v3.2.0'; GITHUB_REF = 'refs/tags/v3.2.0' }
     Assert-Condition ($null -eq $result.error -and $result.outputs.tag -eq 'v3.2.0') 'Push must use its tag ref.'
     Assert-Rejected (Invoke-Case release 'v3.2.0' @{ GITHUB_EVENT_NAME = 'pull_request' }) 'unsupported event'
+    foreach ($ref in @('refs/heads/main', 'refs/heads/feature', 'refs/tags/v3.1.0', 'refs/pull/1/merge', '')) {
+        Assert-Rejected (Invoke-Case release 'v3.2.0' @{ GITHUB_REF = $ref }) 'workflow ref must match the tag'
+    }
+    Assert-Rejected (Invoke-Case source 'v3.2.0' @{ GITHUB_SHA = $otherSha }) 'OIDC source must match built commit'
     foreach ($options in @(@{ projectVersion = '3.3.0' }, @{ duplicate = $true }, @{ refExit = 2 }, @{ fetchExit = 1 }, @{ resolveExit = 1 }, @{ head = $otherSha })) {
         Assert-Rejected (Invoke-Case stable 'v3.2.0' $options) 'stable source/duplicate/error guard'
     }
@@ -200,6 +207,25 @@ try {
     Expand-Archive -LiteralPath $result.outputs.portableZip -DestinationPath 'unpacked'
     $files = @(Get-ChildItem 'unpacked' -File)
     Assert-Condition ($files.Count -eq 1 -and $files[0].Name -eq 'SlashDesk.exe') 'Portable ZIP must contain only the executable.'
+    $env:EXPECTED_PORTABLE_HASH = $result.outputs.portableHash
+    $env:EXPECTED_INSTALLED_HASH = $result.outputs.installedHash
+    $env:EXPECTED_EXECUTABLE_HASH = $result.outputs.executableHash
+    Assert-Condition ($env:EXPECTED_EXECUTABLE_HASH -eq (Get-FileHash publish-portable/SlashDesk.exe -Algorithm SHA256).Hash.ToLowerInvariant()) 'The source EXE digest must be recorded before transport.'
+    foreach ($name in @('EXPECTED_PORTABLE_HASH', 'EXPECTED_INSTALLED_HASH', 'EXPECTED_EXECUTABLE_HASH')) {
+        $expectedHash = [Environment]::GetEnvironmentVariable($name, 'Process')
+        [Environment]::SetEnvironmentVariable($name, ('0' * 64), 'Process')
+        $failed = $false
+        try { & $scripts.subjects | Out-Null } catch { $failed = $true }
+        Assert-Condition $failed "Changed transported artifact was accepted: $name"
+        [Environment]::SetEnvironmentVariable($name, $expectedHash, 'Process')
+        $caseCount++
+    }
+    # The failed EXE check may already have extracted its valid archive. A fresh
+    # destination exercises the successful production step without overwrite.
+    if (Test-Path attestation-subjects) { Rename-Item attestation-subjects attestation-subjects-rejected }
+    & $scripts.subjects | Out-Null
+    Assert-Condition ((Get-FileHash attestation-subjects/SlashDesk.exe -Algorithm SHA256).Hash.ToLowerInvariant() -eq $env:EXPECTED_EXECUTABLE_HASH) 'Attested EXE must match the exact validated build.'
+    $caseCount++
     Write-Output "Release input regression: OK ($caseCount behavioral cases; git/gh simulated)"
 } finally {
     if ((Get-Location).Path -eq $fixture) { Pop-Location }

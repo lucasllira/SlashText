@@ -3,6 +3,10 @@ $checker = Join-Path $PSScriptRoot 'actions-policy-smoke.ps1'
 $source = Join-Path $PSScriptRoot '../.github/workflows'
 $fixture = Join-Path ([IO.Path]::GetTempPath()) "SlashDesk actions tests $([guid]::NewGuid().ToString('N'))"
 $cases = @(
+    @{ file = 'release.yml'; old = '      id-token: write'; replacement = "      id-token: write`n      packages: write"; label = 'attestation extra permission' },
+    @{ file = 'release.yml'; old = '1e69f48acb82d1966a394da916b4c1698aa569d6'; replacement = '1e69f48acb82d1966a394da916b4c1698aa569d7'; label = 'unreviewed attestation pin' },
+    @{ file = 'build.yml'; old = '    runs-on: windows-latest'; replacement = "    permissions:`n      contents: read`n      id-token: write`n      attestations: write`n    runs-on: windows-latest"; label = 'attestation permissions in PR build' },
+    @{ file = 'build.yml'; old = 'actions/checkout@[0-9a-f]{40}\s+# v4\.4\.0'; replacement = 'actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2'; label = 'attestation in PR build' },
     @{ file = 'codeql.yml'; old = '      security-events: write'; replacement = '      contents: write'; label = 'CodeQL contents elevation' },
     @{ file = 'codeql.yml'; old = '      security-events: write'; replacement = "      security-events: write`n      actions: write"; label = 'CodeQL extra permission' },
     @{ file = 'build.yml'; old = 'actions/checkout@[0-9a-f]{40}\s+# v4\.4\.0'; replacement = 'github/codeql-action/init@24c54180a607b1449ed407dd24f251e4e9147c8d # v4.38.3'; label = 'CodeQL outside analyzer' },

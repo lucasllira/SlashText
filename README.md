@@ -200,6 +200,12 @@ Captura com rolagem depende do comportamento do aplicativo de destino e pode rep
 
 ## Verificar o download
 
+As próximas releases incluem proveniência assinada do GitHub para o ZIP e o
+executável. O roteiro de [verificação de proveniência](docs/release-provenance.md)
+confere repositório, workflow, tag e commit esperados. O atualizador do app mantém
+as verificações de integridade; não verifica essa assinatura internamente.
+Releases antigas sem atestado continuam identificadas como legadas.
+
 Cada Release publica o ZIP e seu arquivo `.sha256`. No PowerShell:
 
 ~~~powershell
