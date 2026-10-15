@@ -18,8 +18,9 @@ internal sealed class OcrModelLease : IDisposable
         _boundary = LocalFileBoundary.PinDirectory(DirectoryPath);
     }
 
-    internal static OcrModelLease Acquire(string model, string? alternateDirectory = null)
+    internal static OcrModelLease Acquire(string model, string? alternateDirectory = null, CancellationToken cancellation = default)
     {
+        cancellation.ThrowIfCancellationRequested();
         var assets = Assets(model);
         var directory = alternateDirectory is not null ? Path.GetFullPath(alternateDirectory) :
             Path.Combine(AppPaths.DataDirectory, "OcrModels-v1", model == "Fast" ? "fast-87416418" : "best-e12c65a9");
@@ -27,8 +28,8 @@ internal sealed class OcrModelLease : IDisposable
         {
             using var pin = LocalFileBoundary.PinDirectory(directory, create: true);
             // Serialize only cold-cache restoration. Warm readers share their immutable files.
-            using var writer = AcquireWriter(directory);
-            foreach (var asset in assets) Restore(directory, model, asset);
+            using var writer = AcquireWriter(directory, cancellation);
+            foreach (var asset in assets) { cancellation.ThrowIfCancellationRequested(); Restore(directory, model, asset); }
             return OpenVerified(directory, assets);
         }
         // Alternate roots are never trusted by location, including direct worker arguments.
@@ -51,11 +52,12 @@ internal sealed class OcrModelLease : IDisposable
         catch { lease.Dispose(); throw; }
     }
 
-    private static FileStream AcquireWriter(string directory)
+    private static FileStream AcquireWriter(string directory, CancellationToken cancellation)
     {
         var timer = Stopwatch.StartNew();
         while (true)
         {
+            cancellation.ThrowIfCancellationRequested();
             try { return LocalFileBoundary.OpenFile(Path.Combine(directory, "models-v1.lock"), create: true, exclusive: true); }
             catch (IOException) when (timer.Elapsed < TimeSpan.FromSeconds(5)) { Thread.Sleep(20); }
         }

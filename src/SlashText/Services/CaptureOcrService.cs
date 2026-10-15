@@ -45,7 +45,7 @@ public sealed class CaptureOcrService
         try
         {
             OcrModelLease verifiedModels;
-            try { verifiedModels = await Task.Run(() => OcrModelLease.Acquire(Options.Model, _modelsDirectory), linked.Token); }
+            try { verifiedModels = await Task.Run(() => OcrModelLease.Acquire(Options.Model, _modelsDirectory, linked.Token), linked.Token); }
             catch (Exception error) when (error is IOException or InvalidDataException or UnauthorizedAccessException)
             { throw new InvalidOperationException(UiText.Get("Os componentes do OCR não passaram na verificação. Reinstale o SlashDesk a partir do pacote oficial."), error); }
             using var models = verifiedModels;
@@ -82,6 +82,8 @@ public sealed class CaptureOcrService
                 ?? throw new InvalidDataException(UiText.Get("Resultado OCR inválido."));
             return result with { Text = result.Text.Trim(), ElapsedMilliseconds = clock.ElapsedMilliseconds };
         }
+        catch (OperationCanceledException) when (!cancellation.IsCancellationRequested && timeout.IsCancellationRequested)
+        { throw new TimeoutException(UiText.Get("A leitura demorou demais. Tente selecionar uma região menor.")); }
         finally
         {
             // No images or recognized text are retained in the capture history or diagnostic log.

@@ -152,6 +152,14 @@ internal static class OcrTrustChecks
         }
         using var blank = Fixture("");
         Check(string.IsNullOrWhiteSpace((await new CaptureOcrService(options: new() { Model = "Fast" }).RecognizeAsync(blank)).Text), "blank image remains empty");
+        string fastCache;
+        using (var modelLease = OcrModelLease.Acquire("Fast")) fastCache = modelLease.DirectoryPath;
+        using (var writer = new FileStream(Path.Combine(fastCache, "models-v1.lock"), FileMode.Open, FileAccess.ReadWrite, FileShare.None))
+        {
+            var waiting = Stopwatch.StartNew();
+            try { await new CaptureOcrService(null, null, new() { Model = "Fast" }, TimeSpan.FromMilliseconds(100)).RecognizeAsync(blank); throw new Exception("Cache wait ignored timeout"); }
+            catch (TimeoutException) { Check(waiting.Elapsed < TimeSpan.FromSeconds(2), "cache writer wait observes timeout before launching a worker"); }
+        }
         var previousMode = Environment.GetEnvironmentVariable("SLASHDESK_TEST_OCR_MODE");
         try
         {
