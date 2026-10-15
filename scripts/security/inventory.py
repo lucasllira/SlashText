@@ -139,7 +139,7 @@ def validate_notices(root, resources, packages):
             raise ValueError("Published notice digest or length differs")
     for expected in source["documents"]:
         document = by_id.get(expected["id"])
-        if not document or document["sha256"] != expected["sha256"] or document["version"] != expected["version"]:
+        if not document or any(document[field] != expected[field] for field in ("sha256", "version", "name", "source", "license")):
             raise ValueError("Published notice differs from reviewed source catalog: " + expected["id"])
         relative = expected.get("sourcePath", "src/SlashText/Assets/ThirdParty/" + expected.get("file", ""))
         text = (root / relative).read_text(encoding="utf-8-sig").replace("\r\n", "\n").replace("\r", "\n")
@@ -165,7 +165,7 @@ def validate_notices(root, resources, packages):
             identifier = re.sub("[^A-Za-z0-9_-]", "_", package["name"] + "-" + file.name)
             doc = by_id.get(identifier)
             expected = sha(file.read_text(encoding="utf-8-sig").replace("\r\n", "\n").replace("\r", "\n").encode("utf-8"))
-            if not doc or doc["sha256"] != expected or doc["version"] != package["version"]:
+            if not doc or doc["sha256"] != expected or doc["version"] != package["version"] or doc["source"] != f'https://www.nuget.org/packages/{package["name"]}/{package["version"]}':
                 raise ValueError("Runtime license does not match resolved package")
     return manifest
 

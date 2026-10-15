@@ -21,6 +21,7 @@ internal static class ThirdPartyNoticesSmoke
         await File.WriteAllTextAsync(AppPaths.SettingsFile, "{\"theme\":\"Dark\",\"language\":\"pt-BR\"}");
         var original = await File.ReadAllBytesAsync(AppPaths.SettingsFile);
         var notices = ThirdPartyNotices.Load();
+        Require(notices.Documents.Select(d => d.DisplayName).Distinct(StringComparer.Ordinal).Count() == notices.Documents.Count, "distinct component labels, including each runtime license/notice file");
         var checks = new List<string>();
         foreach (var language in new[] { "pt-BR", "en", "es" })
             foreach (var theme in new[] { "Light", "Dark", "System" })

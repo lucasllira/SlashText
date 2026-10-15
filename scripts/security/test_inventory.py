@@ -54,6 +54,10 @@ class InventoryTests(unittest.TestCase):
             bad["thirdPartyManifest"]["documents"][0]["version"] = "stale"
             with self.assertRaisesRegex(ValueError, "reviewed source"):
                 validate_notices(root, bad, {})
+            bad = copy.deepcopy(fixture)
+            bad["thirdPartyManifest"]["documents"][0]["source"] = "https://example.invalid/wrong-origin"
+            with self.assertRaisesRegex(ValueError, "reviewed source"):
+                validate_notices(root, bad, {})
             with self.assertRaisesRegex(ValueError, "catalog missing"):
                 validate_notices(root, {"entries":[]}, {})
             bad = copy.deepcopy(fixture)

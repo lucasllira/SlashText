@@ -49,11 +49,13 @@ foreach ($line in Get-Content -LiteralPath $RuntimePacksFile) {
     $files = @(Get-ChildItem -LiteralPath $path -File | Where-Object { $_.Name -imatch '^(LICENSE(?:\.TXT)?|THIRD-PARTY-NOTICES\.TXT)$' })
     if (-not @($files | Where-Object { $_.Name -imatch '^LICENSE' }).Count) { throw 'Resolved runtime license missing.' }
     if ($name -eq 'Microsoft.NETCore.App.Runtime.win-x64' -and -not @($files | Where-Object { $_.Name -imatch '^THIRD-PARTY' }).Count) { throw 'Runtime transitive notices missing.' }
+    $runtimeDocumentIds = [Collections.Generic.List[string]]::new()
     foreach ($file in $files) {
         $id = ($name + '-' + $file.Name) -replace '[^A-Za-z0-9_-]', '_'
-        Add-Document $id $name $version 'see upstream license and notices' "https://www.nuget.org/packages/$name/$version/$($file.Name)" (Canonical-Bytes $file.FullName)
+        Add-Document $id "$name / $($file.Name)" $version 'see upstream license and notices' "https://www.nuget.org/packages/$name/$version" (Canonical-Bytes $file.FullName)
+        $runtimeDocumentIds.Add($id)
     }
-    $packages.Add([ordered]@{name=$name;version=$version;documents=@($documents | Where-Object {$_.name -eq $name} | ForEach-Object {$_.id})})
+    $packages.Add([ordered]@{name=$name;version=$version;documents=@($runtimeDocumentIds)})
 }
 $manifest = [ordered]@{schemaVersion=1;normalization=$catalog.normalization;packages=@($packages);documents=@($documents);nativeProvenance='OCR native source commits/backports are not attested. Codec versions from verified x64 exports/strings; liblzma version unavailable. Supplemental upstream COPYING is not a binary version assertion.'}
 New-Item -Path $OutputDirectory -ItemType Directory -Force | Out-Null
