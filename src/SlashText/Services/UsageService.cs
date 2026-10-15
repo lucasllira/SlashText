@@ -20,6 +20,9 @@ public sealed class UsageService
     public IReadOnlyList<UsageRecord> Records => _records;
     public QuickAccentUsageRecord QuickAccent => _quickAccent;
     public bool IsAvailable { get; private set; } = true;
+    // Failed writes remain in this session's snapshot; the next use retries the
+    // whole snapshot, without replaying or counting prior insertions again.
+    public bool HasPendingChanges { get; private set; }
 
     public UsageService(string? usageFile = null)
     {
@@ -38,6 +41,7 @@ public sealed class UsageService
     private async Task LoadCoreAsync()
     {
         IsAvailable = true;
+        HasPendingChanges = false;
         _records.Clear();
         _quickAccent = new QuickAccentUsageRecord();
         if (!File.Exists(_usageFile))
@@ -49,21 +53,7 @@ public sealed class UsageService
         {
             var json = await File.ReadAllTextAsync(_usageFile);
             using var document = JsonDocument.Parse(json);
-            if (document.RootElement.ValueKind == JsonValueKind.Array)
-            {
-                _records.AddRange(
-                    JsonSerializer.Deserialize<List<UsageRecord>>(json, ReadOptions) ?? []);
-                RejectNullRecords();
-                return;
-            }
-
-            var snapshot = JsonSerializer.Deserialize<UsageSnapshot>(json, ReadOptions);
-            if (snapshot is null)
-            {
-                IsAvailable = false;
-                return;
-            }
-
+            var snapshot = ReadRequired(document.RootElement);
             _records.AddRange(snapshot.Snippets ?? []);
             _quickAccent = snapshot.QuickAccent ?? new QuickAccentUsageRecord();
             _quickAccent.Characters ??= new Dictionary<string, long>(StringComparer.Ordinal);
@@ -86,6 +76,14 @@ public sealed class UsageService
         }
     }
 
+    internal static UsageSnapshot ReadRequired(JsonElement element)
+    {
+        if (element.ValueKind == JsonValueKind.Array)
+            return new UsageSnapshot { Snippets = element.Deserialize<List<UsageRecord>>(ReadOptions)
+                ?? throw new JsonException("Invalid usage records.") };
+        return element.Deserialize<UsageSnapshot>(ReadOptions) ?? throw new JsonException("Invalid usage snapshot.");
+    }
+
     public async Task RecordAsync(Snippet snippet, int insertedCharacters)
     {
         await _writeLock.WaitAsync();
@@ -103,7 +101,8 @@ public sealed class UsageService
             record.Count++;
             record.LastUsedAt = DateTimeOffset.Now;
             record.CharactersSaved += Math.Max(0, insertedCharacters - snippet.Trigger.Length);
-            await SaveAsync();
+            HasPendingChanges = true;
+            await SavePendingAsync();
         }
         finally
         {
@@ -129,7 +128,8 @@ public sealed class UsageService
             var key = character.ToString();
             _quickAccent.Characters[key] =
                 _quickAccent.Characters.GetValueOrDefault(key) + 1;
-            await SaveAsync();
+            HasPendingChanges = true;
+            await SavePendingAsync();
         }
         finally
         {
@@ -140,10 +140,10 @@ public sealed class UsageService
     public UsageRecord? For(Guid snippetId) =>
         _records.FirstOrDefault(item => item.SnippetId == snippetId);
 
-    internal async Task RunMaintenanceAsync(Action action)
+    internal async Task RunMaintenanceAsync(Action action, CancellationToken cancellationToken = default)
     {
-        await _writeLock.WaitAsync();
-        try { await Task.Run(action); }
+        await _writeLock.WaitAsync(cancellationToken);
+        try { await Task.Run(action, cancellationToken); }
         finally { _writeLock.Release(); }
     }
 
@@ -158,4 +158,19 @@ public sealed class UsageService
             Snippets = _records.ToList(),
             QuickAccent = _quickAccent
         });
+
+    private async Task SavePendingAsync()
+    {
+        try
+        {
+            await SaveAsync();
+            HasPendingChanges = false;
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException)
+        {
+            // Counter persistence is auxiliary. Keep the original file and pending
+            // in-memory counts; never undo/repeat the already successful insertion.
+            AppDiagnosticLog.WriteException("usage.save.pending", error);
+        }
+    }
 }

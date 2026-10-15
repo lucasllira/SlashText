@@ -2,7 +2,8 @@ $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'localization-source.ps1')
 
 $xaml = Resolve-InterfaceResourcesForInspection (Get-Content 'src/SlashText/MainWindow.xaml' -Raw)
-$code = Get-Content 'src/SlashText/MainWindow.xaml.cs' -Raw
+$code = (Get-Content 'src/SlashText/MainWindow.xaml.cs' -Raw) +
+    (Get-Content 'src/SlashText/MainWindow.CapturePreferences.cs' -Raw)
 $app = Get-Content 'src/SlashText/App.xaml' -Raw
 $styles = Get-Content 'src/SlashText/Styles/VisualLab/CapturePilot.xaml' -Raw
 $ruleDialog = Resolve-InterfaceResourcesForInspection (Get-Content 'src/SlashText/Views/CaptureRuleDialog.xaml' -Raw)
@@ -87,7 +88,7 @@ foreach ($behavior in @(
     'StartGifRecording_OnClick(sender, e)',
     'TryReadCaptureSettings(out var error)',
     'new CaptureRuleDialog(_settings.Capture)',
-    'LoadCaptureWorkbenchImage(',
+    'LoadCaptureWorkbenchImageAsync(',
     'BuildCaptureHistoryCard(item)',
     'SelectCaptureWorkbenchTool_OnClick',
     'ScrollCaptureHistoryBy(',

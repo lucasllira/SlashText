@@ -15,7 +15,128 @@ public partial class App : System.Windows.Application
 
     protected override void OnStartup(StartupEventArgs e)
     {
+        if (e.Args.Length == 2 && e.Args[0] == "--recording-operation-ui-smoke")
+        {
+            _helperMode = true; ShutdownMode = ShutdownMode.OnExplicitShutdown;
+            var output = Path.GetFullPath(e.Args[1]);
+            Dispatcher.BeginInvoke(new Action(async () =>
+            {
+                try { await Design.RecordingOperationSmoke.RunAsync(output); Shutdown(0); }
+                catch (Exception error) { Directory.CreateDirectory(output); File.WriteAllText(Path.Combine(output, "failure.txt"), error.ToString()); Shutdown(1); }
+            }));
+            return;
+        }
+        if (e.Args.Length == 2 && e.Args[0] == "--capture-preference-ui-smoke")
+        {
+            _helperMode = true; ShutdownMode = ShutdownMode.OnExplicitShutdown;
+            var output = Path.GetFullPath(e.Args[1]);
+            Dispatcher.BeginInvoke(new Action(async () =>
+            {
+                try { await Design.CapturePreferenceFailureSmoke.RunAsync(output); Shutdown(0); }
+                catch (Exception error) { Directory.CreateDirectory(output); File.WriteAllText(Path.Combine(output, "failure.txt"), error.ToString()); Shutdown(1); }
+            }));
+            return;
+        }
         UiText.Apply(UiText.DefaultLanguage);
+        if (e.Args.Length == 2 && e.Args[0] == "--usage-write-ui-smoke")
+        {
+            _helperMode = true; ShutdownMode = ShutdownMode.OnExplicitShutdown;
+            var output = Path.GetFullPath(e.Args[1]);
+            Dispatcher.BeginInvoke(new Action(async () =>
+            {
+                try { await Design.UsageWriteFailureSmoke.RunAsync(output); Shutdown(0); }
+                catch (Exception error) { Directory.CreateDirectory(output); File.WriteAllText(Path.Combine(output,"failure.txt"),error.ToString()); Shutdown(1); }
+            }));
+            return;
+        }
+        if (e.Args.Length == 2 && e.Args[0] == "--legacy-backups-smoke")
+        {
+            _helperMode = true; ShutdownMode = ShutdownMode.OnExplicitShutdown;
+            var output = Path.GetFullPath(e.Args[1]);
+            Dispatcher.BeginInvoke(new Action(async () =>
+            {
+                try { await Design.LegacyBackupSmoke.RunAsync(output); Shutdown(0); }
+                catch (Exception error) { Directory.CreateDirectory(output); File.WriteAllText(Path.Combine(output, "failure.txt"), error.ToString()); Shutdown(1); }
+            }));
+            return;
+        }
+        if (e.Args.Length == 2 && e.Args[0] == "--protected-storage-smoke")
+        {
+            _helperMode = true; ShutdownMode = ShutdownMode.OnExplicitShutdown;
+            var output = Path.GetFullPath(e.Args[1]);
+            Dispatcher.BeginInvoke(new Action(async () =>
+            {
+                try { await Design.ProtectedStorageSmoke.RunAsync(output); Shutdown(0); }
+                catch (Exception error) { Directory.CreateDirectory(output); File.WriteAllText(Path.Combine(output, "failure.txt"), error.ToString()); Shutdown(1); }
+            }));
+            return;
+        }
+        if (e.Args.Length == 3 && e.Args[0] == "--backup-compatibility-smoke")
+        {
+            _helperMode = true; ShutdownMode = ShutdownMode.OnExplicitShutdown;
+            var output = Path.GetFullPath(e.Args[1]); var fixtures = Path.GetFullPath(e.Args[2]);
+            Dispatcher.BeginInvoke(new Action(async () =>
+            {
+                try { await Design.BackupCompatibilitySmoke.RunAsync(output, fixtures); Shutdown(0); }
+                catch (Exception error) { Directory.CreateDirectory(output); File.WriteAllText(Path.Combine(output, "failure.txt"), error.ToString()); Shutdown(1); }
+            }));
+            return;
+        }
+        if (e.Args.Length > 0 && e.Args[0] == "--restore-recovery-smoke")
+        {
+            _helperMode = true; ShutdownMode = ShutdownMode.OnExplicitShutdown;
+            var output = Path.GetFullPath(e.Args.Length > 1 ? e.Args[1] : "restore-recovery-evidence");
+            Dispatcher.BeginInvoke(new Action(async () =>
+            {
+                try { await Design.RestoreRecoverySmoke.RunAsync(output); Shutdown(0); }
+                catch (Exception error) { Directory.CreateDirectory(output); File.WriteAllText(Path.Combine(output, "failure.txt"), error.ToString()); Shutdown(1); }
+            }));
+            return;
+        }
+        if (e.Args.Length == 2 && e.Args[0] == "--restore-recovery-demo-worker")
+        {
+            _helperMode = true; Design.RestoreRecoverySmoke.DemoWorker(Path.GetFullPath(e.Args[1])); Shutdown(1); return;
+        }
+        if (e.Args.Length == 3 && e.Args[0] is "--restore-recovery-demo" or "--restore-recovery-demo-smoke")
+        {
+            _helperMode = true; ShutdownMode = ShutdownMode.OnExplicitShutdown;
+            Dispatcher.BeginInvoke(new Action(async () =>
+            {
+                try { await Design.RestoreRecoverySmoke.DemoAsync(e.Args[1], Path.GetFullPath(e.Args[2]), e.Args[0] == "--restore-recovery-demo-smoke"); Shutdown(0); }
+                catch (Exception error)
+                {
+                    var output = Path.GetFullPath(e.Args[2]); Directory.CreateDirectory(output);
+                    File.WriteAllText(Path.Combine(output, "failure.txt"), error.ToString());
+                    if (e.Args[0] == "--restore-recovery-demo") MessageBox.Show(error.GetType().Name, "SlashDesk — teste fictício #118");
+                    Shutdown(1);
+                }
+            }));
+            return;
+        }
+        if (e.Args.Length > 0 && e.Args[0] == "--recording-targets-smoke")
+        {
+            _helperMode = true; ShutdownMode = ShutdownMode.OnExplicitShutdown;
+            var output = Path.GetFullPath(e.Args.Length > 1 ? e.Args[1] : "recording-targets-evidence");
+            base.OnStartup(e);
+            Dispatcher.BeginInvoke(new Action(async () =>
+            {
+                try { await Design.RecordingTargetSmoke.RunAsync(output); Shutdown(0); }
+                catch (Exception exception) { Directory.CreateDirectory(output); File.WriteAllText(Path.Combine(output, "failure.txt"), exception.ToString()); Shutdown(1); }
+            }));
+            return;
+        }
+        if (e.Args.Length > 0 && e.Args[0] == "--retention-smoke")
+        {
+            _helperMode = true; ShutdownMode = ShutdownMode.OnExplicitShutdown;
+            var output = Path.GetFullPath(e.Args.Length > 1 ? e.Args[1] : "retention-evidence");
+            base.OnStartup(e);
+            Dispatcher.BeginInvoke(new Action(async () =>
+            {
+                try { await Design.RetentionSmoke.RunAsync(output); Shutdown(0); }
+                catch (Exception exception) { Directory.CreateDirectory(output); File.WriteAllText(Path.Combine(output, "failure.txt"), exception.ToString()); Shutdown(1); }
+            }));
+            return;
+        }
         if (e.Args.Length > 0 && e.Args[0] == "--languages-smoke")
         {
             _helperMode = true; ShutdownMode = ShutdownMode.OnExplicitShutdown;
@@ -127,6 +248,18 @@ public partial class App : System.Windows.Application
             Shutdown(CaptureOcrService.RunWorker(e.Args));
             return;
         }
+        if (e.Args.Length > 0 && e.Args[0] == "--shortcut-list-smoke")
+        {
+            _helperMode = true; ShutdownMode = ShutdownMode.OnExplicitShutdown;
+            var output = Path.GetFullPath(e.Args.Length > 1 ? e.Args[1] : "shortcut-list-evidence");
+            base.OnStartup(e);
+            Dispatcher.BeginInvoke(new Action(async () =>
+            {
+                try { await Design.ShortcutListSmoke.RunAsync(output); Shutdown(0); }
+                catch (Exception exception) { Directory.CreateDirectory(output); File.WriteAllText(Path.Combine(output, "failure.txt"), exception.ToString()); Shutdown(1); }
+            }));
+            return;
+        }
         if (e.Args.Contains("--shortcuts-workspace-smoke", StringComparer.OrdinalIgnoreCase))
         {
             _helperMode = true; ShutdownMode = ShutdownMode.OnExplicitShutdown;
@@ -191,6 +324,10 @@ public partial class App : System.Windows.Application
         }
 
         var dataEnvironment = AppDataEnvironment.Detect();
+        if (e.Args.Length == 2 && e.Args[0] == "--protected-storage-case" &&
+            e.Args[1] is "history" or "settings" or "blocked" && AppPaths.IsProtectedStoragePilot)
+            dataEnvironment = new AppDataEnvironment(DistributionMode.Portable,
+                Path.Combine(dataEnvironment.ExecutableDirectory, "TESTES", e.Args[1]), dataEnvironment.LocalAppDataDirectory, true);
         if (!dataEnvironment.IsCapturePilot && PortableUpdateService.TryRunHelper(e.Args, out var helperExitCode))
         {
             _helperMode = true;
@@ -216,10 +353,36 @@ public partial class App : System.Windows.Application
             return;
         }
 
+        UiText.LoadPreference(AppPaths.SettingsFile);
+        // A pilot-only startup probe never starts hooks and stays in its isolated data root.
+        if (!(dataEnvironment.IsCapturePilot && e.Args.Contains("--portable-smoke", StringComparer.OrdinalIgnoreCase)))
+        {
+            // Mantém o identificador legado para impedir que SlashText e SlashDesk
+            // monitorem o teclado ao mesmo tempo durante uma atualização.
+            _singleInstance = new Mutex(true, "SlashText.SingleInstance", out var created);
+            _ownsSingleInstance = created;
+            if (!created)
+            {
+                MessageBox.Show(
+                    UiText.Get("O SlashDesk já está em execução na bandeja do Windows."),
+                    "SlashDesk",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+                Shutdown();
+                return;
+            }
+        }
+
         DataMigrationResult migration;
         try
         {
             migration = AppPaths.EnsureDataLayout();
+        }
+        catch (RestoreRecoveryRequiredException)
+        {
+            ShowRestoreRecoveryNotice(blocked: true);
+            Shutdown(4);
+            return;
         }
         catch (Exception exception)
         {
@@ -232,6 +395,9 @@ public partial class App : System.Windows.Application
             Shutdown(3);
             return;
         }
+
+        if (AppPaths.LastRestoreRecovery.RecoveredCount > 0 && !e.Args.Contains("--portable-smoke", StringComparer.OrdinalIgnoreCase))
+            ShowRestoreRecoveryNotice(blocked: false);
 
         AppDiagnosticLog.Initialize();
         DispatcherUnhandledException += (_, args) =>
@@ -267,21 +433,11 @@ public partial class App : System.Windows.Application
             return;
         }
 
-        UiText.LoadPreference(AppPaths.SettingsFile);
-        // Mantém o identificador legado para impedir que SlashText e SlashDesk
-        // monitorem o teclado ao mesmo tempo durante uma atualização.
-        _singleInstance = new Mutex(true, "SlashText.SingleInstance", out var created);
-        _ownsSingleInstance = created;
-        if (!created)
+        _ = Task.Run(() =>
         {
-            MessageBox.Show(
-                UiText.Get("O SlashDesk já está em execução na bandeja do Windows."),
-                "SlashDesk",
-                MessageBoxButton.OK,
-                MessageBoxImage.Information);
-            Shutdown();
-            return;
-        }
+            var removedSessions = TemporarySession.CleanupOrphans();
+            AppDiagnosticLog.Write("retention.cleanup", ("removedSessions", removedSessions));
+        });
 
         AppDiagnosticLog.Write(
             "storage.selected",
@@ -301,6 +457,24 @@ public partial class App : System.Windows.Application
         }
 
         base.OnStartup(e);
+    }
+
+    private static void ShowRestoreRecoveryNotice(bool blocked)
+    {
+        UiText.LoadPreference(AppPaths.SettingsFile);
+        ThemeService.Apply("System");
+        var dialog = RestoreRecoveryDialog.Create(blocked);
+        dialog.WindowStartupLocation = WindowStartupLocation.CenterScreen;
+        dialog.ShowDialog();
+        try
+        {
+            if (dialog.Choice == MessageBoxResult.Yes)
+                Process.Start(new ProcessStartInfo(AppPaths.BackupsDirectory) { UseShellExecute = true });
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException or System.ComponentModel.Win32Exception)
+        {
+            // Folder-launch failure must not prevent protected shutdown.
+        }
     }
 
     private static bool EnsurePortableLocationIsWritable(AppDataEnvironment environment)

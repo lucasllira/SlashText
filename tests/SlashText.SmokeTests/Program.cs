@@ -6,12 +6,141 @@ using System.IO.Compression;
 using System.Diagnostics;
 using ScreenRecorderLib;
 
+if (args.Length == 2 && args[0] == "--recording-stop-smoke")
+{
+    await RecordingStopSafetyChecks.RunAsync(Path.GetFullPath(args[1]));
+    return;
+}
+
 if (args.Length == 3 && args[0] == "--recording-recovery-probe")
 {
     await RecordingStopSafetyChecks.ProbeAsync(Path.GetFullPath(args[1]), args[2]);
     return;
 }
 
+if (args.Length == 2 && args[0] == "--capture-stamp-path-smoke")
+{
+    var output = Path.GetFullPath(args[1]);
+    Directory.CreateDirectory(output);
+    try
+    {
+        CaptureStampLongPathChecks.Run(output);
+        File.WriteAllText(Path.Combine(output, "result.json"), "{\"status\":\"PASS\"}");
+    }
+    catch (Exception exception)
+    {
+        File.WriteAllText(Path.Combine(output, "result.json"), System.Text.Json.JsonSerializer.Serialize(new
+        { status = "FAIL", exceptionType = exception.GetType().Name, exception.HResult }));
+        Console.Error.WriteLine(exception);
+        Environment.ExitCode = 1;
+    }
+    return;
+}
+
+if (args.Length == 2 && args[0] == "--snippet-batch-smoke")
+{
+    await SnippetBatchChecks.RunAsync(args[1]); return;
+}
+if (args.Length == 2 && args[0] == "--snippet-batch-benchmark")
+{
+    await SnippetBatchBenchmark.RunAsync(args[1]); return;
+}
+
+if (args.Length == 2 && args[0] == "--gif-cancellation-smoke")
+{
+    await GifCancellationChecks.RunAsync(args[1]); return;
+}
+if (args.Length == 2 && args[0] == "--recording-operation-smoke")
+{
+    await RecordingOperationChecks.RunAsync(args[1]); return;
+}
+if (args.Length == 2 && args[0] == "--recording-operation-fixtures")
+{
+    SlashText.Design.RecordingOperationSmoke.CreateFixtures(args[1]); return;
+}
+if (args.Length == 2 && args[0] == "--usage-write-fixtures")
+{
+    SlashText.Design.UsageWriteFailureSmoke.CreateFixtures(args[1]); return;
+}
+if (args.Length == 2 && args[0] == "--usage-write-smoke")
+{
+    await UsageWriteFailureChecks.RunAsync(args[1]); return;
+}
+if (args.Length == 2 && args[0] == "--legacy-backups-fixtures")
+{
+    SlashText.Design.LegacyBackupSmoke.CreateFixtures(args[1]); return;
+}
+if (args.Length == 2 && args[0] == "--legacy-backups-smoke")
+{
+    await LegacyBackupChecks.RunAsync(args[1]); return;
+}
+if (args.Length == 2 && args[0] == "--protected-storage-fixtures")
+{
+    SlashText.Design.ProtectedStorageSmoke.CreateFixtures(args[1]); return;
+}
+if (args.Length == 2 && args[0] == "--protected-storage-smoke")
+{
+    await ProtectedStorageChecks.RunAsync(args[1]); return;
+}
+if (args.Length == 2 && args[0] == "--backup-compatibility-smoke")
+{
+    await BackupCompatibilityChecks.RunAsync(args[1]); return;
+}
+if (args.Length == 2 && args[0] == "--backup-compatibility-fixtures")
+{
+    BackupCompatibilityChecks.CreatePilotFixtures(args[1]); return;
+}
+if (args.Length == 4 && args[0] == "--restore-recovery-worker")
+{
+    RestoreRecoveryChecks.Worker(args);
+    return;
+}
+if (args.Length == 2 && args[0] == "--restore-recovery-smoke")
+{
+    Directory.CreateDirectory(args[1]);
+    await RestoreRecoveryChecks.RunAsync(args[1]);
+    return;
+}
+if (args.Length == 2 && args[0] == "--retention-worker")
+{
+    RetentionPrivacyChecks.Worker(args[1]);
+    return;
+}
+if (args.Length == 2 && args[0] == "--retention-smoke")
+{
+    Directory.CreateDirectory(args[1]);
+    await RetentionPrivacyChecks.RunAsync(args[1]);
+    return;
+}
+
+if (args.Length == 1 && args[0] == "--clipboard-payload-smoke")
+{
+    var clipboardRoot = Path.Combine(Path.GetTempPath(), "slashdesk-clipboard-payload-" + Guid.NewGuid().ToString("N"));
+    Directory.CreateDirectory(clipboardRoot);
+    ClipboardPrivacyChecks.Run(clipboardRoot);
+    return;
+}
+if (args.Length == 2 && args[0] == "--clipboard-native-worker")
+{
+    Environment.Exit(ClipboardNativeChecks.RunWorker(args[1]));
+    return;
+}
+if (args.Length == 2 && args[0] == "--clipboard-native-isolated")
+{
+    Environment.Exit(ClipboardNativeChecks.RunIsolated(args[1]));
+    return;
+}
+
+var root = Path.Combine(Path.GetTempPath(), $"slashtext-smoke-{Guid.NewGuid():N}");
+AppPaths.Initialize(new AppDataEnvironment(DistributionMode.Portable, Path.Combine(root, "initial-app"), root, isCapturePilot: true));
+await SnippetBatchChecks.RunAsync(Path.Combine(root, "snippet-batch"));
+await RecordingOperationChecks.RunAsync(Path.Combine(root, "recording-operation"));
+await GifCancellationChecks.RunAsync(Path.Combine(root, "gif-cancellation"));
+await UsageWriteFailureChecks.RunAsync(Path.Combine(root, "usage-writes"));
+
+await ProtectedStorageChecks.RunAsync(Path.Combine(root, "protected-storage"));
+AppPaths.Initialize(new AppDataEnvironment(DistributionMode.Portable, Path.Combine(root, "initial-app"), root, isCapturePilot: true));
+await LegacyBackupChecks.RunAsync(Path.Combine(root, "legacy-backups"));
 var engine = new TemplateEngine();
 var reference = new DateTimeOffset(2026, 7, 27, 14, 35, 0, TimeSpan.FromHours(-3));
 var rendered = engine.Render(
@@ -111,13 +240,17 @@ using (var quickAccentDelay = new QuickAccentDelayController())
     var activation = new TaskCompletionSource(
         TaskCreationOptions.RunContinuationsAsynchronously);
     var activationClock = Stopwatch.StartNew();
-    quickAccentDelay.Schedule(60, () => activation.TrySetResult());
-    await Task.Delay(15);
-    Require(!activation.Task.IsCompleted, "Acento Rápido não abre antes do atraso");
+    long activatedAtTicks = 0;
+    quickAccentDelay.Schedule(60, () =>
+    {
+        Interlocked.Exchange(ref activatedAtTicks, activationClock.Elapsed.Ticks);
+        activation.TrySetResult();
+    });
     await activation.Task.WaitAsync(TimeSpan.FromSeconds(2));
+    // Measure the callback itself. A delayed Task.Delay observer is not evidence of early activation.
     Require(
-        activationClock.Elapsed >= TimeSpan.FromMilliseconds(35),
-        "Acento Rápido abre após o temporizador independente");
+        TimeSpan.FromTicks(Interlocked.Read(ref activatedAtTicks)) >= TimeSpan.FromMilliseconds(35),
+        "Acento Rápido não abre antes do atraso, medido no callback com a tolerância existente");
 
     var cancelledCount = 0;
     quickAccentDelay.Schedule(80, () => Interlocked.Increment(ref cancelledCount));
@@ -422,7 +555,6 @@ Require(
     captureMenuClamped.Bounds.Right == 1908,
     "menu Capturar permanece inteiro na área útil junto à borda direita");
 
-var root = Path.Combine(Path.GetTempPath(), $"slashtext-smoke-{Guid.NewGuid():N}");
 var snippetsFile = Path.Combine(root, "snippets.md");
 var backups = Path.Combine(root, "backups");
 try
@@ -430,7 +562,13 @@ try
     // Exercise the real WPF preview and clipboard payload on an STA thread,
     // without changing the runner's system clipboard or opening production UI.
     Directory.CreateDirectory(root);
-    await CaptureHistoryTrustChecks.RunAsync(root);
+await CaptureHistoryTrustChecks.RunAsync(root);
+await RestoreRecoveryChecks.RunAsync(root);
+await BackupCompatibilityChecks.RunAsync(root);
+    await ExternalInputBudgetChecks.RunAsync(root);
+    await RetentionPrivacyChecks.RunAsync(root);
+    ClipboardPrivacyChecks.Run(root);
+    await ClipboardNativeChecks.RunChildAsync(root);
     await RecordingStopSafetyChecks.RunAsync(root);
     Exception? workbenchFailure = null;
     var workbenchThread = new Thread(() =>
@@ -439,6 +577,7 @@ try
         {
             CaptureEditorPerformanceChecks.Run();
             CaptureCustomStampChecks.Run();
+            CaptureStampLongPathChecks.Run(Path.Combine(root, "stamp-long-paths"));
             using var bitmap = new System.Drawing.Bitmap(800, 400);
             using (var graphics = System.Drawing.Graphics.FromImage(bitmap))
             {
@@ -1313,9 +1452,9 @@ try
         !recorderOptions.VideoEncoderOptions.IsThrottlingDisabled &&
         recorderOptions.VideoEncoderOptions.Encoder is H264VideoEncoder h264 &&
         h264.BitrateMode == H264BitrateControlMode.Quality &&
-        recorderOptions.LogOptions.IsLogEnabled &&
-        recorderOptions.LogOptions.LogSeverityLevel == LogLevel.Trace,
-        "MP4 prefere hardware com fallback Media Foundation, sem quadros fixos e com log nativo");
+        !recorderOptions.LogOptions.IsLogEnabled &&
+        recorderOptions.LogOptions.LogSeverityLevel == LogLevel.Error,
+        "MP4 prefere hardware com fallback Media Foundation, sem quadros fixos e sem persistir log nativo");
     var mp4TechnicalValues = new Dictionary<string, (int Bitrate, int Quality)>
     {
         ["Baixa"] = (2_500_000, 55),
@@ -1579,7 +1718,7 @@ try
         timeoutFactory.Backend.CompleteLater();
         await RequireThrowsAsync<TimeoutException>(() => task, "callback tardio libera antes de completar");
         await WaitUntilAsync(
-            () => lifecycle.State == ScreenRecordingState.Failed,
+            () => lifecycle.State == ScreenRecordingState.Failed && timeoutFactory.Backend.DisposeCalls >= 1,
             "callback tardio conclui limpeza");
         Require(timeoutFactory.Backend.DisposeCalls == 1, "callback tardio executa descarte único");
     }
@@ -1632,9 +1771,10 @@ try
                 CapturedFrames: >= 8,
                 StoredFrames: 1
             } metrics &&
-            metrics.ProcessedFrames == metrics.CapturedFrames &&
+            metrics.ProcessedFrames <= metrics.CapturedFrames &&
             metrics.EffectiveCapturedFps > 0 &&
-            metrics.DuplicateFrames == metrics.CapturedFrames - 1,
+            // Stop can discard a captured frame before it enters the queue.
+            metrics.DuplicateFrames == metrics.ProcessedFrames - 1,
             "pipeline GIF descarta quadro idêntico preservando duração");
         Require(
             pipelineResult.Duration >= TimeSpan.FromMilliseconds(900) &&
@@ -1773,6 +1913,8 @@ try
 
     var editedHistory = new CaptureService();
     await editedHistory.LoadAsync();
+    Require(editedHistory.IsHistoryProtected, "Partial history remains protected until explicit recovery");
+    await editedHistory.RecoverHistoryAsync();
     var originalPath = Path.Combine(movedCaptureDirectory, "original-do-editor.png");
     var editedPath = Path.Combine(movedCaptureDirectory, "copia-editada.png");
     using (var originalBitmap = new System.Drawing.Bitmap(80, 60))

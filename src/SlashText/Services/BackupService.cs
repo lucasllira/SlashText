@@ -1,15 +1,15 @@
 using System.IO;
+using System.Globalization;
 using System.IO.Compression;
 using System.Reflection;
 using System.Security.Cryptography;
 using System.Text.Json;
-using System.Text.Json.Nodes;
 
 namespace SlashText.Services;
 
 public sealed class BackupService
 {
-    private const int RetentionDays = 7;
+    private const int RetainedSnapshots = 7;
     private const int CurrentSchemaVersion = 2;
     private const int MaximumRestoreEntries = 10_000;
     private const long MaximumRestoreEntryBytes = 256L * 1024 * 1024;
@@ -39,6 +39,7 @@ public sealed class BackupService
     private readonly string _captureEmotesDirectory;
 
     internal Action<int, string>? BeforeRestoreApply { get; set; }
+    internal Action<string, int>? RestoreCheckpoint { get; set; }
 
     public BackupService(
         string? backupDirectory = null,
@@ -70,10 +71,12 @@ public sealed class BackupService
         Prune();
     }
 
-    public string CreateManualSnapshot()
+    public string CreateManualSnapshot() => CreateManualSnapshot(default);
+
+    public string CreateManualSnapshot(CancellationToken cancellationToken)
     {
         var name = $"SlashDesk-backup-manual-{DateTime.Now:yyyyMMdd-HHmmss-fff}.zip";
-        var path = CreateSnapshot(name, skipWhenExisting: false);
+        var path = CreateSnapshot(name, skipWhenExisting: false, cancellationToken);
         Prune();
         return path;
     }
@@ -81,13 +84,15 @@ public sealed class BackupService
     public IReadOnlyList<FileInfo> ListSnapshots() =>
         Directory.Exists(_backupDirectory)
             ? new DirectoryInfo(_backupDirectory)
-                .GetFiles("SlashDesk-backup-*.zip")
+                .GetFiles("*.zip")
+                .Where(item => IsManagedSnapshotName(item.Name) && (item.Attributes & FileAttributes.ReparsePoint) == 0)
                 .OrderByDescending(item => item.LastWriteTimeUtc)
                 .ToList()
             : [];
 
-    public void RestoreSnapshot(string archivePath)
+    public void RestoreSnapshot(string archivePath, CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         if (!File.Exists(archivePath))
         {
             throw new FileNotFoundException(
@@ -95,42 +100,36 @@ public sealed class BackupService
                 archivePath);
         }
 
-        ValidateSnapshot(archivePath);
+        using var file = new FileStream(archivePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+        BackupInputBudget.CheckDirectory(file, cancellationToken);
+        using var archive = new ZipArchive(file, ZipArchiveMode.Read, leaveOpen: true);
+        ValidateSnapshot(archive, cancellationToken);
         Directory.CreateDirectory(_backupDirectory);
-        var transactionId = Guid.NewGuid().ToString("N");
-        var stagingDirectory = Path.Combine(
-            _backupDirectory,
-            $".restore-staging-{transactionId}");
-        var rollbackDirectory = Path.Combine(
-            _backupDirectory,
-            $".restore-rollback-{transactionId}");
-
+        RestoreRecovery.ThrowIfProtected(_dataDirectory);
+        using var transaction = RestoreRecovery.Begin(_dataDirectory, _backupDirectory, _assetsDirectory, _captureEmotesDirectory);
+        transaction.Checkpoint = RestoreCheckpoint;
         try
         {
-            var plan = ExtractToStaging(archivePath, stagingDirectory);
+            var plan = ExtractToStaging(archive, transaction.Staging, cancellationToken);
             if (CollectSources().Count > 0)
-            {
-                CreateSnapshot(
-                    $"SlashDesk-backup-before-restore-{DateTime.Now:yyyyMMdd-HHmmss-fff}-{Guid.NewGuid():N}.zip",
-                    skipWhenExisting: false);
-            }
-
-            ApplyStagedRestore(plan, stagingDirectory, rollbackDirectory);
-            Prune();
+                CreateSnapshot($"SlashDesk-backup-before-restore-{DateTime.Now:yyyyMMdd-HHmmss-fff}-{Guid.NewGuid():N}.zip", false, cancellationToken);
+            transaction.Prepare(plan.Files, plan.IncludesAssets, plan.IncludesCaptureEmotes, cancellationToken);
+            transaction.Apply(BeforeRestoreApply, cancellationToken);
         }
-        finally
-        {
-            DeleteDirectoryIfExists(stagingDirectory);
-            DeleteDirectoryIfExists(rollbackDirectory);
-        }
+        catch { transaction.Abort(); throw; }
+        archive.Dispose(); file.Dispose();
+        // A pruning failure must not report the durable commit as an aborted restore.
+        try { Prune(); }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException) { }
     }
 
     private RestorePlan ExtractToStaging(
-        string archivePath,
-        string stagingDirectory)
+        ZipArchive archive,
+        string stagingDirectory,
+        CancellationToken cancellationToken)
     {
         Directory.CreateDirectory(stagingDirectory);
-        using var archive = ZipFile.OpenRead(archivePath);
+        cancellationToken.ThrowIfCancellationRequested();
         var entries = archive.Entries
             .Where(entry =>
                 !string.IsNullOrEmpty(entry.Name) &&
@@ -145,10 +144,11 @@ public sealed class BackupService
 
         var paths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var restoredFiles = new List<string>();
-        var includesAssets = ReadIncludesAssets(archive);
+        var includesAssets = ReadIncludesAssets(archive, cancellationToken);
         long totalBytes = 0;
         foreach (var entry in entries)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var relative = NormalizeArchivePath(entry.FullName);
             EnsureAllowedArchivePath(relative);
             if (!paths.Add(relative))
@@ -168,7 +168,7 @@ public sealed class BackupService
 
             var destination = ResolveWithin(stagingDirectory, relative);
             Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
-            using var input = entry.Open();
+            using var input = new BoundedInputStream(entry.Open(), entry.Length, cancellationToken);
             using var output = new FileStream(
                 destination,
                 FileMode.CreateNew,
@@ -203,162 +203,56 @@ public sealed class BackupService
             }
         }
 
-        var includesEmotes = ReadIncludesCaptureEmotes(archive);
+        var includesEmotes = ReadIncludesCaptureEmotes(archive, cancellationToken);
         if (includesEmotes) CaptureStampCatalog.ValidateDirectory(Path.Combine(stagingDirectory, "capture-emotes"));
         if (restoredFiles.Contains("capture-history.json", StringComparer.OrdinalIgnoreCase))
         {
             var historyPath = ResolveWithin(stagingDirectory,
                 restoredFiles.Single(p => p.Equals("capture-history.json", StringComparison.OrdinalIgnoreCase)));
-            var history = JsonNode.Parse(File.ReadAllText(historyPath)) as JsonArray
-                ?? throw new InvalidDataException(UiText.Get("O histórico do backup não é válido."));
-            foreach (var item in history.OfType<JsonObject>())
+            try
             {
-                foreach (var key in item.Select(p => p.Key).Where(k => k.Equals("requiresFileApproval", StringComparison.OrdinalIgnoreCase)).ToArray())
-                    item.Remove(key);
-                item["requiresFileApproval"] = true;
+                using var historyFile = File.OpenRead(historyPath);
+                using var historyInput = new BoundedInputStream(historyFile, BackupInputBudget.MetadataBytes, cancellationToken);
+                using var history = JsonDocument.Parse(historyInput);
+                if (history.RootElement.ValueKind != JsonValueKind.Array)
+                    throw new InvalidDataException(UiText.Get("O histórico do backup não é válido."));
+                var transformed = historyPath + ".untrusted";
+                using (var output = File.Create(transformed))
+                using (var writer = new Utf8JsonWriter(output, new JsonWriterOptions { Indented = true }))
+                {
+                    writer.WriteStartArray();
+                    foreach (var item in history.RootElement.EnumerateArray())
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+                        if (item.ValueKind != JsonValueKind.Object) { item.WriteTo(writer); continue; }
+                        writer.WriteStartObject();
+                        foreach (var property in item.EnumerateObject())
+                            if (!property.Name.Equals("requiresFileApproval", StringComparison.OrdinalIgnoreCase)) property.WriteTo(writer);
+                        writer.WriteBoolean("requiresFileApproval", true); writer.WriteEndObject();
+                    }
+                    writer.WriteEndArray(); writer.Flush(); output.Flush(flushToDisk: true);
+                }
+                // Archive bytes were integrity-checked. Only this local trust decision is rewritten.
+                historyInput.Dispose(); historyFile.Dispose();
+                cancellationToken.ThrowIfCancellationRequested(); File.Move(transformed, historyPath, overwrite: true);
             }
-            // Transform staging only: validation used original bytes; rollback keeps the prior history intact.
-            File.WriteAllText(historyPath, history.ToJsonString(ManifestOptions));
+            catch (Exception error) when (error is JsonException or InvalidDataException or ArgumentException)
+            {
+                throw BackupContentValidator.IncompatibleFile("capture-history.json");
+            }
         }
+        // Validate the bytes actually applied, including the established local history trust transform.
+        BackupContentValidator.Validate(stagingDirectory, restoredFiles, cancellationToken);
         return new RestorePlan(restoredFiles, includesAssets, includesEmotes);
     }
 
-    private void ApplyStagedRestore(
-        RestorePlan plan,
-        string stagingDirectory,
-        string rollbackDirectory)
-    {
-        Directory.CreateDirectory(_dataDirectory);
-        Directory.CreateDirectory(rollbackDirectory);
-        var appliedFiles = new List<AppliedFile>();
-        AppliedDirectory? appliedAssets = null;
-        AppliedDirectory? appliedEmotes = null;
-        var step = 0;
-        try
-        {
-            foreach (var relative in plan.Files)
-            {
-                BeforeRestoreApply?.Invoke(step++, relative);
-                var staged = ResolveWithin(stagingDirectory, relative);
-                var target = ResolveWithin(_dataDirectory, relative);
-                var rollback = ResolveWithin(rollbackDirectory, relative);
-                Directory.CreateDirectory(Path.GetDirectoryName(target)!);
-                Directory.CreateDirectory(Path.GetDirectoryName(rollback)!);
-                var existed = File.Exists(target);
-                if (existed)
-                {
-                    File.Replace(
-                        staged,
-                        target,
-                        rollback,
-                        ignoreMetadataErrors: true);
-                }
-                else
-                {
-                    File.Move(staged, target);
-                }
-                appliedFiles.Add(new AppliedFile(target, rollback, existed));
-            }
-
-            if (plan.IncludesAssets)
-            {
-                const string assetsLabel = "assets/";
-                BeforeRestoreApply?.Invoke(step++, assetsLabel);
-                var stagedAssets = Path.Combine(stagingDirectory, "assets");
-                Directory.CreateDirectory(stagedAssets);
-                var targetAssets = Path.GetFullPath(_assetsDirectory);
-                EnsureDirectoryWithinData(targetAssets);
-                var rollbackAssets = Path.Combine(rollbackDirectory, "assets");
-                var existed = Directory.Exists(targetAssets);
-                if (existed)
-                {
-                    Directory.Move(targetAssets, rollbackAssets);
-                }
-                try
-                {
-                    Directory.Move(stagedAssets, targetAssets);
-                    appliedAssets = new AppliedDirectory(
-                        targetAssets,
-                        rollbackAssets,
-                        existed);
-                }
-                catch
-                {
-                    if (existed &&
-                        !Directory.Exists(targetAssets) &&
-                        Directory.Exists(rollbackAssets))
-                    {
-                        Directory.Move(rollbackAssets, targetAssets);
-                    }
-                    throw;
-                }
-            }
-            if (plan.IncludesCaptureEmotes)
-            {
-                BeforeRestoreApply?.Invoke(step, "capture-emotes/");
-                var staged = Path.Combine(stagingDirectory, "capture-emotes");
-                Directory.CreateDirectory(staged);
-                var target = Path.GetFullPath(_captureEmotesDirectory);
-                EnsureDirectoryWithinData(target);
-                var rollback = Path.Combine(rollbackDirectory, "capture-emotes");
-                var existed = Directory.Exists(target);
-                if (existed) Directory.Move(target, rollback);
-                try
-                {
-                    Directory.Move(staged, target);
-                    appliedEmotes = new AppliedDirectory(target, rollback, existed);
-                }
-                catch
-                {
-                    if (existed && !Directory.Exists(target) && Directory.Exists(rollback)) Directory.Move(rollback, target);
-                    throw;
-                }
-            }
-        }
-        catch
-        {
-            if (appliedEmotes is not null)
-            {
-                DeleteDirectoryIfExists(appliedEmotes.Target);
-                if (appliedEmotes.Existed && Directory.Exists(appliedEmotes.Rollback))
-                    Directory.Move(appliedEmotes.Rollback, appliedEmotes.Target);
-            }
-            if (appliedAssets is not null)
-            {
-                DeleteDirectoryIfExists(appliedAssets.Target);
-                if (appliedAssets.Existed &&
-                    Directory.Exists(appliedAssets.Rollback))
-                {
-                    Directory.Move(
-                        appliedAssets.Rollback,
-                        appliedAssets.Target);
-                }
-            }
-
-            foreach (var applied in appliedFiles.AsEnumerable().Reverse())
-            {
-                if (File.Exists(applied.Target))
-                {
-                    File.Delete(applied.Target);
-                }
-                if (applied.Existed && File.Exists(applied.Rollback))
-                {
-                    File.Move(
-                        applied.Rollback,
-                        applied.Target,
-                        overwrite: true);
-                }
-            }
-            throw;
-        }
-    }
-
-    private static bool ReadIncludesAssets(ZipArchive archive)
+    private static bool ReadIncludesAssets(ZipArchive archive, CancellationToken cancellationToken)
     {
         var manifest = archive.Entries.Single(entry =>
             NormalizeArchivePath(entry.FullName)
                 .Equals(ManifestName, StringComparison.OrdinalIgnoreCase));
-        using var document = JsonDocument.Parse(manifest.Open());
+        using var input = new BoundedInputStream(manifest.Open(), Math.Min(manifest.Length, BackupInputBudget.ManifestBytes), cancellationToken);
+        using var document = JsonDocument.Parse(input);
         if (document.RootElement.TryGetProperty(
                 "includesAssets",
                 out var includesElement) &&
@@ -372,10 +266,11 @@ public sealed class BackupService
                 .StartsWith("assets/", StringComparison.OrdinalIgnoreCase));
     }
 
-    private static bool ReadIncludesCaptureEmotes(ZipArchive archive)
+    private static bool ReadIncludesCaptureEmotes(ZipArchive archive, CancellationToken cancellationToken)
     {
         var manifest = archive.Entries.Single(entry => NormalizeArchivePath(entry.FullName).Equals(ManifestName, StringComparison.OrdinalIgnoreCase));
-        using var document = JsonDocument.Parse(manifest.Open());
+        using var input = new BoundedInputStream(manifest.Open(), Math.Min(manifest.Length, BackupInputBudget.ManifestBytes), cancellationToken);
+        using var document = JsonDocument.Parse(input);
         if (document.RootElement.TryGetProperty("includesCaptureEmotes", out var flag))
         {
             if (flag.ValueKind is not (JsonValueKind.True or JsonValueKind.False)) throw new InvalidDataException(UiText.Get("Indicador da coleção de emojis inválido."));
@@ -446,8 +341,10 @@ public sealed class BackupService
         }
     }
 
-    private string CreateSnapshot(string fileName, bool skipWhenExisting)
+    private string CreateSnapshot(string fileName, bool skipWhenExisting, CancellationToken cancellationToken = default)
     {
+        RestoreRecovery.ThrowIfProtected(_dataDirectory);
+        cancellationToken.ThrowIfCancellationRequested();
         var sources = CollectSources();
         if (sources.Count == 0)
         {
@@ -463,11 +360,21 @@ public sealed class BackupService
                 UiText.Format($"Mais de um arquivo produziria a entrada '{duplicate.Key}' no backup."));
         }
 
+        if (sources.Count > BackupInputBudget.Entries) throw ExternalInputBudget.Exceeded();
+        long sourceBytes = 0;
+        foreach (var source in sources)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var size = new FileInfo(source.SourcePath).Length;
+            var limit = source.ArchivePath.Contains('/') ? BackupInputBudget.EntryBytes : BackupInputBudget.MetadataBytes;
+            if (size > limit || sourceBytes > BackupInputBudget.TotalBytes - size) throw ExternalInputBudget.Exceeded();
+            sourceBytes += size;
+        }
         Directory.CreateDirectory(_backupDirectory);
         var destination = Path.Combine(_backupDirectory, fileName);
         if (skipWhenExisting && File.Exists(destination))
         {
-            ValidateSnapshot(destination);
+            ValidateSnapshot(destination, cancellationToken);
             return destination;
         }
 
@@ -476,8 +383,9 @@ public sealed class BackupService
             $".{fileName}-{Guid.NewGuid():N}.tmp");
         try
         {
-            CreateArchive(temporary, sources, _includeAssets, _includeCaptureEmotes);
-            ValidateSnapshot(temporary);
+            CreateArchive(temporary, sources, _includeAssets, _includeCaptureEmotes, cancellationToken);
+            ValidateSnapshot(temporary, cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
             File.Move(temporary, destination, overwrite: false);
             return destination;
         }
@@ -548,9 +456,11 @@ public sealed class BackupService
         string path,
         IReadOnlyList<BackupSource> sources,
         bool includesAssets,
-        bool includesCaptureEmotes)
+        bool includesCaptureEmotes,
+        CancellationToken cancellationToken)
     {
         var files = new List<BackupManifestFile>();
+        long actualSourceBytes = 0;
         using (var archive = ZipFile.Open(path, ZipArchiveMode.Create))
         {
             foreach (var source in sources.OrderBy(
@@ -568,12 +478,17 @@ public sealed class BackupService
                     FileShare.Read,
                     bufferSize: 81920,
                     FileOptions.SequentialScan);
+                var sourceLimit = source.ArchivePath.Contains('/') ? BackupInputBudget.EntryBytes : BackupInputBudget.MetadataBytes;
+                if (input.Length > sourceLimit || actualSourceBytes > BackupInputBudget.TotalBytes - input.Length)
+                    throw ExternalInputBudget.Exceeded();
+                actualSourceBytes += input.Length;
                 using var output = entry.Open();
                 using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
                 var buffer = new byte[81920];
                 long size = 0;
+                using var bounded = new BoundedInputStream(input, input.Length, cancellationToken, leaveOpen: true);
                 int read;
-                while ((read = input.Read(buffer, 0, buffer.Length)) > 0)
+                while ((read = bounded.Read(buffer, 0, buffer.Length)) > 0)
                 {
                     output.Write(buffer, 0, read);
                     hash.AppendData(buffer, 0, read);
@@ -605,9 +520,17 @@ public sealed class BackupService
         }
     }
 
-    internal static void ValidateSnapshot(string path)
+    internal static void ValidateSnapshot(string path, CancellationToken cancellationToken = default)
     {
-        using var archive = ZipFile.OpenRead(path);
+        using var file = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
+        BackupInputBudget.CheckDirectory(file, cancellationToken);
+        using var archive = new ZipArchive(file, ZipArchiveMode.Read);
+        ValidateSnapshot(archive, cancellationToken);
+    }
+
+    private static void ValidateSnapshot(ZipArchive archive, CancellationToken cancellationToken)
+    {
+        BackupInputBudget.CheckEntries(archive, cancellationToken);
         var manifestEntries = archive.Entries
             .Where(entry => NormalizeArchivePath(entry.FullName)
                 .Equals(ManifestName, StringComparison.OrdinalIgnoreCase))
@@ -618,7 +541,8 @@ public sealed class BackupService
                 UiText.Get("O backup deve conter exatamente um manifesto."));
         }
 
-        using var document = JsonDocument.Parse(manifestEntries[0].Open());
+        using var manifestInput = new BoundedInputStream(manifestEntries[0].Open(), Math.Min(manifestEntries[0].Length, BackupInputBudget.ManifestBytes), cancellationToken);
+        using var document = JsonDocument.Parse(manifestInput);
         if (!document.RootElement.TryGetProperty("schemaVersion", out var schemaElement) ||
             !schemaElement.TryGetInt32(out var schemaVersion))
         {
@@ -631,7 +555,7 @@ public sealed class BackupService
                 ValidateLegacySnapshot(archive);
                 break;
             case CurrentSchemaVersion:
-                ValidateCurrentSnapshot(archive, document.RootElement);
+                ValidateCurrentSnapshot(archive, document.RootElement, cancellationToken);
                 break;
             default:
                 throw new InvalidDataException(UiText.Get("Versão de backup não suportada."));
@@ -650,7 +574,8 @@ public sealed class BackupService
 
     private static void ValidateCurrentSnapshot(
         ZipArchive archive,
-        JsonElement manifest)
+        JsonElement manifest,
+        CancellationToken cancellationToken)
     {
         if (!manifest.TryGetProperty("files", out var filesElement) ||
             filesElement.ValueKind != JsonValueKind.Array)
@@ -676,13 +601,17 @@ public sealed class BackupService
 
         var manifestFiles = new Dictionary<string, BackupManifestFile>(
             StringComparer.OrdinalIgnoreCase);
+        if (filesElement.GetArrayLength() > MaximumRestoreEntries) throw ExternalInputBudget.Exceeded();
         foreach (var element in filesElement.EnumerateArray())
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var file = element.Deserialize<BackupManifestFile>(ManifestOptions)
                 ?? throw new InvalidDataException(
                     UiText.Get("O manifesto contém uma entrada inválida."));
+            if (string.IsNullOrEmpty(file.Path)) throw ExternalInputBudget.Exceeded();
             EnsureAllowedArchivePath(file.Path);
             if (file.Size < 0 ||
+                string.IsNullOrEmpty(file.Path) || file.Sha256 is null ||
                 file.Sha256.Length != 64 ||
                 !file.Sha256.All(Uri.IsHexDigit) ||
                 !manifestFiles.TryAdd(file.Path, file))
@@ -709,9 +638,10 @@ public sealed class BackupService
                     UiText.Format($"O tamanho de '{item.Key}' não corresponde ao manifesto."));
             }
 
-            using var stream = item.Value.Open();
+            using var stream = new BoundedInputStream(item.Value.Open(), item.Value.Length, cancellationToken);
             var actualHash = Convert.ToHexString(SHA256.HashData(stream))
                 .ToLowerInvariant();
+            if (stream.BytesRead != expected.Size) throw ExternalInputBudget.Exceeded();
             if (!actualHash.Equals(
                     expected.Sha256,
                     StringComparison.OrdinalIgnoreCase))
@@ -724,6 +654,7 @@ public sealed class BackupService
 
     private static void EnsureAllowedArchivePath(string path)
     {
+        if (path.Length > 32_767) throw ExternalInputBudget.Exceeded();
         var normalized = NormalizeArchivePath(path);
         if (string.IsNullOrWhiteSpace(normalized) ||
             normalized.StartsWith('/') ||
@@ -756,22 +687,32 @@ public sealed class BackupService
     private static string NormalizeArchivePath(string path) =>
         path.Replace('\\', '/');
 
+    // Only names emitted by the current writer or the historical SlashText daily writer
+    // belong to automatic retention. Unknown files remain available for explicit recovery.
+    internal static bool IsManagedSnapshotName(string name)
+    {
+        if (!Path.GetExtension(name).Equals(".zip", StringComparison.OrdinalIgnoreCase)) return false;
+        var stem = Path.GetFileNameWithoutExtension(name);
+        var historical = stem.StartsWith("SlashText-backup-", StringComparison.OrdinalIgnoreCase);
+        var prefix = historical ? "SlashText-backup-" : "SlashDesk-backup-";
+        if (!stem.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) return false;
+        var suffix = stem[prefix.Length..];
+        if (DateTime.TryParseExact(suffix, "yyyyMMdd", CultureInfo.InvariantCulture, DateTimeStyles.None, out _)) return true;
+        if (historical) return false; // The historical writer generated daily snapshots only.
+        if (suffix.StartsWith("manual-", StringComparison.OrdinalIgnoreCase))
+            return DateTime.TryParseExact(suffix[7..], "yyyyMMdd-HHmmss-fff", CultureInfo.InvariantCulture, DateTimeStyles.None, out _);
+        if (!suffix.StartsWith("before-restore-", StringComparison.OrdinalIgnoreCase)) return false;
+        var parts = suffix[15..].Split('-');
+        return parts.Length == 4 && Guid.TryParseExact(parts[3], "N", out _) &&
+            DateTime.TryParseExact(string.Join("-", parts.Take(3)), "yyyyMMdd-HHmmss-fff", CultureInfo.InvariantCulture, DateTimeStyles.None, out _);
+    }
+
     private void Prune()
     {
-        foreach (var backup in new DirectoryInfo(_backupDirectory)
-                     .GetFiles("*-backup-*.zip")
-                     .OrderByDescending(item => item.LastWriteTimeUtc)
-                     .Skip(RetentionDays))
-        {
-            backup.Delete();
-        }
-
-        foreach (var legacy in Directory.EnumerateFiles(
-                     _backupDirectory,
-                     "snippets-*.md"))
-        {
-            File.Delete(legacy);
-        }
+        foreach (var backup in ListSnapshots().Skip(RetainedSnapshots)) backup.Delete();
+        // Historical snippets-*.md may be the sole surviving version. Current writers no
+        // longer produce them: keep the finite legacy set until an explicit user deletion.
+        // Do not read, normalize, deduplicate, convert, or include references in new ZIPs.
     }
 
     private sealed record BackupSource(
@@ -791,16 +732,6 @@ public sealed class BackupService
         IReadOnlyList<string> Files,
         bool IncludesAssets,
         bool IncludesCaptureEmotes);
-
-    private sealed record AppliedFile(
-        string Target,
-        string Rollback,
-        bool Existed);
-
-    private sealed record AppliedDirectory(
-        string Target,
-        string Rollback,
-        bool Existed);
 
     private sealed record BackupManifestFile(
         string Path,

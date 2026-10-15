@@ -65,6 +65,11 @@ public sealed class ScreenRecordingService : IRecordingController, IDisposable
         }
     }
 
+    internal Task NativeCompletion
+    {
+        get { lock (_gate) return _completion?.Task ?? Task.CompletedTask; }
+    }
+
     public string RecoveryFilePath => _workingPath;
     public bool IsStopUnconfirmed => State == ScreenRecordingState.StopUnconfirmed;
 
@@ -146,7 +151,8 @@ public sealed class ScreenRecordingService : IRecordingController, IDisposable
                 _recordingId,
                 target,
                 settings,
-                EncoderPolicy);
+                EncoderPolicy,
+                _workingPath);
             EnqueueNative("recording.start", () => StartCore(target, settings));
         }
 
@@ -332,7 +338,7 @@ public sealed class ScreenRecordingService : IRecordingController, IDisposable
                 Interlocked.CompareExchange(ref _timeoutReported, 1, 0) != 0)
                 return;
             _state = ScreenRecordingState.StopUnconfirmed;
-            AppDiagnosticLog.MarkRecordingStopUnconfirmed();
+            AppDiagnosticLog.MarkRecordingStopUnconfirmed(_recordingId);
         }
         Log("recording.stop-unconfirmed", ("temporaryFile", Path.GetFileName(_workingPath)));
         PublishProgress(UiText.Get("Parada não confirmada. Tela e áudio podem continuar sendo capturados. Encerre o SlashDesk para interromper o processo gravador."));
@@ -402,6 +408,9 @@ public sealed class ScreenRecordingService : IRecordingController, IDisposable
         TaskCompletionSource<string>? completion;
         string finalPath;
         string workingPath;
+        Guid recordingId;
+        var completed = false;
+        Exception? failure = null;
         lock (_gate)
         {
             if (_state != ScreenRecordingState.StopUnconfirmed)
@@ -410,6 +419,7 @@ public sealed class ScreenRecordingService : IRecordingController, IDisposable
             completion = _completion;
             finalPath = _path;
             workingPath = _workingPath;
+            recordingId = _recordingId;
         }
         _clock.Stop();
         DetachBackend(backend);
@@ -430,8 +440,8 @@ public sealed class ScreenRecordingService : IRecordingController, IDisposable
         lock (_gate)
         {
             _backend = null;
-            AppDiagnosticLog.MarkRecordingEnded();
-            ReleaseNativeLifetime();
+            // Native calls have returned; finalization metadata is settled before completion.
+            Volatile.Write(ref _nativeLifetimeOutstanding, 0);
         }
 
         try
@@ -456,6 +466,7 @@ public sealed class ScreenRecordingService : IRecordingController, IDisposable
             var moveStarted = Stopwatch.StartNew();
             Log("recording.temporary-move-enter");
             File.Move(recordedPath, finalPath);
+            completed = true;
             Log("recording.temporary-move-return",
                 ("durationMs", moveStarted.Elapsed.TotalMilliseconds));
             lock (_gate)
@@ -466,7 +477,6 @@ public sealed class ScreenRecordingService : IRecordingController, IDisposable
                 "recording.completed",
                 ("durationMs", Elapsed.TotalMilliseconds),
                 ("bytes", new FileInfo(finalPath).Length));
-            completion?.TrySetResult(finalPath);
         }
         catch (Exception exception)
         {
@@ -478,8 +488,18 @@ public sealed class ScreenRecordingService : IRecordingController, IDisposable
             Log(
                 "recording.temporary-preserved",
                 ("file", Path.GetFileName(request.RecordedPath ?? workingPath)));
-            completion?.TrySetException(exception);
-            RaiseRecordingFailed(exception.Message);
+            failure = exception;
+        }
+        finally
+        {
+            AppDiagnosticLog.MarkRecordingEnded(recordingId, completed);
+            lock (_gate) ReleaseNativeLifetime();
+        }
+        if (failure is null) completion?.TrySetResult(finalPath);
+        else
+        {
+            completion?.TrySetException(failure);
+            RaiseRecordingFailed(failure.Message);
         }
     }
 
@@ -511,20 +531,32 @@ public sealed class ScreenRecordingService : IRecordingController, IDisposable
         RecordingSettings settings,
         string libraryLogPath)
     {
+        if (!Enum.IsDefined(target.Kind) || target.Bounds.Width < 2 || target.Bounds.Height < 2)
+            throw new InvalidOperationException(UiText.Get("O destino do vídeo não é válido."));
+        if (target.Kind == RecordingTargetKind.Window && target.WindowHandle == IntPtr.Zero)
+            throw new InvalidOperationException(UiText.Get("A janela selecionada não é válida. Escolha outra janela."));
         RecordingPresetCatalog.Normalize(settings);
         RecordingSourceBase source;
-        if (target.Kind == RecordingTargetKind.Window && target.WindowHandle != IntPtr.Zero)
+        if (target.Kind == RecordingTargetKind.Window)
         {
             source = new WindowRecordingSource(target.WindowHandle);
         }
         else
         {
-            var display = string.IsNullOrWhiteSpace(target.DisplayDeviceName)
-                ? new DisplayRecordingSource(DisplayRecordingSource.MainMonitor)
-                : new DisplayRecordingSource(target.DisplayDeviceName);
+            var deviceName = target.DisplayDeviceName;
+            var screen = System.Windows.Forms.Screen.FromRectangle(target.Bounds);
             if (target.Kind == RecordingTargetKind.Region)
             {
-                var screen = System.Windows.Forms.Screen.FromRectangle(target.Bounds);
+                if (!screen.Bounds.Contains(target.Bounds) ||
+                    (!string.IsNullOrWhiteSpace(deviceName) && !string.Equals(deviceName, screen.DeviceName, StringComparison.OrdinalIgnoreCase)))
+                    throw new InvalidOperationException(UiText.Get("Selecione uma região dentro de um único monitor."));
+                deviceName = screen.DeviceName;
+            }
+            var display = string.IsNullOrWhiteSpace(deviceName)
+                ? new DisplayRecordingSource(DisplayRecordingSource.MainMonitor)
+                : new DisplayRecordingSource(deviceName);
+            if (target.Kind == RecordingTargetKind.Region)
+            {
                 display.SourceRect = new ScreenRect(
                     Math.Max(0, target.Bounds.Left - screen.Bounds.Left),
                     Math.Max(0, target.Bounds.Top - screen.Bounds.Top),
@@ -592,9 +624,10 @@ public sealed class ScreenRecordingService : IRecordingController, IDisposable
             },
             LogOptions = new LogOptions
             {
-                IsLogEnabled = true,
+                // Native logs can contain paths/device identifiers and bypass minimization.
+                IsLogEnabled = false,
                 LogFilePath = libraryLogPath,
-                LogSeverityLevel = LogLevel.Trace
+                LogSeverityLevel = LogLevel.Error
             }
         };
     }
@@ -754,10 +787,8 @@ public sealed class ScreenRecordingService : IRecordingController, IDisposable
 
     private void ReleaseNativeLifetime()
     {
-        if (Interlocked.Exchange(ref _nativeLifetimeOutstanding, 0) == 1)
-        {
-            Interlocked.CompareExchange(ref _activeSession, null, this);
-        }
+        Interlocked.Exchange(ref _nativeLifetimeOutstanding, 0);
+        Interlocked.CompareExchange(ref _activeSession, null, this);
     }
 
     private void Log(string stage, params (string Key, object? Value)[] fields) =>

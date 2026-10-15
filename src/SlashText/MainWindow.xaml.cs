@@ -35,6 +35,8 @@ public partial class MainWindow : Window
     private readonly BackupService _backupService = new();
     private readonly AssetMaintenanceService _assetMaintenanceService = new();
     private readonly SnippetImportService _snippetImportService = new();
+    private CancellationTokenSource? _captureImageLoadCancellation;
+    private CancellationTokenSource? _captureThumbnailCancellation;
     private readonly CaptureService _captureService = new();
     private readonly GifRecordingService _gifRecordingService = new();
     private readonly GlobalCaptureShortcutService _captureShortcuts = new();
@@ -56,6 +58,7 @@ public partial class MainWindow : Window
     private bool _showMostUsed;
     private bool _exitRequested;
     private bool _servicesDisposed;
+    private bool _restoreRecoveryBlocked;
     private bool _initialized;
     private bool _snippetStorageAvailable = true;
     private bool _updatingQuickAccentSets;
@@ -181,15 +184,15 @@ public partial class MainWindow : Window
             _settings.Capture.Recording ??= new RecordingSettings();
             if (AppPaths.IsCapturePilot)
             {
-                Title = AppPaths.IsLanguagesPilot ? UiText.Get("SlashDesk — Piloto Idiomas 3.3.0 · #82") : AppPaths.IsAuxiliaryPilot ? UiText.Get("SlashDesk — Piloto Interfaces auxiliares 3.3.0 · #69") : AppPaths.IsAboutPilot ? UiText.Get("SlashDesk — Piloto Sobre 3.3.0 · #68") : AppPaths.IsSettingsPilot ? UiText.Get("SlashDesk — Piloto Configurações 3.3.0 · #67") : AppPaths.IsStatisticsPilot ? UiText.Get("SlashDesk — Piloto Estatísticas 3.3.0 · #66") : AppPaths.IsQuickAccentPilot ? UiText.Get("SlashDesk — Piloto Acento Rápido 3.3.0 · #65") : AppPaths.IsCaptureOcrPilot ? UiText.Get("SlashDesk — Piloto Captura + OCR 3.3.0") : AppPaths.IsCaptureComplementsPilot ? UiText.Get("SlashDesk — Piloto Complementos da Captura 3.3.0 · #74") : AppPaths.IsShortcutsPilot ? UiText.Get("SlashDesk — Piloto Atalhos 3.3.0 · #64") : UiText.Get("SlashDesk — Piloto Captura 3.3.0 · #63");
-                if (!AppPaths.IsSettingsPilot && !AppPaths.IsAboutPilot && !AppPaths.IsAuxiliaryPilot && !AppPaths.IsLanguagesPilot)
+                Title = AppPaths.IsLegacyBackupsPilot ? UiText.Get("SlashDesk — Piloto Backups antigos 3.3.0 · #119") : AppPaths.IsProtectedStoragePilot ? UiText.Get("SlashDesk — Piloto Dados protegidos 3.3.0 · #116") : AppPaths.IsBackupCompatibilityPilot ? UiText.Get("SlashDesk — Piloto Backups 3.3.0 · #117") : AppPaths.IsLanguagesPilot ? UiText.Get("SlashDesk — Piloto Idiomas 3.3.0 · #82") : AppPaths.IsAuxiliaryPilot ? UiText.Get("SlashDesk — Piloto Interfaces auxiliares 3.3.0 · #69") : AppPaths.IsAboutPilot ? UiText.Get("SlashDesk — Piloto Sobre 3.3.0 · #68") : AppPaths.IsSettingsPilot ? UiText.Get("SlashDesk — Piloto Configurações 3.3.0 · #67") : AppPaths.IsStatisticsPilot ? UiText.Get("SlashDesk — Piloto Estatísticas 3.3.0 · #66") : AppPaths.IsQuickAccentPilot ? UiText.Get("SlashDesk — Piloto Acento Rápido 3.3.0 · #65") : AppPaths.IsCaptureOcrPilot ? UiText.Get("SlashDesk — Piloto Captura + OCR 3.3.0") : AppPaths.IsCaptureComplementsPilot ? UiText.Get("SlashDesk — Piloto Complementos da Captura 3.3.0 · #74") : AppPaths.IsShortcutsPilot ? UiText.Get("SlashDesk — Piloto Atalhos 3.3.0 · #64") : UiText.Get("SlashDesk — Piloto Captura 3.3.0 · #63");
+                if (!AppPaths.IsSettingsPilot && !AppPaths.IsAboutPilot && !AppPaths.IsAuxiliaryPilot && !AppPaths.IsLanguagesPilot && !AppPaths.IsBackupCompatibilityPilot && !AppPaths.IsProtectedStoragePilot && !AppPaths.IsLegacyBackupsPilot)
                 {
                     _settings.CheckUpdatesOnStartup = false;
                     _settings.StartWithWindows = false;
                 }
                 _settings.OnboardingCompleted = true;
-                if (!AppPaths.IsSettingsPilot && !AppPaths.IsAboutPilot && !AppPaths.IsAuxiliaryPilot && !AppPaths.IsLanguagesPilot) _settings.CloseToTray = false;
-                if (!File.Exists(AppPaths.SettingsFile))
+                if (!AppPaths.IsSettingsPilot && !AppPaths.IsAboutPilot && !AppPaths.IsAuxiliaryPilot && !AppPaths.IsLanguagesPilot && !AppPaths.IsBackupCompatibilityPilot && !AppPaths.IsProtectedStoragePilot && !AppPaths.IsLegacyBackupsPilot) _settings.CloseToTray = false;
+                if (!File.Exists(AppPaths.SettingsFile) || _settingsStore.IsProtected || AppPaths.IsProtectedStoragePilot || AppPaths.IsLegacyBackupsPilot)
                     _settings.Capture.OutputDirectoryTemplate = Path.Combine(AppPaths.DataDirectory, "Capturas", "{year}", "{month}");
                 StartWithWindowsCheckBox.IsEnabled = false;
                 CheckUpdatesCheckBox.IsEnabled = false;
@@ -275,7 +278,7 @@ public partial class MainWindow : Window
                 "Atalhos globais de captura",
                 ConfigureCaptureShortcuts);
             RefreshCaptureHistory();
-            if (AppPaths.IsLanguagesPilot) ShowView(SettingsView, SettingsTabButton);
+            if (_settingsStore.IsProtected || _captureService.IsHistoryProtected || AppPaths.IsLegacyBackupsPilot || AppPaths.IsProtectedStoragePilot || AppPaths.IsLanguagesPilot || AppPaths.IsBackupCompatibilityPilot) ShowView(SettingsView, SettingsTabButton);
             else if (AppPaths.IsAuxiliaryPilot) ShowView(SettingsView, SettingsTabButton);
             else if (AppPaths.IsAboutPilot) ShowView(AboutView, AboutTabButton);
             else if (AppPaths.IsSettingsPilot) ShowView(SettingsView, SettingsTabButton);
@@ -283,7 +286,7 @@ public partial class MainWindow : Window
             else if (AppPaths.IsQuickAccentPilot) ShowView(QuickAccentView, QuickAccentTabButton);
             else if (AppPaths.IsCapturePilot && !AppPaths.IsShortcutsPilot) ShowView(CaptureView, CaptureTabButton);
 
-            if (!_settings.OnboardingCompleted)
+            if (!_settingsStore.IsProtected && !_settings.OnboardingCompleted)
             {
                 await startup.RunAsync(
                     "Onboarding",
@@ -293,7 +296,7 @@ public partial class MainWindow : Window
                             new OnboardingWindow { Owner = this };
                         onboarding.ShowDialog();
                         _settings.OnboardingCompleted = true;
-                        await _settingsStore.SaveAsync(_settings);
+                        await SavePreferencesAsync();
                     });
             }
 
@@ -468,10 +471,10 @@ public partial class MainWindow : Window
     {
         Dispatcher.BeginInvoke(new Action(async () =>
         {
-            await _usageService.RecordQuickAccentAsync(e.Character);
-            _quickAccentService.SetUsage(_usageService.QuickAccentCharacterCounts());
-            if (QuickAccentView.Visibility == Visibility.Visible) UpdateQuickAccentPreviewSelection();
-            RefreshStatistics();
+            if (_restoreRecoveryBlocked || _servicesDisposed) return;
+            var saved = await TryUpdateAuxiliaryUsageAsync(() => _usageService.RecordQuickAccentAsync(e.Character));
+            if (_servicesDisposed || _restoreRecoveryBlocked) return;
+            StatusText.Text = UiText.Get("Acento inserido") + AuxiliaryUsageStatusSuffix(saved);
         }));
     }
 
@@ -479,6 +482,7 @@ public partial class MainWindow : Window
     {
         Dispatcher.BeginInvoke(new Action(() =>
         {
+            if (_restoreRecoveryBlocked || _servicesDisposed) return;
             if (!_settings.ShowSuggestions)
             {
                 _suggestionWindow.Hide();
@@ -501,6 +505,7 @@ public partial class MainWindow : Window
     {
         Dispatcher.BeginInvoke(new Action(async () =>
         {
+            if (_restoreRecoveryBlocked || _servicesDisposed) return;
             using var expansionLease = _expansionRequestGate.TryEnter();
             if (expansionLease is null)
             {
@@ -508,6 +513,7 @@ public partial class MainWindow : Window
                 StatusText.Text = UiText.Get("Outra expansão ainda está em andamento");
                 return;
             }
+            int inserted;
             try
             {
                 SafeDiagnosticLog.Write("expansion.started", new Dictionary<string, object?>
@@ -535,23 +541,17 @@ public partial class MainWindow : Window
                     values = form.Values;
                 }
 
-                var inserted = await _expansionService.ExpandAsync(
+                inserted = await _expansionService.ExpandAsync(
                     e.Snippet,
                     values,
                     e.TargetWindow,
                     e.TypedCharacterCount,
                     CancellationToken.None);
-                await _usageService.RecordAsync(e.Snippet, inserted);
-                RefreshStatistics();
-                StatusText.Text = UiText.Format($"{e.Snippet.Trigger} inserido");
-                SafeDiagnosticLog.Write("expansion.completed", new Dictionary<string, object?>
-                {
-                    ["insertedCharacterCount"] = inserted
-                });
             }
             catch (ExpansionBusyException)
             {
                 StatusText.Text = UiText.Get("Outra expansão ainda está em andamento");
+                return;
             }
             catch (Exception exception)
             {
@@ -566,11 +566,13 @@ public partial class MainWindow : Window
                     UiText.Get("Não foi possível inserir o texto"),
                     MessageBoxButton.OK,
                     MessageBoxImage.Warning);
+                return;
             }
             finally
             {
                 _keyboardHook.ResetBuffer(BufferResetReason.ExpansionFinished);
             }
+            await CompleteSuccessfulExpansionAsync(e.Snippet, inserted);
         }));
     }
 
@@ -630,24 +632,7 @@ public partial class MainWindow : Window
             CategoriesPanel.Children.Add(CreateCategoryButton(category.Name, category.DisplayName, count));
         }
 
-        SnippetListPanel.Children.Clear();
-        if (visible.Count == 0)
-        {
-            var empty = new StackPanel { Margin = new Thickness(4, 12, 4, 0) };
-            var hint = new TextBlock { Text = _snippets.Count == 0 ? UiText.Get("Seu primeiro texto começa aqui.") : UiText.Get("Nenhum atalho corresponde aos filtros."), TextWrapping = TextWrapping.Wrap, FontSize = 12, Margin = new Thickness(0, 0, 0, 12) };
-            hint.SetResourceReference(TextBlock.ForegroundProperty, "Lab.muted"); empty.Children.Add(hint);
-            var action = new Button { Content = _snippets.Count == 0 ? UiText.Get("Criar atalho") : UiText.Get("Limpar filtros") };
-            action.SetResourceReference(StyleProperty, "Lab.Button");
-            action.Click += (_, _) => { if (_snippets.Count == 0) BeginNewSnippet(); else { _selectedCategory = null; _showMostUsed = false; _showShortcutFavorites = false; _showShortcutPinned = false; SearchBox.Clear(); RefreshNavigation(); } };
-            empty.Children.Add(action); SnippetListPanel.Children.Add(empty);
-        }
-        else
-        {
-            foreach (var snippet in visible)
-            {
-                SnippetListPanel.Children.Add(CreateSnippetButton(snippet));
-            }
-        }
+        UpdateShortcutItems(visible);
 
         SnippetCountText.Text = $"{visible.Count}/{_snippets.Count}";
         ShellCollectionStatusText.Text = UiText.Format($"{_snippets.Count} atalhos · {CategoriesPanel.Children.Count - 1} categorias");
@@ -698,7 +683,7 @@ public partial class MainWindow : Window
             : snippet.Enabled ? UiText.Get("Atalho ativo") : UiText.Get("Atalho pausado");
         _loadingShortcutDraft = false;
         ResetShortcutDraftBaseline();
-        RefreshNavigation();
+        RefreshShortcutListSelection();
         UpdatePreview();
         if (ShortcutEditorPanel.IsLoaded) LabMotion.PlayEntrance(ShortcutEditorPanel);
     }
@@ -1201,6 +1186,7 @@ public partial class MainWindow : Window
             RefreshAboutPresentation(); UpdateAboutLayout(ActualWidth);
             if (AboutView.IsLoaded) LabMotion.PlayEntrance(AboutView);
         }
+        RefreshStorageProtection();
         if (ReferenceEquals(view, SettingsView))
         {
             RefreshSettingsPresentation(); UpdateSettingsLayout(ActualWidth);
@@ -1249,7 +1235,7 @@ public partial class MainWindow : Window
 
     private async void Settings_OnClick(object sender, RoutedEventArgs e)
     {
-        if (!_initialized || _settingsOperationInProgress) return;
+        if (!_initialized || _settingsOperationInProgress || _settingsStore.IsProtected) return;
         var previousClose = _settings.CloseToTray;
         var previousSuggestions = _settings.ShowSuggestions;
         var previousStart = _settings.StartWithWindows;
@@ -1267,7 +1253,7 @@ public partial class MainWindow : Window
             {
                 StartupService.SetEnabled(_settings.StartWithWindows);
             }
-            await _settingsStore.SaveAsync(_settings);
+            await SavePreferencesAsync();
 
             if (previousUpdateMonitoring != _settings.CheckUpdatesOnStartup)
             {
@@ -1348,7 +1334,8 @@ public partial class MainWindow : Window
             {
             _shortcutOperationInProgress = true; ShortcutEditorPanel.IsEnabled = false;
             RefreshShortcutDraftState();
-            var result = await _snippetImportService.ImportAsync(picker.FileName, source);
+            var token = _settingsCancellation?.Token ?? default;
+            var result = await _snippetImportService.ImportAsync(picker.FileName, source, token);
             if (result.Snippets.Count == 0)
             {
                 ShowSettingsDialog(
@@ -1378,7 +1365,7 @@ public partial class MainWindow : Window
                 return;
             }
 
-            await _usageService.RunMaintenanceAsync(() => _backupService.CreateManualSnapshot());
+            await _usageService.RunMaintenanceAsync(() => _backupService.CreateManualSnapshot(token), token);
             var replaceConflicts = mode == MessageBoxResult.Yes;
             var incomingTriggers = result.Snippets
                 .Select(item => item.Trigger)
@@ -1398,7 +1385,9 @@ public partial class MainWindow : Window
 
             _shortcutOperationInProgress = true;
             ShortcutEditorPanel.IsEnabled = false;
-            await _repository.SaveAsync(merged);
+            token.ThrowIfCancellationRequested();
+            await _repository.SaveAsync(merged, token);
+            _settingsProgress?.PreventCancellation();
             ReplaceList(merged);
             _shortcutOperationInProgress = false;
             _shortcutDraftBaseline = null; _selected = null;
@@ -1417,7 +1406,11 @@ public partial class MainWindow : Window
             StatusText.Text = UiText.Format($"Importação do {ImportSourceName(source)} concluída");
             SettingsOperationText.Text = StatusText.Text;
             RefreshBackupSummary();
-            });
+            }, cancellable: true);
+        }
+        catch (OperationCanceledException)
+        {
+            StatusText.Text = SettingsOperationText.Text = UiText.Get("Operação cancelada. Os dados atuais foram preservados.");
         }
         catch (Exception exception)
         {
@@ -1552,7 +1545,7 @@ public partial class MainWindow : Window
         };
         if (picker.ShowDialog(this) != true ||
             ShowSettingsDialog(
-                UiText.Get("Restaurar este backup substituirá os dados incluídos nele, inclusive Meus emojis quando presentes. Um backup de segurança será criado antes de continuar."),
+                UiText.Get("Restaurar este backup substituirá os dados incluídos nele, inclusive Meus emojis quando presentes. Um backup de segurança será criado antes de continuar. Salve suas edições de imagem antes de continuar: se a recuperação ficar pendente, o SlashDesk precisará fechar."),
                 UiText.Get("Restaurar backup"),
                 MessageBoxButton.YesNo,
                 MessageBoxImage.Warning, UiText.Get("Restaurar backup")) != MessageBoxResult.Yes)
@@ -1565,7 +1558,9 @@ public partial class MainWindow : Window
             await RunSettingsMaintenanceAsync(UiText.Get("Verificando e restaurando o backup…"), async () =>
             {
             _shortcutOperationInProgress = true; ShortcutEditorPanel.IsEnabled = false;
-            await _usageService.RunMaintenanceAsync(() => _backupService.RestoreSnapshot(picker.FileName));
+            var token = _settingsCancellation?.Token ?? default;
+            await _usageService.RunMaintenanceAsync(() => _backupService.RestoreSnapshot(picker.FileName, token), token);
+            _settingsProgress?.PreventCancellation();
             CaptureStampCatalog.InvalidateCurrent();
             _settings = await _settingsStore.LoadAsync();
             ThemeService.Apply(_settings.Theme);
@@ -1579,6 +1574,7 @@ public partial class MainWindow : Window
             _keyboardHook.UpdateSnippets(_snippets);
             await _usageService.LoadAsync();
             await _captureService.LoadAsync();
+            RefreshStorageProtection();
             // Preserve edited pixels, but a restore must not retain authority to overwrite the old path.
             _captureWorkbenchPath = null; _captureWorkbenchRecord = null;
             RefreshCaptureHistory();
@@ -1590,7 +1586,33 @@ public partial class MainWindow : Window
                 MessageBoxButton.OK,
                 MessageBoxImage.Information);
             SettingsOperationText.Text = UiText.Get("Backup restaurado. Reabra o app para aplicar todas as preferências.");
-            });
+            }, cancellable: true);
+        }
+        catch (RestoreRecoveryRequiredException)
+        {
+            _restoreRecoveryBlocked = true;
+            _settingsOperationInProgress = true;
+            _shortcutOperationInProgress = true;
+            ((FrameworkElement)Content).IsEnabled = false;
+            _keyboardHook.Dispose(); _quickAccentService.Enabled = false;
+            StopUpdateMonitor(); _captureShortcuts.Dispose();
+            _suggestionWindow.Hide(); _quickAccentWindow.Hide();
+            var dialog = RestoreRecoveryDialog.Create(blocked: true);
+            dialog.Owner = this; dialog.EnableBackdrop(); dialog.ShowDialog();
+            try
+            {
+                if (dialog.Choice == MessageBoxResult.Yes)
+                    Process.Start(new ProcessStartInfo(AppPaths.BackupsDirectory) { UseShellExecute = true });
+            }
+            catch (Exception error) when (error is IOException or UnauthorizedAccessException or System.ComponentModel.Win32Exception)
+            {
+                // Close safely even when Explorer cannot open the preserved material.
+            }
+            finally { _exitRequested = true; Close(); }
+        }
+        catch (OperationCanceledException)
+        {
+            StatusText.Text = SettingsOperationText.Text = UiText.Get("Operação cancelada. Os dados atuais foram preservados.");
         }
         catch (Exception exception)
         {
@@ -1652,7 +1674,7 @@ public partial class MainWindow : Window
         {
             ApplyTrayTheme(trayMenu);
         }
-        await _settingsStore.SaveAsync(_settings);
+        await SavePreferencesAsync();
         ShowView(SettingsView, SettingsTabButton);
         SettingsOperationText.Text = UiText.Get("Tema salvo.");
         }
@@ -1834,7 +1856,7 @@ public partial class MainWindow : Window
                 CaptureCompactTargetBox.Items.Clear();
                 CaptureCompactTargetBox.Items.Add(new ComboBoxItem { Content = UiText.Get("Monitor ativo"), Tag = "Monitor" });
                 CaptureCompactTargetBox.Items.Add(new ComboBoxItem { Content = UiText.Get("Região"), Tag = "Region" });
-                CaptureCompactTargetBox.Items.Add(new ComboBoxItem { Content = UiText.Get("Janela sob o cursor"), Tag = "Window" });
+                CaptureCompactTargetBox.Items.Add(new ComboBoxItem { Content = UiText.Get("Janela"), Tag = "Window" });
                 CaptureCompactTargetBox.IsEnabled = true;
                 foreach (var fps in new[] { 24, 30, 60 })
                 {
@@ -1843,10 +1865,10 @@ public partial class MainWindow : Window
                 AddPresetItems(CaptureCompactQualityBox, RecordingPresetCatalog.Mp4Quality,
                     item => item.Name, item => item.Value);
                 SelectComboByTag(CaptureCompactTargetBox, SelectedTag(RecordingTargetBox, "Monitor"));
-                SelectComboByTag(CaptureCompactFpsBox, _settings.Capture.Recording.VideoFps.ToString());
-                SelectComboByTag(CaptureCompactQualityBox, _settings.Capture.Recording.VideoQuality);
+                SelectComboByTag(CaptureCompactFpsBox, SelectedTag(RecordingFpsBox, _settings.Capture.Recording.VideoFps.ToString()));
+                SelectComboByTag(CaptureCompactQualityBox, SelectedTag(RecordingQualityBox, _settings.Capture.Recording.VideoQuality));
             }
-            CaptureCompactCursorCheckBox.IsChecked = _settings.Capture.Recording.IncludeCursor;
+            CaptureCompactCursorCheckBox.IsChecked = RecordingCursorCheckBox.IsChecked == true;
         }
         finally
         {
@@ -1859,6 +1881,17 @@ public partial class MainWindow : Window
         if (_updatingCaptureRecordingCompact || RecordingCursorCheckBox is null)
         {
             return;
+        }
+        if (_captureMediaMode == CaptureMediaMode.Video && ReferenceEquals(sender, CaptureCompactTargetBox))
+        {
+            _captureLauncherMode = SelectedTag(CaptureCompactTargetBox, "Region") switch
+            {
+                "Monitor" => CaptureLauncherMode.ActiveMonitor,
+                "Window" => CaptureLauncherMode.Window,
+                _ => CaptureLauncherMode.Region
+            };
+            SyncVideoTargetControls();
+            UpdateCaptureSelectionSummary();
         }
         RecordingCursorCheckBox.IsChecked = CaptureCompactCursorCheckBox.IsChecked == true;
         if (_captureMediaMode == CaptureMediaMode.Gif)
@@ -1948,7 +1981,7 @@ public partial class MainWindow : Window
             capture.OpenEditorForMonitorAndWindow ? "Editor" : "Direct");
         SelectComboByTag(CaptureDelayBox, capture.DelaySeconds.ToString());
         SelectComboByTag(CaptureRetentionBox, capture.HistoryRetentionDays.ToString());
-        SelectComboByTag(RecordingTargetBox, "Monitor");
+        SelectComboByTag(RecordingTargetBox, _captureMediaMode == CaptureMediaMode.Video ? SelectedVideoTargetKind.ToString() : "Monitor");
         SelectComboByTag(RecordingFpsBox, capture.Recording.VideoFps.ToString());
         SelectComboByTag(RecordingQualityBox, capture.Recording.VideoQuality);
         RecordingCursorCheckBox.IsChecked = capture.Recording.IncludeCursor;
@@ -1991,21 +2024,11 @@ public partial class MainWindow : Window
 
     private async void SaveCaptureSettings_OnClick(object sender, RoutedEventArgs e)
     {
-        if (!TryReadCaptureSettings(out var error))
-        {
-            ShowAppDialog(
-                error,
-                UiText.Get("Configuração de captura"),
-                MessageBoxButton.OK,
-                MessageBoxImage.Warning);
-            return;
-        }
-
-        await _settingsStore.SaveAsync(_settings);
+        using var lease = TryReserveCaptureCommand();
+        if (lease is null) return;
+        if (!await PrepareCapturePreferencesAsync(UiText.Get("Configuração de captura"))) return;
         ConfigureCaptureShortcuts();
-        StatusText.Text = CaptureShortcutStatusText.Text.StartsWith("●", StringComparison.Ordinal)
-            ? UiText.Get("Configurações de captura salvas")
-            : UiText.Get("Configurações salvas. ") + CaptureShortcutStatusText.Text;
+        ShowCapturePreferencesSavedStatus();
     }
 
     private bool TryReadCaptureSettings(out string error)
@@ -2097,6 +2120,11 @@ public partial class MainWindow : Window
 
     private void ConfigureCaptureShortcuts()
     {
+        if (CapturePreparationForEvidence is { } evidence)
+        {
+            evidence("shortcuts");
+            return;
+        }
         var capture = _settings.Capture;
         var errors = _captureShortcuts.Configure(
             this,
@@ -2116,6 +2144,7 @@ public partial class MainWindow : Window
         object? sender,
         CaptureShortcutEventArgs e)
     {
+        if (_restoreRecoveryBlocked || _servicesDisposed) return;
         if (e.Action == CaptureShortcutAction.Scrolling)
         {
             _ = RunScrollingCaptureAsync(invokedByShortcut: true);
@@ -2145,6 +2174,7 @@ public partial class MainWindow : Window
             return;
         }
 
+        if (_captureMediaMode == CaptureMediaMode.Video && mode == CaptureLauncherMode.Scrolling) return;
         _captureLauncherMode = mode;
         if (mode == CaptureLauncherMode.Gif)
         {
@@ -2168,6 +2198,11 @@ public partial class MainWindow : Window
         }
 
         _captureMediaMode = mode;
+        if (mode == CaptureMediaMode.Video && _captureLauncherMode == CaptureLauncherMode.Scrolling)
+        {
+            _captureLauncherMode = CaptureLauncherMode.Region;
+            CaptureRegionModeButton.IsChecked = true;
+        }
         if (mode == CaptureMediaMode.Gif)
         {
             _captureLauncherMode = CaptureLauncherMode.Gif;
@@ -2183,18 +2218,7 @@ public partial class MainWindow : Window
 
     private async void StartSelectedCapture_OnClick(object sender, RoutedEventArgs e)
     {
-        if (!TryReadCaptureSettings(out var error))
-        {
-            ShowAppDialog(
-                error,
-                UiText.Get("Regra de captura"),
-                MessageBoxButton.OK,
-                MessageBoxImage.Warning);
-            return;
-        }
-
-        await _settingsStore.SaveAsync(_settings);
-        ConfigureCaptureShortcuts();
+        // Video/GIF own their preparation, including the preference save.
         switch (_captureMediaMode)
         {
             case CaptureMediaMode.Video:
@@ -2205,6 +2229,15 @@ public partial class MainWindow : Window
                 return;
         }
 
+        using var lease = TryReserveCaptureCommand();
+        if (lease is null) return;
+        if (!await PrepareCapturePreferencesAsync(UiText.Get("Regra de captura"))) return;
+        if (!CanUseRecordingInterface) return;
+        ConfigureCaptureShortcuts();
+        if (CapturePreparationForEvidence is { } evidence) { evidence("image"); return; }
+        // Existing image handlers reserve synchronously before their first await.
+        // Transfer on the UI thread without an await or modal call between leases.
+        lease.Dispose();
         switch (_captureLauncherMode)
         {
             case CaptureLauncherMode.ActiveMonitor:
@@ -2230,20 +2263,10 @@ public partial class MainWindow : Window
             CaptureEditorCard.Visibility = image ? Visibility.Visible : Visibility.Collapsed;
             CaptureMediaPreviewPanel.Visibility = image ? Visibility.Collapsed : Visibility.Visible;
         }
-        var selection = _captureMediaMode switch
-        {
-            CaptureMediaMode.Video => UiText.Get("Vídeo MP4"),
-            CaptureMediaMode.Gif => UiText.Get("GIF · região"),
-            _ => _captureLauncherMode switch
-            {
-                CaptureLauncherMode.ActiveMonitor => "Monitor",
-                CaptureLauncherMode.Window => UiText.Get("Janela"),
-                CaptureLauncherMode.Scrolling => UiText.Get("Captura longa"),
-                _ => UiText.Get("Região")
-            }
-        };
-        CaptureNewButtonText.Text = UiText.Get("Novo");
-        CaptureSelectionSummaryText.Text = UiText.Format($"{selection} · pronta");
+        CaptureScrollingModeButton.IsEnabled = _captureMediaMode != CaptureMediaMode.Video;
+        CaptureScrollingModeButton.Opacity = CaptureScrollingModeButton.IsEnabled ? 1 : 0.45;
+        if (_captureMediaMode == CaptureMediaMode.Video) SyncVideoTargetControls();
+        UpdateCaptureSelectionSummary();
         CaptureRecordingCard.Visibility = Visibility.Collapsed;
         CaptureRecordingCompactCard.Visibility = _captureMediaMode == CaptureMediaMode.Image
             ? Visibility.Collapsed
@@ -2262,6 +2285,51 @@ public partial class MainWindow : Window
         {
             LabMotion.PlayEntrance(CaptureRecordingCompactCard);
         }
+    }
+
+    // The visible launcher mode is the source of truth. Hidden legacy controls
+    // are mirrors; they must never silently override the destination on New.
+    internal RecordingTargetKind SelectedVideoTargetKind => _captureLauncherMode switch
+    {
+        CaptureLauncherMode.ActiveMonitor => RecordingTargetKind.Monitor,
+        CaptureLauncherMode.Region => RecordingTargetKind.Region,
+        CaptureLauncherMode.Window => RecordingTargetKind.Window,
+        _ => throw new InvalidOperationException(UiText.Get("O destino do vídeo não é válido."))
+    };
+
+    private void SyncVideoTargetControls()
+    {
+        var kind = SelectedVideoTargetKind;
+        var updating = _updatingCaptureRecordingCompact;
+        _updatingCaptureRecordingCompact = true;
+        try
+        {
+            SelectComboByTag(RecordingTargetBox, kind.ToString());
+            SelectComboByTag(CaptureCompactTargetBox, kind.ToString());
+            CaptureMonitorModeButton.IsChecked = kind == RecordingTargetKind.Monitor;
+            CaptureRegionModeButton.IsChecked = kind == RecordingTargetKind.Region;
+            CaptureWindowModeButton.IsChecked = kind == RecordingTargetKind.Window;
+        }
+        finally { _updatingCaptureRecordingCompact = updating; }
+    }
+
+    private void UpdateCaptureSelectionSummary()
+    {
+        var area = _captureLauncherMode switch
+        {
+            CaptureLauncherMode.ActiveMonitor => UiText.Get("Monitor"),
+            CaptureLauncherMode.Window => UiText.Get("Janela"),
+            CaptureLauncherMode.Scrolling => UiText.Get("Captura longa"),
+            _ => UiText.Get("Região")
+        };
+        var selection = _captureMediaMode switch
+        {
+            CaptureMediaMode.Video => UiText.Get("Vídeo MP4") + " · " + area,
+            CaptureMediaMode.Gif => UiText.Get("GIF · região"),
+            _ => area
+        };
+        CaptureNewButtonText.Text = UiText.Get("Novo");
+        CaptureSelectionSummaryText.Text = UiText.Format($"{selection} · pronta");
     }
 
     private ScreenHelpHighlighter? _captureHelpHighlight;
@@ -2293,6 +2361,10 @@ public partial class MainWindow : Window
 
     private async void FocusCaptureRule_OnClick(object sender, RoutedEventArgs e)
     {
+        using var lease = TryReserveCaptureCommand();
+        if (lease is null) return;
+        if (_settingsOperationInProgress || _servicesDisposed || _restoreRecoveryBlocked) return;
+        var previous = _settings.Capture;
         if (!TryReadCaptureSettings(out var currentError))
         {
             ShowAppDialog(currentError, UiText.Get("Configurações de captura"),
@@ -2308,16 +2380,15 @@ public partial class MainWindow : Window
         var accepted = ShowCaptureDialog(dialog);
         if (!accepted)
         {
+            _settings.Capture = previous;
             return;
         }
 
         _settings.Capture = dialog.Result;
-        await _settingsStore.SaveAsync(_settings);
+        if (!await TrySaveCapturePreferencesAsync(previous)) return;
         LoadCaptureSettings();
         ConfigureCaptureShortcuts();
-        StatusText.Text = CaptureShortcutStatusText.Text.StartsWith("●", StringComparison.Ordinal)
-            ? UiText.Get("Configurações de captura salvas")
-            : UiText.Get("Configurações salvas. ") + CaptureShortcutStatusText.Text;
+        ShowCapturePreferencesSavedStatus();
     }
 
     private bool ShowCaptureDialog(Window dialog)
@@ -2339,11 +2410,12 @@ public partial class MainWindow : Window
 
     private async Task RunScrollingCaptureAsync(bool invokedByShortcut)
     {
+        if (!CanUseRecordingInterface || _settingsOperationInProgress) return;
         using var captureLease = _captureGate.TryEnter();
         if (captureLease is null)
         {
             SafeDiagnosticLog.Write("capture.ignored_busy");
-            StatusText.Text = UiText.Get("Já existe uma captura em andamento");
+            StatusText.Text = UiText.Get("Já existe uma captura ou gravação em andamento.");
             return;
         }
 
@@ -2481,10 +2553,11 @@ public partial class MainWindow : Window
         CaptureShortcutAction action,
         bool invokedByShortcut)
     {
+        if (!CanUseRecordingInterface || _settingsOperationInProgress) return;
         using var captureLease = _captureGate.TryEnter();
         if (captureLease is null)
         {
-            StatusText.Text = UiText.Get("Já existe uma captura em andamento");
+            StatusText.Text = UiText.Get("Já existe uma captura ou gravação em andamento.");
             return;
         }
 
@@ -2638,37 +2711,27 @@ public partial class MainWindow : Window
     }
 
     private async void StartMp4Recording_OnClick(object sender, RoutedEventArgs e)
-    {
-        if (_settingsOperationInProgress) return;
-        if (_recordingControl is not null || _recordingService?.IsRecording == true)
-        {
-            _recordingControl?.Activate();
-            return;
-        }
-        if (!TryReadCaptureSettings(out var settingsError))
-        {
-            ShowAppDialog(settingsError, UiText.Get("Gravação"), MessageBoxButton.OK, MessageBoxImage.Warning);
-            return;
-        }
-        await _settingsStore.SaveAsync(_settings);
+        => await RunRecordingOperationAsync("MP4", RunMp4RecordingAsync);
 
+    private async Task RunMp4RecordingAsync(RecordingOperation operation)
+    {
         try
         {
-            RecordingTarget? target;
-            if (SelectedTag(RecordingTargetBox, "Monitor").Equals(
-                    "Window",
-                    StringComparison.OrdinalIgnoreCase))
-            {
-                Hide();
-                await Task.Delay(250);
-                target = _captureService.WindowUnderCursorTarget();
-            }
-            else
-            {
-                target = ResolveRecordingTarget(UiText.Get("Selecione a região do vídeo"));
-            }
+            var targetKind = SelectedVideoTargetKind;
+            if (!await PrepareCapturePreferencesAsync(UiText.Get("Gravação"), operation.Token)) return;
+            CheckRecordingOperation(operation);
+            var capture = _settings.Capture;
+            ConfigureCaptureShortcuts();
+            if (RecordingPipelineForEvidence is { } pipeline) { await pipeline("MP4", operation); CheckRecordingOperation(operation); return; }
+            if (CapturePreparationForEvidence is { } evidence) { evidence("mp4"); return; }
+            operation.InterfaceHidden = true;
+            Hide();
+            await Task.Delay(250, operation.Token);
+            CheckRecordingOperation(operation);
+            var target = ResolveRecordingTarget(targetKind, operation.Token);
             if (target is null)
             {
+                operation.Cancel();
                 ShowFromTray();
                 return;
             }
@@ -2677,40 +2740,47 @@ public partial class MainWindow : Window
             {
                 Hide();
             }
-            await Task.Delay(180);
-            _recordingService = new ScreenRecordingService();
-            _recordingService.RecordingFailed += (_, message) =>
-                _ = Dispatcher.BeginInvoke(() => StatusText.Text = message);
-            _recordingControl = new RecordingControlWindow(_recordingService, "MP4", _settings.Capture.Recording);
-            _recordingControl.EmergencyExitRequested += (_, _) => RequestRecordingEmergencyExit();
-            _recordingControl.Show();
-            var shouldStart = await _recordingControl.WaitForStartAsync();
+            await Task.Delay(180, operation.Token);
+            CheckRecordingOperation(operation);
+            var recorder = new ScreenRecordingService();
+            _recordingService = recorder;
+            recorder.RecordingFailed += (_, message) =>
+            {
+                if (!Dispatcher.HasShutdownStarted)
+                    _ = Dispatcher.BeginInvoke(() => { if (CanUseRecordingInterface && ReferenceEquals(_recordingOperation, operation)) StatusText.Text = message; });
+            };
+            var previousAudio = capture.Recording.Audio.Copy();
+            var control = new RecordingControlWindow(recorder, "MP4", capture.Recording);
+            _recordingControl = control;
+            using var cancellation = WatchPreparedRecordingControl(control, operation);
+            control.EmergencyExitRequested += (_, _) => RequestRecordingEmergencyExit();
+            control.Show();
+            var shouldStart = await control.WaitForStartAsync();
+            CheckRecordingOperation(operation);
             if (shouldStart)
             {
-                await _settingsStore.SaveAsync(_settings);
-                shouldStart = _recordingControl.IsVisible;
+                shouldStart = await TrySaveCapturePreferencesCoreAsync(capture, previousAudio, ClosePreparedMp4Recording, operation.Token);
+                CheckRecordingOperation(operation);
+                shouldStart = shouldStart && control.IsVisible;
             }
-            if (!shouldStart)
+            if (!shouldStart || _recordingControl is null)
             {
-                _recordingControl.Close();
-                _recordingControl = null;
-                _recordingService.Dispose();
-                _recordingService = null;
-                ShowFromTray();
+                if (_recordingControl is not null || _recordingService is not null) ClosePreparedMp4Recording();
                 return;
             }
-            _recordingControl.BeginRecording();
-            var completion = _recordingService.StartAsync(
+            CheckRecordingOperation(operation);
+            operation.MarkRecording();
+            control.BeginRecording();
+            var completion = recorder.StartAsync(
                 target,
-                _settings.Capture,
-                _settings.Capture.Recording);
+                capture,
+                capture.Recording);
             var path = await completion;
-            var elapsed = _recordingService.Elapsed;
-            var completedRecordingId = _recordingService.RecordingId.ToString("N");
-            _recordingControl.Close();
-            _recordingControl = null;
-            _recordingService.Dispose();
-            _recordingService = null;
+            CheckRecordingOperation(operation);
+            operation.MarkFinalizing();
+            var elapsed = recorder.Elapsed;
+            var completedRecordingId = recorder.RecordingId.ToString("N");
+            CleanupRecordingResources();
             AppDiagnosticLog.Write("recording.interface-restored",
                 ("recordingId", completedRecordingId), ("media", "MP4"), ("result", "success"));
             await _captureService.AddMediaRecordAsync(new CaptureRecord
@@ -2723,18 +2793,20 @@ public partial class MainWindow : Window
                 Height = target.Bounds.Height,
                 DurationSeconds = elapsed.TotalSeconds
             });
+            CheckRecordingOperation(operation);
             ShowFromTray();
             StatusText.Text = UiText.Format($"Vídeo salvo: {Path.GetFileName(path)}");
             RefreshCaptureHistory();
         }
+        catch (OperationCanceledException) when (operation.Token.IsCancellationRequested || !CanUseRecordingInterface) { throw; }
         catch (Exception exception)
         {
+            if (!CanUseRecordingInterface) return;
+            operation.Token.ThrowIfCancellationRequested();
             var failedRecordingId = _recordingService?.RecordingId.ToString("N") ?? "unknown";
             var recoverablePath = _recordingService?.RecoveryFilePath;
-            _recordingControl?.Close();
-            _recordingControl = null;
-            _recordingService?.Dispose();
-            _recordingService = null;
+            await WaitForNativeRecordingReleaseAsync();
+            CleanupRecordingResources();
             ShowFromTray();
             AppDiagnosticLog.Write("recording.interface-restored",
                 ("recordingId", failedRecordingId), ("media", "MP4"), ("result", "failure"));
@@ -2750,40 +2822,37 @@ public partial class MainWindow : Window
     }
 
     private async void StartGifRecording_OnClick(object sender, RoutedEventArgs e)
-    {
-        if (_settingsOperationInProgress) return;
-        if (_recordingControl is not null)
-        {
-            _recordingControl.Activate();
-            return;
-        }
-        if (!TryReadCaptureSettings(out var settingsError))
-        {
-            ShowAppDialog(settingsError, "GIF", MessageBoxButton.OK, MessageBoxImage.Warning);
-            return;
-        }
-        await _settingsStore.SaveAsync(_settings);
-        var target = _captureService.SelectRecordingRegion(this, UiText.Get("Selecione a região do GIF"));
-        if (target is null)
-        {
-            return;
-        }
+        => await RunRecordingOperationAsync("GIF", RunGifRecordingAsync);
 
+    private async Task RunGifRecordingAsync(RecordingOperation operation)
+    {
         try
         {
+            if (!await PrepareCapturePreferencesAsync("GIF", operation.Token)) return;
+            CheckRecordingOperation(operation);
+            var capture = _settings.Capture;
+            ConfigureCaptureShortcuts();
+            if (RecordingPipelineForEvidence is { } pipeline) { await pipeline("GIF", operation); CheckRecordingOperation(operation); return; }
+            if (CapturePreparationForEvidence is { } evidence) { evidence("gif"); return; }
+            var target = _captureService.SelectRecordingRegion(this, UiText.Get("Selecione a região do GIF"), operation.Token);
+            CheckRecordingOperation(operation);
+            if (target is null) { operation.Cancel(); return; }
+            operation.InterfaceHidden = true;
             Hide();
-            await Task.Delay(180);
-            _gifRecordingSession = _gifRecordingService.StartRecording(
+            await Task.Delay(180, operation.Token);
+            CheckRecordingOperation(operation);
+            operation.MarkRecording();
+            var session = _gifRecordingService.StartRecording(
                 target.Bounds,
-                _settings.Capture.Recording);
-            _recordingControl = new RecordingControlWindow(_gifRecordingSession, "GIF");
+                capture.Recording);
+            _gifRecordingSession = session;
+            _recordingControl = new RecordingControlWindow(session, "GIF");
             _recordingControl.Show();
-            using var recording = await _gifRecordingSession.Completion;
-            var completedRecordingId = _gifRecordingSession.RecordingId.ToString("N");
-            _recordingControl.Close();
-            _recordingControl = null;
-            _gifRecordingSession.Dispose();
-            _gifRecordingSession = null;
+            using var recording = await session.Completion;
+            CheckRecordingOperation(operation);
+            operation.MarkFinalizing();
+            var completedRecordingId = session.RecordingId.ToString("N");
+            CleanupRecordingResources();
             ShowFromTray();
             AppDiagnosticLog.Write("recording.interface-restored",
                 ("recordingId", completedRecordingId), ("media", "GIF"), ("result", "captured"));
@@ -2797,16 +2866,21 @@ public partial class MainWindow : Window
                     MessageBoxImage.Information);
             }
             var preview = new GifPreviewWindow(recording) { Owner = this };
+            using var previewCancellation = new RecordingWindowCancellation(preview, operation.Token);
             if (preview.ShowDialog() != true)
             {
+                CheckRecordingOperation(operation);
                 StatusText.Text = UiText.Get("GIF descartado");
                 return;
             }
+            CheckRecordingOperation(operation);
             var path = await _gifRecordingService.SaveAsync(
                 recording,
-                _settings.Capture,
+                capture,
                 target.Type,
-                _settings.Capture.Recording.GifQuality);
+                capture.Recording.GifQuality,
+                operation.Token);
+            CheckRecordingOperation(operation);
             await _captureService.AddMediaRecordAsync(new CaptureRecord
             {
                 CreatedAt = DateTimeOffset.Now,
@@ -2817,16 +2891,15 @@ public partial class MainWindow : Window
                 Height = recording.Height,
                 DurationSeconds = recording.Duration.TotalSeconds
             });
+            CheckRecordingOperation(operation);
             StatusText.Text = UiText.Format($"GIF salvo: {Path.GetFileName(path)}");
             RefreshCaptureHistory();
         }
+        catch (OperationCanceledException) when (operation.Token.IsCancellationRequested || !CanUseRecordingInterface) { throw; }
         catch (OperationCanceledException)
         {
             var cancelledRecordingId = _gifRecordingSession?.RecordingId.ToString("N") ?? "unknown";
-            _recordingControl?.Close();
-            _recordingControl = null;
-            _gifRecordingSession?.Dispose();
-            _gifRecordingSession = null;
+            CleanupRecordingResources();
             ShowFromTray();
             AppDiagnosticLog.Write("recording.interface-restored",
                 ("recordingId", cancelledRecordingId), ("media", "GIF"), ("result", "cancelled"));
@@ -2834,11 +2907,10 @@ public partial class MainWindow : Window
         }
         catch (Exception exception)
         {
+            if (!CanUseRecordingInterface) return;
+            operation.Token.ThrowIfCancellationRequested();
             var failedRecordingId = _gifRecordingSession?.RecordingId.ToString("N") ?? "unknown";
-            _recordingControl?.Close();
-            _recordingControl = null;
-            _gifRecordingSession?.Dispose();
-            _gifRecordingSession = null;
+            CleanupRecordingResources();
             ShowFromTray();
             AppDiagnosticLog.Write("recording.interface-restored",
                 ("recordingId", failedRecordingId), ("media", "GIF"), ("result", "failure"));
@@ -2850,22 +2922,20 @@ public partial class MainWindow : Window
         }
     }
 
-    private RecordingTarget? ResolveRecordingTarget(string regionPurpose)
+    private RecordingTarget? ResolveRecordingTarget(RecordingTargetKind kind, CancellationToken cancellationToken = default) => kind switch
     {
-        var selected = SelectedTag(RecordingTargetBox, "Monitor");
-        if (selected.Equals("Region", StringComparison.OrdinalIgnoreCase))
-        {
-            return _captureService.SelectRecordingRegion(this, regionPurpose);
-        }
-        return _captureService.ActiveMonitorTarget();
-    }
+        RecordingTargetKind.Monitor => _captureService.ActiveMonitorTarget(),
+        RecordingTargetKind.Region => _captureService.SelectRecordingRegion(this, UiText.Get("Selecione a região do vídeo"), cancellationToken),
+        RecordingTargetKind.Window => _captureService.SelectRecordingWindow(this, UiText.Get("Clique na janela que deseja gravar"), cancellationToken),
+        _ => throw new InvalidOperationException(UiText.Get("O destino do vídeo não é válido."))
+    };
 
     private static int ParseSelectedInt(ComboBox box, int fallback) =>
         int.TryParse(SelectedTag(box, fallback.ToString()), out var value)
             ? value
             : fallback;
 
-    private void OpenCaptureImage_OnClick(object sender, RoutedEventArgs e)
+    private async void OpenCaptureImage_OnClick(object sender, RoutedEventArgs e)
     {
         var dialog = new Microsoft.Win32.OpenFileDialog
         {
@@ -2877,17 +2947,17 @@ public partial class MainWindow : Window
             return;
         }
 
-        if (LoadCaptureWorkbenchImage(dialog.FileName, null,
+        if (await LoadCaptureWorkbenchImageAsync(dialog.FileName, null,
                 UiText.Format($"Imagem · {Path.GetFileName(dialog.FileName)}")))
         {
             StatusText.Text = UiText.Format($"Imagem aberta: {Path.GetFileName(dialog.FileName)}");
         }
     }
 
-    private bool LoadCaptureWorkbenchImage(
+    private async Task<bool> LoadCaptureWorkbenchImageAsync(
         string path,
         CaptureRecord? record,
-        string details)
+        string details, bool showProgress = true)
     {
         if (record is not null && !string.Equals(_captureService.ResolveFilePath(record), path, StringComparison.OrdinalIgnoreCase)) return false;
         if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
@@ -2898,7 +2968,26 @@ public partial class MainWindow : Window
         if (!CanReplaceCaptureSession()) return false;
         try
         {
-            CaptureInlineEditor.LoadImage(path);
+            _captureImageLoadCancellation?.Cancel();
+            using var cancellation = new CancellationTokenSource();
+            _captureImageLoadCancellation = cancellation;
+            var originalDocument = CaptureInlineEditor.Document;
+            var originalRevision = originalDocument?.Revision;
+            var progress = showProgress ? new ExternalOperationWindow(UiText.Get("Abrindo imagem…"), cancellation) { Owner = this } : null;
+            progress?.Show();
+            try
+            {
+                using var bitmap = await ExternalImageReader.DecodeAsync(() => ExternalImageReader.Load(path, cancellation.Token), cancellation.Token);
+                if (cancellation.IsCancellationRequested || _servicesDisposed || _settingsOperationInProgress ||
+                    !ReferenceEquals(originalDocument, CaptureInlineEditor.Document) || originalRevision != CaptureInlineEditor.Document?.Revision ||
+                    (record is not null && (!string.Equals(_captureService.ResolveFilePath(record), path, StringComparison.OrdinalIgnoreCase) || !_captureService.History.Contains(record)))) return false;
+                CaptureInlineEditor.LoadImage(bitmap);
+            }
+            finally
+            {
+                progress?.Complete();
+                if (ReferenceEquals(_captureImageLoadCancellation, cancellation)) _captureImageLoadCancellation = null;
+            }
             CapturePreviewEmptyPanel.Visibility = Visibility.Collapsed;
             CaptureWorkbenchToolbar.Visibility = Visibility.Visible;
             CaptureWorkbenchFooter.Visibility = Visibility.Visible;
@@ -2916,9 +3005,10 @@ public partial class MainWindow : Window
             }
             return true;
         }
-        catch (Exception exception) when (exception is IOException or NotSupportedException or ArgumentException or System.Runtime.InteropServices.ExternalException)
+        catch (OperationCanceledException) { StatusText.Text = UiText.Get("Operação cancelada. Os dados atuais foram preservados."); return false; }
+        catch (Exception exception) when (exception is InvalidDataException or IOException or NotSupportedException or ArgumentException or System.Runtime.InteropServices.ExternalException)
         {
-            StatusText.Text = UiText.Get("Não foi possível abrir a imagem selecionada");
+            StatusText.Text = UiText.Get("Não foi possível abrir a imagem selecionada") + ": " + exception.Message;
             return false;
         }
     }
@@ -3191,7 +3281,7 @@ public partial class MainWindow : Window
             if (!string.IsNullOrWhiteSpace(_captureWorkbenchPath)) CaptureInlineEditor.MarkSaved();
         }
         else if (!CaptureInlineEditor.HasUnsavedChanges && !string.IsNullOrWhiteSpace(result.FilePath))
-            LoadCaptureWorkbenchImage(_captureService.ResolveFilePath(result), result, $"{CaptureTypeLabel(result)} · {result.Width}×{result.Height}");
+            _ = LoadCaptureWorkbenchImageAsync(_captureService.ResolveFilePath(result), result, $"{CaptureTypeLabel(result)} · {result.Width}×{result.Height}", showProgress: false);
         _completedCaptureDocument = null;
         CaptureInlineEditor_OnStateChanged(this, EventArgs.Empty);
     }
@@ -3372,6 +3462,8 @@ public partial class MainWindow : Window
         }
 
         CaptureHistoryPanel.Children.Clear();
+        _captureThumbnailCancellation?.Cancel(); _captureThumbnailCancellation?.Dispose();
+        _captureThumbnailCancellation = new CancellationTokenSource();
         CaptureHistoryScroller.ScrollToLeftEnd();
 
         var mostRecent = _captureService.History.FirstOrDefault();
@@ -3382,10 +3474,10 @@ public partial class MainWindow : Window
                 !string.IsNullOrWhiteSpace(mostRecentPath) &&
                 File.Exists(mostRecentPath))
             {
-                LoadCaptureWorkbenchImage(
+                _ = LoadCaptureWorkbenchImageAsync(
                     mostRecentPath,
                     mostRecent,
-                    $"{CaptureTypeLabel(mostRecent)} · {mostRecent.Width}×{mostRecent.Height}");
+                    $"{CaptureTypeLabel(mostRecent)} · {mostRecent.Width}×{mostRecent.Height}", showProgress: false);
             }
         }
 
@@ -3414,6 +3506,7 @@ public partial class MainWindow : Window
             empty.SetResourceReference(Border.BorderBrushProperty, "Lab.line");
             CaptureHistoryPanel.Children.Add(empty);
         }
+        RefreshStorageProtection();
         CaptureHistoryStatusText.Text = filtered.Count > 40 ? UiText.Format($"40 de {filtered.Count:N0} · Ver todas") : filtered.Count.ToString("N0");
         Dispatcher.BeginInvoke(new Action(UpdateCaptureHistoryNavigationState));
     }
@@ -3468,16 +3561,6 @@ public partial class MainWindow : Window
             ClipToBounds = true
         };
         thumbnail.SetResourceReference(Border.BackgroundProperty, "Lab.canvas");
-        if (!record.MediaKind.Equals("video", StringComparison.OrdinalIgnoreCase) &&
-            TryLoadImage(path, out var image))
-        {
-            thumbnail.Child = new Image
-            {
-                Source = image,
-                Stretch = Stretch.UniformToFill
-            };
-        }
-        else
         {
             var icon = new System.Windows.Shapes.Path
             {
@@ -3494,6 +3577,8 @@ public partial class MainWindow : Window
             icon.SetResourceReference(System.Windows.Shapes.Shape.StrokeProperty, "Lab.muted");
             thumbnail.Child = icon;
         }
+        if (!record.MediaKind.Equals("video", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrEmpty(path))
+            _ = LoadHistoryThumbnailAsync(thumbnail, path, record, _captureThumbnailCancellation?.Token ?? default);
         grid.Children.Add(thumbnail);
 
         // Display metadata without granting access for a thumbnail or other file action.
@@ -3544,7 +3629,7 @@ public partial class MainWindow : Window
         return card;
     }
 
-    private void CaptureHistoryCard_OnClick(object sender, MouseButtonEventArgs e)
+    private async void CaptureHistoryCard_OnClick(object sender, MouseButtonEventArgs e)
     {
         if (sender is not Border { Tag: CaptureRecord record })
         {
@@ -3556,7 +3641,7 @@ public partial class MainWindow : Window
             OpenHistoryItem_OnClick(new Button { Tag = record }, new RoutedEventArgs());
             return;
         }
-        if (LoadCaptureWorkbenchImage(path, record,
+        if (await LoadCaptureWorkbenchImageAsync(path, record,
                 $"{CaptureTypeLabel(record)} · {record.Width}×{record.Height}"))
         {
             CaptureInlineEditor.BringIntoView();
@@ -3578,6 +3663,18 @@ public partial class MainWindow : Window
         }
     };
 
+    private async Task LoadHistoryThumbnailAsync(Border thumbnail, string path, CaptureRecord record, CancellationToken token)
+    {
+        try
+        {
+            var image = await ExternalImageReader.DecodeAsync(() => TryLoadImage(path, out var result) ? result : null, token);
+            if (image is not null && !token.IsCancellationRequested && !_servicesDisposed &&
+                _captureService.History.Contains(record) && string.Equals(_captureService.ResolveFilePath(record), path, StringComparison.OrdinalIgnoreCase))
+                thumbnail.Child = new Image { Source = image, Stretch = Stretch.UniformToFill };
+        }
+        catch (OperationCanceledException) { }
+    }
+
     private static bool TryLoadImage(string path, out BitmapImage? image)
     {
         image = null;
@@ -3587,18 +3684,21 @@ public partial class MainWindow : Window
         }
         try
         {
-            using var stream = File.Open(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+            using var stream = File.Open(path, FileMode.Open, FileAccess.Read, FileShare.Read);
+            var dimensions = ExternalImageReader.CheckHeader(stream);
             var loaded = new BitmapImage();
             loaded.BeginInit();
             loaded.CacheOption = BitmapCacheOption.OnLoad;
-            loaded.DecodePixelWidth = 240;
+            var scale = Math.Min(1d, Math.Min(240d / dimensions.Width, 240d / dimensions.Height));
+            loaded.DecodePixelWidth = Math.Max(1, (int)Math.Ceiling(dimensions.Width * scale));
+            loaded.DecodePixelHeight = Math.Max(1, (int)Math.Ceiling(dimensions.Height * scale));
             loaded.StreamSource = stream;
             loaded.EndInit();
             loaded.Freeze();
             image = loaded;
             return true;
         }
-        catch (Exception exception) when (exception is IOException or NotSupportedException)
+        catch (Exception exception) when (exception is InvalidDataException or IOException or NotSupportedException or ArgumentException or System.Runtime.InteropServices.COMException)
         {
             return false;
         }
@@ -3731,14 +3831,14 @@ public partial class MainWindow : Window
         }
     }
 
-    private void EditHistoryItem_OnClick(object sender, RoutedEventArgs e)
+    private async void EditHistoryItem_OnClick(object sender, RoutedEventArgs e)
     {
         if (sender is not Button { Tag: CaptureRecord record })
         {
             return;
         }
         if (!TryAuthorizeHistoryFile(record, out var path)) return;
-        if (LoadCaptureWorkbenchImage(path, record,
+        if (await LoadCaptureWorkbenchImageAsync(path, record,
                 $"{CaptureTypeLabel(record)} · {record.Width}×{record.Height}"))
         {
             ShowView(CaptureView, CaptureTabButton);
@@ -3749,6 +3849,9 @@ public partial class MainWindow : Window
 
     private async void DeleteHistoryItem_OnClick(object sender, RoutedEventArgs e)
     {
+        using var lease = TryReserveCaptureCommand();
+        if (lease is null) return;
+        if (_captureService.IsHistoryProtected) { ReviewStorage_OnClick(sender, e); return; }
         if (sender is not Button { Tag: CaptureRecord record })
         {
             return;
@@ -3774,6 +3877,9 @@ public partial class MainWindow : Window
 
     private async void CleanCaptureHistory_OnClick(object sender, RoutedEventArgs e)
     {
+        using var lease = TryReserveCaptureCommand();
+        if (lease is null) return;
+        if (_captureService.IsHistoryProtected) { ReviewStorage_OnClick(sender, e); return; }
         var days = ParseSelectedInt(CaptureRetentionBox, 90);
         if (days <= 0)
         {
@@ -3838,7 +3944,7 @@ public partial class MainWindow : Window
     private void StartUpdateMonitor()
     {
         StopUpdateMonitor();
-        if (AppPaths.IsCapturePilot || !_settings.CheckUpdatesOnStartup || _servicesDisposed)
+        if (_settingsStore.IsProtected || AppPaths.IsCapturePilot || !_settings.CheckUpdatesOnStartup || _servicesDisposed)
         {
             return;
         }
@@ -3959,6 +4065,8 @@ public partial class MainWindow : Window
 
     private async Task DownloadAndApplyUpdateAsync(ReleaseInfo release)
     {
+        using var lease = TryReserveCaptureCommand();
+        if (lease is null) return;
         var progressWindow = new UpdateProgressWindow { Owner = this };
         _activeUpdateCancellation = progressWindow.Cancellation;
         progressWindow.Show();
@@ -4215,6 +4323,9 @@ public partial class MainWindow : Window
 
     private void MainWindow_OnClosing(object? sender, CancelEventArgs e)
     {
+        if (_servicesDisposed) return;
+        if (_recordingExitPending) { e.Cancel = true; return; }
+        if (_restoreRecoveryBlocked) { _pendingCaptureEdit?.TrySetResult(null); DisposeServices(); return; }
         if (_settingsOperationInProgress) { e.Cancel = true; _exitRequested = false; StatusText.Text = UiText.Get("Aguarde a manutenção em andamento antes de sair."); return; }
         if (!_exitRequested && _settings.CloseToTray)
         {
@@ -4241,6 +4352,15 @@ public partial class MainWindow : Window
         if (CaptureInlineEditor.HasUnsavedChanges && ShowAppDialog(UiText.Get("Há alterações de imagem não salvas. Sair sem salvar?"), UiText.Get("Editor de imagem"),
                 MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) != MessageBoxResult.Yes)
         { e.Cancel = true; _exitRequested = false; return; }
+        if (_recordingOperation is { Phase: RecordingOperationPhase.Preparing } operation)
+        {
+            e.Cancel = true;
+            _recordingExitPending = true;
+            _exitRequested = true;
+            operation.Cancel();
+            _ = CloseAfterRecordingPreparationAsync(operation);
+            return;
+        }
         _pendingCaptureEdit?.TrySetResult(null);
         DisposeServices();
     }
@@ -4253,6 +4373,7 @@ public partial class MainWindow : Window
 
     private void ShowFromTray()
     {
+        if (!CanUseRecordingInterface) return;
         Show();
         WindowState = WindowState.Normal;
         Activate();
@@ -4272,6 +4393,9 @@ public partial class MainWindow : Window
         }
 
         _servicesDisposed = true;
+        _recordingOperation?.Cancel();
+        _captureImageLoadCancellation?.Cancel();
+        _captureThumbnailCancellation?.Cancel();
         StopQuickAccentStatusMonitor();
         StopUpdateMonitor();
         Activated -= MainWindow_OnActivated;
@@ -4283,9 +4407,7 @@ public partial class MainWindow : Window
         _quickAccentService.Dispose();
         _captureShortcuts.Triggered -= CaptureShortcuts_OnTriggered;
         _captureShortcuts.Dispose();
-        _recordingControl?.Close();
-        _recordingService?.Dispose();
-        _gifRecordingSession?.Dispose();
+        CleanupRecordingResources();
         CaptureInlineEditor.Dispose();
         _suggestionWindow.Close();
         _quickAccentWindow.Close();

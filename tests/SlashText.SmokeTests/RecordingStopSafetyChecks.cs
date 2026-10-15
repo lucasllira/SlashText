@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text.Json;
 using ScreenRecorderLib;
 using SlashText.Models;
 using SlashText.Services;
@@ -9,7 +10,7 @@ internal static class RecordingStopSafetyChecks
     {
         foreach (var mode in new[] { "normal", "duplicate", "missing", "blocked-stop", "blocked-start", "blocked-dispose", "blocked-pause", "blocked-resume", "callback-without-stop", "dispose-failed", "failed-callback", "emergency" })
         {
-            var home = Path.Combine(root, "recording-safety", mode);
+            var home = Path.GetFullPath(Path.Combine(root, "recording-safety", mode));
             Directory.CreateDirectory(home);
             var start = new ProcessStartInfo(Environment.ProcessPath!) { UseShellExecute = false, CreateNoWindow = true, RedirectStandardError = true };
             if (Path.GetFileNameWithoutExtension(start.FileName).Equals("dotnet", StringComparison.OrdinalIgnoreCase))
@@ -18,6 +19,7 @@ internal static class RecordingStopSafetyChecks
             start.ArgumentList.Add(home);
             start.ArgumentList.Add(mode);
             using var child = Process.Start(start)!;
+            var childStartedTicks = child.StartTime.ToUniversalTime().Ticks;
             var stderr = child.StandardError.ReadToEndAsync();
             try { await child.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(20)); }
             catch { child.Kill(); await child.WaitForExitAsync(); throw; }
@@ -27,6 +29,13 @@ internal static class RecordingStopSafetyChecks
             var preserved = File.ReadAllText(Path.Combine(home, "file.txt"));
             using var file = new FileStream(preserved, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
             Check(file.Length == 48, mode + ": file preserved and handle released after process exit");
+            if (forced)
+            {
+                var marker = Path.GetFullPath(File.ReadAllText(Path.Combine(home, "private-marker.txt")));
+                Check(marker.StartsWith(home + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase), "fixture marker is inside its own isolated home");
+                CheckMarker(marker, Guid.ParseExact(Path.GetFileNameWithoutExtension(marker), "N"), child.Id,
+                    childStartedTicks, preserved, interrupted: false, stopUnconfirmed: true);
+            }
         }
         Console.WriteLine("Recording stop safety: 12 isolated scenarios passed (including real emergency self-termination).");
     }
@@ -39,7 +48,13 @@ internal static class RecordingStopSafetyChecks
         var target = new RecordingTarget(RecordingTargetKind.Window, new System.Drawing.Rectangle(0, 0, 100, 100), new IntPtr(1));
         var capture = new CaptureSettings { OutputDirectoryTemplate = home, FileNameTemplate = "fixture" };
         var task = service.StartAsync(target, capture, new RecordingSettings());
+        var privateMarker = MarkerPath(service.RecordingId);
+        var markerAtCompletion = task.ContinueWith(_ => File.Exists(privateMarker), CancellationToken.None,
+            TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
         await Until(() => factory.Backend.RecordEntered.IsSet);
+        CheckMarker(privateMarker, service.RecordingId, Environment.ProcessId,
+            Process.GetCurrentProcess().StartTime.ToUniversalTime().Ticks, service.RecoveryFilePath,
+            interrupted: false, stopUnconfirmed: false);
         if (mode is "blocked-pause" or "blocked-resume")
         {
             await Until(() => service.State == ScreenRecordingState.Recording);
@@ -63,14 +78,22 @@ internal static class RecordingStopSafetyChecks
             Check(!service.IsRecording && !service.IsStopUnconfirmed, "released native resources reach terminal state");
             Check(service.State == (mode == "failed-callback" ? ScreenRecordingState.Failed : ScreenRecordingState.Completed), "correct terminal state");
             Check(factory.Backend.DisposeCalls == 1 && factory.Backend.StopCalls == 1, "single stop/disposal");
+            if (mode != "failed-callback")
+                Check(!await markerAtCompletion && !File.Exists(privateMarker), "successful completion is observed only after its private marker is removed");
+            else
+            {
+                Check(await markerAtCompletion, "failed native callback keeps private recovery metadata at completion");
+                CheckCurrentMarker(service, privateMarker, interrupted: true, stopUnconfirmed: false);
+            }
         }
         else
         {
             await Until(() => service.IsStopUnconfirmed);
             Check(service.IsRecording && !task.IsCompleted, "uncertain stop keeps session alive");
             Check(!await service.SetAudioMutedAsync(true, true), "mute cannot claim success during uncertainty");
-            Check(File.Exists(Path.Combine(AppPaths.LogsDirectory, "recording-active.json")), "active marker retained");
-            Check(File.ReadAllText(Path.Combine(AppPaths.LogsDirectory, "recording-active.json")).Contains("StopUnconfirmed"), "persistent marker identifies uncertainty");
+            CheckCurrentMarker(service, privateMarker, interrupted: false, stopUnconfirmed: true);
+            Check(RecordingRecovery.InterruptedCount() == 0, "live uncertain recording is not classified as an already released interrupted recording");
+            CheckNoSensitiveLogs(home, service.RecoveryFilePath);
             using var other = new ScreenRecordingService(new Factory("normal"), TimeSpan.FromSeconds(1));
             var blocked = false;
             try { _ = other.StartAsync(target, capture, new RecordingSettings()); }
@@ -81,6 +104,7 @@ internal static class RecordingStopSafetyChecks
             {
                 Check(factory.Backend.FileLocked, "fixture still owned by unresolved backend");
                 File.WriteAllText(Path.Combine(home, "file.txt"), service.RecoveryFilePath);
+                File.WriteAllText(Path.Combine(home, "private-marker.txt"), privateMarker);
                 File.WriteAllText(Path.Combine(home, "passed.txt"), "uncertainty retained; now terminate the fixture process");
                 RecordingEmergencyExit.TerminateCurrentProcess();
                 throw new InvalidOperationException("Emergency exit returned unexpectedly");
@@ -98,19 +122,71 @@ internal static class RecordingStopSafetyChecks
             Check(!service.IsRecording && service.State == ScreenRecordingState.Failed, "late release clears uncertainty");
             Check(factory.Backend.DisposeCalls == 1, "late callback disposes exactly once");
             Check(File.Exists(service.RecoveryFilePath), "late callback preserves recoverable bytes");
+            Check(await markerAtCompletion, "late failure completion retains private recovery metadata");
+            CheckCurrentMarker(service, privateMarker, interrupted: true, stopUnconfirmed: true);
         }
         Check(factory.Backend.MaxConcurrentCalls == 1, "all native calls serialized");
-        Check(!File.Exists(Path.Combine(AppPaths.LogsDirectory, "recording-active.json")), "marker cleared only after native release");
+        CheckNoSensitiveLogs(home, service.RecoveryFilePath);
         File.WriteAllText(Path.Combine(home, "file.txt"), task.Status == TaskStatus.RanToCompletion ? task.Result : service.RecoveryFilePath);
         // Only confirmed cleanup releases the cross-instance reservation.
         using var successor = new ScreenRecordingService(new Factory("normal"), TimeSpan.FromSeconds(2));
         var next = successor.StartAsync(target, capture, new RecordingSettings());
+        var successorMarker = MarkerPath(successor.RecordingId);
+        var successorMarkerAtCompletion = next.ContinueWith(_ => File.Exists(successorMarker), CancellationToken.None,
+            TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
         successor.Stop();
         await next.WaitAsync(TimeSpan.FromSeconds(3));
+        Check(!await successorMarkerAtCompletion && !File.Exists(successorMarker), "successor completion does not publish while its private marker exists");
+        CheckNoSensitiveLogs(home, successor.RecoveryFilePath);
         File.WriteAllText(Path.Combine(home, "passed.txt"), mode + ": passed");
     }
 
     private static void Check(bool value, string message) { if (!value) throw new InvalidOperationException(message); }
+    private static string MarkerPath(Guid id) => Path.Combine(AppPaths.DataDirectory, "RecordingRecovery-v1", id.ToString("N") + ".json");
+
+    private static void CheckCurrentMarker(ScreenRecordingService service, string marker, bool interrupted, bool stopUnconfirmed) =>
+        CheckMarker(marker, service.RecordingId, Environment.ProcessId, Process.GetCurrentProcess().StartTime.ToUniversalTime().Ticks,
+            service.RecoveryFilePath, interrupted, stopUnconfirmed);
+
+    private static void CheckMarker(string path, Guid id, int pid, long startedTicks, string partialPath, bool interrupted, bool stopUnconfirmed)
+    {
+        Check(File.Exists(path), "private recording marker exists");
+        using var document = JsonDocument.Parse(File.ReadAllBytes(path));
+        var marker = document.RootElement;
+        Check(marker.GetProperty("Schema").GetInt32() == 1 && marker.GetProperty("Id").GetGuid() == id
+            && Path.GetFileName(path) == id.ToString("N") + ".json", "private marker schema and file identity match the session");
+        Check(marker.GetProperty("Pid").GetInt32() == pid && marker.GetProperty("StartedUtcTicks").GetInt64() == startedTicks,
+            "private marker identifies the exact owning process lifetime");
+        Check(string.Equals(marker.GetProperty("PartialPath").GetString(), partialPath, StringComparison.OrdinalIgnoreCase),
+            "private marker retains the exact recoverable partial path");
+        Check(marker.GetProperty("Interrupted").GetBoolean() == interrupted
+            && marker.GetProperty("StopUnconfirmed").GetBoolean() == stopUnconfirmed,
+            "private marker distinguishes live uncertainty, confirmed release and historical timeout cause");
+    }
+
+    private static void CheckNoSensitiveLogs(string home, string partialPath)
+    {
+        if (!Directory.Exists(AppPaths.LogsDirectory)) return;
+        var needles = new[] { Path.GetFullPath(home), partialPath, Path.GetFileName(partialPath), "fixture failure" }
+            .Where(value => !string.IsNullOrWhiteSpace(value)).ToArray();
+        foreach (var path in Directory.EnumerateFiles(AppPaths.LogsDirectory).Where(path => !path.EndsWith(".lock", StringComparison.OrdinalIgnoreCase)))
+        {
+            string text;
+            var attempts = 0;
+            while (true)
+            {
+                try { text = File.ReadAllText(path); break; }
+                catch (IOException exception) when (exception.HResult == unchecked((int)0x80070020) && attempts++ < 20)
+                { Thread.Sleep(5); } // Logging owns a brief exclusive append; never silently skip a diagnostic file.
+            }
+            foreach (var needle in needles)
+            {
+                var jsonEscaped = JsonSerializer.Serialize(needle)[1..^1];
+                Check(!text.Contains(needle, StringComparison.OrdinalIgnoreCase) && !text.Contains(jsonEscaped, StringComparison.OrdinalIgnoreCase),
+                    "diagnostics contain neither private paths, filenames nor free-form backend error messages");
+            }
+        }
+    }
     private static async Task Until(Func<bool> condition)
     {
         var until = Stopwatch.StartNew();

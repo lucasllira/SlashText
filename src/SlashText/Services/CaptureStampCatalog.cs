@@ -126,8 +126,20 @@ public sealed class CaptureStampCatalog
         if (label.Length == 0) label = "Meu emoji";
         Directory.CreateDirectory(_directory);
         var destination = Path.Combine(_directory, id + ".png");
-        try { normalized.Save(destination, ImageFormat.Png); entries.Add(new Entry(id, label)); Write(entries); }
-        catch { if (File.Exists(destination)) File.Delete(destination); throw; }
+        var destinationCreated = false;
+        try
+        {
+            // The GDI+ filename overload does not support all .NET long paths.
+            // Close the stream before publishing the index or rolling back.
+            using (var output = new FileStream(destination, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+            {
+                destinationCreated = true;
+                normalized.Save(output, ImageFormat.Png);
+            }
+            entries.Add(new Entry(id, label));
+            Write(entries);
+        }
+        catch { if (destinationCreated && File.Exists(destination)) File.Delete(destination); throw; }
         return "custom:" + id;
     }
     public void Remove(string value)

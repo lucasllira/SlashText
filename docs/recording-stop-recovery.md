@@ -4,7 +4,7 @@
 
 MP4 startup, pause/resume, audio changes, Stop and Dispose stay on a single native queue. A recording service is single-use. A process-wide reservation starts before queuing native startup and is released only after Dispose returns successfully (or no backend was created). New sessions are rejected while that reservation exists.
 
-After a Stop request, or a completion/failure callback that starts cleanup, a 12-second watchdog checks native release. A missing callback, blocked native call or failed Dispose keeps the completion task pending and enters `StopUnconfirmed`. `IsRecording` remains true. The active diagnostic marker records that state where storage is writable. Dispose failure immediately enters uncertainty without retrying Dispose or dropping the backend reference. Late pause/resume responses cannot restore an apparently safe state.
+After a Stop request, or a completion/failure callback that starts cleanup, a 12-second watchdog checks native release. A missing callback, blocked native call or failed Dispose keeps the completion task pending and enters `StopUnconfirmed`. `IsRecording` remains true. The private per-session marker in `RecordingRecovery-v1` records that state where storage is writable; paths and filenames remain excluded from diagnostic logs. Dispose failure immediately enters uncertainty without retrying Dispose or dropping the backend reference. Late pause/resume responses cannot restore an apparently safe state.
 
 The floating control stays visible, identifies possible continued screen/audio capture, disables recording commands and exposes **Exit SlashDesk**. Closing the control or requesting normal app exit cannot hide a pending MP4 session. Stop remains available during startup. GIF behavior is unchanged.
 
@@ -21,8 +21,10 @@ Windows termination stops the process threads and requests cancellation of pendi
 ## Automated evidence
 
 - Full smoke suite: 12 fresh-process recording scenarios using inert files, including normal completion, duplicate callbacks, absent callback, blocked startup/Stop/Dispose/pause/resume, callback without user Stop, failure callback, Dispose exception and emergency self-termination.
-- Each uncertain case checks pending completion, the persistent marker, blocked new sessions and serialized cleanup. Late release permits a new session. The parent observes actual emergency child exit and can reopen the preserved file exclusively.
+- Each uncertain case checks pending completion, the private marker, blocked new sessions and serialized cleanup. Successful completion removes its own marker before notifying callers; late failure marks the partial as interrupted without deleting it. Late release permits a new session. The parent observes actual emergency child exit and can reopen the preserved file exclusively.
 - Recording audio UI smoke additionally checks the recovery control in pt-BR/en/es, light/dark, system-close blocking, exit intent without implicit acceptance, layout bounds and late cleanup. No real capture is used in these automated fault cases.
+
+- A real MainWindow/toolbar fixture with an inert backend exercises the current operation reservation: while stop is uncertain, screen/tray commands and maintenance stay blocked; late cleanup releases the operation without adding successful history. This runs in all three languages and both themes, alongside the existing preparation/cancellation and MP4 destination regressions.
 
 ## Pilot validation before acceptance
 

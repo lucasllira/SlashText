@@ -14,6 +14,8 @@ namespace SlashText;
 public partial class MainWindow
 {
     private bool _settingsOperationInProgress;
+    private CancellationTokenSource? _settingsCancellation;
+    private ExternalOperationWindow? _settingsProgress;
     private ScreenHelpHighlighter? _settingsHelpHighlight;
 
     private MessageBoxResult ShowSettingsDialog(string message, string title, MessageBoxButton buttons = MessageBoxButton.OK,
@@ -40,6 +42,16 @@ public partial class MainWindow
 
     private void RefreshSettingsPresentation()
     {
+        RefreshStorageProtection();
+        LegacyBackupPolicyText.Text = UiText.Get("Backups antigos de atalhos (.md) são preservados até você removê-los. Para recuperar uma versão, use Importar atalhos → SlashDesk.");
+        SettingsDiagnosticsCheckBox.IsChecked = SafeDiagnosticLog.Enabled;
+        SettingsDiagnosticsCheckBox.IsEnabled = !SafeDiagnosticLog.EnabledAtLaunch;
+        SettingsDiagnosticsCheckBox.ToolTip = SafeDiagnosticLog.EnabledAtLaunch ? UiText.Get("A coleta adicional foi ativada ao iniciar o app.") : null;
+        var interrupted = RecordingRecovery.InterruptedCount();
+        SettingsRecordingRecoveryNotice.Visibility = interrupted > 0 ? Visibility.Visible : Visibility.Collapsed;
+        SettingsRecordingRecoveryText.Text = interrupted == 1
+            ? UiText.Format($"{interrupted} gravação interrompida: arquivo parcial preservado na pasta escolhida, com final .recording.mp4. Pode estar incompleto.")
+            : UiText.Format($"{interrupted} gravações interrompidas: arquivos parciais preservados nas pastas escolhidas, com final .recording.mp4. Podem estar incompletos.");
         SettingsDataPathText.Text = AppPaths.DataDirectory;
         SettingsDataPathText.ToolTip = AppPaths.DataDirectory;
         SettingsVersionText.Text = UiText.Format($"Versão atual: {ProductVersion()}");
@@ -50,6 +62,16 @@ public partial class MainWindow
             button.SetResourceReference(Button.BorderBrushProperty, selected ? "Lab.accent" : "Lab.line");
             button.SetResourceReference(Button.BackgroundProperty, selected ? "Lab.tint" : "Lab.shell");
             AutomationProperties.SetHelpText(button, selected ? UiText.Get("Tema selecionado") : UiText.Get("Selecionar este tema"));
+        }
+    }
+
+    private void SettingsDiagnostics_OnClick(object sender, RoutedEventArgs e)
+    {
+        try { SafeDiagnosticLog.SetEnabled(SettingsDiagnosticsCheckBox.IsChecked == true); }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            SettingsDiagnosticsCheckBox.IsChecked = SafeDiagnosticLog.Enabled;
+            ShowSettingsDialog(UiText.Get("Não foi possível alterar o diagnóstico adicional. Verifique a permissão da pasta de dados."), "SlashDesk", image: MessageBoxImage.Warning);
         }
     }
 
@@ -76,14 +98,19 @@ public partial class MainWindow
         finally { _initialized = initialized; }
     }
 
-    private async Task RunSettingsMaintenanceAsync(string message, Func<Task> action)
+    private async Task RunSettingsMaintenanceAsync(string message, Func<Task> action, bool cancellable = false)
     {
         if (_settingsOperationInProgress || _shortcutOperationInProgress) throw new InvalidOperationException(UiText.Get("Aguarde a operação em andamento."));
-        if (_recordingControl is not null || _gifRecordingSession is not null || _activeUpdateCancellation is not null)
+        if (_recordingOperation is not null || _recordingControl is not null || _gifRecordingSession is not null || _activeUpdateCancellation is not null)
             throw new InvalidOperationException(UiText.Get("Finalize a gravação ou atualização antes da manutenção."));
         using var capture = _captureGate.TryEnter();
         using var expansion = _expansionRequestGate.TryEnter();
         if (capture is null || expansion is null) throw new InvalidOperationException(UiText.Get("Finalize a captura ou expansão em andamento antes de continuar."));
+        _captureImageLoadCancellation?.Cancel();
+        using var cancellation = cancellable ? new CancellationTokenSource() : null;
+        _settingsCancellation = cancellation;
+        var progress = cancellation is null ? null : new ExternalOperationWindow(message, cancellation) { Owner = this };
+        _settingsProgress = progress;
         var accentEnabled = _quickAccentService.Enabled;
         var root = (FrameworkElement)Content;
         var wasEnabled = root.IsEnabled;
@@ -94,9 +121,10 @@ public partial class MainWindow
         root.IsEnabled = false;
         SettingsOperationText.Text = message;
         StatusText.Text = message;
-        try { await action(); }
+        try { progress?.Show(); await action(); }
         finally
         {
+            progress?.Complete(); _settingsCancellation = null; _settingsProgress = null;
             if (SettingsOperationText.Text == message) SettingsOperationText.Text = UiText.Get("Pronto.");
             root.IsEnabled = wasEnabled;
             _quickAccentService.Enabled = accentEnabled;
@@ -128,7 +156,7 @@ public partial class MainWindow
         ShowView(SettingsView, SettingsTabButton); UpdateSettingsLayout(width);
     }
     internal async Task SaveSettingsPreferenceEvidenceAsync()
-    { await _settingsStore.SaveAsync(_settings); }
+    { await SavePreferencesAsync(); }
     internal async Task ApplySettingsControlsEvidenceAsync(string theme)
     {
         _initialized = true;

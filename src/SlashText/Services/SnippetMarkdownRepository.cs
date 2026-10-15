@@ -35,8 +35,12 @@ public sealed partial class SnippetMarkdownRepository
         }
 
         var markdown = await File.ReadAllTextAsync(_filePath, cancellationToken);
-        var snippets = Parse(markdown);
+        return ReadRequired(markdown, cancellationToken);
+    }
 
+    internal static List<Snippet> ReadRequired(string markdown, CancellationToken cancellationToken = default, bool forRestore = false)
+    {
+        var snippets = Parse(markdown, cancellationToken, strict: forRestore);
         if (markdown.Contains("<!-- slashtext:", StringComparison.OrdinalIgnoreCase) &&
             snippets.Count == 0)
         {
@@ -50,14 +54,17 @@ public sealed partial class SnippetMarkdownRepository
         IEnumerable<Snippet> snippets,
         CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         var ordered = snippets
             .OrderBy(item => item.Category, StringComparer.CurrentCultureIgnoreCase)
             .ThenBy(item => item.Trigger, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
-        for (var index = 0; index < ordered.Count; index++)
+        var triggers = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var snippet in ordered)
         {
-            Validate(ordered[index], ordered.Take(index));
+            cancellationToken.ThrowIfCancellationRequested();
+            Validate(snippet, triggers);
         }
 
         var markdown = Serialize(ordered);
@@ -81,21 +88,32 @@ public sealed partial class SnippetMarkdownRepository
             cancellationToken);
     }
 
-    private static List<Snippet> Parse(string markdown)
+    internal static List<Snippet> ParseImport(string markdown, CancellationToken token)
+    {
+        ExternalInputBudget.CheckText(markdown, token);
+        return Parse(markdown, token, external: true);
+    }
+
+    private static List<Snippet> Parse(string markdown, CancellationToken token = default, bool external = false, bool strict = false)
     {
         var normalized = markdown.TrimStart('\uFEFF').Replace("\r\n", "\n").Replace('\r', '\n');
         var lines = normalized.Split('\n');
         var snippets = new List<Snippet>();
+        var triggers = new HashSet<string>(StringComparer.Ordinal);
 
         for (var index = 0; index < lines.Length; index++)
         {
+            token.ThrowIfCancellationRequested();
             var heading = HeadingPattern().Match(lines[index]);
             if (!heading.Success)
             {
+                if (strict && lines[index].TrimStart().StartsWith("<!-- slashtext:", StringComparison.OrdinalIgnoreCase))
+                    throw new InvalidDataException("Unparsed shortcut metadata.");
                 continue;
             }
 
             var trigger = heading.Groups["trigger"].Value;
+            if (external && (snippets.Count >= ExternalInputBudget.SnippetCount || trigger.Length > ExternalInputBudget.MetadataCharacters)) throw ExternalInputBudget.Exceeded();
             var metadataIndex = NextNonEmptyLine(lines, index + 1);
             if (metadataIndex >= lines.Length ||
                 !TryReadMetadata(lines[metadataIndex], out var metadataJson))
@@ -104,6 +122,7 @@ public sealed partial class SnippetMarkdownRepository
                     UiText.Format($"Metadados do atalho '{trigger}' não encontrados após a linha {index + 1}."));
             }
 
+            if (external && metadataJson.Length > ExternalInputBudget.MetadataCharacters) throw ExternalInputBudget.Exceeded();
             var fenceIndex = NextNonEmptyLine(lines, metadataIndex + 1);
             if (fenceIndex >= lines.Length ||
                 !TryReadFence(lines[fenceIndex], out var fence, out var format))
@@ -113,9 +132,13 @@ public sealed partial class SnippetMarkdownRepository
             }
 
             var closingFenceIndex = fenceIndex + 1;
+            long contentCharacters = 0;
             while (closingFenceIndex < lines.Length &&
                    !lines[closingFenceIndex].Trim().Equals(fence, StringComparison.Ordinal))
             {
+                token.ThrowIfCancellationRequested();
+                contentCharacters += lines[closingFenceIndex].Length + 1L;
+                if (external && contentCharacters > ExternalInputBudget.SnippetCharacters + 1L) throw ExternalInputBudget.Exceeded();
                 closingFenceIndex++;
             }
 
@@ -127,6 +150,12 @@ public sealed partial class SnippetMarkdownRepository
             SnippetMetadata metadata;
             try
             {
+                if (strict)
+                {
+                    using var document = JsonDocument.Parse(metadataJson);
+                    BackupContentValidator.RequireUniqueMembers(document.RootElement, token);
+                    BackupContentValidator.RequireTypedMembers(document.RootElement, typeof(SnippetMetadata), token);
+                }
                 metadata = JsonSerializer.Deserialize<SnippetMetadata>(metadataJson, JsonOptions)
                     ?? throw new JsonException("Metadados vazios.");
             }
@@ -153,7 +182,8 @@ public sealed partial class SnippetMarkdownRepository
             };
 
             snippet.HasLegacyIncompatibleTrigger = !TriggerRule.TryValidate(snippet.Trigger, out _);
-            Validate(snippet, snippets);
+            if (external) ExternalInputBudget.CheckSnippet(snippet, snippets.Count);
+            Validate(snippet, triggers);
             snippets.Add(snippet);
             index = closingFenceIndex;
         }
@@ -161,7 +191,7 @@ public sealed partial class SnippetMarkdownRepository
         return snippets;
     }
 
-    private static string Serialize(IEnumerable<Snippet> snippets)
+    internal static string Serialize(IEnumerable<Snippet> snippets)
     {
         var builder = new StringBuilder(Header);
         foreach (var snippet in snippets)
@@ -188,7 +218,7 @@ public sealed partial class SnippetMarkdownRepository
         return builder.ToString();
     }
 
-    private static void Validate(Snippet snippet, IEnumerable<Snippet> existing)
+    private static void Validate(Snippet snippet, HashSet<string> triggers)
     {
         if (!TriggerRule.TryValidate(snippet.Trigger, out var triggerError) &&
             !snippet.HasLegacyIncompatibleTrigger)
@@ -201,7 +231,7 @@ public sealed partial class SnippetMarkdownRepository
             throw new InvalidDataException(UiText.Format($"O atalho '{snippet.Trigger}' precisa de um nome."));
         }
 
-        if (TriggerRule.ConflictsWith(snippet.Trigger, existing.Select(item => item.Trigger)))
+        if (!triggers.Add(TriggerRule.Normalize(snippet.Trigger)))
         {
             throw new InvalidDataException(UiText.Format($"O atalho '{snippet.Trigger}' está duplicado."));
         }

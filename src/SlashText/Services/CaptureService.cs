@@ -23,6 +23,14 @@ public sealed class CaptureService
     private readonly Dictionary<CaptureRecord, string> _fileApprovals = new();
 
     public IReadOnlyList<CaptureRecord> History => _history;
+    public bool IsHistoryProtected => _historyStore.IsProtected;
+    public bool CanRecoverHistory => _historyStore.CanRecover;
+    public StoredReadState HistoryReadState => _historyStore.ReadState;
+    public async Task RecoverHistoryAsync()
+    {
+        await _historyStore.RecoverAsync(_history);
+        await LoadAsync();
+    }
     public Func<Bitmap, CaptureAnnotationKind, Task<CaptureImageEditResult?>>? ImageEditor { get; set; }
     public string ResolveFilePath(CaptureRecord record)
     {
@@ -88,7 +96,11 @@ public sealed class CaptureService
 
     public Rectangle? WindowUnderCursorBounds()
     {
-        var window = WindowUnderCursorHandle();
+        return WindowBounds(WindowUnderCursorHandle());
+    }
+
+    private static Rectangle? WindowBounds(IntPtr window)
+    {
         if (window == IntPtr.Zero)
         {
             return null;
@@ -129,29 +141,64 @@ public sealed class CaptureService
     public RecordingTarget? WindowUnderCursorTarget()
     {
         var handle = WindowUnderCursorHandle();
-        var bounds = WindowUnderCursorBounds();
+        var bounds = WindowBounds(handle);
         return handle == IntPtr.Zero || bounds is null
             ? null
             : new RecordingTarget(RecordingTargetKind.Window, bounds.Value, handle);
     }
 
-    public RecordingTarget? SelectRecordingRegion(Window? owner, string purpose)
+    public RecordingTarget? SelectRecordingRegion(Window? owner, string purpose, CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         var selector = new RegionSelectionWindow(purpose);
+        using var cancellation = new RecordingWindowCancellation(selector, cancellationToken);
         if (owner is not null)
         {
             selector.Owner = owner;
         }
         if (selector.ShowDialog() != true)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             return null;
         }
+        cancellationToken.ThrowIfCancellationRequested();
         var bounds = selector.SelectedBounds;
         var screen = System.Windows.Forms.Screen.FromRectangle(bounds);
         return new RecordingTarget(
             RecordingTargetKind.Region,
             bounds,
             DisplayDeviceName: screen.DeviceName);
+    }
+
+    public RecordingTarget? SelectRecordingWindow(Window? owner, string purpose, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var selector = new RegionSelectionWindow(purpose, RecordingWindowAtPoint);
+        using var cancellation = new RecordingWindowCancellation(selector, cancellationToken);
+        if (owner is not null) selector.Owner = owner;
+        var accepted = selector.ShowDialog() == true;
+        cancellationToken.ThrowIfCancellationRequested();
+        return accepted ? selector.SelectedWindowTarget : null;
+    }
+
+    private static RecordingTarget? RecordingWindowAtPoint(System.Drawing.Point point)
+    {
+        RecordingTarget? target = null;
+        EnumWindows((window, _) =>
+        {
+            if (!IsWindowVisible(window) || IsIconic(window)) return true;
+            GetWindowThreadProcessId(window, out var process);
+            // The selection sheet and any SlashDesk controls are not recording targets.
+            if (process == Environment.ProcessId) return true;
+            var bounds = WindowBounds(window);
+            if (bounds is null || bounds.Value.Width < 2 || bounds.Value.Height < 2 || !bounds.Value.Contains(point)) return true;
+            var kind = new StringBuilder(128); GetClassName(window, kind, kind.Capacity);
+            // Clicking desktop/taskbar must not look like selecting a normal window.
+            if (kind.ToString() is "Progman" or "WorkerW" or "Shell_TrayWnd" or "Shell_SecondaryTrayWnd") return true;
+            target = new(RecordingTargetKind.Window, bounds.Value, window);
+            return false;
+        }, IntPtr.Zero);
+        return target;
     }
 
     public Bitmap? SelectAndEditRegion(
@@ -212,6 +259,7 @@ public sealed class CaptureService
 
     public async Task AddMediaRecordAsync(CaptureRecord record)
     {
+        if (IsHistoryProtected) return; // The completed recording file remains usable, without replacing partial history.
         record.RequiresFileApproval = false; // Called only for newly completed local recordings.
         record.PortableRelativePath ??=
             CapturePathResolver.CreatePortableRelativePath(record.FilePath, AppPaths.Current);
@@ -259,6 +307,7 @@ public sealed class CaptureService
         {
             if (File.Exists(temporary)) File.Delete(temporary);
         }
+        if (IsHistoryProtected) record = null; // Do not mutate a legible history row after saving an explicit edit.
         record ??= new CaptureRecord
         {
             RequiresFileApproval = false,
@@ -271,6 +320,7 @@ public sealed class CaptureService
         record.Height = bitmap.Height;
         if (record.RequiresFileApproval && CaptureHistoryFilePolicy.TryValidate(record, path, out var fingerprint))
             _fileApprovals[record] = fingerprint;
+        if (IsHistoryProtected) return record;
         _history.Remove(record);
         _history.Insert(0, record);
         if (_history.Count > 1000) _history.RemoveRange(1000, _history.Count - 1000);
@@ -280,6 +330,7 @@ public sealed class CaptureService
 
     public async Task<bool> DeleteAsync(string id, bool deleteFile)
     {
+        if (IsHistoryProtected) throw new IOException(UiText.Get("O histórico está protegido. Revise os dados em Configurações antes de remover entradas."));
         var record = _history.FirstOrDefault(item => item.Id == id);
         if (record is null)
         {
@@ -300,7 +351,7 @@ public sealed class CaptureService
 
     public async Task<int> CleanOlderThanAsync(int days, bool deleteFiles)
     {
-        if (days <= 0)
+        if (IsHistoryProtected || days <= 0)
         {
             return 0;
         }
@@ -849,6 +900,7 @@ public sealed class CaptureService
                 Width = output.Width,
                 Height = output.Height
             };
+            if (IsHistoryProtected) return record;
             _history.Insert(0, record);
             if (_history.Count > 1000)
             {
@@ -1099,6 +1151,19 @@ public sealed class CaptureService
 
     [DllImport("user32.dll")]
     private static extern IntPtr GetAncestor(IntPtr window, uint flags);
+
+    private delegate bool EnumWindowsCallback(IntPtr window, IntPtr parameter);
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool EnumWindows(EnumWindowsCallback callback, IntPtr parameter);
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool IsWindowVisible(IntPtr window);
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool IsIconic(IntPtr window);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    private static extern int GetClassName(IntPtr window, StringBuilder name, int maximum);
 
     [DllImport("user32.dll")]
     private static extern bool GetWindowRect(IntPtr window, out NativeRect rect);

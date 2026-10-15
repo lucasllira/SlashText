@@ -63,7 +63,7 @@
           <Grid>
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
             <StackPanel Orientation="Horizontal" Margin="32,0,0,0">
@@ -89,6 +89,8 @@
                 </StackPanel>
             </StackPanel>
 
+            <Button x:Name="StorageProtectionHeaderButton" Grid.Column="1" Visibility="Collapsed" Margin="12,0,0,0"
+                    VerticalAlignment="Center" Style="{StaticResource Lab.Button}" Click="ReviewStorage_OnClick"/>
             <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="16,0,32,0" VerticalAlignment="Center">
                 <Border Style="{StaticResource CompactStatusPill}" VerticalAlignment="Center">
                     <StackPanel Orientation="Horizontal">
@@ -199,8 +201,8 @@
                                 <ColumnDefinition x:Name="ShortcutRightColumn" Width="280" MinWidth="240" MaxWidth="480"/>
                             </Grid.ColumnDefinitions>
                             <Grid x:Name="ShortcutSidebarPanel" Style="{StaticResource WorkspaceSidebar}" Background="{DynamicResource Lab.shell}">
-                                <Grid Margin="18">
-                                    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="24"/><RowDefinition Height="Auto"/><RowDefinition Height="24"/><RowDefinition Height="Auto"/><RowDefinition Height="12"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+                                <Grid x:Name="ShortcutSidebarContent" Margin="18" SizeChanged="ShortcutSidebarContent_OnSizeChanged">
+                                    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition x:Name="ShortcutSidebarSearchGap" Height="24"/><RowDefinition Height="Auto"/><RowDefinition x:Name="ShortcutSidebarCategoryGap" Height="24"/><RowDefinition Height="Auto"/><RowDefinition Height="12"/><RowDefinition Height="*"/></Grid.RowDefinitions>
                                     <Grid>
                                         <TextBox x:Name="SearchBox" Style="{StaticResource Lab.Field}" Padding="32,9,28,9" TextChanged="SearchBox_OnTextChanged" ToolTip="{DynamicResource Ui.0D0E43169FAADACA}" AutomationProperties.Name="{DynamicResource Ui.02859A9360AD38AB}"/>
                                         <lab:LabIcon Kind="Search" Width="16" Height="16" Margin="11,0,0,0" HorizontalAlignment="Left" IsHitTestVisible="False" Foreground="{DynamicResource Lab.muted}"/>
@@ -210,8 +212,8 @@
                                         </Button>
                                     </Grid>
                                     <StackPanel Grid.Row="2">
-                                        <TextBlock Text="{DynamicResource Ui.3ADB5537C59AC03F}" Style="{StaticResource SidebarSectionTitle}" Foreground="{DynamicResource Lab.muted}" Margin="0,0,0,8"/>
-                                        <ScrollViewer MaxHeight="152" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"><StackPanel x:Name="CategoriesPanel"/></ScrollViewer>
+                                        <TextBlock x:Name="ShortcutCategoryHeading" Text="{DynamicResource Ui.3ADB5537C59AC03F}" Style="{StaticResource SidebarSectionTitle}" Foreground="{DynamicResource Lab.muted}" Margin="0,0,0,8"/>
+                                        <ScrollViewer x:Name="ShortcutCategoriesScroll" MaxHeight="152" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"><StackPanel x:Name="CategoriesPanel"/></ScrollViewer>
                                     </StackPanel>
                                     <StackPanel Grid.Row="4">
                                         <DockPanel LastChildFill="True">
@@ -225,7 +227,19 @@
                                             <Button x:Name="DisplayPinnedButton" Content="{DynamicResource Ui.EDD6DD450D3492B5}" Style="{StaticResource Lab.Shortcuts.Filter}" Margin="0,0,0,4" Click="DisplayPinned_OnClick"/>
                                         </WrapPanel>
                                     </StackPanel>
-                                    <ScrollViewer Grid.Row="6" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"><StackPanel x:Name="SnippetListPanel"/></ScrollViewer>
+                                    <Grid Grid.Row="6">
+                                        <lab:ShortcutListBox x:Name="SnippetListPanel" Style="{StaticResource Lab.Shortcuts.List}"
+                                            AutomationProperties.Name="{DynamicResource Ui.1ACE550668D5985D}"
+                                            ItemContainerStyle="{StaticResource Lab.Shortcuts.ListItem}"
+                                            SelectionChanged="ShortcutList_OnSelectionChanged"
+                                            PreviewMouseLeftButtonDown="ShortcutList_OnPreviewMouseLeftButtonDown"
+                                            PreviewMouseRightButtonUp="ShortcutList_OnPreviewMouseRightButtonUp"
+                                            PreviewKeyDown="ShortcutList_OnPreviewKeyDown"/>
+                                        <StackPanel x:Name="ShortcutListEmptyPanel" Margin="4,12,4,0" Visibility="Collapsed">
+                                            <TextBlock x:Name="ShortcutListEmptyHint" TextWrapping="Wrap" FontSize="12" Margin="0,0,0,12" Foreground="{DynamicResource Lab.muted}"/>
+                                            <Button x:Name="ShortcutListEmptyAction" Style="{StaticResource Lab.Button}" Click="ShortcutListEmpty_OnClick"/>
+                                        </StackPanel>
+                                    </Grid>
                                 </Grid>
                             </Grid>
                             <GridSplitter x:Name="ShortcutLeftDivider" Grid.Column="1" Style="{StaticResource WorkspaceColumnSplitter}" ResizeBehavior="PreviousAndNext" AutomationProperties.Name="{DynamicResource Ui.3FA1523D1188C39B}" ToolTip="{DynamicResource Ui.AA73F57279C9202A}" PreviewKeyDown="ShortcutSplitter_OnPreviewKeyDown" MouseDoubleClick="ShortcutSplitter_OnMouseDoubleClick" DragStarted="ShortcutSplitter_OnDragStarted" DragCompleted="ShortcutSplitter_OnDragCompleted"/>
@@ -820,7 +834,7 @@
                                                                   Style="{StaticResource Lab.Combo}">
                                                             <ComboBoxItem Content="{DynamicResource Ui.47DA5014B08C047F}" Tag="Monitor"/>
                                                             <ComboBoxItem Content="{DynamicResource Ui.1433152B0C58A9B9}" Tag="Region"/>
-                                                            <ComboBoxItem Content="{DynamicResource Ui.3AA73FB2BD385293}" Tag="Window"/>
+                                                            <ComboBoxItem Content="{DynamicResource Ui.28014EF3525228E8}" Tag="Window"/>
                                                         </ComboBox>
                                                     </StackPanel>
                                                     <StackPanel Grid.Column="2">
@@ -931,7 +945,7 @@
                                             Style="{StaticResource Lab.Combo}" SelectionChanged="CaptureCompactRecording_OnChanged">
                                     <ComboBoxItem Content="{DynamicResource Ui.47DA5014B08C047F}" Tag="Monitor"/>
                                     <ComboBoxItem Content="{DynamicResource Ui.1433152B0C58A9B9}" Tag="Region"/>
-                                    <ComboBoxItem Content="{DynamicResource Ui.3AA73FB2BD385293}" Tag="Window"/>
+                                    <ComboBoxItem Content="{DynamicResource Ui.28014EF3525228E8}" Tag="Window"/>
                                   </ComboBox>
                                 </StackPanel>
                                 <StackPanel Grid.Column="2">
@@ -1448,7 +1462,7 @@
                                 <Button Grid.Column="1" x:Name="StatisticsHelpButton" Style="{StaticResource Lab.Button}" Padding="9" VerticalAlignment="Center" ToolTip="{DynamicResource Ui.EA4EA23DB3AC8B88}" AutomationProperties.Name="{DynamicResource Ui.EA4EA23DB3AC8B88}" Click="OpenStatisticsHelp_OnClick"><lab:LabIcon Kind="CircleHelp" Width="18" Height="18"/></Button>
                             </Grid>
                             <Border x:Name="StatisticsErrorPanel" Style="{StaticResource Lab.Card}" BorderBrush="{DynamicResource Lab.error}" Visibility="Collapsed" Margin="0,0,0,20">
-                                <TextBlock Text="{DynamicResource Ui.0129D6D2BC41D700}" Style="{StaticResource Lab.Text}" AutomationProperties.LiveSetting="Polite"/>
+                                <TextBlock x:Name="StatisticsErrorDescription" Text="{DynamicResource Ui.0129D6D2BC41D700}" Style="{StaticResource Lab.Text}" AutomationProperties.LiveSetting="Polite"/>
                             </Border>
                             <UniformGrid x:Name="StatisticsMetricsGrid" Columns="4" Margin="-8,0,-8,12">
                                 <Border Style="{StaticResource Lab.Stats.MetricCard}"><StackPanel>
@@ -1528,6 +1542,18 @@
    <Button x:Name="SettingsHelpButton" Grid.Column="1" Style="{StaticResource Lab.Button}" VerticalAlignment="Center" Click="OpenSettingsHelp_OnClick" ToolTip="{DynamicResource Ui.755441578D215B09}" AutomationProperties.Name="{DynamicResource Ui.8C3A67D0377F68BB}"><lab:LabIcon Kind="CircleHelp" Width="18" Height="18"/></Button>
   </Grid>
   <Border Background="{DynamicResource Lab.tint}" CornerRadius="6" Padding="14" Margin="0,0,0,18"><TextBlock x:Name="SettingsOperationText" Text="{DynamicResource Ui.146D4E814EEDF7E3}" TextWrapping="Wrap" Style="{StaticResource Lab.Text}"/></Border>
+  <Border x:Name="StorageProtectionPanel" Visibility="Collapsed" Background="{DynamicResource Lab.tint}" BorderBrush="{DynamicResource Lab.line}" BorderThickness="1" CornerRadius="8" Padding="18" Margin="0,0,0,18">
+   <StackPanel>
+    <TextBlock x:Name="StorageProtectionTitle" Style="{StaticResource Lab.Settings.Title}"/>
+    <TextBlock x:Name="StorageProtectionDescription" Style="{StaticResource Lab.Text}" TextWrapping="Wrap" Margin="0,10,0,14" AutomationProperties.LiveSetting="Polite"/>
+    <WrapPanel>
+     <Button x:Name="StorageRetryButton" Style="{StaticResource Lab.Button}" Click="RetryStorage_OnClick" Margin="0,0,8,8"/>
+     <Button x:Name="StorageRecoverHistoryButton" Style="{StaticResource Lab.Button}" Click="RecoverHistory_OnClick" Margin="0,0,8,8"/>
+     <Button x:Name="StorageRecoverSettingsButton" Style="{StaticResource Lab.Button}" Click="RecoverSettings_OnClick" Margin="0,0,8,8"/>
+     <Button x:Name="StorageOpenFolderButton" Style="{StaticResource Lab.Button}" Click="OpenSettingsData_OnClick" Margin="0,0,8,8"/>
+    </WrapPanel>
+   </StackPanel>
+  </Border>
   <Grid x:Name="SettingsCardsGrid"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="20"/><ColumnDefinition/></Grid.ColumnDefinitions><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
    <Border x:Name="SettingsAppearanceCard" Style="{StaticResource Lab.Settings.Card}"><StackPanel>
     <StackPanel Orientation="Horizontal"><lab:LabIcon Kind="Palette" Style="{StaticResource Lab.Settings.Icon}"/><TextBlock Text="{DynamicResource Ui.04F9F0A78DBE13BE}" Style="{StaticResource Lab.Settings.Title}"/></StackPanel>
@@ -1551,6 +1577,7 @@
     <TextBlock Text="{DynamicResource Ui.33B0B649632F81EF}" Style="{StaticResource Lab.Metadata}" Margin="0,0,0,14"/>
     <CheckBox x:Name="StartWithWindowsCheckBox" Style="{StaticResource Lab.Switch}" Content="{DynamicResource Ui.DB6E1DF7C86209DE}" Margin="0,0,0,16" Click="Settings_OnClick"/>
     <CheckBox x:Name="ShowSuggestionsCheckBox" Style="{StaticResource Lab.Switch}" Content="{DynamicResource Ui.8077FC25BF90C13C}" Click="Settings_OnClick"/>
+    <TextBlock Text="{DynamicResource Ui.8F466C539051C665}" Style="{StaticResource Lab.Metadata}" TextWrapping="Wrap" Margin="0,16,0,0"/>
     <TextBlock x:Name="SettingsPilotNoteText" Text="" Style="{StaticResource Lab.Metadata}" Margin="0,16,0,0"/>
    </StackPanel></Border>
    <Border x:Name="SettingsImportCard" Grid.Row="1" Style="{StaticResource Lab.Settings.Card}"><StackPanel>
@@ -1564,6 +1591,7 @@
    <Border x:Name="SettingsBackupCard" Grid.Row="1" Grid.Column="2" Style="{StaticResource Lab.Settings.Card}"><StackPanel>
     <StackPanel Orientation="Horizontal"><lab:LabIcon Kind="Archive" Style="{StaticResource Lab.Settings.Icon}"/><TextBlock Text="{DynamicResource Ui.38F320A52A810BA9}" Style="{StaticResource Lab.Settings.Title}"/></StackPanel>
     <TextBlock Text="{DynamicResource Ui.27EFB1A01EBBE8EC}" Style="{StaticResource Lab.Metadata}" Margin="0,12,0,0"/>
+    <TextBlock x:Name="LegacyBackupPolicyText" Style="{StaticResource Lab.Metadata}" TextWrapping="Wrap" Margin="0,8,0,0"/>
     <Border Background="{DynamicResource Lab.shell}" CornerRadius="6" Padding="13" Margin="0,15,0,15"><StackPanel Orientation="Horizontal"><lab:LabIcon Kind="ShieldCheck" Style="{StaticResource Lab.Settings.Icon}"/><TextBlock x:Name="BackupSummaryText" Text="{DynamicResource Ui.49F96B4B00798E09}" Style="{StaticResource Lab.Text}" TextWrapping="Wrap"/></StackPanel></Border>
     <WrapPanel><Button x:Name="SettingsCreateBackupButton" Style="{StaticResource Lab.Button}" Content="{DynamicResource Ui.26BE3674FE349F72}" Click="CreateBackup_OnClick" Margin="0,0,8,8"/><Button x:Name="SettingsRestoreBackupButton" Style="{StaticResource Lab.Button}" Content="{DynamicResource Ui.7DF7E53BFABA651F}" Click="RestoreBackup_OnClick" Margin="0,0,8,8"/><Button Style="{StaticResource Lab.Button}" Content="{DynamicResource Ui.3CE0EF13B3539724}" Click="OpenBackupFolder_OnClick" Margin="0,0,8,8"/><Button x:Name="SettingsAnalyzeAssetsButton" Style="{StaticResource Lab.Button}" Content="{DynamicResource Ui.DB01204AF96F4CCF}" Click="AnalyzeAssets_OnClick" Margin="0,0,0,8" ToolTip="{DynamicResource Ui.4CA002907EBA9A0E}"/></WrapPanel>
     <TextBlock Text="{DynamicResource Ui.DEC6EB720D188EE3}" Style="{StaticResource Lab.Metadata}" Margin="0,6,0,8"/>
@@ -1582,6 +1610,13 @@
     <TextBlock Text="{DynamicResource Ui.08D81D21FE999F42}" Style="{StaticResource Lab.Metadata}" Margin="0,12,0,0"/>
     <Border Background="{DynamicResource Lab.shell}" CornerRadius="6" Padding="16" Margin="0,15,0,15"><TextBlock x:Name="SettingsDataPathText" Style="{StaticResource Lab.Text}" TextWrapping="Wrap" FontFamily="{StaticResource Lab.MonoFont}"/></Border>
     <TextBlock Text="{DynamicResource Ui.F914C373AA96E125}" Style="{StaticResource Lab.Metadata}" Margin="0,0,0,14"/>
+    <Grid Margin="0,0,0,12"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+     <StackPanel Margin="0,0,12,0"><TextBlock Text="{DynamicResource Ui.2BA99C26D9E9F0C9}" Style="{StaticResource Lab.Text}"/><TextBlock Text="{DynamicResource Ui.AAE212515005BDEE}" Style="{StaticResource Lab.Metadata}" Margin="0,4,0,0"/></StackPanel>
+     <CheckBox x:Name="SettingsDiagnosticsCheckBox" Grid.Column="1" Style="{StaticResource Lab.Accent.Switch}" VerticalAlignment="Center" Content="{DynamicResource Ui.F47DFDE9CB6FD44E}" AutomationProperties.Name="{DynamicResource Ui.2BA99C26D9E9F0C9}" Click="SettingsDiagnostics_OnClick"/>
+    </Grid>
+    <TextBlock Text="{DynamicResource Ui.602D916E3E55C429}" Style="{StaticResource Lab.Metadata}" Margin="0,0,0,10"/>
+    <TextBlock Text="{DynamicResource Ui.9585C7698AB00B3F}" Style="{StaticResource Lab.Metadata}" Margin="0,0,0,14"/>
+    <Border x:Name="SettingsRecordingRecoveryNotice" Visibility="Collapsed" Background="{DynamicResource Lab.tint}" CornerRadius="6" Padding="12" Margin="0,0,0,14"><TextBlock x:Name="SettingsRecordingRecoveryText" Style="{StaticResource Lab.Text}" TextWrapping="Wrap"/></Border>
     <Button Style="{StaticResource Lab.Button}" Content="{DynamicResource Ui.6F1B8E02790AC195}" HorizontalAlignment="Left" Click="OpenSettingsData_OnClick"/>
    </StackPanel></Border>
   </Grid>

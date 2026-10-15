@@ -8,6 +8,7 @@ public static class AppPaths
     private const string DefaultSnippetsResource = "SlashText.Defaults.snippets.md";
     private static readonly object Gate = new();
     private static AppDataEnvironment? _current;
+    internal static RestoreRecoveryResult LastRestoreRecovery { get; private set; } = new(0, false);
 
     public static AppDataEnvironment Current => _current ??= AppDataEnvironment.Detect();
     public static DistributionMode Mode => Current.Mode;
@@ -45,6 +46,18 @@ public static class AppPaths
     public static bool IsLanguagesPilot => IsCapturePilot &&
         (Assembly.GetEntryAssembly() ?? Assembly.GetExecutingAssembly()).GetCustomAttributes<AssemblyMetadataAttribute>()
         .Any(item => item.Key == "SlashDeskLanguagesPilot" && item.Value == "true");
+    public static bool IsLegacyBackupsPilot => IsCapturePilot &&
+        (Assembly.GetEntryAssembly() ?? Assembly.GetExecutingAssembly())
+        .GetCustomAttributes<AssemblyMetadataAttribute>()
+        .Any(item => item.Key == "SlashDeskLegacyBackupsPilot" && item.Value == "true");
+    public static bool IsProtectedStoragePilot => IsCapturePilot &&
+        (Assembly.GetEntryAssembly() ?? Assembly.GetExecutingAssembly())
+        .GetCustomAttributes<AssemblyMetadataAttribute>()
+        .Any(item => item.Key == "SlashDeskProtectedStoragePilot" && item.Value == "true");
+    public static bool IsBackupCompatibilityPilot => IsCapturePilot &&
+        (Assembly.GetEntryAssembly() ?? Assembly.GetExecutingAssembly())
+        .GetCustomAttributes<AssemblyMetadataAttribute>()
+        .Any(item => item.Key == "SlashDeskBackupCompatibilityPilot" && item.Value == "true");
     public static string BaseDirectory => Current.ExecutableDirectory;
     public static string DataDirectory => Current.DataDirectory;
     public static string SnippetsFile => Path.Combine(DataDirectory, "snippets.md");
@@ -62,6 +75,7 @@ public static class AppPaths
         lock (Gate)
         {
             _current = environment;
+            LastRestoreRecovery = new(0, false);
         }
     }
 
@@ -69,7 +83,10 @@ public static class AppPaths
 
     public static DataMigrationResult EnsureDataLayout()
     {
+        var before = RestoreRecovery.RecoverPending(DataDirectory);
         var result = new DataMigrationService().EnsureLayout(Current);
+        var after = RestoreRecovery.RecoverPending(DataDirectory);
+        LastRestoreRecovery = new(before.RecoveredCount + after.RecoveredCount, before.CleanupPending || after.CleanupPending);
         EnsureDefaultSnippets();
         return result;
     }

@@ -51,6 +51,42 @@ jobs:
           $process = Start-Process $exe.FullName -ArgumentList "--shortcuts-workspace-smoke `"$output`"" -WindowStyle Hidden -PassThru
           if (-not $process.WaitForExit(180000)) { $process.Kill(); throw 'WPF timeout' }
           if ($process.ExitCode -ne 0) { Get-Content "$output/failure.txt" -ErrorAction SilentlyContinue; throw 'WPF failed' }
+      - name: Usage write failures in real WPF consumers
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem src/SlashText/bin -Recurse -Filter SlashDesk.exe | Select-Object -First 1
+          $output = Join-Path $PWD 'ocr-evidence/usage-writes-compiled'
+          $process = Start-Process $exe.FullName -ArgumentList "--usage-write-ui-smoke `"$output`"" -WindowStyle Hidden -PassThru
+          if (-not $process.WaitForExit(60000)) { $process.Kill(); throw 'Usage UI timeout' }
+          if ($process.ExitCode -ne 0) { Get-Content "$output/failure.txt" -ErrorAction SilentlyContinue; throw 'Usage UI failed' }
+          Get-Content "$output/result.txt"
+      - name: Capture preference write failures in real WPF actions
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem src/SlashText/bin -Recurse -Filter SlashDesk.exe | Select-Object -First 1
+          $output = Join-Path $PWD 'ocr-evidence/capture-preferences-compiled'
+          $process = Start-Process $exe.FullName -ArgumentList "--capture-preference-ui-smoke `"$output`"" -WindowStyle Hidden -PassThru
+          if (-not $process.WaitForExit(60000)) { $process.Kill(); throw 'Capture preference UI timeout' }
+          if ($process.ExitCode -ne 0) { Get-Content "$output/failure.txt" -ErrorAction SilentlyContinue; throw 'Capture preference UI failed' }
+          Get-Content "$output/result.txt"
+      - name: Recording reservation and cancellation in real WPF commands
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem src/SlashText/bin -Recurse -Filter SlashDesk.exe | Select-Object -First 1
+          $output = Join-Path $PWD 'ocr-evidence/recording-operation-compiled'
+          $process = Start-Process $exe.FullName -ArgumentList "--recording-operation-ui-smoke `"$output`"" -WindowStyle Hidden -PassThru
+          if (-not $process.WaitForExit(60000)) { $process.Kill(); throw 'Recording reservation UI timeout' }
+          if ($process.ExitCode -ne 0) { Get-Content "$output/failure.txt" -ErrorAction SilentlyContinue; throw 'Recording reservation UI failed' }
+          Get-Content "$output/result.txt"
+      - name: Recording destination clicks and crop configuration
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem src/SlashText/bin -Recurse -Filter SlashDesk.exe | Select-Object -First 1
+          $output = Join-Path $PWD 'ocr-evidence/recording-targets'
+          $process = Start-Process $exe.FullName -ArgumentList "--recording-targets-smoke `"$output`"" -WindowStyle Hidden -PassThru
+          if (-not $process.WaitForExit(60000)) { $process.Kill(); throw 'Recording target WPF timeout' }
+          if ($process.ExitCode -ne 0) { Get-Content "$output/failure.txt" -ErrorAction SilentlyContinue; throw 'Recording target WPF failed' }
+          Get-Content "$output/result.txt"
       - name: Recording audio toolbar and settings
         shell: pwsh
         run: |
@@ -76,6 +112,80 @@ jobs:
           $process = Start-Process $exe -ArgumentList "--capture-ocr-smoke `"$output`"" -WindowStyle Hidden -PassThru
           if (-not $process.WaitForExit(180000)) { $process.Kill(); throw 'OCR timeout' }
           if ($process.ExitCode -ne 0) { Get-Content "$output/failure.txt" -ErrorAction SilentlyContinue; throw 'Portable OCR failed' }
+          Get-Content "$output/result.txt"
+      - name: Restore recovery dialogs inside published EXE
+        shell: pwsh
+        run: |
+          $output = Join-Path $PWD 'ocr-evidence/restore-recovery'
+          $exe = (Resolve-Path publish-ocr/SlashDesk.exe).Path
+          $process = Start-Process $exe -ArgumentList "--restore-recovery-smoke `"$output`"" -WindowStyle Hidden -PassThru
+          if (-not $process.WaitForExit(60000)) { $process.Kill(); throw 'Restore recovery UI timeout' }
+          if ($process.ExitCode -ne 0) { Get-Content "$output/failure.txt" -ErrorAction SilentlyContinue; throw 'Restore recovery UI failed' }
+          Get-Content "$output/result.txt"
+          foreach ($mode in @('recover', 'blocked')) {
+            $demo = Join-Path $output $mode
+            $process = Start-Process $exe -ArgumentList "--restore-recovery-demo-smoke $mode `"$demo`"" -WindowStyle Hidden -PassThru
+            if (-not $process.WaitForExit(60000)) { $process.Kill(); throw 'Restore recovery demo timeout' }
+            if ($process.ExitCode -ne 0) { Get-Content "$demo/failure.txt" -ErrorAction SilentlyContinue; throw 'Restore recovery demo failed' }
+            Get-Content "$demo/resultado-$mode.txt"
+          }
+      - name: Backup compatibility inside published EXE
+        shell: pwsh
+        run: |
+          $fixtures = Join-Path $PWD 'ocr-evidence/backup-compatibility-fixtures'
+          $fixtureExe = Get-ChildItem tests/SlashText.SmokeTests/bin -Recurse -Filter SlashText.SmokeTests.exe | Select-Object -First 1
+          & $fixtureExe.FullName --backup-compatibility-fixtures $fixtures
+          if ($LASTEXITCODE -ne 0) { throw 'Backup fixture generation failed' }
+          $output = Join-Path $PWD 'ocr-evidence/backup-compatibility'
+          $exe = (Resolve-Path publish-ocr/SlashDesk.exe).Path
+          $process = Start-Process $exe -ArgumentList "--backup-compatibility-smoke `"$output`" `"$fixtures`"" -WindowStyle Hidden -PassThru
+          if (-not $process.WaitForExit(60000)) { $process.Kill(); throw 'Backup compatibility UI timeout' }
+          if ($process.ExitCode -ne 0) { Get-Content "$output/failure.txt" -ErrorAction SilentlyContinue; throw 'Backup compatibility UI failed' }
+          Get-Content "$output/result.txt"
+      - name: Protected storage inside published EXE
+        shell: pwsh
+        run: |
+          $output = Join-Path $PWD 'ocr-evidence/protected-storage'
+          $exe = (Resolve-Path publish-ocr/SlashDesk.exe).Path
+          $process = Start-Process $exe -ArgumentList "--protected-storage-smoke `"$output`"" -WindowStyle Hidden -PassThru
+          if (-not $process.WaitForExit(60000)) { $process.Kill(); throw 'Protected storage UI timeout' }
+          if ($process.ExitCode -ne 0) { Get-Content "$output/failure.txt" -ErrorAction SilentlyContinue; throw 'Protected storage UI failed' }
+          Get-Content "$output/result.txt"
+      - name: Legacy backup preservation inside published EXE
+        shell: pwsh
+        run: |
+          $output = Join-Path $PWD 'ocr-evidence/legacy-backups'
+          $exe = (Resolve-Path publish-ocr/SlashDesk.exe).Path
+          $process = Start-Process $exe -ArgumentList "--legacy-backups-smoke `"$output`"" -WindowStyle Hidden -PassThru
+          if (-not $process.WaitForExit(60000)) { $process.Kill(); throw 'Legacy backup UI timeout' }
+          if ($process.ExitCode -ne 0) { Get-Content "$output/failure.txt" -ErrorAction SilentlyContinue; throw 'Legacy backup UI failed' }
+          Get-Content "$output/result.txt"
+      - name: Usage write failures inside published EXE
+        shell: pwsh
+        run: |
+          $output = Join-Path $PWD 'ocr-evidence/usage-writes-published'
+          $exe = (Resolve-Path publish-ocr/SlashDesk.exe).Path
+          $process = Start-Process $exe -ArgumentList "--usage-write-ui-smoke `"$output`"" -WindowStyle Hidden -PassThru
+          if (-not $process.WaitForExit(60000)) { $process.Kill(); throw 'Published usage UI timeout' }
+          if ($process.ExitCode -ne 0) { Get-Content "$output/failure.txt" -ErrorAction SilentlyContinue; throw 'Published usage UI failed' }
+          Get-Content "$output/result.txt"
+      - name: Capture preference write failures inside published EXE
+        shell: pwsh
+        run: |
+          $output = Join-Path $PWD 'ocr-evidence/capture-preferences-published'
+          $exe = (Resolve-Path publish-ocr/SlashDesk.exe).Path
+          $process = Start-Process $exe -ArgumentList "--capture-preference-ui-smoke `"$output`"" -WindowStyle Hidden -PassThru
+          if (-not $process.WaitForExit(60000)) { $process.Kill(); throw 'Published capture preference UI timeout' }
+          if ($process.ExitCode -ne 0) { Get-Content "$output/failure.txt" -ErrorAction SilentlyContinue; throw 'Published capture preference UI failed' }
+          Get-Content "$output/result.txt"
+      - name: Recording reservation inside published EXE
+        shell: pwsh
+        run: |
+          $output = Join-Path $PWD 'ocr-evidence/recording-operation-published'
+          $exe = (Resolve-Path publish-ocr/SlashDesk.exe).Path
+          $process = Start-Process $exe -ArgumentList "--recording-operation-ui-smoke `"$output`"" -WindowStyle Hidden -PassThru
+          if (-not $process.WaitForExit(60000)) { $process.Kill(); throw 'Published recording reservation UI timeout' }
+          if ($process.ExitCode -ne 0) { Get-Content "$output/failure.txt" -ErrorAction SilentlyContinue; throw 'Published recording reservation UI failed' }
           Get-Content "$output/result.txt"
       - name: Package isolated pilot and verify startup
         shell: pwsh

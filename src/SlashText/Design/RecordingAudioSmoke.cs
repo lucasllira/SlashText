@@ -69,6 +69,7 @@ internal static class RecordingAudioSmoke
             dialog.Close();
         }
         await RecordingRecoverySmoke.RunAsync(output);
+        await RecordingRecoveryOperationSmoke.RunAsync(Path.Combine(output, "operation-recovery"));
         if (native) await NativeAsync(output);
         File.WriteAllText(Path.Combine(output, "result.txt"), "Recording audio WPF: OK\nNative: " + (native ? "executed (see native.json)" : "not requested"));
     }

@@ -356,7 +356,7 @@ if ($recording.Contains('CleanupRecorder') -or
     -not $recording.Contains('Interlocked.CompareExchange(ref _finalizationClaimed, 1, 0)') -or
     -not $recording.Contains('IsHardwareEncodingEnabled = true') -or
     -not $recording.Contains('IsFixedFramerate = false') -or
-    -not $recording.Contains('IsLogEnabled = true')) {
+    -not $recording.Contains('IsLogEnabled = false')) {
     throw 'Ciclo de finalização MP4 inseguro ou dependente de aceleração de hardware.'
 }
 
@@ -394,14 +394,15 @@ if (-not $gif.Contains('GifBitmapEncoder') -or
     throw 'Correções críticas de GIF ou MP4 incompletas.'
 }
 
-$windowTargetIndex = $code.LastIndexOf('target = _captureService.WindowUnderCursorTarget();')
+$windowTargetIndex = $code.LastIndexOf('var target = ResolveRecordingTarget(targetKind, operation.Token);')
 $hideBeforeWindowIndex = if ($windowTargetIndex -ge 0) {
     $code.LastIndexOf('Hide();', $windowTargetIndex)
 } else {
     -1
 }
 if ($hideBeforeWindowIndex -lt 0 -or
-    $windowTargetIndex - $hideBeforeWindowIndex -gt 300) {
+    $windowTargetIndex - $hideBeforeWindowIndex -gt 300 -or
+    -not $code.Contains('RecordingTargetKind.Window => _captureService.SelectRecordingWindow(this')) {
     throw 'A seleção de janela MP4 deve ocorrer após ocultar o SlashDesk.'
 }
 
