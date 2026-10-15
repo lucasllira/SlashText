@@ -169,6 +169,17 @@ public partial class App : System.Windows.Application
             ThemeService.Apply("System");
             MainWindow = new Design.AuxiliaryReviewWindow(); MainWindow.Show(); return;
         }
+        if (e.Args.Length == 2 && e.Args[0] == "--third-party-notices-smoke")
+        {
+            _helperMode=true; ShutdownMode=ShutdownMode.OnExplicitShutdown;
+            var output=Path.GetFullPath(e.Args[1]); base.OnStartup(e);
+            Dispatcher.BeginInvoke(new Action(async ()=>
+            {
+                try {await Design.ThirdPartyNoticesSmoke.RunAsync(output); Shutdown(0);}
+                catch(Exception exception) {Directory.CreateDirectory(output); File.WriteAllText(Path.Combine(output,"failure.txt"),exception.ToString()); Shutdown(1);}
+            }));
+            return;
+        }
         if (e.Args.Length > 0 && e.Args[0] == "--about-smoke")
         {
             _helperMode = true; ShutdownMode = ShutdownMode.OnExplicitShutdown;

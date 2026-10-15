@@ -1784,5 +1784,10 @@
   "Ui.F2EB0F4B354596CA": "Preparando grabación…",
   "Ui.49D8D781CC69A426": "Preparación de la grabación cancelada.",
   "Ui.FF8E288671C302E9": "Cancelar preparación",
-  "Ui.785023A1E997A17F": "Los componentes de OCR no superaron la verificación. Reinstala SlashDesk desde el paquete oficial."
+  "Ui.785023A1E997A17F": "Los componentes de OCR no superaron la verificación. Reinstala SlashDesk desde el paquete oficial.",
+  "Ui.2766571A19B26EF9": "Avisos de terceros",
+  "Ui.0C605CF19F36B378": "Licencias y atribuciones incluidas en la aplicación. Disponible sin conexión.",
+  "Ui.75926F8261AD70EB": "Componente",
+  "Ui.3227D7EFCEADEF83": "Texto de la licencia",
+  "Ui.97C5EA9F13C00DC4": "No se pudieron cargar los avisos de terceros."
 }

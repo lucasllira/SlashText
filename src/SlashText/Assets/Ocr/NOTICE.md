@@ -8,8 +8,10 @@ The approved x64 DLL exports report Tesseract 5.0.0 and Leptonica 1.82.0;
 the package/upstream description calls Tesseract 5.2.0. These are distinct
 observations, not an attestation of native source commits or security backports.
 SHA-256 identity and contextual advisory decisions: scripts/security/native-versions.json
-and docs/ocr-native-trust.md in the source repository. Complete transitive notices
-and licenses remain subject to the distribution review (#96).
+and docs/ocr-native-trust.md in the source repository. Complete license texts and
+the detected native codec notices are included in About > Third-party notices,
+available offline, together with the original InteropDotNet and Leptonica terms.
+The catalog distinguishes source snapshots from unattested native build details.
 
 Portuguese and English models: tesseract-ocr/tessdata_best, Apache-2.0,
 commit e12c65a915945e4c28e237a9b52bc4a8f39a0cec.

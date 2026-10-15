@@ -306,3 +306,7 @@ Veja as [notas completas da versão 3.1.0](https://github.com/lucasllira/SlashTe
 ## Licença
 
 Distribuído sob a [licença MIT](LICENSE).
+
+Os [avisos e licenças de terceiros](THIRD-PARTY-NOTICES.md) acompanham o aplicativo
+e podem ser consultados offline em **Sobre → Avisos de terceiros**, nos três
+idiomas da interface. Os textos originais das licenças são preservados.

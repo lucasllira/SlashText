@@ -1,0 +1,35 @@
+SlashDesk - Third-party notices
+
+Open About > Third-party notices to read the complete license and attribution
+texts embedded in this application. No internet connection is required.
+The original texts are retained in their original language; only the viewer's
+interface is translated. Line endings are normalized to LF / UTF-8 without BOM.
+The embedded catalog records document identities, versions, source references
+and SHA-256 digests. SlashDesk's own MIT license remains unchanged.
+
+This software is based in part on the work of the Independent JPEG Group.
+
+ScreenRecorderLib 6.6.0: Copyright (c) 2017 Sverre Skodje (license text).
+The NuGet package metadata also credits Sverre Kristoffer Skodje, copyright 2025.
+Tesseract .NET 5.2.0: Copyright 2012-2020 Charles Weld (NuGet metadata).
+InteropDotNet: Copyright 2014 Andrey Akinshin (Tesseract acknowledgement).
+AvalonEdit 6.3.1.120: AvalonEdit Contributors; NuGet metadata credits
+2000-2025 AlphaSierraPapa for the SharpDevelop Team.
+See each accompanying upstream text for all authors and license conditions.
+
+The x64 Leptonica export reports GIF 5.2.1, JPEG API 6b / libjpeg-turbo 2.1.4,
+PNG 1.6.37, TIFF 4.4.0 and zlib 1.2.13. Static x86 codec strings agree where
+observable; x86 binaries are distributed by the upstream package but not loaded
+by this x64 application. Native source commits/backports are not attested.
+The TIFF binary also contains liblzma diagnostic/codec code; its version is not
+available from the supplied package. The XZ Utils 5.2.7 COPYING is supplied as a
+supplemental upstream notice, not as an assertion of its exact binary version.
+That notice distinguishes the public-domain library from separately licensed
+tools/build scripts; no XZ command-line tools are distributed by SlashDesk.
+
+Self-contained builds include the licenses and notices from the exact resolved
+.NET runtime packages. Upstream WPF and Windows Forms notices supplement those
+packages. Framework-dependent development builds do not redistribute the runtime.
+Microsoft Media Foundation, Windows APIs and the external VC++ prerequisites
+remain platform components; no separately downloaded codec/encoder executable
+or VC++ installer is included by this change.

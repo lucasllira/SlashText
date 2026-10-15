@@ -1667,6 +1667,7 @@
                                 <Button x:Name="AboutCurrentReleaseNotesButton" Content="{DynamicResource Ui.59AAE9F211ECC8FF}" Style="{StaticResource Lab.Button}" Margin="5" Click="AboutCurrentReleaseNotes_OnClick"/>
                                 <Button x:Name="AboutReportIssueButton" Content="{DynamicResource Ui.4F66EB6CACC1BDC5}" Style="{StaticResource Lab.Button}" Margin="5" Click="AboutReportIssue_OnClick"/>
                                 <Button x:Name="AboutLicenseButton" Content="{DynamicResource Ui.0BB53A5D15357313}" Style="{StaticResource Lab.Button}" Margin="5" Click="AboutLicense_OnClick"/>
+                                <Button x:Name="AboutThirdPartyNoticesButton" Content="{DynamicResource Ui.2766571A19B26EF9}" Style="{StaticResource Lab.Button}" Margin="5" Click="AboutThirdPartyNotices_OnClick"/>
                             </WrapPanel>
                             <TextBlock x:Name="AboutLinkStatusText" Style="{StaticResource Lab.About.Body}" Foreground="{DynamicResource Lab.error}" TextWrapping="Wrap" Visibility="Collapsed" Margin="0,0,0,16" AutomationProperties.LiveSetting="Polite"/>
                             <Border x:Name="AboutUpdatesCard" Style="{StaticResource Lab.Card}" Padding="22">
