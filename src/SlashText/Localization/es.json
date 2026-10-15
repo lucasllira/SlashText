@@ -1783,5 +1783,6 @@
   "Ui.1CF5EE24ADC407BF": "Ya hay una captura o grabación en curso.",
   "Ui.F2EB0F4B354596CA": "Preparando grabación…",
   "Ui.49D8D781CC69A426": "Preparación de la grabación cancelada.",
-  "Ui.FF8E288671C302E9": "Cancelar preparación"
+  "Ui.FF8E288671C302E9": "Cancelar preparación",
+  "Ui.785023A1E997A17F": "Los componentes de OCR no superaron la verificación. Reinstala SlashDesk desde el paquete oficial."
 }

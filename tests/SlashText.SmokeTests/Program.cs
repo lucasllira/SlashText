@@ -6,6 +6,31 @@ using System.IO.Compression;
 using System.Diagnostics;
 using ScreenRecorderLib;
 
+if (args.Length >= 3 && args[0] == "--capture-ocr-worker")
+{
+    if (Environment.GetEnvironmentVariable("SLASHDESK_TEST_OCR_MODE") == "wait")
+    {
+        using var lease = TemporarySession.AttachWorker(args[1], args[2]);
+        if (!Path.GetFullPath(Environment.CurrentDirectory).Equals(Path.GetDirectoryName(Path.GetFullPath(args[1])), StringComparison.OrdinalIgnoreCase)) Environment.Exit(8);
+        File.WriteAllText(args[2], "inert worker ready");
+        await Task.Delay(TimeSpan.FromMinutes(1));
+        Environment.Exit(9);
+    }
+    Environment.Exit(CaptureOcrService.RunWorker(args));
+    return;
+}
+if (args.Length is 2 or 3 && args[0] == "--ocr-native-trust-smoke")
+{
+    await OcrTrustChecks.RunAsync(Path.GetFullPath(args[1]), native: true,
+        baseline: args.Length == 3 ? Path.GetFullPath(args[2]) : null);
+    return;
+}
+if (args.Length == 2 && args[0] == "--ocr-trust-smoke")
+{
+    await OcrTrustChecks.RunAsync(Path.GetFullPath(args[1]), native: false);
+    return;
+}
+
 if (args.Length == 2 && args[0] == "--capture-stamp-path-smoke")
 {
     var output = Path.GetFullPath(args[1]);
@@ -121,6 +146,7 @@ if (args.Length == 2 && args[0] == "--clipboard-native-isolated")
 
 var root = Path.Combine(Path.GetTempPath(), $"slashtext-smoke-{Guid.NewGuid():N}");
 AppPaths.Initialize(new AppDataEnvironment(DistributionMode.Portable, Path.Combine(root, "initial-app"), root, isCapturePilot: true));
+await OcrTrustChecks.RunAsync(Path.Combine(root, "ocr-trust"), native: false);
 await SnippetBatchChecks.RunAsync(Path.Combine(root, "snippet-batch"));
 await RecordingOperationChecks.RunAsync(Path.Combine(root, "recording-operation"));
 await GifCancellationChecks.RunAsync(Path.Combine(root, "gif-cancellation"));
