@@ -1,4 +1,3 @@
-using ScreenRecorderLib;
 using SlashText.Models;
 
 namespace SlashText.Services;
@@ -11,10 +10,7 @@ internal sealed record RecordingAudioDeviceList(IReadOnlyList<RecordingAudioDevi
     {
         try
         {
-            var devices = microphone
-                ? Recorder.GetSystemAudioCaptureDevices().Select(device => new RecordingAudioDevice(device.DeviceName, device.FriendlyName))
-                : Recorder.GetSystemAudioLoopbackDevices().Select(device => new RecordingAudioDevice(device.DeviceName, device.FriendlyName));
-            return new(devices.ToArray(), null);
+            return new(WindowsAudioEndpoints.Enumerate(microphone), null);
         }
         catch (Exception exception)
         {

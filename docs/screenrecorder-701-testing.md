@@ -2,6 +2,11 @@
 
 O backend MP4 usa 7.0.1 no app e nos testes. As APIs de áudio antigas foram
 substituídas por fontes explícitas: loopback para PC e captura para microfone.
+Endpoints são enumerados diretamente pela API MMDevice do Windows, sem consulta
+de dispositivo padrão. Isso evita uma desreferência nula na enumeração da 7.0.1
+quando não existe endpoint padrão, observada no CI. Sem dispositivos retorna
+lista vazia; indisponibilidade/erro COM mantém a mensagem de erro controlada.
+IDs/friendly names continuam sendo os mesmos identificadores do Windows.
 Somente as fontes habilitadas são construídas; sem áudio mantém lista vazia e
 trilha desativada. ID vazio continua representando o padrão do Windows, sem
 persistir uma resolução específica do dispositivo. Configurações existentes,
@@ -26,7 +31,8 @@ compilação reproduzível a partir dessa tag.
 `RecordingAudioMigrationChecks`, na suíte geral, verifica quatro combinações
 de fontes × padrão/ID explícito, contagem/tipo de fontes, seleção e volume,
 identidades estáveis em mute/restore, ausência de fontes extras, preservação de
-preferências e flags. Não enumera nem captura dispositivos.
+preferências e flags. Também faz enumeração somente leitura de endpoints e
+verifica listas/erro controlado, sem capturar áudio ou registrar nomes/IDs.
 
 Os smokes WPF de áudio/preparação, reserva da operação, destinos e avisos
 offline são reutilizados. CI confirma a suíte geral/inventário no head entregue.

@@ -56,8 +56,16 @@ internal static class RecordingAudioMigrationChecks
         var monoUpdate = (CaptureAudioSource)RecordingAudioConfiguration.VolumeUpdate([mono], 0, 0).AudioSources.Single();
         Check(monoUpdate.ID == mono.ID && monoUpdate.ForceMono && monoUpdate.InputDeviceMasterChannel == 1 && !monoUpdate.IsAudioCaptureEnabled,
             "volume changes preserve source flags and mono channel");
+        var devices = RecordingAudioDevices.Load();
+        foreach (var list in new[] { devices.Inputs, devices.Outputs })
+            Check(list.Error is null
+                ? list.Devices.All(d => !string.IsNullOrWhiteSpace(d.Id) && !string.IsNullOrWhiteSpace(d.Name)) &&
+                    list.Devices.Select(d => d.Id).Distinct().Count() == list.Devices.Count
+                : list.Devices.Count == 0, "Windows endpoint enumeration returns a valid list or a controlled error");
+        Console.WriteLine($"Windows endpoints: inputCount={devices.Inputs.Devices.Count}, outputCount={devices.Outputs.Devices.Count}, " +
+            $"inputError={devices.Inputs.Error is not null}, outputError={devices.Outputs.Error is not null}; no audio captured or device names logged.");
         Directory.CreateDirectory(output);
         File.WriteAllLines(Path.Combine(output, "recording-audio-701.txt"), checks);
-        Console.WriteLine($"Recording audio 7.0.1: {checks.Count} checks passed; no native recording or device access.");
+        Console.WriteLine($"Recording audio 7.0.1: {checks.Count} checks passed; read-only endpoint enumeration, no native recording.");
     }
 }

@@ -11,6 +11,11 @@ if (args.Length == 1 && args[0] == "--release-trust-smoke")
     await ReleaseTrustChecks.RunAsync();
     return;
 }
+if (args.Length == 2 && args[0] == "--recording-audio-migration-smoke")
+{
+    RecordingAudioMigrationChecks.Run(Path.GetFullPath(args[1]));
+    return;
+}
 if (args.Length >= 3 && args[0] == "--capture-ocr-worker")
 {
     if (Environment.GetEnvironmentVariable("SLASHDESK_TEST_OCR_MODE") == "wait")
