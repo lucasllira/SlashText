@@ -242,7 +242,9 @@ public sealed class GifRecordingService
                             }
                             framePaths.Add(framePath);
                             delays.Add(defaultDelay);
-                            lastStoredAt = captured.Elapsed;
+                            // The first available image also represents startup time.
+                            // Otherwise a slow first capture shortens the whole GIF.
+                            lastStoredAt = framePaths.Count == 1 ? TimeSpan.Zero : captured.Elapsed;
                         }
                     }
                     session.Report($"Gravando GIF · {capturedFrames:N0} quadros");
@@ -276,7 +278,8 @@ public sealed class GifRecordingService
                 temporaryBytes,
                 settings.GifFps,
                 capturedFrames / activeSeconds,
-                processedFrames);
+                processedFrames,
+                session.Elapsed.TotalMilliseconds);
             Log("gif.capture-complete",
                 recordingId,
                 ("requestedFps", metrics.RequestedFps),
@@ -344,12 +347,7 @@ public sealed class GifRecordingService
         {
             using var bitmap = recording.LoadFrame(index);
             var source = Quantize(ToBitmapSource(bitmap), colorCount);
-            var metadata = new BitmapMetadata("gif");
-            metadata.SetQuery(
-                "/grctlext/Delay",
-                (ushort)Math.Clamp(recording.FrameDelaysCentiseconds[index], 2, ushort.MaxValue));
-            metadata.SetQuery("/grctlext/Disposal", (byte)2);
-            encoder.Frames.Add(BitmapFrame.Create(source, null, metadata, null));
+            encoder.Frames.Add(BitmapFrame.Create(source));
         }
 
         try
@@ -359,7 +357,7 @@ public sealed class GifRecordingService
                 encoder.Save(stream);
                 stream.Flush(flushToDisk: true);
             }
-            EnsureLoopExtension(temporaryPath);
+            GifTimingMetadata.Write(temporaryPath, recording.FrameDelaysCentiseconds);
             File.Move(temporaryPath, path);
             AppDiagnosticLog.Write(
                 "gif.encode-complete",
@@ -544,8 +542,11 @@ public sealed class GifRecordingService
         public int MinimumDistanceSquared { get; set; } = int.MaxValue;
     }
 
-    private static int DelayBetween(TimeSpan start, TimeSpan end) =>
-        Math.Max(2, (int)Math.Round(Math.Max(0, (end - start).TotalMilliseconds) / 10d));
+    internal static int DelayBetween(TimeSpan start, TimeSpan end) =>
+        // Quantize absolute boundaries, not each interval: fractional frame
+        // periods (e.g. 30 FPS) must not accumulate rounding drift.
+        Math.Max(2, (int)(Math.Round(end.TotalMilliseconds / 10d) -
+                         Math.Round(start.TotalMilliseconds / 10d)));
 
     private static GifTechnicalLimitException TechnicalLimit(string message)
     {
@@ -608,41 +609,6 @@ public sealed class GifRecordingService
 
     private static double TicksToMilliseconds(long ticks) =>
         ticks * 1000d / Stopwatch.Frequency;
-
-    private static void EnsureLoopExtension(string path)
-    {
-        var gif = File.ReadAllBytes(path);
-        if (gif.Length < 13 || gif[0] != 'G' || gif[1] != 'I' || gif[2] != 'F')
-        {
-            throw new InvalidDataException(UiText.Get("O encoder criou um contêiner GIF inválido."));
-        }
-        ReadOnlySpan<byte> applicationId = "NETSCAPE2.0"u8;
-        if (gif.AsSpan().IndexOf(applicationId) >= 0)
-        {
-            return;
-        }
-        var packedFields = gif[10];
-        var colorTableLength = (packedFields & 0x80) == 0
-            ? 0
-            : 3 * (1 << ((packedFields & 0x07) + 1));
-        var insertionOffset = 13 + colorTableLength;
-        if (insertionOffset > gif.Length)
-        {
-            throw new InvalidDataException(UiText.Get("A tabela de cores do GIF está incompleta."));
-        }
-        ReadOnlySpan<byte> loopExtension =
-        [
-            0x21, 0xFF, 0x0B,
-            (byte)'N', (byte)'E', (byte)'T', (byte)'S', (byte)'C', (byte)'A',
-            (byte)'P', (byte)'E', (byte)'2', (byte)'.', (byte)'0',
-            0x03, 0x01, 0x00, 0x00, 0x00
-        ];
-        var result = new byte[gif.Length + loopExtension.Length];
-        gif.AsSpan(0, insertionOffset).CopyTo(result);
-        loopExtension.CopyTo(result.AsSpan(insertionOffset));
-        gif.AsSpan(insertionOffset).CopyTo(result.AsSpan(insertionOffset + loopExtension.Length));
-        File.WriteAllBytes(path, result);
-    }
 
     private static void TryDelete(string path)
     {
