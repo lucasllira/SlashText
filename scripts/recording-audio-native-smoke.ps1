@@ -21,7 +21,9 @@ if ($process.ExitCode -ne 0) {
     Get-Content -LiteralPath (Join-Path $output 'failure.txt') -ErrorAction SilentlyContinue
     throw "Teste falhou. Preserve a pasta para diagnostico local: $output"
 }
-$metrics = @(Get-Content -LiteralPath (Join-Path $output 'native.json') -Raw | ConvertFrom-Json)
+$metrics = Get-Content -LiteralPath (Join-Path $output 'native.json') -Raw | ConvertFrom-Json
+# Windows PowerShell 5.1 emits a JSON array as a single pipeline object.
+$metrics = @($metrics)
 $expected = @('silent','computer','microphone','both')
 if ($metrics.Count -ne 4 -or @($expected | Where-Object { $_ -notin $metrics.name }).Count) {
     throw 'Relatorio incompleto: faltam combinacoes de audio.'
