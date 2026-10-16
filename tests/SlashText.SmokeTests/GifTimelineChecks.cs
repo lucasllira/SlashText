@@ -35,6 +35,13 @@ internal static class GifTimelineChecks
                 Require(delays.Sum() == 1000 && delays.All(d => d >= 2),
                     $"{fps} FPS: ten-second timeline, centisecond boundaries, minimum delay", delays);
             }
+            // A final image can need 20 ms even if Stop is only 0.1 ms later.
+            // Compare with the centisecond clock, allowing endpoint rounding.
+            var closeEnd = TimeSpan.FromMilliseconds(95.2);
+            var closeDelays = GifRecordingService.DelayBetween(TimeSpan.Zero, TimeSpan.FromMilliseconds(95.1)) +
+                GifRecordingService.DelayBetween(TimeSpan.FromMilliseconds(95.1), closeEnd);
+            Require(closeDelays == 12 && Math.Abs(closeDelays * 10 - Math.Round(closeEnd.TotalMilliseconds / 10) * 10) == 20,
+                "final minimum delay uses the centisecond clock, including rounding at a close transition", closeDelays);
 
             // No real wait: long static holds must survive the GIF 16-bit delay
             // limit, including a remainder of one centisecond.
@@ -197,8 +204,8 @@ internal static class GifTimelineChecks
             Require(result.Fps == expectedFps, name + ": configured FPS preserved", snapshot);
             ValidateDuration(result, name);
             if (elapsed is not null)
-                Require(Math.Abs(result.Duration.TotalMilliseconds - elapsed.Value.TotalMilliseconds) <= 20,
-                    name + ": duration follows the actual active session clock (20 ms GIF minimum/rounding tolerance)", snapshot);
+                Require(result.Metrics!.ActiveDurationMilliseconds == elapsed.Value.TotalMilliseconds,
+                    name + ": metrics use the actual stopped active session clock", snapshot);
             var path = service.Save(result, new CaptureSettings
                 { OutputDirectoryTemplate = output, FileNameTemplate = name }, "gif", 128);
             GifTimingMetadata.Write(path, result.FrameDelaysCentiseconds); // Idempotent timing/loop replacement.
@@ -244,8 +251,8 @@ internal static class GifTimelineChecks
 
     internal static void ValidateDuration(GifRecordingResult result, string name) =>
         Require(result.Metrics is { ActiveDurationMilliseconds: > 0 } m &&
-            Math.Abs(result.Duration.TotalMilliseconds - m.ActiveDurationMilliseconds) <= 20,
-            name + ": timeline matches stopped active duration", Snapshot(result));
+            Math.Abs(result.Duration.TotalMilliseconds - Math.Round(m.ActiveDurationMilliseconds / 10d) * 10d) <= 20,
+            name + ": timeline matches centisecond stopped clock (20 ms final minimum, up to 5 ms endpoint rounding)", Snapshot(result));
 
     internal static string Snapshot(GifRecordingResult result) => JsonSerializer.Serialize(new
         { durationMs = result.Duration.TotalMilliseconds, result.Metrics, delays = result.FrameDelaysCentiseconds });

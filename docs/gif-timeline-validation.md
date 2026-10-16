@@ -12,7 +12,10 @@ Delays use differences between rounded absolute centisecond boundaries, rather
 than rounding each frame period independently. Thus fractional periods such as
 30 FPS do not accumulate rounding drift. The existing minimum delay of 20 ms is
 preserved; exceptionally close transitions can extend the represented interval
-by that minimum. Encoding and preview continue to use the same delay list.
+by that minimum. Timing checks allow 20 ms around the centisecond-rounded stopped
+clock (at most 25 ms from the raw clock, including up to 5 ms rounding). A
+deterministic close-final-transition case verifies that bound. Encoding and
+preview continue to use the same delay list.
 
 The WPF GIF encoder does not support frame metadata, so passing a delay through
 BitmapFrame metadata did not preserve it in the saved file. After WPF encodes the
@@ -31,7 +34,7 @@ moves the completed temporary file to the destination only after all processing.
 Source: [Microsoft WPF GIF encoder](https://learn.microsoft.com/en-us/dotnet/api/system.windows.media.imaging.gifbitmapencoder?view=windowsdesktop-10.0)
 (frame metadata unsupported); [Microsoft animated GIF sample](https://github.com/microsoft/Windows-classic-samples/blob/main/Samples/Win7Samples/multimedia/wic/wicanimatedgif/WicAnimatedGif.cpp)
 (Graphic Control Extension delays are in 10 ms units);
-[GIF89a specification](https://www.w3.org/Graphics/GIF/spec-gif89a.txt), sections 18–23
+[GIF89a specification](https://www.w3.org/Graphics/GIF/spec-gif89a.txt), sections 18â€“23
 (container blocks, little-endian fields and disposal/delay layout).
 
 `GifCaptureMetrics.ActiveDurationMilliseconds` records the stopped active clock,
