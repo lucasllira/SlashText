@@ -94,7 +94,7 @@ internal static class GifCancellationChecks
                     "successful result remains readable after controller disposal");
                 Require(successful.Duration >= TimeSpan.FromMilliseconds(900) && successful.Metrics is { } metrics &&
                     metrics.CapturedFrames >= metrics.ProcessedFrames &&
-                    metrics.ProcessedFrames == metrics.StoredFrames + metrics.DuplicateFrames,
+                    metrics.ProcessedFrames == metrics.StoredFrames + metrics.DuplicateFrames + metrics.TimingCoalescedFrames,
                     "normal duration, deduplication and draining preserved");
             }
             finally { successful.Dispose(); successful.Dispose(); }

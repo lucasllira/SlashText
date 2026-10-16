@@ -29,19 +29,52 @@ internal static class GifTimelineChecks
             // 30 FPS has fractional centiseconds; rounding each period loses 10%.
             foreach (var fps in new[] { 10, 20, 30 })
             {
-                var delays = Enumerable.Range(0, fps * 10).Select(i =>
-                    GifRecordingService.DelayBetween(TimeSpan.FromSeconds(i / (double)fps),
-                        TimeSpan.FromSeconds((i + 1d) / fps))).ToArray();
+                var timeline = GifFrameTimeline.Build(Enumerable.Range(0, fps * 10).Select(i =>
+                    TimeSpan.FromSeconds(i / (double)fps)).ToArray(), TimeSpan.FromSeconds(10));
+                var delays = timeline.Select(item => item.DelayCentiseconds).ToArray();
                 Require(delays.Sum() == 1000 && delays.All(d => d >= 2),
                     $"{fps} FPS: ten-second timeline, centisecond boundaries, minimum delay", delays);
+                Require(timeline.Select(item => item.FrameIndex).SequenceEqual(Enumerable.Range(0, fps * 10)),
+                    $"{fps} FPS: every image retained", timeline);
             }
-            // A final image can need 20 ms even if Stop is only 0.1 ms later.
-            // Compare with the centisecond clock, allowing endpoint rounding.
-            var closeEnd = TimeSpan.FromMilliseconds(95.2);
-            var closeDelays = GifRecordingService.DelayBetween(TimeSpan.Zero, TimeSpan.FromMilliseconds(95.1)) +
-                GifRecordingService.DelayBetween(TimeSpan.FromMilliseconds(95.1), closeEnd);
-            Require(closeDelays == 12 && Math.Abs(closeDelays * 10 - Math.Round(closeEnd.TotalMilliseconds / 10) * 10) == 20,
-                "final minimum delay uses the centisecond clock, including rounding at a close transition", closeDelays);
+            CheckDeterministic("reported-burst", [0, 40, 50, 90, 100, 140], 150,
+                [0, 1, 2, 3, 4, 5], [4, 2, 3, 2, 2, 2]);
+            CheckDeterministic("close-final-transition", [0, 95.1], 95.2, [0, 1], [8, 2]);
+            CheckDeterministic("equal-timestamps", [0, 0, 0, 100, 100], 200,
+                [0, 1, 2, 3, 4], [2, 2, 6, 2, 8]);
+            CheckDeterministic("short-budget", [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11], 60,
+                [0, 5, 11], [2, 2, 2]);
+            CheckDeterministic("two-images-fit", [0, 1, 2, 3, 4], 40, [0, 4], [2, 2]);
+            CheckDeterministic("only-first-fits", [0, 1, 2, 3], 15, [0], [2]);
+            CheckDeterministic("zero-clock", [0], 0, [0], [2]);
+            CheckDeterministic("near-half-centisecond", [0, 5, 15, 25, 35, 45], 65,
+                [0, 2, 5], [2, 2, 2]);
+
+            var random = new Random(153);
+            for (var sample = 0; sample < 500; sample++)
+            {
+                var end = TimeSpan.FromTicks(random.Next(0, 1_000_000_000));
+                var starts = Enumerable.Range(0, random.Next(1, 81)).Select(i => i == 0 ? TimeSpan.Zero :
+                    TimeSpan.FromTicks(random.NextInt64(end.Ticks + 1))).Order().ToArray();
+                var timeline = GifFrameTimeline.Build(starts, end);
+                var budget = Math.Max(2, (int)Math.Round(end.TotalMilliseconds / 10d));
+                Require(timeline.Sum(item => item.DelayCentiseconds) == budget &&
+                    timeline.All(item => item.DelayCentiseconds >= 2), "randomized total clock/minimum budget", new { sample, end, timeline });
+                Require(timeline[0].FrameIndex == 0 && timeline.Select(item => item.FrameIndex).Distinct().Count() == timeline.Count &&
+                    timeline.Select(item => item.FrameIndex).SequenceEqual(timeline.Select(item => item.FrameIndex).Order()) &&
+                    (timeline.Count == 1 || timeline[^1].FrameIndex == starts.Length - 1),
+                    "randomized ordered endpoints", new { sample, end, timeline });
+                Require(starts.Length > budget / 2 || timeline.Count == starts.Length,
+                    "randomized sufficient budget retains all images", new { sample, end, timeline });
+            }
+            rows.Add(new { name = "deterministic-randomized-budget", cases = 500 });
+            foreach (var invalidClock in new[] { Array.Empty<TimeSpan>(), new[] { TimeSpan.FromMilliseconds(1) },
+                         new[] { TimeSpan.Zero, TimeSpan.FromMilliseconds(20), TimeSpan.FromMilliseconds(10) },
+                         new[] { TimeSpan.Zero, TimeSpan.FromMilliseconds(200) } })
+            {
+                try { _ = GifFrameTimeline.Build(invalidClock, TimeSpan.FromMilliseconds(100)); throw new InvalidOperationException("Invalid clock accepted"); }
+                catch (ArgumentException) { }
+            }
 
             // No real wait: long static holds must survive the GIF 16-bit delay
             // limit, including a remainder of one centisecond.
@@ -180,7 +213,7 @@ internal static class GifTimelineChecks
             Require(!Directory.EnumerateFiles(output, "*.timing", SearchOption.AllDirectories).Any(),
                 "metadata staging files cleaned after success and rejection", rows);
             File.WriteAllText(Path.Combine(output, "result.txt"),
-                $"PASS: GIF timing, deduplication, decoded delays/pixels, 10/20/30 FPS, slow/late capture, pause/stop and cleanup; {rows.Count} recorded cases (9 pipeline and 3 encoded long holds). Synthetic frames only.");
+                $"PASS: GIF common timing budget, 8 encoded burst/endpoint cases, 500 seeded traces, deduplication, decoded delays/pixels, 10/20/30 FPS, slow/late capture, pause/stop, long holds and cleanup; {rows.Count} recorded cases. Synthetic frames only.");
         }
         catch (Exception exception)
         {
@@ -191,6 +224,27 @@ internal static class GifTimelineChecks
         {
             File.WriteAllText(Path.Combine(output, "metrics.json"), JsonSerializer.Serialize(rows, new JsonSerializerOptions { WriteIndented = true }));
             AppPaths.Initialize(previous);
+        }
+
+        void CheckDeterministic(string name, double[] startsMs, double endMs, int[] indices, int[] expectedDelays)
+        {
+            var timeline = GifFrameTimeline.Build(startsMs.Select(TimeSpan.FromMilliseconds).ToArray(), TimeSpan.FromMilliseconds(endMs));
+            Require(timeline.Select(item => item.FrameIndex).SequenceEqual(indices) &&
+                timeline.Select(item => item.DelayCentiseconds).SequenceEqual(expectedDelays), name + ": exact timeline", timeline);
+            using var result = new GifRecordingResult(timeline.Select(item => Frame(item.FrameIndex)).ToArray(), 30,
+                Bounds, timeline.Select(item => item.DelayCentiseconds).ToArray());
+            var path = new GifRecordingService().Save(result,
+                new CaptureSettings { OutputDirectoryTemplate = output, FileNameTemplate = name }, "gif");
+            using var stream = File.OpenRead(path);
+            var decoder = new GifBitmapDecoder(stream, BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.OnLoad);
+            var decoded = decoder.Frames.Select(f => Convert.ToInt32(((BitmapMetadata)f.Metadata).GetQuery("/grctlext/Delay"))).ToArray();
+            Require(decoded.SequenceEqual(expectedDelays) && decoder.Frames.Count == indices.Length,
+                name + ": saved duration and frame count", decoded);
+            Require(decoded.Sum() == Math.Max(2, (int)Math.Round(endMs / 10d)), name + ": stopped clock budget in saved GIF", decoded);
+            for (var i = 0; i < indices.Length; i++)
+                RequirePixel(decoder.Frames[i], indices[i] % 2 == 0 ? Color.Red : Color.Blue,
+                    name + ": saved ordered pixels/endpoints", new { i, indices, decoded });
+            rows.Add(new { name, endMs, indices, decoded });
         }
 
         void Check(string name, GifRecordingService service, GifRecordingResult result,
@@ -232,7 +286,8 @@ internal static class GifTimelineChecks
         Require(m!.RequestedFps == result.Fps, name + ": requested FPS preserved", Snapshot(result));
         Require(m.StoredFrames == result.FrameCount && m.StoredFrames > 0, name + ": stored count", Snapshot(result));
         Require(m.ProcessedFrames <= m.CapturedFrames, name + ": captured/processed accounting", Snapshot(result));
-        Require(m.DuplicateFrames == m.ProcessedFrames - m.StoredFrames, name + ": duplicate accounting", Snapshot(result));
+        Require(m.TimingCoalescedFrames >= 0 && m.DuplicateFrames == m.ProcessedFrames - m.StoredFrames - m.TimingCoalescedFrames,
+            name + ": duplicate/timing-coalesced accounting", Snapshot(result));
         Require(m.EffectiveCapturedFps > 0 && double.IsFinite(m.EffectiveCapturedFps), name + ": effective FPS finite/positive", Snapshot(result));
         Require(m.TemporaryBytes > 0 && m.TemporaryBytes <= GifRecordingService.MaximumTemporaryBytes &&
             m.StoredFrames <= GifRecordingService.MaximumStoredFrames && GifRecordingService.QueueCapacity == 2,
@@ -251,8 +306,8 @@ internal static class GifTimelineChecks
 
     internal static void ValidateDuration(GifRecordingResult result, string name) =>
         Require(result.Metrics is { ActiveDurationMilliseconds: > 0 } m &&
-            Math.Abs(result.Duration.TotalMilliseconds - Math.Round(m.ActiveDurationMilliseconds / 10d) * 10d) <= 20,
-            name + ": timeline matches centisecond stopped clock (20 ms final minimum, up to 5 ms endpoint rounding)", Snapshot(result));
+            result.Duration.TotalMilliseconds == Math.Max(20, Math.Round(m.ActiveDurationMilliseconds / 10d) * 10d),
+            name + ": exact centisecond stopped clock (20 ms minimum for the entire GIF)", Snapshot(result));
 
     internal static string Snapshot(GifRecordingResult result) => JsonSerializer.Serialize(new
         { durationMs = result.Duration.TotalMilliseconds, result.Metrics, delays = result.FrameDelaysCentiseconds });

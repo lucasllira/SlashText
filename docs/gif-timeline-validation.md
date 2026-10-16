@@ -8,14 +8,31 @@ Subsequent distinct images keep their captured timestamps. Repeated images and
 missed scheduling slots extend the held image rather than shortening the movie.
 Draining the queue after Stop does not extend the active recording duration.
 
-Delays use differences between rounded absolute centisecond boundaries, rather
-than rounding each frame period independently. Thus fractional periods such as
-30 FPS do not accumulate rounding drift. The existing minimum delay of 20 ms is
-preserved; exceptionally close transitions can extend the represented interval
-by that minimum. Timing checks allow 20 ms around the centisecond-rounded stopped
-clock (at most 25 ms from the raw clock, including up to 5 ms rounding). A
-deterministic close-final-transition case verifies that bound. Encoding and
-preview continue to use the same delay list.
+Delays share one budget: the stopped active clock rounded to centiseconds, with
+a 20 ms minimum for the entire GIF. Each retained image still has at least 20 ms.
+`GifFrameTimeline` clamps transition boundaries between the preceding boundary
+plus that minimum and the budget reserved for all remaining images. This keeps
+30 FPS fractional periods and jitter/short bursts from accumulating delay. It
+can move a close transition earlier or later to fit the minimum, including the
+last image. The final saved duration equals that one budget, rather than adding
+a fresh minimum to every independently rounded interval. Encoding and preview
+use the same resulting images and delay list.
+
+When all images fit the minimum-delay budget, every distinct image is retained.
+If they cannot fit, retain an evenly spaced ordered subset of source indices;
+the first and last remain whenever at least two images fit. If the entire clock
+only fits one 20 ms image, retain the first. This explicit selection trades
+unrepresentable transitions for clock accuracy instead of stretching the GIF.
+The ordinary 10/20/30 FPS cadence fits without selection. Unselected PNGs are
+deleted after both pipeline workers stop; cancellation and the existing frame,
+queue and temporary-byte limits remain unchanged.
+
+The reported regression has boundaries 0/40/50/90/100/140 ms and stops at 150 ms.
+Six independent minima produced 180 ms. The common-budget delays are now
+4/2/3/2/2/2 centiseconds, totaling 150 ms while preserving all six images. A
+95.1 ms final transition followed by Stop at 95.2 ms gives delays 8/2, totaling
+100 ms, with both images retained. Tests require exact centisecond-budget
+equality; the previous 20 ms assertion tolerance was tightened, not expanded.
 
 The WPF GIF encoder does not support frame metadata, so passing a delay through
 BitmapFrame metadata did not preserve it in the saved file. After WPF encodes the
@@ -39,7 +56,11 @@ Source: [Microsoft WPF GIF encoder](https://learn.microsoft.com/en-us/dotnet/api
 
 `GifCaptureMetrics.ActiveDurationMilliseconds` records the stopped active clock,
 alongside requested/effective FPS, captured/processed/stored/duplicate/dropped
-frames and capture/spool/queue time. The old combined deduplication/throughput
+frames and capture/spool/queue time. `TimingCoalescedFrames` separately counts
+images omitted for an insufficient timing budget. Processed images equal stored
+plus duplicate plus timing-coalesced images; scheduled-overload drops remain
+separate. Temporary bytes continue to count all PNGs spooled before selection,
+so removing images cannot hide resource use. The old combined deduplication/throughput
 assertion is separated into labeled checks with the full metrics on failure.
 The throughput floor (scheduled frames minus two slots of tolerance) applies
 when there were no skipped slots and capture/spool/queue work consumed less than
@@ -62,7 +83,11 @@ flight. They compare timeline duration to the actual stopped active clock,
 decode the saved GIF to check each delay and pixel/order, and check long holds/malformed generated containers and resource
 accounting/cleanup while an unrelated temporary session stays active. A separate
 deterministic ten-second boundary test verifies rounding at each FPS independently
-of runner speed. Existing cancellation regressions remain in the general suite.
+of runner speed. Eight saved GIF fixtures cover the reported burst, equal
+timestamps, close final transitions, tiny/zero clocks and necessary image
+selection, checking decoded delays and ordered endpoint pixels. Another 500
+seeded traces verify budget, minimum delays and ordered endpoints independently
+of scheduling. Existing cancellation regressions remain in the general suite.
 
 Build Windows runs this matrix, retaining `metrics.json`, stdout/failure details
 and synthetic GIFs even when it fails. Reports contain fixture data and timing
