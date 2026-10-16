@@ -204,6 +204,12 @@ jobs:
           if ($process.ExitCode -ne 0) { Get-Content "$output/failure.txt" -ErrorAction SilentlyContinue; throw 'About smoke failed' }
           Get-Content "$output/result.txt"
 
+      - name: Accessible names in presented WPF views
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem src/SlashText/bin -Recurse -Filter SlashDesk.exe | Select-Object -First 1
+          ./scripts/accessibility-names-smoke.ps1 -Executable $exe.FullName -OutputDirectory about-evidence/accessibility
+
       - name: Offline third-party notice access through About
         shell: pwsh
         run: |

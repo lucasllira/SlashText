@@ -485,6 +485,7 @@
                     <ControlTemplate TargetType="Expander">
                         <StackPanel>
                             <ToggleButton Content="{TemplateBinding Header}"
+                                          AutomationProperties.Name="{Binding (AutomationProperties.Name), RelativeSource={RelativeSource TemplatedParent}}"
                                           IsChecked="{Binding IsExpanded, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"
                                           Style="{StaticResource ExpanderHeaderToggle}"/>
                             <ContentPresenter x:Name="ExpandSite"
