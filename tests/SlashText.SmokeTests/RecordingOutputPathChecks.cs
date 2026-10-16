@@ -46,6 +46,15 @@ internal static class RecordingOutputPathChecks
             var settingsBefore = JsonSerializer.Serialize(settings);
             var factory = new Factory();
             using var service = new ScreenRecordingService(factory, TimeSpan.FromSeconds(2));
+            foreach (var blank in new[] { "", " ", "\t" })
+            {
+                var rejected = false;
+                try { _ = service.StartAsync(target, new CaptureSettings { OutputDirectoryTemplate = blank,
+                    FileNameTemplate = "blank-fixture-" + Guid.NewGuid().ToString("N") }, settings); }
+                catch (ArgumentException) { rejected = true; }
+                Check(rejected && factory.Created == 0 && service.State == ScreenRecordingState.Idle,
+                    "blank directory remains rejected before native startup");
+            }
             foreach (var locale in new[] { "pt-BR", "en", "es" })
             {
                 UiText.Apply(locale);

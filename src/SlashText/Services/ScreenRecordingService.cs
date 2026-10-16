@@ -648,6 +648,7 @@ public sealed class ScreenRecordingService : IRecordingController, IDisposable
         var directory = CaptureService.ResolveDirectoryTemplate(
             Environment.ExpandEnvironmentVariables(settings.OutputDirectoryTemplate),
             now);
+        ArgumentException.ThrowIfNullOrWhiteSpace(directory);
         if (createDirectory) Directory.CreateDirectory(directory);
         var baseName = settings.FileNameTemplate
             .Replace("{date}", now.ToString("yyyy-MM-dd"), StringComparison.OrdinalIgnoreCase)

@@ -38,9 +38,10 @@ References: [PathRemoveFileSpecW](https://learn.microsoft.com/en-us/windows/win3
 
 ## Validation
 
-`--recording-output-path-smoke <output>` on the smoke executable verifies 140
+`--recording-output-path-smoke <output>` on the smoke executable verifies 143
 checks: final/temporary 258/259/260/261/350 boundaries, UTF-16 including a surrogate
-pair, UNC/extended strings without network access, localization, zero backend
+pair, UNC/extended strings without network access, blank-directory rejection,
+localization, zero backend
 creation and no rejected directories, unchanged preferences, collision-file
 preservation and successful retry/finalization on the same service. These are
 inert backend tests included in the general CI suite.
