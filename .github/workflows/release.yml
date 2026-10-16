@@ -9,7 +9,7 @@ on:
       release_tag:
         description: Existing SemVer tag to build and publish
         required: true
-        default: v3.2.0
+        default: v3.3.0
         type: string
 
 permissions:

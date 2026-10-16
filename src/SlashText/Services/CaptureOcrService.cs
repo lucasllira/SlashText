@@ -72,7 +72,7 @@ public sealed class CaptureOcrService
             }
             await Task.WhenAll(errors, stdout); linked.Token.ThrowIfCancellationRequested();
             if (process.ExitCode == 4)
-                throw new InvalidOperationException(UiText.Get("Não foi possível carregar os componentes locais do OCR. Confira o requisito Microsoft Visual C++ x64 no LEIA-ANTES do piloto."));
+                throw new InvalidOperationException(UiText.Get("Não foi possível carregar os componentes locais do OCR. Verifique se o Microsoft Visual C++ Redistributable x64 está instalado e tente novamente."));
             if (process.ExitCode == 5)
                 throw new InvalidOperationException(UiText.Get("Os componentes do OCR não passaram na verificação. Reinstale o SlashDesk a partir do pacote oficial."));
             if (process.ExitCode != 0 || !File.Exists(output))
