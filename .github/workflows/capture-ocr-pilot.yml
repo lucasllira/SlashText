@@ -69,6 +69,14 @@ jobs:
           if (-not $process.WaitForExit(60000)) { $process.Kill(); throw 'Capture preference UI timeout' }
           if ($process.ExitCode -ne 0) { Get-Content "$output/failure.txt" -ErrorAction SilentlyContinue; throw 'Capture preference UI failed' }
           Get-Content "$output/result.txt"
+      - name: OCR model trust and native ABI regression
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem tests/SlashText.SmokeTests/bin -Recurse -Filter SlashText.SmokeTests.exe | Select-Object -First 1
+          $output = Join-Path $PWD 'ocr-evidence/ocr-trust-native'
+          & $exe.FullName --ocr-native-trust-smoke $output
+          if ($LASTEXITCODE -ne 0) { throw 'OCR trust/native regression failed' }
+          Get-Content "$output/result.json"
       - name: Recording reservation and cancellation in real WPF commands
         shell: pwsh
         run: |
@@ -113,6 +121,15 @@ jobs:
           if (-not $process.WaitForExit(180000)) { $process.Kill(); throw 'OCR timeout' }
           if ($process.ExitCode -ne 0) { Get-Content "$output/failure.txt" -ErrorAction SilentlyContinue; throw 'Portable OCR failed' }
           Get-Content "$output/result.txt"
+      - name: Verified native OCR inside published EXE
+        shell: pwsh
+        run: |
+          $output = Join-Path $PWD 'ocr-evidence/ocr-trust-published'
+          $exe = (Resolve-Path publish-ocr/SlashDesk.exe).Path
+          $process = Start-Process $exe -ArgumentList "--capture-ocr-native-smoke `"$output`"" -WindowStyle Hidden -PassThru
+          if (-not $process.WaitForExit(120000)) { $process.Kill(); throw 'Published OCR trust timeout' }
+          if ($process.ExitCode -ne 0) { Get-Content "$output/failure.txt" -ErrorAction SilentlyContinue; throw 'Published OCR trust failed' }
+          Get-Content "$output/result.json"
       - name: Restore recovery dialogs inside published EXE
         shell: pwsh
         run: |

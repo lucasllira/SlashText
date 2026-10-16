@@ -114,7 +114,7 @@
                 </Grid.Resources>
                 <StackPanel Orientation="Horizontal"
                             HorizontalAlignment="Center">
-                    <Button x:Name="ShortcutsTabButton"
+                    <Button x:Name="ShortcutsTabButton" AutomationProperties.Name="{DynamicResource Ui.4F30B1F869E56FCB}"
                             Style="{StaticResource Lab.Pilot.NavigationButton}"
                             Click="ShortcutsTab_OnClick">
                         <StackPanel Orientation="Horizontal">
@@ -122,7 +122,7 @@
                             <TextBlock Text="{DynamicResource Ui.4F30B1F869E56FCB}"/>
                         </StackPanel>
                     </Button>
-                    <Button x:Name="CaptureTabButton"
+                    <Button x:Name="CaptureTabButton" AutomationProperties.Name="{DynamicResource Ui.159CF2D4E7C784F2}"
                             Style="{StaticResource Lab.Pilot.NavigationButton}"
                             Click="CaptureTab_OnClick">
                         <StackPanel Orientation="Horizontal">
@@ -130,7 +130,7 @@
                             <TextBlock Text="{DynamicResource Ui.159CF2D4E7C784F2}"/>
                         </StackPanel>
                     </Button>
-                    <Button x:Name="QuickAccentTabButton"
+                    <Button x:Name="QuickAccentTabButton" AutomationProperties.Name="{DynamicResource Ui.BD0BB1D075558740}"
                             Style="{StaticResource Lab.Pilot.NavigationButton}"
                             Click="QuickAccentTab_OnClick">
                         <StackPanel Orientation="Horizontal">
@@ -138,7 +138,7 @@
                             <TextBlock Text="{DynamicResource Ui.BD0BB1D075558740}"/>
                         </StackPanel>
                     </Button>
-                    <Button x:Name="StatisticsTabButton"
+                    <Button x:Name="StatisticsTabButton" AutomationProperties.Name="{DynamicResource Ui.0038516D938D969A}"
                             Style="{StaticResource Lab.Pilot.NavigationButton}"
                             Click="StatisticsTab_OnClick">
                         <StackPanel Orientation="Horizontal">
@@ -146,7 +146,7 @@
                             <TextBlock Text="{DynamicResource Ui.0038516D938D969A}"/>
                         </StackPanel>
                     </Button>
-                    <Button x:Name="SettingsTabButton"
+                    <Button x:Name="SettingsTabButton" AutomationProperties.Name="{DynamicResource Ui.76B0FB6AD18939AC}"
                             Style="{StaticResource Lab.Pilot.NavigationButton}"
                             Click="SettingsTab_OnClick">
                         <StackPanel Orientation="Horizontal">
@@ -154,7 +154,7 @@
                             <TextBlock Text="{DynamicResource Ui.76B0FB6AD18939AC}"/>
                         </StackPanel>
                     </Button>
-                    <Button x:Name="AboutTabButton"
+                    <Button x:Name="AboutTabButton" AutomationProperties.Name="{DynamicResource Ui.97A0FA0947AD8F6A}"
                             Style="{StaticResource Lab.Pilot.NavigationButton}"
                             Click="AboutTab_OnClick">
                         <StackPanel Orientation="Horizontal">
@@ -182,10 +182,10 @@
                                 <Button x:Name="ShortcutHelpButton" Style="{StaticResource Lab.Button}" Padding="10,8" Margin="0,0,8,0" Click="OpenShortcutsHelp_OnClick" ToolTip="{DynamicResource Ui.0872A41D957345A3}" AutomationProperties.Name="{DynamicResource Ui.5D10073ACCF60969}">
                                     <lab:LabIcon Kind="CircleHelp" Width="18" Height="18"/>
                                 </Button>
-                                <Button x:Name="ShortcutImportButton" Style="{StaticResource Lab.Button}" Margin="0,0,8,0" Click="ImportSnippets_OnClick" ToolTip="{DynamicResource Ui.E5EC4D64FD494751}">
+                                <Button x:Name="ShortcutImportButton" AutomationProperties.Name="{DynamicResource Ui.E7F0E6D956C17EC8}" Style="{StaticResource Lab.Button}" Margin="0,0,8,0" Click="ImportSnippets_OnClick" ToolTip="{DynamicResource Ui.E5EC4D64FD494751}">
                                     <StackPanel Orientation="Horizontal"><lab:LabIcon Kind="Upload" Width="17" Height="17" Margin="0,0,7,0"/><TextBlock Text="{DynamicResource Ui.E7F0E6D956C17EC8}" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Button}}}"/></StackPanel>
                                 </Button>
-                                <Button x:Name="ShortcutNewButton" Style="{StaticResource Lab.Pilot.PrimaryButton}" Click="NewSnippet_OnClick">
+                                <Button x:Name="ShortcutNewButton" AutomationProperties.Name="{DynamicResource Ui.4E645D573B916F13}" Style="{StaticResource Lab.Pilot.PrimaryButton}" Click="NewSnippet_OnClick">
                                     <StackPanel Orientation="Horizontal"><lab:LabIcon Kind="Plus" Width="17" Height="17" Margin="0,0,7,0"/><TextBlock Text="{DynamicResource Ui.4E645D573B916F13}" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Button}}}"/></StackPanel>
                                 </Button>
                             </StackPanel>
@@ -355,7 +355,7 @@
                                         <Thumb x:Name="ShortcutEditorHeightGrip" Tag="Editor" Style="{StaticResource Lab.Shortcuts.HeightGrip}" DragDelta="ResizeShortcutField_OnDragDelta" PreviewKeyDown="ResizeShortcutField_OnPreviewKeyDown" AutomationProperties.Name="{DynamicResource Ui.468059A4E79CD96B}"/>
                                         </StackPanel>
                                     </Border>
-                                    <Expander x:Name="ShortcutPreviewExpander" IsExpanded="True" Margin="0,16,0,0">
+                                    <Expander AutomationProperties.Name="{DynamicResource Ui.139D6C482C4C93AB}" x:Name="ShortcutPreviewExpander" IsExpanded="True" Margin="0,16,0,0">
                                         <Expander.Header><StackPanel Orientation="Horizontal"><lab:LabIcon x:Name="ShortcutPreviewEye" Width="16" Height="16" Margin="0,0,8,0">
                                             <lab:LabIcon.Style><Style TargetType="lab:LabIcon"><Setter Property="Kind" Value="EyeClosed"/><Style.Triggers><DataTrigger Binding="{Binding IsExpanded, ElementName=ShortcutPreviewExpander}" Value="True"><Setter Property="Kind" Value="Eye"/></DataTrigger></Style.Triggers></Style></lab:LabIcon.Style>
                                         </lab:LabIcon><TextBlock Text="{DynamicResource Ui.139D6C482C4C93AB}" FontSize="12" Foreground="{DynamicResource Lab.muted}"/></StackPanel></Expander.Header>
@@ -373,8 +373,8 @@
                                 </ScrollViewer>
                                     <Grid Grid.Row="2" Margin="20,12,20,16">
                                         <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                                        <Button x:Name="ShortcutDeleteButton" Style="{StaticResource Lab.Button}" HorizontalAlignment="Left" Foreground="{DynamicResource Lab.error}" Click="DeleteSnippet_OnClick"><StackPanel Orientation="Horizontal"><lab:LabIcon Kind="Trash2" Width="16" Height="16" Margin="0,0,7,0"/><TextBlock Text="{DynamicResource Ui.8B19518FF49B2E29}" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Button}}}"/></StackPanel></Button>
-                                        <Button x:Name="ShortcutSaveButton" Grid.Column="1" Style="{StaticResource Lab.Pilot.PrimaryButton}" Click="SaveSnippet_OnClick"><StackPanel Orientation="Horizontal"><lab:LabIcon Kind="Save" Width="16" Height="16" Margin="0,0,7,0"/><TextBlock Text="{DynamicResource Ui.AEF7CD5B2081351D}" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Button}}}"/></StackPanel></Button>
+                                        <Button x:Name="ShortcutDeleteButton" AutomationProperties.Name="{DynamicResource Ui.8B19518FF49B2E29}" Style="{StaticResource Lab.Button}" HorizontalAlignment="Left" Foreground="{DynamicResource Lab.error}" Click="DeleteSnippet_OnClick"><StackPanel Orientation="Horizontal"><lab:LabIcon Kind="Trash2" Width="16" Height="16" Margin="0,0,7,0"/><TextBlock Text="{DynamicResource Ui.8B19518FF49B2E29}" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Button}}}"/></StackPanel></Button>
+                                        <Button x:Name="ShortcutSaveButton" AutomationProperties.Name="{DynamicResource Ui.AEF7CD5B2081351D}" Grid.Column="1" Style="{StaticResource Lab.Pilot.PrimaryButton}" Click="SaveSnippet_OnClick"><StackPanel Orientation="Horizontal"><lab:LabIcon Kind="Save" Width="16" Height="16" Margin="0,0,7,0"/><TextBlock Text="{DynamicResource Ui.AEF7CD5B2081351D}" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Button}}}"/></StackPanel></Button>
                                     </Grid>
                             </Grid>
                             <GridSplitter x:Name="ShortcutRightDivider" Grid.Column="3" Style="{StaticResource WorkspaceColumnSplitter}" ResizeBehavior="PreviousAndNext" AutomationProperties.Name="{DynamicResource Ui.D5C7E9F23ECB467C}" ToolTip="{DynamicResource Ui.AA73F57279C9202A}" PreviewKeyDown="ShortcutSplitter_OnPreviewKeyDown" MouseDoubleClick="ShortcutSplitter_OnMouseDoubleClick" DragStarted="ShortcutSplitter_OnDragStarted" DragCompleted="ShortcutSplitter_OnDragCompleted"/>
@@ -614,7 +614,7 @@
                                           AutomationProperties.Name="{DynamicResource Ui.8A80F733DABFD003}" Click="OpenCaptureHelp_OnClick">
                                     <lab:LabIcon Kind="CircleHelp" Width="20" Height="20"/>
                                   </Button>
-                                  <Button x:Name="CaptureRuleButton" Style="{StaticResource Lab.Button}" Click="FocusCaptureRule_OnClick">
+                                  <Button x:Name="CaptureRuleButton" AutomationProperties.Name="{DynamicResource Ui.78F05F4C783C4546}" Style="{StaticResource Lab.Button}" Click="FocusCaptureRule_OnClick">
                                     <StackPanel Orientation="Horizontal">
                                         <Path Data="{StaticResource Lab.Icon.SlidersHorizontal}" Style="{StaticResource NavigationIcon}"/>
                                         <TextBlock Text="{DynamicResource Ui.78F05F4C783C4546}"/>
@@ -635,7 +635,7 @@
                                         <ColumnDefinition Width="12"/>
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
-                                    <Button x:Name="CaptureNewButton" Style="{StaticResource Lab.Pilot.NewButton}"
+                                    <Button x:Name="CaptureNewButton" AutomationProperties.Name="{DynamicResource Ui.2B1D9B4B4BA45903}" Style="{StaticResource Lab.Pilot.NewButton}"
                                             Click="StartSelectedCapture_OnClick">
                                         <StackPanel Orientation="Horizontal">
                                             <lab:LabIcon Kind="Plus" Width="17" Height="17" Margin="0,0,8,0"
@@ -648,7 +648,7 @@
                                             CornerRadius="7" Background="{DynamicResource Lab.input}"
                                             BorderBrush="{DynamicResource Lab.line}" BorderThickness="1">
                                         <StackPanel Orientation="Horizontal">
-                                            <RadioButton x:Name="CaptureImageMediaButton"
+                                            <RadioButton x:Name="CaptureImageMediaButton" AutomationProperties.Name="{DynamicResource Ui.8FC6B8B69804D942}"
                                                          GroupName="CaptureMedia" Tag="Image"
                                                          Style="{StaticResource Lab.Pilot.Segment}"
                                                          Click="CaptureMediaMode_OnClick">
@@ -658,7 +658,7 @@
                                                 <TextBlock Text="{DynamicResource Ui.8FC6B8B69804D942}"/>
                                               </StackPanel>
                                             </RadioButton>
-                                            <RadioButton x:Name="CaptureVideoMediaButton"
+                                            <RadioButton x:Name="CaptureVideoMediaButton" AutomationProperties.Name="{DynamicResource Ui.BC10C86C24B5BA44}"
                                                          GroupName="CaptureMedia" Tag="Video"
                                                          Style="{StaticResource Lab.Pilot.Segment}"
                                                          Click="CaptureMediaMode_OnClick">
@@ -668,7 +668,7 @@
                                                 <TextBlock Text="{DynamicResource Ui.BC10C86C24B5BA44}"/>
                                               </StackPanel>
                                             </RadioButton>
-                                            <RadioButton x:Name="CaptureGifMediaButton"
+                                            <RadioButton x:Name="CaptureGifMediaButton" AutomationProperties.Name="{DynamicResource Ui.76C664EF152E0659}"
                                                          GroupName="CaptureMedia" Tag="Gif"
                                                          Style="{StaticResource Lab.Pilot.Segment}"
                                                          Click="CaptureMediaMode_OnClick">
@@ -686,7 +686,7 @@
                                         <Path Data="{StaticResource Lab.Icon.Clock3}" Width="17" Height="17"
                                               Stretch="Uniform" Stroke="{DynamicResource Lab.muted}"
                                               StrokeThickness="1.7" Margin="0,0,8,0"/>
-                                        <ComboBox x:Name="CaptureDelayBox" Width="132" Style="{StaticResource Lab.Combo}">
+                                        <ComboBox x:Name="CaptureDelayBox" AutomationProperties.Name="{DynamicResource Ui.8DFA0C1971F8E4BE}" Width="132" Style="{StaticResource Lab.Combo}">
                                             <ComboBoxItem Content="{DynamicResource Ui.54B5898948C34093}" Tag="0"/>
                                             <ComboBoxItem Content="{DynamicResource Ui.37C62233D3EBB384}" Tag="3"/>
                                             <ComboBoxItem Content="{DynamicResource Ui.23B4808DEEFEF53D}" Tag="5"/>
@@ -696,7 +696,7 @@
                                     <TextBlock x:Name="CaptureSelectionSummaryText" Grid.Column="5"
                                                Text="{DynamicResource Ui.4C8AB56DF5527460}" Visibility="Collapsed"/>
                                     <Button Grid.Column="7" Style="{StaticResource Lab.Button}"
-                                            Click="OpenCaptureImage_OnClick">
+                                            Click="OpenCaptureImage_OnClick" AutomationProperties.Name="{DynamicResource Ui.D375A880A5E7B968}">
                                         <StackPanel Orientation="Horizontal">
                                             <Path Data="{StaticResource Lab.Icon.FolderOpen}" Style="{StaticResource NavigationIcon}"/>
                                             <TextBlock Text="{DynamicResource Ui.D375A880A5E7B968}"/>
@@ -706,7 +706,7 @@
                             </Border>
 
                             <UniformGrid Grid.Row="4" Columns="5">
-                                <RadioButton x:Name="CaptureMonitorModeButton"
+                                <RadioButton x:Name="CaptureMonitorModeButton" AutomationProperties.Name="{DynamicResource Ui.4C2E1DF4570BEBD6}"
                                              Style="{StaticResource Lab.Pilot.ModeCard}"
                                              GroupName="CaptureLauncherMode" Tag="ActiveMonitor"
                                              Click="CaptureLauncherMode_OnClick">
@@ -721,7 +721,7 @@
                                                    Style="{StaticResource Lab.Metadata}"/>
                                     </StackPanel>
                                 </RadioButton>
-                                <RadioButton x:Name="CaptureRegionModeButton"
+                                <RadioButton x:Name="CaptureRegionModeButton" AutomationProperties.Name="{DynamicResource Ui.1433152B0C58A9B9}"
                                              Style="{StaticResource Lab.Pilot.ModeCard}"
                                              GroupName="CaptureLauncherMode" Tag="Region"
                                              Click="CaptureLauncherMode_OnClick">
@@ -736,7 +736,7 @@
                                                    Style="{StaticResource Lab.Metadata}"/>
                                     </StackPanel>
                                 </RadioButton>
-                                <RadioButton x:Name="CaptureWindowModeButton"
+                                <RadioButton x:Name="CaptureWindowModeButton" AutomationProperties.Name="{DynamicResource Ui.28014EF3525228E8}"
                                              Style="{StaticResource Lab.Pilot.ModeCard}"
                                              GroupName="CaptureLauncherMode" Tag="Window"
                                              Click="CaptureLauncherMode_OnClick">
@@ -751,7 +751,7 @@
                                                    Style="{StaticResource Lab.Metadata}"/>
                                     </StackPanel>
                                 </RadioButton>
-                                <RadioButton x:Name="CaptureScrollingModeButton"
+                                <RadioButton x:Name="CaptureScrollingModeButton" AutomationProperties.Name="{DynamicResource Ui.B8A9923CBF3F1345}"
                                              Style="{StaticResource Lab.Pilot.ModeCard}"
                                              GroupName="CaptureLauncherMode" Tag="Scrolling"
                                              ToolTip="{DynamicResource Ui.C4121FF3E72E8BA2}"
@@ -767,7 +767,7 @@
                                                    Style="{StaticResource Lab.Metadata}"/>
                                     </StackPanel>
                                 </RadioButton>
-                                <RadioButton x:Name="CaptureGifModeButton"
+                                <RadioButton x:Name="CaptureGifModeButton" AutomationProperties.Name="{DynamicResource Ui.638BE8A746141A2F}"
                                              Style="{StaticResource Lab.Pilot.ModeCard}"
                                              GroupName="CaptureLauncherMode" Tag="Gif" Margin="0"
                                              Click="CaptureLauncherMode_OnClick">
@@ -1295,7 +1295,7 @@
                                                      FontSize="19" FontWeight="SemiBold" HorizontalAlignment="Center"/>
                                           <TextBlock Text="{DynamicResource Ui.E08EC66913F87E12}"
                                                      Margin="0,6,0,13" Style="{StaticResource Lab.Metadata}"/>
-                                          <Button Style="{StaticResource Lab.Pilot.NewButton}" Click="StartSelectedCapture_OnClick">
+                                          <Button Style="{StaticResource Lab.Pilot.NewButton}" Click="StartSelectedCapture_OnClick" AutomationProperties.Name="{DynamicResource Ui.2B1D9B4B4BA45903}">
                                             <StackPanel Orientation="Horizontal">
                                               <lab:LabIcon Kind="Plus" Width="17" Height="17" Margin="0,0,8,0"
                                                            Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
@@ -1364,7 +1364,7 @@
                                           Stroke="{DynamicResource Lab.muted}" StrokeThickness="1.6" Stretch="Uniform"/>
                                     <TextBlock Text="{DynamicResource Ui.92016C1AF0ECD0DE}" Margin="8,0,18,0" Style="{StaticResource Lab.Metadata}"/>
                                     <TextBlock Text="{DynamicResource Ui.A137F17A19A09CBE}" Margin="0,0,10,0" Style="{StaticResource Lab.Metadata}"/>
-                                    <Button Style="{StaticResource Lab.Pilot.TextButton}" Click="FocusCaptureRule_OnClick">
+                                    <Button Style="{StaticResource Lab.Pilot.TextButton}" Click="FocusCaptureRule_OnClick" AutomationProperties.Name="{Binding Text, ElementName=CapturePostModeText}">
                                       <StackPanel Orientation="Horizontal">
                                         <TextBlock x:Name="CapturePostModeText" Text="{DynamicResource Ui.BF306E16805D2219}"/>
                                         <Path Data="{StaticResource Lab.Icon.ChevronDown}" Width="13" Height="13"
@@ -1408,7 +1408,7 @@
                                               <lab:LabIcon.RenderTransform><RotateTransform Angle="180"/></lab:LabIcon.RenderTransform>
                                             </lab:LabIcon>
                                           </Button>
-                                          <ComboBox x:Name="CaptureHistoryFilterBox" Width="145"
+                                          <ComboBox x:Name="CaptureHistoryFilterBox" AutomationProperties.Name="{DynamicResource Ui.C7D14AE554736579}" Width="145"
                                                     Style="{StaticResource Lab.Combo}"
                                                     SelectionChanged="CaptureHistoryFilter_OnChanged">
                                             <ComboBoxItem Content="{DynamicResource Ui.BD02B9A7D71DAC67}" Tag="all"/>
@@ -1420,7 +1420,7 @@
                                             <ComboBoxItem Content="{DynamicResource Ui.76C664EF152E0659}" Tag="gif"/>
                                           </ComboBox>
                                           <Button Margin="10,0,0,0" Style="{StaticResource Lab.Button}"
-                                                  Click="CleanCaptureHistory_OnClick">
+                                                  Click="CleanCaptureHistory_OnClick" AutomationProperties.Name="{DynamicResource Ui.5585CA453806844E}">
                                             <StackPanel Orientation="Horizontal">
                                               <Path Data="{StaticResource Lab.Icon.Trash2}" Style="{StaticResource NavigationIcon}"/>
                                               <TextBlock Text="{DynamicResource Ui.5585CA453806844E}"/>
@@ -1585,7 +1585,7 @@
     <TextBlock Text="{DynamicResource Ui.93930667E49E5DCA}" Style="{StaticResource Lab.Metadata}" Margin="0,12,0,16"/>
     <TextBlock Text="{DynamicResource Ui.7B9AFA8BDA071A80}" Style="{StaticResource Lab.Metadata}"/>
     <ComboBox x:Name="ImportSourceBox" Style="{StaticResource Lab.Combo}" SelectedIndex="0" Margin="0,7,0,12" AutomationProperties.Name="{DynamicResource Ui.6D5A70B3DB8AF4E7}"><ComboBoxItem Content="{DynamicResource Ui.1CDF0456D3893CA3}" Tag="SlashDesk"/><ComboBoxItem Content="{DynamicResource Ui.34C4900DE46FB356}" Tag="TextBlaze"/><ComboBoxItem Content="{DynamicResource Ui.CC8A7279824DC53C}" Tag="Espanso"/></ComboBox>
-    <Button x:Name="SettingsImportButton" Style="{StaticResource Lab.Button}" Click="ImportSnippets_OnClick" HorizontalAlignment="Left"><StackPanel Orientation="Horizontal"><lab:LabIcon Kind="Upload" Width="17" Height="17" Margin="0,0,7,0"/><TextBlock Text="{DynamicResource Ui.38596253125A473E}"/></StackPanel></Button>
+    <Button x:Name="SettingsImportButton" AutomationProperties.Name="{DynamicResource Ui.38596253125A473E}" Style="{StaticResource Lab.Button}" Click="ImportSnippets_OnClick" HorizontalAlignment="Left"><StackPanel Orientation="Horizontal"><lab:LabIcon Kind="Upload" Width="17" Height="17" Margin="0,0,7,0"/><TextBlock Text="{DynamicResource Ui.38596253125A473E}"/></StackPanel></Button>
     <TextBlock Text="{DynamicResource Ui.F21B3B0D0E00BC78}" Style="{StaticResource Lab.Metadata}" Margin="0,14,0,0"/>
    </StackPanel></Border>
    <Border x:Name="SettingsBackupCard" Grid.Row="1" Grid.Column="2" Style="{StaticResource Lab.Settings.Card}"><StackPanel>
@@ -1667,6 +1667,7 @@
                                 <Button x:Name="AboutCurrentReleaseNotesButton" Content="{DynamicResource Ui.59AAE9F211ECC8FF}" Style="{StaticResource Lab.Button}" Margin="5" Click="AboutCurrentReleaseNotes_OnClick"/>
                                 <Button x:Name="AboutReportIssueButton" Content="{DynamicResource Ui.4F66EB6CACC1BDC5}" Style="{StaticResource Lab.Button}" Margin="5" Click="AboutReportIssue_OnClick"/>
                                 <Button x:Name="AboutLicenseButton" Content="{DynamicResource Ui.0BB53A5D15357313}" Style="{StaticResource Lab.Button}" Margin="5" Click="AboutLicense_OnClick"/>
+                                <Button x:Name="AboutThirdPartyNoticesButton" Content="{DynamicResource Ui.2766571A19B26EF9}" Style="{StaticResource Lab.Button}" Margin="5" Click="AboutThirdPartyNotices_OnClick"/>
                             </WrapPanel>
                             <TextBlock x:Name="AboutLinkStatusText" Style="{StaticResource Lab.About.Body}" Foreground="{DynamicResource Lab.error}" TextWrapping="Wrap" Visibility="Collapsed" Margin="0,0,0,16" AutomationProperties.LiveSetting="Polite"/>
                             <Border x:Name="AboutUpdatesCard" Style="{StaticResource Lab.Card}" Padding="22">
@@ -1703,7 +1704,7 @@
                 </StackPanel>
                 <TextBlock x:Name="StatusText" Grid.Column="1" Margin="24,0" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" FontSize="11" Foreground="{DynamicResource Lab.muted}" AutomationProperties.LiveSetting="Polite"/>
                 <TextBlock x:Name="ShellCollectionStatusText" Grid.Column="2" VerticalAlignment="Center"
-                           FontSize="11" Foreground="{DynamicResource TertiaryBrush}"/>
+                           FontSize="11" Foreground="{DynamicResource MutedBrush}"/>
             </Grid>
         </Border>
     </Grid>

@@ -26,6 +26,10 @@ jobs:
           ./scripts/actions-policy-smoke.ps1
           ./scripts/actions-policy-regression.ps1
 
+      - name: Verify provenance cryptography with pinned inert fixtures
+        shell: pwsh
+        run: ./scripts/release-provenance-crypto-smoke.ps1
+
       - name: Create artifact transport probe
         id: artifact-probe
         shell: pwsh
@@ -75,6 +79,10 @@ jobs:
       - name: Offline interface language catalogs
         shell: pwsh
         run: ./scripts/languages-catalog-smoke.ps1
+
+      - name: Third-party notice source and package failure handling
+        shell: pwsh
+        run: ./scripts/third-party-notices-regression.ps1
 
       - name: Build
         run: dotnet build SlashText.sln --configuration Release --no-restore -p:Platform=x64
@@ -196,6 +204,18 @@ jobs:
           if ($process.ExitCode -ne 0) { Get-Content "$output/failure.txt" -ErrorAction SilentlyContinue; throw 'About smoke failed' }
           Get-Content "$output/result.txt"
 
+      - name: Accessible names in presented WPF views
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem src/SlashText/bin -Recurse -Filter SlashDesk.exe | Select-Object -First 1
+          ./scripts/accessibility-names-smoke.ps1 -Executable $exe.FullName -OutputDirectory about-evidence/accessibility
+
+      - name: Offline third-party notice access through About
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem src/SlashText/bin -Recurse -Filter SlashDesk.exe | Select-Object -First 1
+          ./scripts/third-party-notices-smoke.ps1 -Executable $exe.FullName -OutputDirectory about-evidence/third-party
+
       - name: Upload about evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -270,6 +290,19 @@ jobs:
       - name: Capture toolbar Visual Contract smoke
         shell: pwsh
         run: ./scripts/capture-toolbar-visual-contract-smoke.ps1
+
+      - name: GIF timeline under synthetic capture load
+        shell: pwsh
+        run: |
+          ./scripts/gif-timeline-smoke.ps1 -Executable tests/SlashText.SmokeTests/bin/x64/Release/net10.0-windows/SlashText.SmokeTests.exe -OutputDirectory gif-timeline-evidence
+
+      - name: Upload GIF timing evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: SlashDesk-gif-timeline-evidence
+          path: gif-timeline-evidence/
+          if-no-files-found: warn
 
       - name: Smoke tests
         run: dotnet run --project tests/SlashText.SmokeTests/SlashText.SmokeTests.csproj --configuration Release --no-build -p:Platform=x64

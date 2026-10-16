@@ -23,16 +23,18 @@ internal interface IScreenRecorderBackendFactory
 internal sealed class ScreenRecorderBackendFactory : IScreenRecorderBackendFactory
 {
     public IScreenRecorderBackend Create(RecorderOptions options) =>
-        new ScreenRecorderBackend(Recorder.CreateRecorder(options));
+        new ScreenRecorderBackend(Recorder.CreateRecorder(options), options.AudioOptions.AudioSources.ToArray());
 }
 
 internal sealed class ScreenRecorderBackend : IScreenRecorderBackend
 {
     private Recorder? _recorder;
+    private readonly IReadOnlyList<AudioSourceBase> _audioSources;
 
-    public ScreenRecorderBackend(Recorder recorder)
+    public ScreenRecorderBackend(Recorder recorder, IReadOnlyList<AudioSourceBase> audioSources)
     {
         _recorder = recorder;
+        _audioSources = audioSources;
         recorder.OnRecordingComplete += OnCompleted;
         recorder.OnRecordingFailed += OnFailed;
         recorder.OnStatusChanged += OnStatusChanged;
@@ -47,11 +49,8 @@ internal sealed class ScreenRecorderBackend : IScreenRecorderBackend
     public void Resume() => Recorder.Resume();
     public void Stop() => Recorder.Stop();
     public bool SetAudioVolumes(float inputVolume, float outputVolume) =>
-        Recorder.GetDynamicOptionsBuilder().SetDynamicAudioOptions(new DynamicAudioOptions
-        {
-            InputVolume = inputVolume,
-            OutputVolume = outputVolume
-        }).Apply();
+        Recorder.GetDynamicOptionsBuilder().SetDynamicAudioOptions(
+            RecordingAudioConfiguration.VolumeUpdate(_audioSources, inputVolume, outputVolume)).Apply();
 
     public void Dispose()
     {

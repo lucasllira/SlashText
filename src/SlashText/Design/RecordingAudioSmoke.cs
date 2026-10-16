@@ -108,8 +108,21 @@ internal static class RecordingAudioSmoke
                 {
                     await WaitUntilAsync(() => service.State == ScreenRecordingState.Recording || completion.IsCompleted);
                     if (completion.IsCompleted) await completion;
+                    if (pc)
+                    {
+                        // Opt-in native regression for 7.0.1: no playback before the first tone.
+                        await Task.Delay(2000);
+                        Require(!completion.IsCompleted, "Native capture survives initial loopback silence: " + name);
+                    }
                     if (pc) sound.PlayLooping();
                     await Task.Delay(1500);
+                    if (pc)
+                    {
+                        sound.Stop();
+                        await Task.Delay(2000);
+                        Require(!completion.IsCompleted, "Native capture survives return to loopback silence: " + name);
+                        sound.PlayLooping();
+                    }
                     Save((FrameworkElement)toolbar.Content, Path.Combine(output, name + "-recording.png"));
                     Require(await service.SetAudioMutedAsync(true, true), "Native mute applies: " + name);
                     await Task.Delay(1000);
@@ -149,8 +162,8 @@ internal static class RecordingAudioSmoke
             JsonSerializer.Serialize(metrics, new JsonSerializerOptions { WriteIndented = true })); }
     }
 
-    private sealed record Track(string Kind, double Seconds);
-    private static Track[] Tracks(byte[] bytes)
+    internal sealed record Track(string Kind, double Seconds);
+    internal static Track[] Tracks(byte[] bytes)
     {
         var tracks = new List<Track>();
         foreach (var moov in Boxes(bytes, 0, bytes.Length).Where(b => b.Kind == "moov"))

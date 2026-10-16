@@ -259,7 +259,7 @@ public sealed class UpdateService
 
     private static HttpClient CreateClient()
     {
-        var client = new HttpClient { Timeout = Timeout.InfiniteTimeSpan };
+        var client = new HttpClient(new HttpClientHandler { AllowAutoRedirect = false }) { Timeout = Timeout.InfiniteTimeSpan };
         client.DefaultRequestHeaders.UserAgent.Add(
             new ProductInfoHeaderValue("SlashDesk", ProductVersion()));
         client.DefaultRequestHeaders.Accept.Add(

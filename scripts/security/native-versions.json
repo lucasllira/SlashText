@@ -2,17 +2,23 @@
   "de4d04ec75095374d98f5dd7a60d14d7e2e0f76589db693eccf7ae658be8cb2b": {
     "name": "Tesseract native x64",
     "version": "5.0.0",
-    "evidence": "Analysis A, 2026-10-11: TessVersion export from restored Tesseract/5.2.0 package; exact SHA-256 match. No execution during inventory.",
+    "evidence": "Issue #97, 2026-10-15: approved Tesseract/5.2.0 NuGet bytes; runtime verifies SHA-256, PE AMD64 and required C API exports. TessVersion/getLeptonicaVersion rechecked with synthetic fixtures.",
     "origin": "https://github.com/charlesw/tesseract",
-    "license": "Apache-2.0; bundled native transitive notices require issue #96 review",
-    "follow_up": "https://github.com/lucasllira/SlashText/issues/97"
+    "license": "Apache-2.0; see embedded third-party notice catalog for known native transitive texts",
+    "follow_up": "https://github.com/lucasllira/SlashText/issues/97",
+    "source_commit_or_backports": null,
+    "security_decision": "docs/ocr-native-trust.md and scripts/security/ocr-advisory-decisions.json; native source/patch level is not attested.",
+    "license_notice_catalog": "src/SlashText/Assets/ThirdParty/catalog.json and THIRD-PARTY-NOTICES.md"
   },
   "dfcb3e6ed0b16bc55bfdbcf53543cfe42a354b87c3e35bd3a95eebf005d73e76": {
     "name": "Leptonica native x64",
     "version": "1.82.0",
-    "evidence": "Analysis A, 2026-10-11: getLeptonicaVersion export from restored package; exact SHA-256 match. No execution during inventory.",
+    "evidence": "Issue #97, 2026-10-15: approved Tesseract/5.2.0 NuGet bytes; runtime verifies SHA-256, PE AMD64 and required C API exports. TessVersion/getLeptonicaVersion rechecked with synthetic fixtures.",
     "origin": "https://github.com/charlesw/tesseract",
-    "license": "BSD-2-Clause; bundled codecs require issue #96 review",
-    "follow_up": "https://github.com/lucasllira/SlashText/issues/97"
+    "license": "BSD-2-Clause; detected codec notices included in embedded third-party catalog; native build graph remains unattested",
+    "follow_up": "https://github.com/lucasllira/SlashText/issues/97",
+    "source_commit_or_backports": null,
+    "security_decision": "docs/ocr-native-trust.md and scripts/security/ocr-advisory-decisions.json; native source/patch level is not attested.",
+    "license_notice_catalog": "src/SlashText/Assets/ThirdParty/catalog.json and THIRD-PARTY-NOTICES.md"
   }
 }

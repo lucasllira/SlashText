@@ -49,7 +49,8 @@ válida.
    deixa de ser oferecida para aquele número; uma versão superior reaparece.
 3. `PortableUpdateService` baixa o ZIP e o arquivo `.sha256` oficial para uma
    operação isolada em `SlashDeskData\Updates`.
-4. O SHA-256, o nome do artefato, o conteúdo único do ZIP, a arquitetura PE x64 e
+4. A origem exata do repositório/tag/artefato e cada redirecionamento são conferidos
+   antes da próxima requisição. O SHA-256, o nome do artefato, o conteúdo único do ZIP, a arquitetura PE x64 e
    a versão do executável são validados antes de encerrar o aplicativo.
 5. Uma cópia temporária do próprio `SlashDesk.exe` aguarda o processo principal
    sair e usa `File.Replace` para trocar apenas o executável, mantendo uma cópia
@@ -80,15 +81,18 @@ instalado entrar em escopo, sem compartilhar o mecanismo do portátil.
 O workflow `Release Windows` é acionado exclusivamente por tags `vX.Y.Z` (ou uma
 tag SemVer com sufixo, que gera prerelease). Ele restaura, compila, executa os
 smoke tests, publica os dois perfis, valida o portátil de arquivo único, calcula
-SHA-256 e usa o `GITHUB_TOKEN` com apenas `contents: write`.
+SHA-256. Após aprovação, o job de publicação usa `contents: write`, `id-token: write`
+e `attestations: write` para gerar/verificar a proveniência antes de publicar.
+O build continua somente leitura. Veja a [política de proveniência](release-provenance.md),
+incluindo as limitações do atualizador e a compatibilidade com releases antigas.
 
 Depois de atualizar `<Version>`, `<AssemblyVersion>` e `<FileVersion>` e obter a
 aprovação explícita para uma Release estável:
 
-```powershell
-git tag -s vX.Y.Z -m "SlashDesk X.Y.Z"
-git push origin vX.Y.Z
-```
+Siga o [fluxo protegido de tag e release](repository-release-controls.md): criar a
+tag pela execução aprovada de `Tag Stable Release` e executar `Release Windows`
+selecionando essa própria tag como ref do workflow. Assinatura Git de tag não é
+assinatura Authenticode nem substitui a proveniência do executável.
 
 Sem chave de assinatura configurada, use uma tag anotada (`git tag -a`) somente
 após registrar essa limitação. Não execute esses comandos para validar o workflow;

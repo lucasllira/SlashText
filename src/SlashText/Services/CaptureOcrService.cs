@@ -3,8 +3,6 @@ using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
 using System.IO;
-using System.Reflection;
-using System.Security.Cryptography;
 using System.Text.Json;
 using System.Threading;
 using Tesseract;
@@ -22,9 +20,16 @@ public sealed class CaptureOcrService
     public const long MaxPixels = 24_000_000;
     private readonly string _executable;
     private readonly string? _modelsDirectory;
+    private readonly TimeSpan _workerTimeout;
     public CaptureOcrSettings Options { get; }
     public CaptureOcrService(string? executable = null, string? modelsDirectory = null, CaptureOcrSettings? options = null)
-    { _executable = executable ?? Environment.ProcessPath!; _modelsDirectory = modelsDirectory; Options = (options ?? new()).Normalize(); }
+        : this(executable, modelsDirectory, options, TimeSpan.FromSeconds(45)) { }
+    internal CaptureOcrService(string? executable, string? modelsDirectory, CaptureOcrSettings? options, TimeSpan workerTimeout)
+    {
+        if (workerTimeout <= TimeSpan.Zero || workerTimeout > TimeSpan.FromSeconds(45)) throw new ArgumentOutOfRangeException(nameof(workerTimeout));
+        _executable = executable ?? Environment.ProcessPath!; _modelsDirectory = modelsDirectory;
+        Options = (options ?? new()).Normalize(); _workerTimeout = workerTimeout;
+    }
 
     public async Task<CaptureOcrResult> RecognizeAsync(Bitmap snapshot, CancellationToken cancellation = default)
     {
@@ -33,18 +38,25 @@ public sealed class CaptureOcrService
             throw new InvalidOperationException(UiText.Get("A região é muito grande. Selecione um trecho menor para extrair texto."));
         using var session = TemporarySession.Create("ocr");
         var folder = session.DirectoryPath;
-        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(45));
+        using var timeout = new CancellationTokenSource(_workerTimeout);
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellation, timeout.Token);
         using var process = new Process();
         var clock = Stopwatch.StartNew();
         try
         {
+            OcrModelLease verifiedModels;
+            try { verifiedModels = await Task.Run(() => OcrModelLease.Acquire(Options.Model, _modelsDirectory, linked.Token), linked.Token); }
+            catch (Exception error) when (error is IOException or InvalidDataException or UnauthorizedAccessException)
+            { throw new InvalidOperationException(UiText.Get("Os componentes do OCR não passaram na verificação. Reinstale o SlashDesk a partir do pacote oficial."), error); }
+            using var models = verifiedModels;
             var input = Path.Combine(folder, "region.png"); var output = Path.Combine(folder, "result.json");
             await Task.Run(() => { linked.Token.ThrowIfCancellationRequested(); snapshot.Save(input, ImageFormat.Png); }, linked.Token);
             process.StartInfo = new ProcessStartInfo(_executable) { UseShellExecute = false, CreateNoWindow = true,
-                RedirectStandardError = true, RedirectStandardOutput = true, WindowStyle = ProcessWindowStyle.Hidden };
+                RedirectStandardError = true, RedirectStandardOutput = true, WindowStyle = ProcessWindowStyle.Hidden,
+                WorkingDirectory = folder };
+            process.StartInfo.Environment.Remove("TESSDATA_PREFIX");
             foreach (var arg in new[] { "--capture-ocr-worker", input, output }) process.StartInfo.ArgumentList.Add(arg);
-            process.StartInfo.ArgumentList.Add(_modelsDirectory ?? "");
+            process.StartInfo.ArgumentList.Add(models.DirectoryPath);
             process.StartInfo.ArgumentList.Add(JsonSerializer.Serialize(Options));
             linked.Token.ThrowIfCancellationRequested();
             if (!process.Start()) throw new InvalidOperationException(UiText.Get("Não foi possível iniciar a leitura de texto."));
@@ -61,6 +73,8 @@ public sealed class CaptureOcrService
             await Task.WhenAll(errors, stdout); linked.Token.ThrowIfCancellationRequested();
             if (process.ExitCode == 4)
                 throw new InvalidOperationException(UiText.Get("Não foi possível carregar os componentes locais do OCR. Confira o requisito Microsoft Visual C++ x64 no LEIA-ANTES do piloto."));
+            if (process.ExitCode == 5)
+                throw new InvalidOperationException(UiText.Get("Os componentes do OCR não passaram na verificação. Reinstale o SlashDesk a partir do pacote oficial."));
             if (process.ExitCode != 0 || !File.Exists(output))
                 throw new InvalidOperationException(UiText.Get("Não foi possível reconhecer o texto. Tente uma região menor ou uma imagem mais nítida."));
             if (new FileInfo(output).Length > 4 * 1024 * 1024) throw new InvalidDataException(UiText.Get("Resultado de texto muito grande."));
@@ -68,6 +82,8 @@ public sealed class CaptureOcrService
                 ?? throw new InvalidDataException(UiText.Get("Resultado OCR inválido."));
             return result with { Text = result.Text.Trim(), ElapsedMilliseconds = clock.ElapsedMilliseconds };
         }
+        catch (OperationCanceledException) when (!cancellation.IsCancellationRequested && timeout.IsCancellationRequested)
+        { throw new TimeoutException(UiText.Get("A leitura demorou demais. Tente selecionar uma região menor.")); }
         finally
         {
             // No images or recognized text are retained in the capture history or diagnostic log.
@@ -87,12 +103,13 @@ public sealed class CaptureOcrService
             using var original = new Bitmap(args[1]);
             if ((long)original.Width * original.Height > MaxPixels) return 3;
             var options = (args.Length == 5 ? JsonSerializer.Deserialize<CaptureOcrSettings>(args[4]) : null)?.Normalize() ?? new();
-            var models = args.Length >= 4 && !string.IsNullOrWhiteSpace(args[3]) ? Path.GetFullPath(args[3]) : ExtractModels(options.Model);
-            TesseractEnviornment.CustomSearchPath = AppContext.BaseDirectory;
+            using var models = OcrModelLease.Acquire(options.Model,
+                args.Length >= 4 && !string.IsNullOrWhiteSpace(args[3]) ? args[3] : null);
+            using var native = OcrNativeAssets.Acquire();
             using var prepared = PrepareImage(original);
             using var stream = new MemoryStream(); prepared.Save(stream, ImageFormat.Png);
             using var pix = Pix.LoadFromMemory(stream.ToArray());
-            using var engine = new TesseractEngine(models, options.Languages, EngineMode.LstmOnly);
+            using var engine = new TesseractEngine(models.DirectoryPath, options.Languages, EngineMode.LstmOnly);
             var mode = options.Layout switch { "Block" => PageSegMode.SingleBlock, "Sparse" => PageSegMode.SparseText, _ => PageSegMode.Auto };
             var result = Read(engine, pix, mode);
             if (options.ImproveDifficultImages && (string.IsNullOrWhiteSpace(result.Text) || result.Confidence < 0.80f))
@@ -114,7 +131,8 @@ public sealed class CaptureOcrService
         catch (Exception exception)
         {
             for (Exception? cause = exception; cause is not null; cause = cause.InnerException)
-                if (cause is DllNotFoundException) return 4;
+                if (cause is DllNotFoundException or PlatformNotSupportedException) return 4;
+            if (exception is IOException or InvalidDataException or UnauthorizedAccessException) return 5;
             return 1;
         }
     }
@@ -129,35 +147,6 @@ public sealed class CaptureOcrService
     private static CaptureOcrResult Prefer(CaptureOcrResult current, CaptureOcrResult candidate) =>
         !string.IsNullOrWhiteSpace(candidate.Text) && (string.IsNullOrWhiteSpace(current.Text) || candidate.Confidence > current.Confidence + 0.02f)
             ? candidate : current;
-
-    internal static string ExtractModels(string model = "Best")
-    {
-        var fast = model == "Fast";
-        var folder = Path.Combine(Path.GetTempPath(), "SlashDesk-OCR-models", fast ? "fast-87416418" : "best-e12c65a9");
-        Directory.CreateDirectory(folder);
-        foreach (var (language, hash) in fast ? new[] {
-            ("eng", "7d4322bd2a7749724879683fc3912cb542f19906c83bcc1a52132556427170b2"),
-            ("por", "c4932b937207a9514b7514d518b931a99938c02a28a5a5a553f8599ed58b7deb") } : new[] {
-            ("eng", "8280aed0782fe27257a68ea10fe7ef324ca0f8d85bd2fd145d1c2b560bcb66ba"),
-            ("por", "711de9dbb8052067bd42f16b9119967f30bada80d57e2ef24f65d09f531adb04") })
-        {
-            var path = Path.Combine(folder, language + ".traineddata");
-            if (File.Exists(path)) { using var existing = File.OpenRead(path);
-                if (Convert.ToHexStringLower(SHA256.HashData(existing)) == hash) continue; }
-            var temporary = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
-            try
-            {
-                using (var input = Assembly.GetExecutingAssembly().GetManifestResourceStream("SlashText.Assets.Ocr." + (fast ? "Fast." : "") + language + ".traineddata")
-                    ?? throw new FileNotFoundException("Modelo OCR ausente."))
-                using (var destination = File.Create(temporary)) input.CopyTo(destination);
-                using (var restored = File.OpenRead(temporary))
-                    if (Convert.ToHexStringLower(SHA256.HashData(restored)) != hash) throw new InvalidDataException(UiText.Get("Modelo OCR inválido."));
-                File.Move(temporary, path, overwrite: true);
-            }
-            finally { if (File.Exists(temporary)) File.Delete(temporary); }
-        }
-        return folder;
-    }
 
     internal static Bitmap PrepareImage(Bitmap source, bool isolateColors = false)
     {

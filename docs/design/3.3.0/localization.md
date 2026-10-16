@@ -54,3 +54,9 @@ Configurações. O workflow Languages Pilot Windows valida catálogos, controles
 WPF, publicação portátil, identidade e isolamento do EXE publicado. Roteiro
 manual: `docs/languages-pilot-testing.md`. Fixtures não substituem revisão
 linguística humana nem a matriz física e integrada #70/#37.
+
+`--auxiliary-smoke` também abre a prévia real do GIF em pt-BR/en/es,
+Claro/Preto e 900×680 / 640×480. Verifica os rótulos e nomes acessíveis de
+Descartar/Salvar, o título e os limites das ações; exercita os botões, Esc e
+fechamento, sem chamar salvamento ou clipboard. Os pixels e os tempos dos
+quadros fictícios devem permanecer idênticos após todas as decisões (#145).

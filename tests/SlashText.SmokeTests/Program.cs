@@ -18,6 +18,41 @@ if (args.Length == 3 && args[0] == "--recording-recovery-probe")
     return;
 }
 
+if (args.Length == 1 && args[0] == "--release-trust-smoke")
+{
+    await ReleaseTrustChecks.RunAsync();
+    return;
+}
+if (args.Length == 2 && args[0] == "--recording-audio-migration-smoke")
+{
+    RecordingAudioMigrationChecks.Run(Path.GetFullPath(args[1]));
+    return;
+}
+if (args.Length >= 3 && args[0] == "--capture-ocr-worker")
+{
+    if (Environment.GetEnvironmentVariable("SLASHDESK_TEST_OCR_MODE") == "wait")
+    {
+        using var lease = TemporarySession.AttachWorker(args[1], args[2]);
+        if (!Path.GetFullPath(Environment.CurrentDirectory).Equals(Path.GetDirectoryName(Path.GetFullPath(args[1])), StringComparison.OrdinalIgnoreCase)) Environment.Exit(8);
+        File.WriteAllText(args[2], "inert worker ready");
+        await Task.Delay(TimeSpan.FromMinutes(1));
+        Environment.Exit(9);
+    }
+    Environment.Exit(CaptureOcrService.RunWorker(args));
+    return;
+}
+if (args.Length is 2 or 3 && args[0] == "--ocr-native-trust-smoke")
+{
+    await OcrTrustChecks.RunAsync(Path.GetFullPath(args[1]), native: true,
+        baseline: args.Length == 3 ? Path.GetFullPath(args[2]) : null);
+    return;
+}
+if (args.Length == 2 && args[0] == "--ocr-trust-smoke")
+{
+    await OcrTrustChecks.RunAsync(Path.GetFullPath(args[1]), native: false);
+    return;
+}
+
 if (args.Length == 2 && args[0] == "--capture-stamp-path-smoke")
 {
     var output = Path.GetFullPath(args[1]);
@@ -46,6 +81,10 @@ if (args.Length == 2 && args[0] == "--snippet-batch-benchmark")
     await SnippetBatchBenchmark.RunAsync(args[1]); return;
 }
 
+if (args.Length == 2 && args[0] == "--gif-timeline-smoke")
+{
+    await GifTimelineChecks.RunAsync(args[1]); return;
+}
 if (args.Length == 2 && args[0] == "--gif-cancellation-smoke")
 {
     await GifCancellationChecks.RunAsync(args[1]); return;
@@ -132,7 +171,9 @@ if (args.Length == 2 && args[0] == "--clipboard-native-isolated")
 }
 
 var root = Path.Combine(Path.GetTempPath(), $"slashtext-smoke-{Guid.NewGuid():N}");
+await ReleaseTrustChecks.RunAsync();
 AppPaths.Initialize(new AppDataEnvironment(DistributionMode.Portable, Path.Combine(root, "initial-app"), root, isCapturePilot: true));
+await OcrTrustChecks.RunAsync(Path.Combine(root, "ocr-trust"), native: false);
 await SnippetBatchChecks.RunAsync(Path.Combine(root, "snippet-batch"));
 await RecordingOperationChecks.RunAsync(Path.Combine(root, "recording-operation"));
 await GifCancellationChecks.RunAsync(Path.Combine(root, "gif-cancellation"));
@@ -1462,19 +1503,7 @@ await BackupCompatibilityChecks.RunAsync(root);
         ["Alta"] = (9_000_000, 85),
         ["Muito alta"] = (16_000_000, 95)
     };
-    foreach (var (computer, microphone) in new[] { (false, false), (true, false), (false, true), (true, true) })
-    {
-        var audioOptions = ScreenRecordingService.BuildOptions(
-            new RecordingTarget(RecordingTargetKind.Window, new System.Drawing.Rectangle(0, 0, 640, 480), new IntPtr(1)),
-            new RecordingSettings { Audio = new() { CaptureComputer = computer, CaptureMicrophone = microphone,
-                InputDeviceId = "input-fixture", OutputDeviceId = "output-fixture", InputVolume = .4f, OutputVolume = .7f } },
-            Path.Combine(root, "audio-options.log")).AudioOptions;
-        Require(audioOptions.IsAudioEnabled == (computer || microphone) &&
-                audioOptions.IsInputDeviceEnabled == microphone && audioOptions.IsOutputDeviceEnabled == computer &&
-                audioOptions.AudioInputDevice == "input-fixture" && audioOptions.AudioOutputDevice == "output-fixture" &&
-                audioOptions.InputVolume == .4f && audioOptions.OutputVolume == .7f,
-            $"MP4 respeita fontes independentes PC={computer} microfone={microphone}, dispositivos e volumes");
-    }
+    RecordingAudioMigrationChecks.Run(root);
     var savedAudio = System.Text.Json.JsonSerializer.Deserialize<RecordingSettings>(
         System.Text.Json.JsonSerializer.Serialize(new RecordingSettings { Audio = new() {
             CaptureComputer = false, CaptureMicrophone = true, InputDeviceId = "mic-saved", InputVolume = .6f } }))!;
@@ -1764,22 +1793,12 @@ await BackupCompatibilityChecks.RunAsync(root);
 
     using (pipelineResult ?? throw new InvalidOperationException("Pipeline GIF sem resultado."))
     {
-        Require(
-            pipelineResult.Metrics is
-            {
-                RequestedFps: 10,
-                CapturedFrames: >= 8,
-                StoredFrames: 1
-            } metrics &&
-            metrics.ProcessedFrames <= metrics.CapturedFrames &&
-            metrics.EffectiveCapturedFps > 0 &&
-            // Stop can discard a captured frame before it enters the queue.
-            metrics.DuplicateFrames == metrics.ProcessedFrames - 1,
-            "pipeline GIF descarta quadro idêntico preservando duração");
-        Require(
-            pipelineResult.Duration >= TimeSpan.FromMilliseconds(900) &&
-            pipelineResult.Duration <= TimeSpan.FromMilliseconds(1100),
-            "deduplicação GIF preserva o tempo monotônico da sessão");
+        GifTimelineChecks.ValidateMetrics(pipelineResult, "bounded/off-UI", assessThroughput: true);
+        GifTimelineChecks.ValidateDuration(pipelineResult, "bounded/off-UI");
+        Require(pipelineResult.Metrics?.RequestedFps == 10 && pipelineResult.Fps == 10,
+            "preset GIF de 10 FPS preservado: " + GifTimelineChecks.Snapshot(pipelineResult));
+        Require(pipelineResult.FrameCount == 1,
+            "deduplicação GIF armazena uma imagem: " + GifTimelineChecks.Snapshot(pipelineResult));
         Require(
             gifCaptureThreads.All(thread => thread != callerThread),
             "captura e redimensionamento GIF fora da UI thread");
@@ -1787,12 +1806,23 @@ await BackupCompatibilityChecks.RunAsync(root);
 
     foreach (var fpsPreset in RecordingPresetCatalog.GifFps)
     {
+        var firstGifFrame = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         using var session = pipeline.StartRecording(
             new System.Drawing.Rectangle(0, 0, 16, 12),
             new RecordingSettings { GifFps = fpsPreset.Value, GifQuality = 128 });
         IRecordingController counter = session;
         Require(counter.Elapsed < TimeSpan.FromMilliseconds(80),
             $"contador GIF inicia em zero a {fpsPreset.Value} FPS");
+        session.ProgressChanged += (_, progress) =>
+        {
+            if (progress.Status.StartsWith("Gravando GIF ·", StringComparison.Ordinal)) firstGifFrame.TrySetResult();
+        };
+        // Exercise clock controls after the synthetic pipeline is ready. A busy
+        // runner may not schedule its first frame within the old 280 ms sleeps;
+        // stopping then correctly produces no GIF, rather than a clock failure.
+        try { await firstGifFrame.Task.WaitAsync(TimeSpan.FromSeconds(10)); }
+        catch (TimeoutException exception)
+        { throw new InvalidOperationException($"GIF fixture did not persist its first frame at {fpsPreset.Value} FPS before clock checks.", exception); }
         await Task.Delay(120);
         Require(counter.Elapsed >= TimeSpan.FromMilliseconds(70),
             $"contador GIF avança a {fpsPreset.Value} FPS");

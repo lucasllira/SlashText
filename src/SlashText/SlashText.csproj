@@ -50,7 +50,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="ScreenRecorderLib" Version="6.6.0" />
+    <PackageReference Include="ScreenRecorderLib" Version="7.0.1" />
     <PackageReference Include="AvalonEdit" Version="6.3.1.120" />
     <PackageReference Include="Tesseract" Version="5.2.0" />
   </ItemGroup>
@@ -76,6 +76,18 @@
   </ItemGroup>
   <Target Name="RestoreNotoEmoji" BeforeTargets="PrepareForBuild">
     <Exec Command="pwsh -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildProjectDirectory)\..\..\scripts\restore-noto-emoji.ps1&quot;" />
+  </Target>
+  <Target Name="GenerateThirdPartyNotices" BeforeTargets="AssignTargetPaths" DependsOnTargets="ResolveFrameworkReferences">
+    <PropertyGroup>
+      <ThirdPartyOutput>$(IntermediateOutputPath)third-party\</ThirdPartyOutput>
+    </PropertyGroup>
+    <MakeDir Directories="$(ThirdPartyOutput)" />
+    <WriteLinesToFile File="$(ThirdPartyOutput)runtime-packs.txt" Lines="@(ResolvedRuntimePack->'%(NuGetPackageId)|%(NuGetPackageVersion)|%(PackageDirectory)')" Overwrite="true" WriteOnlyWhenDifferent="true" Encoding="UTF-8" />
+    <Exec Command="pwsh -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildProjectDirectory)\..\..\scripts\generate-third-party-notices.ps1&quot; -AssetsFile &quot;$(ProjectAssetsFile)&quot; -RuntimePacksFile &quot;$(ThirdPartyOutput)runtime-packs.txt&quot; -OutputDirectory &quot;$(ThirdPartyOutput).&quot;" />
+    <ItemGroup>
+      <EmbeddedResource Include="$(ThirdPartyOutput)catalog.json" LogicalName="SlashText.ThirdParty.catalog.json" />
+      <EmbeddedResource Include="$(ThirdPartyOutput)notices.zip" LogicalName="SlashText.ThirdParty.notices.zip" />
+    </ItemGroup>
   </Target>
   <Target Name="RestoreOcrModels" BeforeTargets="PrepareForBuild">
     <Exec Command="pwsh -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildProjectDirectory)\..\..\scripts\restore-ocr-models.ps1&quot;" />

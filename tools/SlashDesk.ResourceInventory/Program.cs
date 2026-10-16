@@ -13,6 +13,7 @@ var reader = pe.GetMetadataReader();
 var directory = pe.PEHeaders.CorHeader!.ResourcesDirectory;
 var resources = pe.GetSectionData(directory.RelativeVirtualAddress).GetContent();
 var entries = new List<object>();
+JsonElement? thirdPartyManifest = null;
 foreach (var handle in reader.ManifestResources)
 {
     var resource = reader.GetManifestResource(handle);
@@ -22,6 +23,29 @@ foreach (var handle in reader.ManifestResources)
     var length = BitConverter.ToInt32(resources.AsSpan(offset, 4));
     var data = resources.AsSpan(offset + 4, length).ToArray();
     entries.Add(new { name, length, sha256 = Convert.ToHexStringLower(SHA256.HashData(data)) });
+    if (name == "SlashText.ThirdParty.catalog.json")
+    {
+        using var manifest = JsonDocument.Parse(data);
+        thirdPartyManifest = manifest.RootElement.Clone();
+    }
+    if (name == "SlashText.ThirdParty.notices.zip")
+    {
+        using var archive = new ZipArchive(new MemoryStream(data), ZipArchiveMode.Read);
+        if (archive.Entries.Count is < 1 or > 128) throw new InvalidDataException("Unexpected notice archive count.");
+        var names = new HashSet<string>(StringComparer.Ordinal);
+        long total = 0;
+        foreach (var item in archive.Entries)
+        {
+            total += item.Length;
+            if (!names.Add(item.FullName) || item.FullName.Contains('/') || item.FullName.Contains('\\') ||
+                !item.FullName.EndsWith(".txt",StringComparison.Ordinal) || item.Length > 8_000_000 || total > 16_000_000)
+                throw new InvalidDataException("Unexpected notice archive entry.");
+            using var source = item.Open();
+            var text = new byte[checked((int)item.Length)]; source.ReadExactly(text);
+            if (source.ReadByte()!=-1) throw new InvalidDataException("Notice length differs.");
+            entries.Add(new {name=name+"!/"+item.FullName,length=item.Length,sha256=Convert.ToHexStringLower(SHA256.HashData(text))});
+        }
+    }
     if (name == "SlashText.Assets.NotoEmoji.catalog-assets.zip")
     {
         using var archive = new ZipArchive(new MemoryStream(data), ZipArchiveMode.Read);
@@ -47,6 +71,6 @@ foreach (var handle in reader.ManifestResources)
     }
 }
 File.WriteAllText(args[1], JsonSerializer.Serialize(new {
-    assemblyVersion = reader.GetAssemblyDefinition().Version.ToString(), executed = false, entries
+    assemblyVersion = reader.GetAssemblyDefinition().Version.ToString(), executed = false, entries, thirdPartyManifest
 }, new JsonSerializerOptions { WriteIndented = true }));
 Console.WriteLine($"Inventory: inspected {entries.Count} embedded resources/assets without executing the app.");

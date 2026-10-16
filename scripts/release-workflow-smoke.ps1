@@ -32,5 +32,6 @@ if ($workflow.Contains('pull_request:') -or $workflow.Contains('branches: [main]
 # Execute the production PowerShell blocks with isolated files and fake git/gh.
 # No tag, network call, or release is created by these regression tests.
 & "$PSScriptRoot/release-input-regression.ps1"
+& "$PSScriptRoot/release-provenance-regression.ps1"
 
 Write-Output 'Release workflow smoke: OK'

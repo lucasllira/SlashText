@@ -1,7 +1,7 @@
 param([string]$WorkflowDirectory = (Join-Path $PSScriptRoot '../.github/workflows'))
 
 $ErrorActionPreference = 'Stop'
-$allowedActions = @('actions/checkout', 'actions/setup-dotnet', 'actions/upload-artifact', 'actions/download-artifact', 'github/codeql-action/init', 'github/codeql-action/analyze')
+$allowedActions = @('actions/checkout', 'actions/setup-dotnet', 'actions/upload-artifact', 'actions/download-artifact', 'github/codeql-action/init', 'github/codeql-action/analyze', 'actions/attest')
 $writeJobs = @('tag-release.yml/create-tag', 'release.yml/publish-release')
 $files = @(Get-ChildItem -LiteralPath $WorkflowDirectory -File | Where-Object { $_.Extension -in @('.yml', '.yaml') })
 if ($files.Count -eq 0) { throw 'No workflows found.' }
@@ -51,7 +51,9 @@ foreach ($file in $files) {
             }
             $codeqlPermissions = $indent -eq 4 -and $context -ceq 'codeql.yml/analyze' -and
                 (($entries | Sort-Object) -join ',') -ceq 'contents: read,security-events: write'
-            if (-not $codeqlPermissions -and ($entries.Count -ne 1 -or $entries[0] -cnotmatch '^contents: (read|write)$')) {
+            $attestationPermissions = $indent -eq 4 -and $context -ceq 'release.yml/publish-release' -and
+                (($entries | Sort-Object) -join ',') -ceq 'attestations: write,contents: write,id-token: write'
+            if (-not $codeqlPermissions -and -not $attestationPermissions -and ($entries.Count -ne 1 -or $entries[0] -cnotmatch '^contents: (read|write)$')) {
                 throw "Only reviewed contents and CodeQL security-events permissions are allowed: $context"
             }
             if ($entries[0] -eq 'contents: write') {
@@ -75,6 +77,9 @@ foreach ($file in $files) {
             }
             $action = $Matches.action
             if ($action -cnotin $allowedActions) { throw "Action requires allowlist review: $action" }
+            if ($action -eq 'actions/attest' -and ($context -cne 'release.yml/publish-release' -or $Matches.sha -cne '1e69f48acb82d1966a394da916b4c1698aa569d6')) {
+                throw "Attestation outside reviewed publisher or pin: $context"
+            }
             if ($action.StartsWith('github/codeql-action/') -and $context -cne 'codeql.yml/analyze') { throw "CodeQL action outside reviewed analyzer: $context" }
             $references++
             if ($action -eq 'actions/checkout') {

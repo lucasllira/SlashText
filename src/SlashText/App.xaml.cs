@@ -15,6 +15,17 @@ public partial class App : System.Windows.Application
 
     protected override void OnStartup(StartupEventArgs e)
     {
+        if (e.Args.Length == 2 && e.Args[0] == "--accessibility-names-smoke")
+        {
+            _helperMode = true; ShutdownMode = ShutdownMode.OnExplicitShutdown;
+            var output = Path.GetFullPath(e.Args[1]); base.OnStartup(e);
+            Dispatcher.BeginInvoke(new Action(async () =>
+            {
+                try { await Design.AccessibilityNamesSmoke.RunAsync(output); Shutdown(0); }
+                catch (Exception exception) { Directory.CreateDirectory(output); File.WriteAllText(Path.Combine(output, "failure.txt"), exception.ToString()); Shutdown(1); }
+            }));
+            return;
+        }
         if (e.Args.Length == 2 && e.Args[0] == "--recording-operation-ui-smoke")
         {
             _helperMode = true; ShutdownMode = ShutdownMode.OnExplicitShutdown;
@@ -169,6 +180,17 @@ public partial class App : System.Windows.Application
             ThemeService.Apply("System");
             MainWindow = new Design.AuxiliaryReviewWindow(); MainWindow.Show(); return;
         }
+        if (e.Args.Length == 2 && e.Args[0] == "--third-party-notices-smoke")
+        {
+            _helperMode=true; ShutdownMode=ShutdownMode.OnExplicitShutdown;
+            var output=Path.GetFullPath(e.Args[1]); base.OnStartup(e);
+            Dispatcher.BeginInvoke(new Action(async ()=>
+            {
+                try {await Design.ThirdPartyNoticesSmoke.RunAsync(output); Shutdown(0);}
+                catch(Exception exception) {Directory.CreateDirectory(output); File.WriteAllText(Path.Combine(output,"failure.txt"),exception.ToString()); Shutdown(1);}
+            }));
+            return;
+        }
         if (e.Args.Length > 0 && e.Args[0] == "--about-smoke")
         {
             _helperMode = true; ShutdownMode = ShutdownMode.OnExplicitShutdown;
@@ -217,6 +239,23 @@ public partial class App : System.Windows.Application
             }));
             return;
         }
+        if (e.Args.Length is 3 or 4 && e.Args[0] == "--recording-native-stop-smoke")
+        {
+            _helperMode = true; ShutdownMode = ShutdownMode.OnExplicitShutdown;
+            var output = Path.GetFullPath(e.Args[1]);
+            base.OnStartup(e);
+            Dispatcher.BeginInvoke(new Action(async () =>
+            {
+                try
+                {
+                    if (e.Args.Length == 4 && e.Args[3] != "--audio-both")
+                        throw new ArgumentException("Unknown native recovery option");
+                    Shutdown(await Design.RecordingNativeStopSmoke.RunAsync(output, e.Args[2], e.Args.Length == 4));
+                }
+                catch (Exception exception) { Directory.CreateDirectory(output); File.WriteAllText(Path.Combine(output, "failure.txt"), exception.ToString()); Shutdown(1); }
+            }));
+            return;
+        }
         if (e.Args.Length > 0 && e.Args[0] == "--recording-audio-smoke")
         {
             _helperMode = true; ShutdownMode = ShutdownMode.OnExplicitShutdown;
@@ -239,6 +278,17 @@ public partial class App : System.Windows.Application
             {
                 try { await Design.CaptureOcrSmoke.RunAsync(output, bestModels); Shutdown(0); }
                 catch (Exception exception) { Directory.CreateDirectory(output); File.WriteAllText(Path.Combine(output, "failure.txt"), exception.ToString()); Shutdown(1); }
+            }));
+            return;
+        }
+        if (e.Args.Length == 2 && e.Args[0] == "--capture-ocr-native-smoke")
+        {
+            _helperMode = true; ShutdownMode = ShutdownMode.OnExplicitShutdown;
+            var output = Path.GetFullPath(e.Args[1]);
+            Dispatcher.BeginInvoke(new Action(async () =>
+            {
+                try { await Design.OcrNativeTrustSmoke.RunAsync(output); Shutdown(0); }
+                catch (Exception error) { Directory.CreateDirectory(output); File.WriteAllText(Path.Combine(output, "failure.txt"), error.ToString()); Shutdown(1); }
             }));
             return;
         }

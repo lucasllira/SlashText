@@ -31,3 +31,35 @@ Windows termination stops the process threads and requests cancellation of pendi
 Use a fresh isolated pilot folder and a synthetic window with no private content. For each available configuration (no audio, PC only, microphone only, both), record a short sample, pause/resume, toggle each configured source, stop, then play the MP4 and check timing and expected tracks. Start a second recording after normal stop. Check the Windows microphone-use indicator after stop, allowing for other apps that may also use it. Record unavailable devices as skipped, not passed.
 
 The automated abnormal cases do not establish release of physical microphones/loopback under a real driver failure. That hardware validation remains an explicit acceptance gate; do not deliberately hang drivers or record ambient/private material as an automatic test. Use an approved controlled environment for native failure injection, then verify process exit and device activity. Until that evidence exists, report implementation and automated validation as complete, with physical validation pending.
+
+## Native controlled stop gate with ScreenRecorderLib 7.0.1
+
+The #151 pilot's normal four-source audio and region/window checks were accepted
+by the user. This branch retains that migration and verifies the remaining stop
+recovery paths separately. `scripts/recording-native-stop-smoke.ps1` uses fresh
+owned helper processes, each recording only its own generated opaque window.
+It never attaches to or terminates another SlashDesk instance.
+
+Three scenarios exercise the real native recorder: hold Stop at a test adapter
+before forwarding it, then release it late; hold it and self-terminate through
+the production emergency method; start and normally stop a fresh successor.
+The adapter does not fake the native recording callbacks or file. The checks
+require persistent uncertainty, visible controls despite system close, blocked
+successors, a real native file lock before exit, exact child process lifetime,
+exclusive file reopening after exit, preserved partial bytes and session marker,
+and a successful native successor. Late/normal final files must contain the
+expected video/audio tracks. Emergency partials may remain unplayable.
+
+Default automation records no audio; `-Unattended` is permitted only without
+audio. `-AudioBoth` requires interactive Enter consent and adds the same three
+scenarios with PC/microphone enabled. Missing hardware reports INCOMPLETE. The
+user should use fictitious sound/voice, then check the Windows microphone-use
+indicator after completion, accounting for other applications using it. Files
+stay local; share only the textual outcome.
+
+This is controlled failure injection with a real active native recorder; the
+injected hold is in the adapter. It does not reproduce a defective kernel
+driver or prove instantaneous physical driver cleanup. Such faults are not a
+safe end-user test. Production UI confirmation/cancel, normal-exit blocking,
+and reservation integration remain covered by the inert WPF matrix. These
+different evidence levels must stay explicit in the issue and release review.
