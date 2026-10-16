@@ -239,6 +239,18 @@ public partial class App : System.Windows.Application
             }));
             return;
         }
+        if (e.Args.Length == 2 && e.Args[0] == "--recording-output-path-native-smoke")
+        {
+            _helperMode = true; ShutdownMode = ShutdownMode.OnExplicitShutdown;
+            var output = Path.GetFullPath(e.Args[1]);
+            base.OnStartup(e);
+            Dispatcher.BeginInvoke(new Action(async () =>
+            {
+                try { await Design.RecordingOutputPathSmoke.RunAsync(output); Shutdown(0); }
+                catch (Exception exception) { Directory.CreateDirectory(output); File.WriteAllText(Path.Combine(output, "failure.txt"), exception.ToString()); Shutdown(1); }
+            }));
+            return;
+        }
         if (e.Args.Length is 3 or 4 && e.Args[0] == "--recording-native-stop-smoke")
         {
             _helperMode = true; ShutdownMode = ShutdownMode.OnExplicitShutdown;
