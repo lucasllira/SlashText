@@ -71,7 +71,7 @@ public sealed class GifPreviewWindow : Window
             Orientation = Orientation.Horizontal,
             HorizontalAlignment = HorizontalAlignment.Right
         };
-        var cancel = new Button { Content = "Descartar", MinWidth = 100 };
+        var cancel = new Button { Content = UiText.Get("Descartar"), MinWidth = 100 };
         cancel.Click += (_, _) => DialogResult = false;
         var save = new Button
         {

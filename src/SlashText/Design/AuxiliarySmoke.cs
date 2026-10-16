@@ -24,6 +24,8 @@ internal static class AuxiliarySmoke
         AppPaths.Initialize(new AppDataEnvironment(DistributionMode.Portable, Path.Combine(output, "fixture"), Path.Combine(output, "unused-installed"), isCapturePilot: true));
         CultureInfo.CurrentCulture = CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("pt-BR");
         var checks = new List<string>();
+        VerifyGifPreviewLanguages(output, checks);
+        UiText.Apply("pt-BR");
         foreach (var theme in new[] { "Light", "Dark", "System" })
         {
             ThemeService.Apply(theme);
@@ -134,6 +136,63 @@ internal static class AuxiliarySmoke
         checks.Add("Negative monitor origins/oversized bounds; actual notification path routing, consumed once, null replacement and deleted file: PASS.");
         checks.Add("Fixtures only: no updater/download/recording service, shell launch, global hook or official data access. Native toast delivery and physical mixed-DPI monitor tests remain manual (#70). Rendered native windows show client content only; captions belong to Windows.");
         await File.WriteAllLinesAsync(Path.Combine(output, "result.txt"), checks);
+    }
+
+    private static void VerifyGifPreviewLanguages(string output, List<string> checks)
+    {
+        using var recording = AuxiliaryFixtures.Gif();
+        byte[] FramePixels(int index)
+        {
+            using var frame = recording.LoadFrame(index);
+            var source = GifRecordingService.ToBitmapSource(frame);
+            var pixels = new byte[source.PixelWidth * source.PixelHeight * 4];
+            source.CopyPixels(pixels, source.PixelWidth * 4, 0);
+            return pixels;
+        }
+        var originalFrames = Enumerable.Range(0, recording.FrameCount).Select(FramePixels).ToArray();
+        var originalDelays = recording.FrameDelaysCentiseconds.ToArray();
+        foreach (var (language, discard, save, title) in new[]
+        {
+            ("pt-BR", "Descartar", "Salvar GIF", "Prévia do GIF"),
+            ("en", "Discard", "Save GIF", "GIF preview"),
+            ("es", "Descartar", "Guardar GIF", "Vista previa del GIF")
+        })
+        foreach (var theme in new[] { "Light", "Dark" })
+        foreach (var size in new[] { new Size(900, 680), new Size(640, 480) })
+        {
+            UiText.Apply(language); ThemeService.Apply(theme);
+            foreach (var decision in new[] { "discard", "save", "escape", "close" })
+            {
+                var preview = new GifPreviewWindow(recording) { Width = size.Width, Height = size.Height };
+                var result = Modal(preview, () =>
+                {
+                    Require(preview.Title == title, "GIF localized title: " + language);
+                    var buttons = Elements<Button>(preview).ToArray();
+                    Require(buttons.Select(b => b.Content as string).SequenceEqual(new[] { discard, save }), "GIF localized action labels: " + language);
+                    foreach (var button in buttons)
+                    {
+                        Require(new ButtonAutomationPeer(button).GetName() == button.Content as string, "GIF accessible action name: " + language);
+                        var bounds = button.TransformToAncestor((Visual)preview.Content).TransformBounds(new Rect(button.RenderSize));
+                        Require(button.IsVisible && button.IsEnabled && bounds.Left >= 0 && bounds.Top >= 0 &&
+                            bounds.Right <= ((FrameworkElement)preview.Content).ActualWidth + 1 &&
+                            bounds.Bottom <= ((FrameworkElement)preview.Content).ActualHeight + 1, "GIF actions fit preview: " + language);
+                    }
+                    if (decision == "discard")
+                    {
+                        Save(preview, output, $"gif-{language}-{theme}-{size.Width}");
+                        Invoke(buttons[0]);
+                    }
+                    else if (decision == "save") Invoke(buttons[1]);
+                    else if (decision == "escape") Escape(preview);
+                    else preview.Close();
+                });
+                Require(result == (decision == "save"), "GIF modal decision: " + language + "/" + decision);
+            }
+            Require(recording.FrameCount == originalFrames.Length && recording.Width == 480 && recording.Height == 260 &&
+                recording.Fps == 2 && recording.FrameDelaysCentiseconds.SequenceEqual(originalDelays) &&
+                Enumerable.Range(0, recording.FrameCount).All(i => FramePixels(i).SequenceEqual(originalFrames[i])), "GIF source pixels and timing preserved");
+            checks.Add($"GIF {language}/{theme}/{size.Width}x{size.Height}: labels, accessible names, action bounds, discard/save/Escape/close and unchanged pixels/timing: PASS");
+        }
     }
 
     private static bool? Modal(Window window, Action action)
