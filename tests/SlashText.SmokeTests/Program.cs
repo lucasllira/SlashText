@@ -6,6 +6,12 @@ using System.IO.Compression;
 using System.Diagnostics;
 using ScreenRecorderLib;
 
+if (args.Length == 2 && args[0] == "--recording-output-path-smoke")
+{
+    await RecordingOutputPathChecks.RunAsync(Path.GetFullPath(args[1]));
+    return;
+}
+
 if (args.Length == 2 && args[0] == "--recording-stop-smoke")
 {
     await RecordingStopSafetyChecks.RunAsync(Path.GetFullPath(args[1]));
@@ -176,6 +182,7 @@ AppPaths.Initialize(new AppDataEnvironment(DistributionMode.Portable, Path.Combi
 await OcrTrustChecks.RunAsync(Path.Combine(root, "ocr-trust"), native: false);
 await SnippetBatchChecks.RunAsync(Path.Combine(root, "snippet-batch"));
 await RecordingOperationChecks.RunAsync(Path.Combine(root, "recording-operation"));
+await RecordingOutputPathChecks.RunAsync(Path.Combine(root, "recording-paths"));
 await GifCancellationChecks.RunAsync(Path.Combine(root, "gif-cancellation"));
 await UsageWriteFailureChecks.RunAsync(Path.Combine(root, "usage-writes"));
 

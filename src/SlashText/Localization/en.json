@@ -1797,5 +1797,6 @@
   "Ui.74D6B793E39C5199": "Emergency exit",
   "Ui.4F0E1AB5AF3B3769": "Wait for recording to stop. If it is not confirmed, use Exit SlashDesk in the recording controls.",
   "Ui.5349EDC17DBC2FD5": "Screen and audio capture have not yet confirmed stopping. Exiting SlashDesk terminates the process containing the recorder. Unsaved changes will be lost. The temporary video will be kept, but may be incomplete. Exit now?",
-  "Ui.62BB7F098D8B090A": "The process could not be terminated. Stopping is still unconfirmed. Use Task Manager to end SlashDesk."
+  "Ui.62BB7F098D8B090A": "The process could not be terminated. Stopping is still unconfirmed. Use Task Manager to end SlashDesk.",
+  "Ui.F9DAACE52F280194": "The MP4 recording path is too long, including the temporary file. Choose a folder closer to the drive root or a shorter file name, then try again."
 }

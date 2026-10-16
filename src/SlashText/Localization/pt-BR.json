@@ -1797,5 +1797,6 @@
   "Ui.74D6B793E39C5199": "Encerramento de emergência",
   "Ui.4F0E1AB5AF3B3769": "Aguarde a parada da gravação. Se ela não for confirmada, use Encerrar SlashDesk no controle de gravação.",
   "Ui.5349EDC17DBC2FD5": "A parada de tela e áudio ainda não foi confirmada. Encerrar o SlashDesk termina o processo que contém o gravador. Alterações não salvas serão perdidas. O vídeo temporário será mantido, mas pode estar incompleto. Deseja encerrar agora?",
-  "Ui.62BB7F098D8B090A": "Não foi possível encerrar o processo. A parada segue sem confirmação. Use o Gerenciador de Tarefas para encerrar o SlashDesk."
+  "Ui.62BB7F098D8B090A": "Não foi possível encerrar o processo. A parada segue sem confirmação. Use o Gerenciador de Tarefas para encerrar o SlashDesk.",
+  "Ui.F9DAACE52F280194": "O caminho da gravação MP4 é muito longo, incluindo o arquivo temporário. Escolha uma pasta mais próxima da raiz do disco ou um nome de arquivo mais curto e tente novamente."
 }

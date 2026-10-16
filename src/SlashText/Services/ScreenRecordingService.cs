@@ -116,13 +116,27 @@ public sealed class ScreenRecordingService : IRecordingController, IDisposable
                     UiText.Get("Reinicie o SlashDesk antes de iniciar outra gravação e envie os logs."));
             }
 
+            string path;
+            string workingPath;
+            try
+            {
+                path = Path.GetFullPath(CreateMediaPath(captureSettings, target.Type, ".mp4", createDirectory: false));
+                workingPath = CreateWorkingPath(path);
+                ValidateOutputPaths(path, workingPath);
+                Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+            }
+            catch (PathTooLongException)
+            {
+                throw OutputPathTooLong();
+            }
+
             RecordingPresetCatalog.Normalize(settings);
             _audio = settings.Audio.Copy();
             IsMicrophoneMuted = !_audio.CaptureMicrophone;
             IsComputerMuted = !_audio.CaptureComputer;
             _recordingId = Guid.NewGuid();
-            _path = CreateMediaPath(captureSettings, target.Type, ".mp4");
-            _workingPath = CreateWorkingPath(_path);
+            _path = path;
+            _workingPath = workingPath;
             // Reserve the native lifetime, including startup and failed Dispose, across instances.
             if (Interlocked.CompareExchange(ref _activeSession, this, null) is not null)
                 throw new InvalidOperationException(UiText.Get("Já existe uma gravação em andamento."));
@@ -625,13 +639,16 @@ public sealed class ScreenRecordingService : IRecordingController, IDisposable
 
     private static int Even(int value) => Math.Max(2, value - value % 2);
 
-    public static string CreateMediaPath(CaptureSettings settings, string type, string extension)
+    public static string CreateMediaPath(CaptureSettings settings, string type, string extension) =>
+        CreateMediaPath(settings, type, extension, createDirectory: true);
+
+    private static string CreateMediaPath(CaptureSettings settings, string type, string extension, bool createDirectory)
     {
         var now = DateTimeOffset.Now;
         var directory = CaptureService.ResolveDirectoryTemplate(
             Environment.ExpandEnvironmentVariables(settings.OutputDirectoryTemplate),
             now);
-        Directory.CreateDirectory(directory);
+        if (createDirectory) Directory.CreateDirectory(directory);
         var baseName = settings.FileNameTemplate
             .Replace("{date}", now.ToString("yyyy-MM-dd"), StringComparison.OrdinalIgnoreCase)
             .Replace("{time}", now.ToString("HH-mm-ss"), StringComparison.OrdinalIgnoreCase)
@@ -700,6 +717,20 @@ public sealed class ScreenRecordingService : IRecordingController, IDisposable
                 UiText.Get("O encoder não concluiu a estrutura MP4 (ftyp/moov/mdat)."));
         }
     }
+
+    internal static void ValidateOutputPaths(string finalPath, string workingPath)
+    {
+        // The native recorder still calls legacy MAX_PATH shell helpers. Check
+        // both the supplied strings and their absolute resolution, in UTF-16
+        // code units, including the private GUID/suffix and collision suffixes.
+        // An extended prefix alone does not establish end-to-end native support.
+        foreach (var path in new[] { finalPath, workingPath })
+            if (path.Length >= 260 || Path.GetFullPath(path).Length >= 260)
+                throw OutputPathTooLong();
+    }
+
+    private static InvalidOperationException OutputPathTooLong() => new(UiText.Get(
+        "O caminho da gravação MP4 é muito longo, incluindo o arquivo temporário. Escolha uma pasta mais próxima da raiz do disco ou um nome de arquivo mais curto e tente novamente."));
 
     private static string CreateWorkingPath(string finalPath)
     {
