@@ -9,7 +9,7 @@ and SHA-256 digests. SlashDesk's own MIT license remains unchanged.
 
 This software is based in part on the work of the Independent JPEG Group.
 
-ScreenRecorderLib 6.6.0: Copyright (c) 2017 Sverre Skodje (license text).
+ScreenRecorderLib 7.0.1: Copyright (c) 2017 Sverre Skodje (license text).
 The NuGet package metadata also credits Sverre Kristoffer Skodje, copyright 2025.
 Tesseract .NET 5.2.0: Copyright 2012-2020 Charles Weld (NuGet metadata).
 InteropDotNet: Copyright 2014 Andrey Akinshin (Tesseract acknowledgement).

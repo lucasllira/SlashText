@@ -11,6 +11,11 @@ if (args.Length == 1 && args[0] == "--release-trust-smoke")
     await ReleaseTrustChecks.RunAsync();
     return;
 }
+if (args.Length == 2 && args[0] == "--recording-audio-migration-smoke")
+{
+    RecordingAudioMigrationChecks.Run(Path.GetFullPath(args[1]));
+    return;
+}
 if (args.Length >= 3 && args[0] == "--capture-ocr-worker")
 {
     if (Environment.GetEnvironmentVariable("SLASHDESK_TEST_OCR_MODE") == "wait")
@@ -1485,19 +1490,7 @@ await BackupCompatibilityChecks.RunAsync(root);
         ["Alta"] = (9_000_000, 85),
         ["Muito alta"] = (16_000_000, 95)
     };
-    foreach (var (computer, microphone) in new[] { (false, false), (true, false), (false, true), (true, true) })
-    {
-        var audioOptions = ScreenRecordingService.BuildOptions(
-            new RecordingTarget(RecordingTargetKind.Window, new System.Drawing.Rectangle(0, 0, 640, 480), new IntPtr(1)),
-            new RecordingSettings { Audio = new() { CaptureComputer = computer, CaptureMicrophone = microphone,
-                InputDeviceId = "input-fixture", OutputDeviceId = "output-fixture", InputVolume = .4f, OutputVolume = .7f } },
-            Path.Combine(root, "audio-options.log")).AudioOptions;
-        Require(audioOptions.IsAudioEnabled == (computer || microphone) &&
-                audioOptions.IsInputDeviceEnabled == microphone && audioOptions.IsOutputDeviceEnabled == computer &&
-                audioOptions.AudioInputDevice == "input-fixture" && audioOptions.AudioOutputDevice == "output-fixture" &&
-                audioOptions.InputVolume == .4f && audioOptions.OutputVolume == .7f,
-            $"MP4 respeita fontes independentes PC={computer} microfone={microphone}, dispositivos e volumes");
-    }
+    RecordingAudioMigrationChecks.Run(root);
     var savedAudio = System.Text.Json.JsonSerializer.Deserialize<RecordingSettings>(
         System.Text.Json.JsonSerializer.Serialize(new RecordingSettings { Audio = new() {
             CaptureComputer = false, CaptureMicrophone = true, InputDeviceId = "mic-saved", InputVolume = .6f } }))!;

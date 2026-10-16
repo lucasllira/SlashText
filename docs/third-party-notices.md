@@ -24,13 +24,13 @@ deterministic. No absolute machine/cache paths are written into the catalog.
 The app verifies catalog/ZIP cardinality, identities, lengths and all digests
 before showing text. The viewer does not navigate URLs or use HTML rendering.
 
-`ScreenRecorderLib.txt` is copied from the exact 6.6.0 NuGet LICENSE, retaining
+`ScreenRecorderLib.txt` is copied from the exact 7.0.1 NuGet LICENSE, retaining
 Sverre Skodje's original 2017 notice. The distribution NOTICE also preserves
 package metadata crediting 2025, Tesseract/Charles Weld, InteropDotNet/Andrey
 Akinshin and AvalonEdit/AlphaSierraPapa. Copyright years are not substituted with
 the current year. IJG's required attribution is included in both the local
 NOTICE and the root third-party index.
-The 6.6.0 native backend also includes and uses `fifo_map.h`; its complete MIT
+The 7.0.1 native backend also includes and uses `fifo_map.h`; its complete MIT
 header, copyright 2015-2017 Niels Lohmann, is preserved as a separate document.
 
 Native codec observations were taken from the SHA-verified x64 Leptonica
