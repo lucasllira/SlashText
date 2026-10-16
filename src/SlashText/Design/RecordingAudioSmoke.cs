@@ -68,6 +68,8 @@ internal static class RecordingAudioSmoke
                 "Unified settings preserve all audio preferences without mutating the original");
             dialog.Close();
         }
+        await RecordingRecoverySmoke.RunAsync(output);
+        await RecordingRecoveryOperationSmoke.RunAsync(Path.Combine(output, "operation-recovery"));
         if (native) await NativeAsync(output);
         File.WriteAllText(Path.Combine(output, "result.txt"), "Recording audio WPF: OK\nNative: " + (native ? "executed (see native.json)" : "not requested"));
     }
@@ -160,8 +162,8 @@ internal static class RecordingAudioSmoke
             JsonSerializer.Serialize(metrics, new JsonSerializerOptions { WriteIndented = true })); }
     }
 
-    private sealed record Track(string Kind, double Seconds);
-    private static Track[] Tracks(byte[] bytes)
+    internal sealed record Track(string Kind, double Seconds);
+    internal static Track[] Tracks(byte[] bytes)
     {
         var tracks = new List<Track>();
         foreach (var moov in Boxes(bytes, 0, bytes.Length).Where(b => b.Kind == "moov"))

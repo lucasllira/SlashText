@@ -2753,6 +2753,7 @@ public partial class MainWindow : Window
             var control = new RecordingControlWindow(recorder, "MP4", capture.Recording);
             _recordingControl = control;
             using var cancellation = WatchPreparedRecordingControl(control, operation);
+            control.EmergencyExitRequested += (_, _) => RequestRecordingEmergencyExit();
             control.Show();
             var shouldStart = await control.WaitForStartAsync();
             CheckRecordingOperation(operation);
@@ -2803,13 +2804,16 @@ public partial class MainWindow : Window
             if (!CanUseRecordingInterface) return;
             operation.Token.ThrowIfCancellationRequested();
             var failedRecordingId = _recordingService?.RecordingId.ToString("N") ?? "unknown";
+            var recoverablePath = _recordingService?.RecoveryFilePath;
+            await WaitForNativeRecordingReleaseAsync();
             CleanupRecordingResources();
             ShowFromTray();
             AppDiagnosticLog.Write("recording.interface-restored",
                 ("recordingId", failedRecordingId), ("media", "MP4"), ("result", "failure"));
             ShowAppDialog(
                 exception.Message +
-                UiText.Get("\n\nO SlashDesk usa H.264/Media Foundation. Em edições N/KN, instale o Media Feature Pack do Windows.") +
+                (exception is TimeoutException ? "\n\n" + recoverablePath :
+                    UiText.Get("\n\nO SlashDesk usa H.264/Media Foundation. Em edições N/KN, instale o Media Feature Pack do Windows.")) +
                 $"\nLogs: {AppPaths.LogsDirectory}",
                 UiText.Get("Não foi possível gravar"),
                 MessageBoxButton.OK,
@@ -4335,6 +4339,14 @@ public partial class MainWindow : Window
             return;
         }
 
+        if (_recordingService?.IsRecording == true)
+        {
+            e.Cancel = true; _exitRequested = false;
+            _recordingService.Stop();
+            _recordingControl?.Activate();
+            StatusText.Text = UiText.Get("Aguarde a parada da gravação. Se ela não for confirmada, use Encerrar SlashDesk no controle de gravação.");
+            return;
+        }
         if (!CanDiscardShortcutDraft()) { e.Cancel = true; _exitRequested = false; return; }
         _activeUpdateCancellation?.Cancel();
         if (CaptureInlineEditor.HasUnsavedChanges && ShowAppDialog(UiText.Get("Há alterações de imagem não salvas. Sair sem salvar?"), UiText.Get("Editor de imagem"),

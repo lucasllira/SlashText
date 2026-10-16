@@ -57,6 +57,8 @@ public static class AppDiagnosticLog
         RecordingSettings settings, string encoderPolicy, string partialPath) =>
         RecordingRecovery.Start(recordingId, partialPath);
 
+    public static void MarkRecordingStopUnconfirmed(Guid recordingId) => RecordingRecovery.MarkStopUnconfirmed(recordingId);
+
     public static void MarkRecordingEnded(Guid recordingId, bool completed) => RecordingRecovery.End(recordingId, completed);
 
     private static string ProductVersion() =>

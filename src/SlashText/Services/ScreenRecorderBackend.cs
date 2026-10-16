@@ -54,7 +54,7 @@ internal sealed class ScreenRecorderBackend : IScreenRecorderBackend
 
     public void Dispose()
     {
-        var recorder = Interlocked.Exchange(ref _recorder, null);
+        var recorder = _recorder;
         if (recorder is null)
         {
             return;
@@ -63,6 +63,7 @@ internal sealed class ScreenRecorderBackend : IScreenRecorderBackend
         recorder.OnRecordingFailed -= OnFailed;
         recorder.OnStatusChanged -= OnStatusChanged;
         recorder.Dispose();
+        _recorder = null; // Only drop the native reference after confirmed disposal.
     }
 
     private Recorder Recorder => _recorder ??

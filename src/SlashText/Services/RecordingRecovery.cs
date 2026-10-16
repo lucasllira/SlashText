@@ -10,7 +10,7 @@ internal static class RecordingRecovery
     private static readonly object Gate = new();
     private static readonly Dictionary<Guid, string> Active = [];
     private static string Root => Path.Combine(AppPaths.DataDirectory, "RecordingRecovery-v1");
-    private sealed record Marker(int Schema, Guid Id, int Pid, long StartedUtcTicks, string PartialPath, bool Interrupted);
+    private sealed record Marker(int Schema, Guid Id, int Pid, long StartedUtcTicks, string PartialPath, bool Interrupted, bool StopUnconfirmed = false);
 
     internal static void Start(Guid id, string partialPath)
     {
@@ -32,6 +32,28 @@ internal static class RecordingRecovery
             }
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException) { }
+    }
+
+    internal static void MarkStopUnconfirmed(Guid id)
+    {
+        try
+        {
+            lock (Gate)
+            {
+                if (!Active.TryGetValue(id, out var path)) return;
+                using var pin = LocalFileBoundary.PinDirectory(Path.GetDirectoryName(path)!);
+                using var file = LocalFileBoundary.OpenFile(path, exclusive: true);
+                if (file.Length is <= 0 or > 16384) return;
+                var marker = JsonSerializer.Deserialize<Marker>(file);
+                if (marker is null || marker.Schema != 1 || marker.Id != id || marker.Pid != Environment.ProcessId ||
+                    marker.StartedUtcTicks != Process.GetCurrentProcess().StartTime.ToUniversalTime().Ticks) return;
+                file.Position = 0;
+                JsonSerializer.Serialize(file, marker with { StopUnconfirmed = true });
+                file.SetLength(file.Position);
+                file.Flush(true);
+            }
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException or JsonException) { }
     }
 
     internal static void End(Guid id, bool completed)

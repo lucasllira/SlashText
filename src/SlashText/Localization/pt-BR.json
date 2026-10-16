@@ -1790,5 +1790,12 @@
   "Ui.75926F8261AD70EB": "Componente",
   "Ui.3227D7EFCEADEF83": "Texto da licença",
   "Ui.97C5EA9F13C00DC4": "Não foi possível carregar os avisos de terceiros.",
-  "Ui.1A878A55C594B0F7": "Descartar"
+  "Ui.1A878A55C594B0F7": "Descartar",
+  "Ui.30E18D1AD4F6C3C3": "Parada não confirmada. Tela e áudio podem continuar sendo capturados. Encerre o SlashDesk para interromper o processo gravador.",
+  "Ui.3B1E90D18E8AE7C8": "O gravador confirmou a liberação após o atraso. O arquivo temporário foi preservado, mas pode estar incompleto.",
+  "Ui.347B5EF9B9D75D65": "Encerrar SlashDesk",
+  "Ui.74D6B793E39C5199": "Encerramento de emergência",
+  "Ui.4F0E1AB5AF3B3769": "Aguarde a parada da gravação. Se ela não for confirmada, use Encerrar SlashDesk no controle de gravação.",
+  "Ui.5349EDC17DBC2FD5": "A parada de tela e áudio ainda não foi confirmada. Encerrar o SlashDesk termina o processo que contém o gravador. Alterações não salvas serão perdidas. O vídeo temporário será mantido, mas pode estar incompleto. Deseja encerrar agora?",
+  "Ui.62BB7F098D8B090A": "Não foi possível encerrar o processo. A parada segue sem confirmação. Use o Gerenciador de Tarefas para encerrar o SlashDesk."
 }

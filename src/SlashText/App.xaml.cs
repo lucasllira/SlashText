@@ -239,6 +239,23 @@ public partial class App : System.Windows.Application
             }));
             return;
         }
+        if (e.Args.Length is 3 or 4 && e.Args[0] == "--recording-native-stop-smoke")
+        {
+            _helperMode = true; ShutdownMode = ShutdownMode.OnExplicitShutdown;
+            var output = Path.GetFullPath(e.Args[1]);
+            base.OnStartup(e);
+            Dispatcher.BeginInvoke(new Action(async () =>
+            {
+                try
+                {
+                    if (e.Args.Length == 4 && e.Args[3] != "--audio-both")
+                        throw new ArgumentException("Unknown native recovery option");
+                    Shutdown(await Design.RecordingNativeStopSmoke.RunAsync(output, e.Args[2], e.Args.Length == 4));
+                }
+                catch (Exception exception) { Directory.CreateDirectory(output); File.WriteAllText(Path.Combine(output, "failure.txt"), exception.ToString()); Shutdown(1); }
+            }));
+            return;
+        }
         if (e.Args.Length > 0 && e.Args[0] == "--recording-audio-smoke")
         {
             _helperMode = true; ShutdownMode = ShutdownMode.OnExplicitShutdown;

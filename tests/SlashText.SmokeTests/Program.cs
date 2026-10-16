@@ -6,6 +6,18 @@ using System.IO.Compression;
 using System.Diagnostics;
 using ScreenRecorderLib;
 
+if (args.Length == 2 && args[0] == "--recording-stop-smoke")
+{
+    await RecordingStopSafetyChecks.RunAsync(Path.GetFullPath(args[1]));
+    return;
+}
+
+if (args.Length == 3 && args[0] == "--recording-recovery-probe")
+{
+    await RecordingStopSafetyChecks.ProbeAsync(Path.GetFullPath(args[1]), args[2]);
+    return;
+}
+
 if (args.Length == 1 && args[0] == "--release-trust-smoke")
 {
     await ReleaseTrustChecks.RunAsync();
@@ -598,6 +610,7 @@ await BackupCompatibilityChecks.RunAsync(root);
     await RetentionPrivacyChecks.RunAsync(root);
     ClipboardPrivacyChecks.Run(root);
     await ClipboardNativeChecks.RunChildAsync(root);
+    await RecordingStopSafetyChecks.RunAsync(root);
     Exception? workbenchFailure = null;
     var workbenchThread = new Thread(() =>
     {
@@ -1728,10 +1741,11 @@ await BackupCompatibilityChecks.RunAsync(root);
             new RecordingSettings());
         Require(timeoutFactory.Backend.RecordCalled.Wait(TimeSpan.FromSeconds(2)), "backend para timeout");
         lifecycle.Stop();
-        await RequireThrowsAsync<TimeoutException>(() => task, "timeout nativo controlado");
+        await WaitUntilAsync(() => lifecycle.IsStopUnconfirmed, "timeout nativo visível");
+        Require(!task.IsCompleted && lifecycle.IsRecording, "timeout mantém vínculo com o gravador");
         Require(timeoutFactory.Backend.DisposeCalls == 0, "timeout não descarta Recorder durante callback nativo");
         timeoutFactory.Backend.CompleteLater();
-        // Timeout already publishes Failed; wait for the late callback's actual cleanup.
+        await RequireThrowsAsync<TimeoutException>(() => task, "callback tardio libera antes de completar");
         await WaitUntilAsync(
             () => lifecycle.State == ScreenRecordingState.Failed && timeoutFactory.Backend.DisposeCalls >= 1,
             "callback tardio conclui limpeza");
@@ -2539,15 +2553,17 @@ await BackupCompatibilityChecks.RunAsync(root);
         Require(noCallbackFactory.Backend.RecordCalled.Wait(TimeSpan.FromSeconds(2)),
             "backend para timeout sem callback");
         lifecycle.Stop();
-        await RequireThrowsAsync<TimeoutException>(() => task, "timeout real sem callback");
+        await WaitUntilAsync(() => lifecycle.IsStopUnconfirmed, "timeout sem callback visível");
         var disposeClock = Stopwatch.StartNew();
         lifecycle.Dispose();
         Require(disposeClock.Elapsed < TimeSpan.FromMilliseconds(100),
             "Dispose após timeout não bloqueia UI");
         Require(noCallbackFactory.Backend.DisposeCalls == 0,
             "timeout sem callback não concorre Dispose com código nativo");
-        Require(lifecycle.State == ScreenRecordingState.Failed,
-            "timeout sem callback encerra estado Finalizando");
+        Require(lifecycle.IsStopUnconfirmed && lifecycle.IsRecording && !task.IsCompleted,
+            "timeout sem callback mantém estado não confirmado");
+        noCallbackFactory.Backend.CompleteLater();
+        await RequireThrowsAsync<TimeoutException>(() => task, "callback posterior libera recursos");
     }
 }
 finally

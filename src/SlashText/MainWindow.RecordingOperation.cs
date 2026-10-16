@@ -53,6 +53,9 @@ public partial class MainWindow
         }
         finally
         {
+            // Even an unrelated pipeline failure cannot discard a live native session
+            // or release the app reservation. Recovery stays available until release.
+            await WaitForNativeRecordingReleaseAsync();
             try { CleanupRecordingResources(); }
             finally
             {
@@ -91,8 +94,18 @@ public partial class MainWindow
         Close();
     }
 
+    private async Task WaitForNativeRecordingReleaseAsync()
+    {
+        if (_recordingService is not { IsRecording: true } pendingRecorder) return;
+        pendingRecorder.Stop();
+        try { await pendingRecorder.NativeCompletion; }
+        catch (Exception error) { AppDiagnosticLog.WriteException("recording.pending-cleanup-failed", error); }
+    }
+
     private void CleanupRecordingResources()
     {
+        if (_recordingService?.IsRecording == true)
+            throw new InvalidOperationException(UiText.Get("Já existe uma gravação em andamento."));
         var control = _recordingControl; _recordingControl = null;
         var recorder = _recordingService; _recordingService = null;
         var gif = _gifRecordingSession; _gifRecordingSession = null;

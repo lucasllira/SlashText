@@ -62,6 +62,7 @@ internal static class DiagnosticPolicy
         "recording.callback-status",
         "recording.completed",
         "recording.dispose-requested",
+        "recording.emergency-exit-failed",
         "recording.failure-observer-exception",
         "recording.finalization-duplicate-ignored",
         "recording.finalization-failed",
@@ -78,6 +79,7 @@ internal static class DiagnosticPolicy
         "recording.overlay-closed",
         "recording.overlay-finish-clicked",
         "recording.pause",
+        "recording.pending-cleanup-failed",
         "recording.previous-process-ended-without-finalization",
         "recording.progress-observer-exception",
         "recording.resume",
@@ -87,6 +89,7 @@ internal static class DiagnosticPolicy
         "recording.stop-duplicate-ignored",
         "recording.stop-requested",
         "recording.stop-timeout",
+        "recording.stop-unconfirmed",
         "recording.stop-wait-started",
         "recording.temporary-move-enter",
         "recording.temporary-move-return",
@@ -133,7 +136,7 @@ internal static class DiagnosticPolicy
     };
     private static readonly HashSet<string> Tokens = new(StringComparer.Ordinal)
     {
-        "Idle", "Starting", "Recording", "Paused", "Stopping", "Finalizing", "Completed", "Failed", "Disposed",
+        "Idle", "Starting", "Recording", "Paused", "Stopping", "StopUnconfirmed", "Finalizing", "Completed", "Failed", "Disposed",
         "Monitor", "Region", "Window", "Portable", "Installed", "x64", "x86",
         "Enter", "Space", "Tab", "None", "True", "False", "H264-software", "H264 Media Foundation; hardware if available, software fallback",
         "target_changed", "operation_failed", "MonitorImage", "RegionImage", "WindowImage", "LongImage",

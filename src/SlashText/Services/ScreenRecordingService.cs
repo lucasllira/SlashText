@@ -12,7 +12,8 @@ public sealed class ScreenRecordingService : IRecordingController, IDisposable
     private const string EncoderPolicy =
         "H264 Media Foundation; hardware if available, software fallback";
     private static readonly TimeSpan DefaultStopTimeout = TimeSpan.FromSeconds(12);
-    private static int _unresolvedNativeStops;
+    // Retain uncertain native objects even if a caller disposes/drops its service.
+    private static ScreenRecordingService? _activeSession;
     private readonly object _gate = new();
     private readonly IScreenRecorderBackendFactory _backendFactory;
     private readonly TimeSpan _stopTimeout;
@@ -28,7 +29,8 @@ public sealed class ScreenRecordingService : IRecordingController, IDisposable
     private int _stopRequested;
     private int _pauseRequested;
     private int _timeoutReported;
-    private int _nativeStopOutstanding;
+    private int _stopMonitorStarted;
+    private int _nativeLifetimeOutstanding;
     private bool _disposed;
     private RecordingAudioSettings _audio = new();
     public bool IsMicrophoneMuted { get; private set; }
@@ -57,10 +59,19 @@ public sealed class ScreenRecordingService : IRecordingController, IDisposable
                     ScreenRecordingState.Recording or
                     ScreenRecordingState.Paused or
                     ScreenRecordingState.Stopping or
-                    ScreenRecordingState.Finalizing;
+                    ScreenRecordingState.Finalizing or
+                    ScreenRecordingState.StopUnconfirmed;
             }
         }
     }
+
+    internal Task NativeCompletion
+    {
+        get { lock (_gate) return _completion?.Task ?? Task.CompletedTask; }
+    }
+
+    public string RecoveryFilePath => _workingPath;
+    public bool IsStopUnconfirmed => State == ScreenRecordingState.StopUnconfirmed;
 
     public bool IsPaused => Volatile.Read(ref _pauseRequested) == 1;
     public Guid RecordingId => _recordingId;
@@ -89,7 +100,7 @@ public sealed class ScreenRecordingService : IRecordingController, IDisposable
         lock (_gate)
         {
             ObjectDisposedException.ThrowIf(_disposed, this);
-            if (IsRecording)
+            if (_state != ScreenRecordingState.Idle)
             {
                 throw new InvalidOperationException(UiText.Get("Já existe uma gravação em andamento."));
             }
@@ -98,7 +109,7 @@ public sealed class ScreenRecordingService : IRecordingController, IDisposable
                 throw new PlatformNotSupportedException(
                     UiText.Get("A gravação MP4 do SlashDesk requer o processo x64."));
             }
-            if (Volatile.Read(ref _unresolvedNativeStops) != 0)
+            if (Volatile.Read(ref _activeSession) is not null)
             {
                 throw new InvalidOperationException(
                     UiText.Get("Uma finalização MP4 anterior ainda está presa no encoder nativo. ") +
@@ -112,6 +123,10 @@ public sealed class ScreenRecordingService : IRecordingController, IDisposable
             _recordingId = Guid.NewGuid();
             _path = CreateMediaPath(captureSettings, target.Type, ".mp4");
             _workingPath = CreateWorkingPath(_path);
+            // Reserve the native lifetime, including startup and failed Dispose, across instances.
+            if (Interlocked.CompareExchange(ref _activeSession, this, null) is not null)
+                throw new InvalidOperationException(UiText.Get("Já existe uma gravação em andamento."));
+            Volatile.Write(ref _nativeLifetimeOutstanding, 1);
             _completion = completion = new TaskCompletionSource<string>(
                 TaskCreationOptions.RunContinuationsAsynchronously);
             _state = ScreenRecordingState.Starting;
@@ -119,27 +134,28 @@ public sealed class ScreenRecordingService : IRecordingController, IDisposable
             Volatile.Write(ref _stopRequested, 0);
             Volatile.Write(ref _pauseRequested, 0);
             Volatile.Write(ref _timeoutReported, 0);
-            Volatile.Write(ref _nativeStopOutstanding, 0);
+            Volatile.Write(ref _stopMonitorStarted, 0);
             _clock.Reset();
+
+            Log(
+                "recording.start-requested",
+                ("target", target.Kind.ToString()),
+                ("width", target.Bounds.Width),
+                ("height", target.Bounds.Height),
+                ("fps", settings.VideoFps),
+                ("cursor", settings.IncludeCursor),
+                ("computerAudio", _audio.CaptureComputer),
+                ("microphoneAudio", _audio.CaptureMicrophone),
+                ("encoder", EncoderPolicy));
+            AppDiagnosticLog.MarkRecordingActive(
+                _recordingId,
+                target,
+                settings,
+                EncoderPolicy,
+                _workingPath);
+            EnqueueNative("recording.start", () => StartCore(target, settings));
         }
 
-        Log(
-            "recording.start-requested",
-            ("target", target.Kind.ToString()),
-            ("width", target.Bounds.Width),
-            ("height", target.Bounds.Height),
-            ("fps", settings.VideoFps),
-            ("cursor", settings.IncludeCursor),
-            ("computerAudio", _audio.CaptureComputer),
-            ("microphoneAudio", _audio.CaptureMicrophone),
-            ("encoder", EncoderPolicy));
-        AppDiagnosticLog.MarkRecordingActive(
-            _recordingId,
-            target,
-            settings,
-            EncoderPolicy,
-            _workingPath);
-        EnqueueNative("recording.start", () => StartCore(target, settings));
         PublishProgress("Inicializando MP4");
         return completion.Task;
     }
@@ -213,26 +229,13 @@ public sealed class ScreenRecordingService : IRecordingController, IDisposable
     {
         lock (_gate)
         {
-            if (!IsRecording)
-            {
+            if (!IsRecording || Interlocked.CompareExchange(ref _stopRequested, 1, 0) != 0)
                 return;
-            }
-        }
-        if (Interlocked.CompareExchange(ref _stopRequested, 1, 0) != 0)
-        {
-            Log("recording.stop-duplicate-ignored");
-            return;
-        }
-
-        _clock.Stop();
-        Interlocked.Increment(ref _unresolvedNativeStops);
-        Volatile.Write(ref _nativeStopOutstanding, 1);
-        lock (_gate)
-        {
             _state = ScreenRecordingState.Stopping;
         }
+        _clock.Stop();
         Log("recording.stop-requested", ("elapsedMs", Elapsed.TotalMilliseconds));
-        _ = MonitorStopTimeoutAsync();
+        EnsureStopMonitor();
         EnqueueNative("recording.stop", StopCore);
         PublishProgress("Finalizando MP4…");
     }
@@ -273,6 +276,7 @@ public sealed class ScreenRecordingService : IRecordingController, IDisposable
         Log("recording.native-pause-return", ("durationMs", started.Elapsed.TotalMilliseconds));
         lock (_gate)
         {
+            if (Volatile.Read(ref _stopRequested) != 0) return;
             _state = ScreenRecordingState.Paused;
         }
         PublishProgress("MP4 pausado");
@@ -291,6 +295,7 @@ public sealed class ScreenRecordingService : IRecordingController, IDisposable
         Log("recording.native-resume-return", ("durationMs", started.Elapsed.TotalMilliseconds));
         lock (_gate)
         {
+            if (Volatile.Read(ref _stopRequested) != 0) return;
             _state = ScreenRecordingState.Recording;
         }
         PublishProgress("Gravando MP4");
@@ -311,35 +316,33 @@ public sealed class ScreenRecordingService : IRecordingController, IDisposable
         Log("recording.native-stop-return", ("durationMs", started.Elapsed.TotalMilliseconds));
     }
 
+    private void EnsureStopMonitor()
+    {
+        if (Interlocked.CompareExchange(ref _stopMonitorStarted, 1, 0) == 0)
+            _ = MonitorStopTimeoutAsync();
+    }
+
     private async Task MonitorStopTimeoutAsync()
     {
-        Log("recording.stop-wait-started", ("timeoutMs", _stopTimeout.TotalMilliseconds));
         await Task.Delay(_stopTimeout).ConfigureAwait(false);
-        TaskCompletionSource<string>? completion;
-        lock (_gate)
-        {
-            completion = _completion;
-        }
-        if (completion is null || completion.Task.IsCompleted ||
-            Interlocked.CompareExchange(ref _timeoutReported, 1, 0) != 0)
-        {
-            return;
-        }
+        ReportUnconfirmedStop();
+    }
 
-        var error =
-            UiText.Get("O encoder nativo não confirmou a finalização dentro do prazo. ") +
-            UiText.Get("O SlashDesk foi liberado, mas reinicie-o antes de outra gravação e envie os logs.");
+    private void ReportUnconfirmedStop()
+    {
         lock (_gate)
         {
-            _state = ScreenRecordingState.Failed;
+            // Completion and timeout race on this gate. A released backend is safe even
+            // if subsequent MP4 validation or disk operations are still in progress.
+            if (Volatile.Read(ref _nativeLifetimeOutstanding) == 0 ||
+                Interlocked.CompareExchange(ref _timeoutReported, 1, 0) != 0)
+                return;
+            _state = ScreenRecordingState.StopUnconfirmed;
+            AppDiagnosticLog.MarkRecordingStopUnconfirmed(_recordingId);
         }
-        Log(
-            "recording.stop-timeout",
-            ("timeoutMs", _stopTimeout.TotalMilliseconds),
-            ("elapsedMs", Elapsed.TotalMilliseconds),
-            ("temporaryFile", Path.GetFileName(_workingPath)));
-        completion.TrySetException(new TimeoutException(error));
-        RaiseRecordingFailed(error);
+        Log("recording.stop-unconfirmed", ("temporaryFile", Path.GetFileName(_workingPath)));
+        PublishProgress(UiText.Get("Parada não confirmada. Tela e áudio podem continuar sendo capturados. Encerre o SlashDesk para interromper o processo gravador."));
+        // Keep the completion pending: the UI and native lifetime must remain attached.
     }
 
     private void OnRecordingComplete(object? sender, RecordingCompleteEventArgs e)
@@ -393,6 +396,9 @@ public sealed class ScreenRecordingService : IRecordingController, IDisposable
             Log("recording.finalization-duplicate-ignored");
             return;
         }
+        Interlocked.Exchange(ref _stopRequested, 1);
+        _clock.Stop();
+        EnsureStopMonitor(); // Failure callbacks can arrive without a user Stop request.
         EnqueueNative("recording.finalize", () => FinalizeCore(request));
     }
 
@@ -404,11 +410,12 @@ public sealed class ScreenRecordingService : IRecordingController, IDisposable
         string workingPath;
         Guid recordingId;
         var completed = false;
+        Exception? failure = null;
         lock (_gate)
         {
-            _state = ScreenRecordingState.Finalizing;
+            if (_state != ScreenRecordingState.StopUnconfirmed)
+                _state = ScreenRecordingState.Finalizing;
             backend = _backend;
-            _backend = null;
             completion = _completion;
             finalPath = _path;
             workingPath = _workingPath;
@@ -427,6 +434,14 @@ public sealed class ScreenRecordingService : IRecordingController, IDisposable
         catch (Exception exception)
         {
             LogException("recording.backend-dispose-exception", exception);
+            ReportUnconfirmedStop();
+            return; // Do not retry or discard the reference after uncertain native cleanup.
+        }
+        lock (_gate)
+        {
+            _backend = null;
+            // Native calls have returned; finalization metadata is settled before completion.
+            Volatile.Write(ref _nativeLifetimeOutstanding, 0);
         }
 
         try
@@ -437,14 +452,7 @@ public sealed class ScreenRecordingService : IRecordingController, IDisposable
             }
             if (Volatile.Read(ref _timeoutReported) != 0)
             {
-                lock (_gate)
-                {
-                    _state = ScreenRecordingState.Failed;
-                }
-                Log(
-                    "recording.callback-after-timeout-cleaned",
-                    ("temporaryFile", Path.GetFileName(workingPath)));
-                return;
+                throw new TimeoutException(UiText.Get("O gravador confirmou a liberação após o atraso. O arquivo temporário foi preservado, mas pode estar incompleto."));
             }
 
             var recordedPath = string.IsNullOrWhiteSpace(request.RecordedPath)
@@ -469,7 +477,6 @@ public sealed class ScreenRecordingService : IRecordingController, IDisposable
                 "recording.completed",
                 ("durationMs", Elapsed.TotalMilliseconds),
                 ("bytes", new FileInfo(finalPath).Length));
-            completion?.TrySetResult(finalPath);
         }
         catch (Exception exception)
         {
@@ -481,13 +488,18 @@ public sealed class ScreenRecordingService : IRecordingController, IDisposable
             Log(
                 "recording.temporary-preserved",
                 ("file", Path.GetFileName(request.RecordedPath ?? workingPath)));
-            completion?.TrySetException(exception);
-            RaiseRecordingFailed(exception.Message);
+            failure = exception;
         }
         finally
         {
-            ReleaseUnresolvedStop();
             AppDiagnosticLog.MarkRecordingEnded(recordingId, completed);
+            lock (_gate) ReleaseNativeLifetime();
+        }
+        if (failure is null) completion?.TrySetResult(finalPath);
+        else
+        {
+            completion?.TrySetException(failure);
+            RaiseRecordingFailed(failure.Message);
         }
     }
 
@@ -764,12 +776,10 @@ public sealed class ScreenRecordingService : IRecordingController, IDisposable
         // and own the single safe cleanup path.
     }
 
-    private void ReleaseUnresolvedStop()
+    private void ReleaseNativeLifetime()
     {
-        if (Interlocked.Exchange(ref _nativeStopOutstanding, 0) == 1)
-        {
-            Interlocked.Decrement(ref _unresolvedNativeStops);
-        }
+        Interlocked.Exchange(ref _nativeLifetimeOutstanding, 0);
+        Interlocked.CompareExchange(ref _activeSession, null, this);
     }
 
     private void Log(string stage, params (string Key, object? Value)[] fields) =>

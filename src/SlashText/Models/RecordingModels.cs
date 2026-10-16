@@ -18,6 +18,7 @@ public enum ScreenRecordingState
     Paused,
     Stopping,
     Finalizing,
+    StopUnconfirmed,
     Completed,
     Failed,
     Disposed

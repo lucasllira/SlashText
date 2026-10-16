@@ -1790,5 +1790,12 @@
   "Ui.75926F8261AD70EB": "Component",
   "Ui.3227D7EFCEADEF83": "License text",
   "Ui.97C5EA9F13C00DC4": "Could not load third-party notices.",
-  "Ui.1A878A55C594B0F7": "Discard"
+  "Ui.1A878A55C594B0F7": "Discard",
+  "Ui.30E18D1AD4F6C3C3": "Stop not confirmed. Screen and audio may still be captured. Exit SlashDesk to terminate the recording process.",
+  "Ui.3B1E90D18E8AE7C8": "The recorder confirmed release after the delay. The temporary file was preserved, but may be incomplete.",
+  "Ui.347B5EF9B9D75D65": "Exit SlashDesk",
+  "Ui.74D6B793E39C5199": "Emergency exit",
+  "Ui.4F0E1AB5AF3B3769": "Wait for recording to stop. If it is not confirmed, use Exit SlashDesk in the recording controls.",
+  "Ui.5349EDC17DBC2FD5": "Screen and audio capture have not yet confirmed stopping. Exiting SlashDesk terminates the process containing the recorder. Unsaved changes will be lost. The temporary video will be kept, but may be incomplete. Exit now?",
+  "Ui.62BB7F098D8B090A": "The process could not be terminated. Stopping is still unconfirmed. Use Task Manager to end SlashDesk."
 }
