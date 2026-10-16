@@ -272,13 +272,21 @@ foreach ($guideSection in @(
 }
 
 foreach ($versionElement in @(
-    '<Version>3.2.0</Version>',
-    '<AssemblyVersion>3.2.0.0</AssemblyVersion>',
-    '<FileVersion>3.2.0.0</FileVersion>'
+    '<Version>3.3.0</Version>',
+    '<AssemblyVersion>3.3.0.0</AssemblyVersion>',
+    '<FileVersion>3.3.0.0</FileVersion>'
 )) {
     if (-not $project.Contains($versionElement)) {
-        throw "Versão 3.2.0 inconsistente: $versionElement"
+        throw "Versão 3.3.0 inconsistente: $versionElement"
     }
+}
+
+[xml]$applicationManifest = Get-Content 'src/SlashText/app.manifest' -Raw
+if ($applicationManifest.assembly.assemblyIdentity.version -cne '3.3.0.0') {
+    throw 'Identidade do manifesto não corresponde à versão 3.3.0 do aplicativo.'
+}
+if (-not (Test-Path 'docs/releases/3.3.0.md' -PathType Leaf)) {
+    throw 'Notas da versão 3.3.0 ausentes.'
 }
 
 foreach ($style in @(

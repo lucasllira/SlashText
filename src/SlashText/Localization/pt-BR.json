@@ -871,7 +871,7 @@
   "Ui.8963963F736CDDFB": "Não foi possível analisar imagens: ",
   "Ui.4F3DFA86F5AD7226": "Não foi possível ativar atalhos com o mouse.",
   "Ui.6F6C54FA92A9A93C": "Não foi possível capturar",
-  "Ui.AA97C84F2D8BF16D": "Não foi possível carregar os componentes locais do OCR. Confira o requisito Microsoft Visual C++ x64 no LEIA-ANTES do piloto.",
+  "Ui.A522B557BC01B8EC": "Não foi possível carregar os componentes locais do OCR. Verifique se o Microsoft Visual C++ Redistributable x64 está instalado e tente novamente.",
   "Ui.4BCA9F130F221562": "Não foi possível consultar o GitHub.\n\n{0}",
   "Ui.C1A492E2992E7982": "Não foi possível consultar os dispositivos de áudio.",
   "Ui.6341323030122351": "Não foi possível criar o backup",

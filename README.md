@@ -37,6 +37,11 @@ Ele foi pensado para uso pessoal ou corporativo com três prioridades:
 
 A versão estável atual é a **3.2.0**.
 
+A **3.3.0 está em validação**, com a nova interface completa, áudio nas gravações
+e idiomas português, inglês e espanhol. Consulte as [notas da 3.3.0](docs/releases/3.3.0.md).
+A publicação será feita após a aprovação do candidato; os links de download acima
+continuam apontando para a versão estável disponível.
+
 ## Principais recursos
 
 | Área | O que oferece |
@@ -99,7 +104,9 @@ A versão estável atual é a **3.2.0**.
 - foco visível, contraste semântico e suporte à escala do Windows;
 - barra de captura Fluent e catálogo local de emojis Noto.
 
-A migração completa de todas as telas para o contrato visual do Visual Lab está planejada para a versão 3.3.0. A 3.2.0 mantém a fundação Fluent existente e prioriza melhorias funcionais, confiabilidade e proteção dos dados.
+A implementação da interface completa do Visual Lab faz parte da **3.3.0, em validação**.
+A versão estável 3.2.0 mantém a fundação Fluent anterior. A nova interface preserva
+os dados, os atalhos e os formatos existentes.
 
 ## Instalação portátil
 
@@ -264,6 +271,19 @@ Os workflows do GitHub repetem build, testes, validações de UI, publicação s
 - [Integração da barra de captura](docs/capture-toolbar-visual-integration.md)
 
 ## Versões
+
+### 3.3.0 — em validação
+
+- seis telas e superfícies auxiliares com visual consistente, temas e navegação por teclado;
+- interface em português, inglês e espanhol, aplicada ao reabrir o aplicativo;
+- gravação MP4 com áudio do computador e microfone selecionados explicitamente;
+- Acento Rápido com linhas compactas, estado claro e controle pela bandeja;
+- estatísticas locais, lista de atalhos virtualizada e melhorias na duração dos GIFs;
+- reforços de importação, privacidade do clipboard, backup e recuperação de dados;
+- avisos de terceiros offline e fluxo de proveniência para as distribuições oficiais.
+
+Veja as [notas da versão 3.3.0](docs/releases/3.3.0.md). A validação do candidato e
+a aprovação de publicação permanecem na [issue #70](https://github.com/lucasllira/SlashText/issues/70).
 
 ### 3.2.0
 

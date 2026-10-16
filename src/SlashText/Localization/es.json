@@ -871,7 +871,7 @@
   "Ui.8963963F736CDDFB": "No se pudieron analizar las imágenes: ",
   "Ui.4F3DFA86F5AD7226": "No se pudieron activar los atajos del ratón.",
   "Ui.6F6C54FA92A9A93C": "No se pudo capturar",
-  "Ui.AA97C84F2D8BF16D": "No se pudieron cargar los componentes locales del OCR. Revisa el requisito Microsoft Visual C++ x64 en el archivo LEIA-ANTES del piloto.",
+  "Ui.A522B557BC01B8EC": "No se pudieron cargar los componentes locales del OCR. Comprueba que Microsoft Visual C++ Redistributable x64 esté instalado e inténtalo de nuevo.",
   "Ui.4BCA9F130F221562": "No se pudo consultar GitHub.\n\n{0}",
   "Ui.C1A492E2992E7982": "No se pudieron consultar los dispositivos de audio.",
   "Ui.6341323030122351": "No se pudo crear la copia de seguridad",
