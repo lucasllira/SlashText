@@ -33,3 +33,10 @@ These are provider/layout and programmatic interaction checks, not a certificati
 of Narrator/NVDA speech, physical keyboard use, high contrast, mixed monitor DPI or
 hardware. The integrated candidate review in #70 retains those checks. Contrast
 (#144) and GIF preview translation (#145) remain separate changes.
+
+The existing presented-window matrix also guards the footer collection count's
+small-text contrast (#144). It samples the opaque foreground and nearest painted
+Border background, requires at least 4.5:1, and repeats Light/Dark/System changes
+on the same window to catch stale resources. Reports include the measured colors
+and ratio. Disabled/decorative controls and antialiased glyph pixels are not used
+as contrast candidates. This focused check does not certify the entire interface.
