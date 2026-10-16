@@ -64,6 +64,10 @@ if (args.Length == 2 && args[0] == "--snippet-batch-benchmark")
     await SnippetBatchBenchmark.RunAsync(args[1]); return;
 }
 
+if (args.Length == 2 && args[0] == "--gif-timeline-smoke")
+{
+    await GifTimelineChecks.RunAsync(args[1]); return;
+}
 if (args.Length == 2 && args[0] == "--gif-cancellation-smoke")
 {
     await GifCancellationChecks.RunAsync(args[1]); return;
@@ -1782,22 +1786,12 @@ await BackupCompatibilityChecks.RunAsync(root);
 
     using (pipelineResult ?? throw new InvalidOperationException("Pipeline GIF sem resultado."))
     {
-        Require(
-            pipelineResult.Metrics is
-            {
-                RequestedFps: 10,
-                CapturedFrames: >= 8,
-                StoredFrames: 1
-            } metrics &&
-            metrics.ProcessedFrames <= metrics.CapturedFrames &&
-            metrics.EffectiveCapturedFps > 0 &&
-            // Stop can discard a captured frame before it enters the queue.
-            metrics.DuplicateFrames == metrics.ProcessedFrames - 1,
-            "pipeline GIF descarta quadro idêntico preservando duração");
-        Require(
-            pipelineResult.Duration >= TimeSpan.FromMilliseconds(900) &&
-            pipelineResult.Duration <= TimeSpan.FromMilliseconds(1100),
-            "deduplicação GIF preserva o tempo monotônico da sessão");
+        GifTimelineChecks.ValidateMetrics(pipelineResult, "bounded/off-UI", assessThroughput: true);
+        GifTimelineChecks.ValidateDuration(pipelineResult, "bounded/off-UI");
+        Require(pipelineResult.Metrics?.RequestedFps == 10 && pipelineResult.Fps == 10,
+            "preset GIF de 10 FPS preservado: " + GifTimelineChecks.Snapshot(pipelineResult));
+        Require(pipelineResult.FrameCount == 1,
+            "deduplicação GIF armazena uma imagem: " + GifTimelineChecks.Snapshot(pipelineResult));
         Require(
             gifCaptureThreads.All(thread => thread != callerThread),
             "captura e redimensionamento GIF fora da UI thread");

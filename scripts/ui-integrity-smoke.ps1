@@ -42,6 +42,7 @@ $recording = Get-Content $recordingPath -Raw
 $recordingBackend = Get-Content $recordingBackendPath -Raw
 $recordingCode = $recording + $recordingBackend
 $gif = Get-Content $gifPath -Raw
+$gifTiming = Get-Content 'src/SlashText/Services/GifTimingMetadata.cs' -Raw
 $recordingBar = Get-Content $recordingBarPath -Raw
 $gifPreview = Get-Content $gifPreviewPath -Raw
 
@@ -384,8 +385,9 @@ foreach ($control in @(
 }
 
 if (-not $gif.Contains('GifBitmapEncoder') -or
-    -not $gif.Contains('EnsureLoopExtension(temporaryPath)') -or
-    -not $gif.Contains('"NETSCAPE2.0"u8') -or
+    -not $gif.Contains('GifTimingMetadata.Write(temporaryPath, recording.FrameDelaysCentiseconds)') -or
+    -not $gifTiming.Contains('"NETSCAPE2.0"u8') -or
+    -not $gifTiming.Contains('BinaryPrimitives.WriteUInt16LittleEndian') -or
     -not $gif.Contains('File.Move(temporaryPath, path)') -or
     -not $recording.Contains('ValidateMp4File(recordedPath)') -or
     -not $recording.Contains('recording.mp4') -or
