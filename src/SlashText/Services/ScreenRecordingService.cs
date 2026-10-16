@@ -579,16 +579,7 @@ public sealed class ScreenRecordingService : IRecordingController, IDisposable
                     ? new ScreenSize(Even(target.Bounds.Width), Even(target.Bounds.Height))
                     : ScreenSize.Empty
             },
-            AudioOptions = new AudioOptions
-            {
-                IsAudioEnabled = settings.Audio.CaptureComputer || settings.Audio.CaptureMicrophone,
-                IsOutputDeviceEnabled = settings.Audio.CaptureComputer,
-                IsInputDeviceEnabled = settings.Audio.CaptureMicrophone,
-                AudioOutputDevice = settings.Audio.OutputDeviceId,
-                AudioInputDevice = settings.Audio.InputDeviceId,
-                OutputVolume = settings.Audio.OutputVolume,
-                InputVolume = settings.Audio.InputVolume
-            },
+            AudioOptions = RecordingAudioConfiguration.Create(settings.Audio),
             VideoEncoderOptions = new VideoEncoderOptions
             {
                 Bitrate = bitrate,

@@ -17,7 +17,7 @@ No download of notices occurs when the application runs.
 
 | Components | Included texts |
 | --- | --- |
-| ScreenRecorderLib 6.6.0 / fifo_map | Exact NuGet MIT license, package attribution and Niels Lohmann's original MIT notice from the native backend |
+| ScreenRecorderLib 7.0.1 / fifo_map | Exact NuGet MIT license, package attribution and Niels Lohmann's original MIT notice from the native backend |
 | AvalonEdit 6.3.1.120 | Upstream MIT license and package attribution |
 | Tesseract .NET 5.2.0 / InteropDotNet | Apache 2.0, MIT, authors and original acknowledgements |
 | Native Tesseract 5.0.0 / Leptonica 1.82.0 | Apache 2.0, authors and Leptonica BSD terms |

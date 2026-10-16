@@ -7,18 +7,18 @@
       "version": "distribution notices",
       "license": "attributions and scope",
       "file": "NOTICE.txt",
-      "sha256": "f613af6c30b8333ddf15ca2d8c23bd769983b5a19d6230f2b4934532fe17776d",
+      "sha256": "155cffd3b1352055960e2973ad77e3dd75d17440e85fbd5302fb60eb557b9c5f",
       "source": "https://github.com/lucasllira/SlashText",
       "package": null
     },
     {
       "id": "ScreenRecorderLib",
       "name": "ScreenRecorderLib",
-      "version": "6.6.0",
+      "version": "7.0.1",
       "license": "MIT",
       "file": "ScreenRecorderLib.txt",
       "sha256": "9aad4239954f3f4b1bae22011ca72e00fe5ad9218068cd44375a1a5306f7cf32",
-      "source": "https://www.nuget.org/packages/ScreenRecorderLib/6.6.0",
+      "source": "https://www.nuget.org/packages/ScreenRecorderLib/7.0.1",
       "package": "ScreenRecorderLib"
     },
     {
@@ -255,10 +255,10 @@
     {
       "id": "ScreenRecorderLib-fifo_map",
       "name": "fifo_map / Niels Lohmann",
-      "version": "vendored in ScreenRecorderLib 6.6.0",
+      "version": "vendored in ScreenRecorderLib 7.0.1",
       "license": "MIT",
       "file": "ScreenRecorderLib-fifo_map.txt",
-      "source": "https://github.com/sskodje/ScreenRecorderLib/blob/v6.6.0/ScreenRecorderLibNative/fifo_map.h",
+      "source": "https://github.com/sskodje/ScreenRecorderLib/blob/v7.0.1/ScreenRecorderLibNative/fifo_map.h",
       "package": null,
       "sha256": "be59142f79e1cf2c34400a57920e13761ef0f94e31ef78d1a282ac99cb00ce7b"
     }

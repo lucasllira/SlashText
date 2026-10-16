@@ -7,16 +7,18 @@ internal sealed record RecordingAudioDevice(string Id, string Name);
 
 internal sealed record RecordingAudioDeviceList(IReadOnlyList<RecordingAudioDevice> Devices, string? Error)
 {
-    public static RecordingAudioDeviceList Load(AudioDeviceSource source)
+    public static RecordingAudioDeviceList Load(bool microphone)
     {
         try
         {
-            return new(Recorder.GetSystemAudioDevices(source)
-                .Select(device => new RecordingAudioDevice(device.DeviceName, device.FriendlyName)).ToArray(), null);
+            var devices = microphone
+                ? Recorder.GetSystemAudioCaptureDevices().Select(device => new RecordingAudioDevice(device.DeviceName, device.FriendlyName))
+                : Recorder.GetSystemAudioLoopbackDevices().Select(device => new RecordingAudioDevice(device.DeviceName, device.FriendlyName));
+            return new(devices.ToArray(), null);
         }
         catch (Exception exception)
         {
-            AppDiagnosticLog.Write("recording.audio-devices-failed", ("source", source), ("errorType", exception.GetType().Name));
+            AppDiagnosticLog.Write("recording.audio-devices-failed", ("microphone", microphone), ("errorType", exception.GetType().Name));
             return new([], UiText.Get("Não foi possível consultar os dispositivos de áudio."));
         }
     }
@@ -35,8 +37,8 @@ internal sealed record RecordingAudioDeviceList(IReadOnlyList<RecordingAudioDevi
 internal sealed record RecordingAudioDevices(RecordingAudioDeviceList Inputs, RecordingAudioDeviceList Outputs)
 {
     public static RecordingAudioDevices Load() => new(
-        RecordingAudioDeviceList.Load(AudioDeviceSource.InputDevices),
-        RecordingAudioDeviceList.Load(AudioDeviceSource.OutputDevices));
+        RecordingAudioDeviceList.Load(microphone: true),
+        RecordingAudioDeviceList.Load(microphone: false));
 
     public string? Validate(RecordingAudioSettings audio) =>
         Inputs.Validate(audio.CaptureMicrophone, audio.InputDeviceId, "o microfone") ??
