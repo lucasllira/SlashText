@@ -61,6 +61,29 @@ internal static class AccessibilityNamesSmoke
                         Content = "Private synthetic text {{nome}}", Category = "Geral", Enabled = true };
                     main.PrepareShortcutsEvidence(size.Width, [fixture]);
                     host.Show(); await SettleAsync(host);
+                    // Check the actual painted footer, including live resource
+                    // replacement on this same window. No antialiased glyph pixels
+                    // or unused Control.Background defaults are contrast inputs.
+                    foreach (var activeTheme in new[] { theme, "Light", "Dark", "System" })
+                    {
+                        ThemeService.Apply(activeTheme); await SettleAsync(host);
+                        var footer = (TextBlock)main.FindName("ShellCollectionStatusText");
+                        var surface = Ancestors(footer).OfType<Border>()
+                            .First(b => b.Background is SolidColorBrush { Color.A: 255 });
+                        Require(footer.IsVisible && footer.IsEnabled && footer.FontSize == 11 &&
+                            Ancestors(footer).OfType<UIElement>().All(e => e.Opacity == 1),
+                            "Footer contrast target is enabled opaque small text");
+                        var foreground = ((SolidColorBrush)footer.Foreground).Color;
+                        var background = ((SolidColorBrush)surface.Background).Color;
+                        Require(foreground.A == 255, "Opaque footer foreground");
+                        var lighter = Math.Max(Luminance(foreground), Luminance(background));
+                        var darker = Math.Min(Luminance(foreground), Luminance(background));
+                        var contrast = (lighter + .05) / (darker + .05);
+                        var measurement = $"{language}/{theme}/{size.Width}/{activeTheme}: footer {foreground}/{background}, contrast {contrast:F4}:1";
+                        Require(contrast >= 4.5, measurement);
+                        checks.Add(measurement + ": PASS");
+                    }
+                    ThemeService.Apply(theme); await SettleAsync(host);
                     foreach (var pair in expected)
                     {
                         var control = (Control)main.FindName(pair.Key);
@@ -118,6 +141,15 @@ internal static class AccessibilityNamesSmoke
     }
 
     private static string Name(UIElement element) => UIElementAutomationPeer.CreatePeerForElement(element)?.GetName() ?? "";
+    private static double Luminance(Color color)
+    {
+        static double Linear(byte value)
+        {
+            var s = value / 255d;
+            return s <= .04045 ? s / 12.92 : Math.Pow((s + .055) / 1.055, 2.4);
+        }
+        return .2126 * Linear(color.R) + .7152 * Linear(color.G) + .0722 * Linear(color.B);
+    }
     private static async Task SettleAsync(Window host)
     {
         host.UpdateLayout(); await Dispatcher.Yield(DispatcherPriority.Loaded); host.UpdateLayout();

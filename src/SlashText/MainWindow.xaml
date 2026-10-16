@@ -1704,7 +1704,7 @@
                 </StackPanel>
                 <TextBlock x:Name="StatusText" Grid.Column="1" Margin="24,0" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" FontSize="11" Foreground="{DynamicResource Lab.muted}" AutomationProperties.LiveSetting="Polite"/>
                 <TextBlock x:Name="ShellCollectionStatusText" Grid.Column="2" VerticalAlignment="Center"
-                           FontSize="11" Foreground="{DynamicResource TertiaryBrush}"/>
+                           FontSize="11" Foreground="{DynamicResource MutedBrush}"/>
             </Grid>
         </Border>
     </Grid>

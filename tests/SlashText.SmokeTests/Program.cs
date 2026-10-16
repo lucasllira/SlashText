@@ -1799,12 +1799,23 @@ await BackupCompatibilityChecks.RunAsync(root);
 
     foreach (var fpsPreset in RecordingPresetCatalog.GifFps)
     {
+        var firstGifFrame = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         using var session = pipeline.StartRecording(
             new System.Drawing.Rectangle(0, 0, 16, 12),
             new RecordingSettings { GifFps = fpsPreset.Value, GifQuality = 128 });
         IRecordingController counter = session;
         Require(counter.Elapsed < TimeSpan.FromMilliseconds(80),
             $"contador GIF inicia em zero a {fpsPreset.Value} FPS");
+        session.ProgressChanged += (_, progress) =>
+        {
+            if (progress.Status.StartsWith("Gravando GIF ·", StringComparison.Ordinal)) firstGifFrame.TrySetResult();
+        };
+        // Exercise clock controls after the synthetic pipeline is ready. A busy
+        // runner may not schedule its first frame within the old 280 ms sleeps;
+        // stopping then correctly produces no GIF, rather than a clock failure.
+        try { await firstGifFrame.Task.WaitAsync(TimeSpan.FromSeconds(10)); }
+        catch (TimeoutException exception)
+        { throw new InvalidOperationException($"GIF fixture did not persist its first frame at {fpsPreset.Value} FPS before clock checks.", exception); }
         await Task.Delay(120);
         Require(counter.Elapsed >= TimeSpan.FromMilliseconds(70),
             $"contador GIF avança a {fpsPreset.Value} FPS");
