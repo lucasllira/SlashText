@@ -6,7 +6,8 @@ and can be dispatched after integration from the chosen source ref. It has only
 `contents: read`; it does not create tags, attestations or GitHub Releases.
 
 The workflow records the source commit and ZIP/EXE hashes, checks production
-distribution startup in a fresh disposable CI account, then runs the actual
+distribution startup in a fresh disposable CI account (a hash-verified portable
+copy keeps startup data outside the publish folder), then runs the actual
 published executables through About, language, offline-notice and synthetic
 native OCR probes. Component inventory/SBOM is collected from the same outputs.
 Portable packaging must contain only SlashDesk.exe. Installed staging is a

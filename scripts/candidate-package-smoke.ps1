@@ -12,8 +12,8 @@ New-Item -ItemType Directory -Path $output | Out-Null
 $version = @($project.Project.PropertyGroup.Version | Where-Object { $_ })[0]
 $info = [Diagnostics.FileVersionInfo]::GetVersionInfo($exe)
 $results = [Collections.Generic.List[object]]::new()
-function Invoke-CandidateProbe([string]$Name, [string[]]$Arguments, [int]$Timeout = 120) {
-    $child = Start-Process -FilePath $exe -ArgumentList $Arguments -WindowStyle Hidden -PassThru
+function Invoke-CandidateProbe([string]$Name, [string[]]$Arguments, [int]$Timeout = 120, [string]$ProcessExecutable = $exe) {
+    $child = Start-Process -FilePath $ProcessExecutable -ArgumentList $Arguments -WindowStyle Hidden -PassThru
     $null = $child.Handle
     if (-not $child.WaitForExit($Timeout * 1000)) {
         $child.Kill(); throw "Candidate probe timed out: $Name"
@@ -28,15 +28,27 @@ try {
     # Real startup probes may perform migration. Only a fresh, disposable CI account
     # is allowed; do not use an installed personal profile as a local fallback.
     if ($env:GITHUB_ACTIONS -eq 'true') {
+        $startupExe = $exe
+        if ($Layout -eq 'Portable') {
+            # Startup creates data alongside a portable EXE. Probe a byte-identical
+            # copy so the validated publish output stays a one-file distribution.
+            $startupDirectory = Join-Path ([IO.Path]::GetTempPath()) ('SlashDesk-candidate-startup-' + [guid]::NewGuid().ToString('N'))
+            New-Item -ItemType Directory -Path $startupDirectory | Out-Null
+            $startupExe = Join-Path $startupDirectory 'SlashDesk.exe'
+            Copy-Item -LiteralPath $exe -Destination $startupExe
+            if ((Get-FileHash $startupExe -Algorithm SHA256).Hash -cne (Get-FileHash $exe -Algorithm SHA256).Hash) {
+                throw 'Startup copy differs from the published candidate.'
+            }
+        }
         $expectedData = if ($Layout -eq 'Portable') {
-            Join-Path (Split-Path $exe -Parent) 'SlashDeskData'
+            Join-Path (Split-Path $startupExe -Parent) 'SlashDeskData'
         } else { Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) 'SlashDesk' }
         if (Test-Path -LiteralPath $expectedData) { throw 'Candidate startup requires a fresh CI data profile.' }
-        Invoke-CandidateProbe 'real-isolated-startup' @('--portable-smoke')
+        Invoke-CandidateProbe 'real-isolated-startup' @('--portable-smoke') 120 $startupExe
         if (-not (Test-Path -LiteralPath (Join-Path $expectedData 'snippets.md'))) {
             throw 'Startup did not select the expected production distribution data directory.'
         }
-        if (Test-Path -LiteralPath (Join-Path (Split-Path $exe -Parent) 'SlashDeskPilotData')) {
+        if (Test-Path -LiteralPath (Join-Path (Split-Path $startupExe -Parent) 'SlashDeskPilotData')) {
             throw 'Candidate unexpectedly selected a pilot data directory.'
         }
     } else {
