@@ -55,7 +55,8 @@ public sealed record GifCaptureMetrics(
     int RequestedFps = 0,
     double EffectiveCapturedFps = 0,
     int ProcessedFrames = 0,
-    double ActiveDurationMilliseconds = 0);
+    double ActiveDurationMilliseconds = 0,
+    int TimingCoalescedFrames = 0);
 
 public sealed class GifRecordingResult : IDisposable
 {

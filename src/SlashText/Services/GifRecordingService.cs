@@ -99,11 +99,10 @@ public sealed class GifRecordingService
     {
         var recordingId = session.RecordingId;
         var interval = TimeSpan.FromSeconds(1d / settings.GifFps);
-        var defaultDelay = Math.Max(2, (int)Math.Round(100d / settings.GifFps));
         var temporarySession = TemporarySession.Create("gif");
         var temporaryDirectory = temporarySession.DirectoryPath;
         var framePaths = new List<string>();
-        var delays = new List<int>();
+        var frameStarts = new List<TimeSpan>();
         var channel = Channel.CreateBounded<CapturedFrame>(new BoundedChannelOptions(QueueCapacity)
         {
             SingleReader = true,
@@ -201,7 +200,6 @@ public sealed class GifRecordingService
 
         byte[]? previousPixels = null;
         var previousLength = 0;
-        TimeSpan? lastStoredAt = null;
         var consumer = Task.Run(async () =>
         {
             try
@@ -223,10 +221,6 @@ public sealed class GifRecordingService
                                 throw TechnicalLimit(
                                     UiText.Format($"O limite técnico de {MaximumStoredFrames:N0} quadros do GIF foi atingido."));
                             }
-                            if (lastStoredAt is not null)
-                            {
-                                delays[^1] = DelayBetween(lastStoredAt.Value, captured.Elapsed);
-                            }
                             var framePath = Path.Combine(
                                 temporaryDirectory,
                                 $"{framePaths.Count:D6}.png");
@@ -241,10 +235,9 @@ public sealed class GifRecordingService
                                     UiText.Get("O GIF atingiu o limite técnico de 4 GiB de arquivos temporários."));
                             }
                             framePaths.Add(framePath);
-                            delays.Add(defaultDelay);
                             // The first available image also represents startup time.
                             // Otherwise a slow first capture shortens the whole GIF.
-                            lastStoredAt = framePaths.Count == 1 ? TimeSpan.Zero : captured.Elapsed;
+                            frameStarts.Add(framePaths.Count == 1 ? TimeSpan.Zero : captured.Elapsed);
                         }
                     }
                     session.Report($"Gravando GIF · {capturedFrames:N0} quadros");
@@ -260,16 +253,25 @@ public sealed class GifRecordingService
         try
         {
             await Task.WhenAll(producer, consumer).ConfigureAwait(false);
-            if (framePaths.Count == 0 || lastStoredAt is null)
+            if (framePaths.Count == 0)
             {
                 throw new InvalidOperationException(
                     UiText.Get("A gravação foi finalizada antes de produzir um quadro GIF."));
             }
-            delays[^1] = DelayBetween(lastStoredAt.Value, session.Elapsed);
+            var timeline = GifFrameTimeline.Build(frameStarts, session.Elapsed);
+            var selectedPaths = timeline.Select(item => framePaths[item.FrameIndex]).ToArray();
+            var delays = timeline.Select(item => item.DelayCentiseconds).ToArray();
+            var coalesced = framePaths.Count - selectedPaths.Length;
+            if (coalesced > 0)
+            {
+                var selectedIndices = timeline.Select(item => item.FrameIndex).ToHashSet();
+                for (var i = 0; i < framePaths.Count; i++)
+                    if (!selectedIndices.Contains(i)) File.Delete(framePaths[i]);
+            }
             var activeSeconds = Math.Max(session.Elapsed.TotalSeconds, 0.001);
             var metrics = new GifCaptureMetrics(
                 capturedFrames,
-                framePaths.Count,
+                selectedPaths.Length,
                 duplicateFrames,
                 droppedFrames,
                 TicksToMilliseconds(captureTicks),
@@ -279,7 +281,8 @@ public sealed class GifRecordingService
                 settings.GifFps,
                 capturedFrames / activeSeconds,
                 processedFrames,
-                session.Elapsed.TotalMilliseconds);
+                session.Elapsed.TotalMilliseconds,
+                coalesced);
             Log("gif.capture-complete",
                 recordingId,
                 ("requestedFps", metrics.RequestedFps),
@@ -288,6 +291,7 @@ public sealed class GifRecordingService
                 ("processedFrames", metrics.ProcessedFrames),
                 ("storedFrames", metrics.StoredFrames),
                 ("duplicateFrames", metrics.DuplicateFrames),
+                ("timingCoalescedFrames", metrics.TimingCoalescedFrames),
                 ("droppedFrames", metrics.DroppedFrames),
                 ("captureMs", metrics.CaptureMilliseconds),
                 ("spoolMs", metrics.ResizeMilliseconds),
@@ -295,7 +299,7 @@ public sealed class GifRecordingService
                 ("temporaryBytes", metrics.TemporaryBytes),
                 ("durationMs", session.Elapsed.TotalMilliseconds));
             return new GifRecordingResult(
-                framePaths,
+                selectedPaths,
                 settings.GifFps,
                 bounds,
                 delays,
@@ -541,12 +545,6 @@ public sealed class GifRecordingService
         public byte Blue { get; } = blue;
         public int MinimumDistanceSquared { get; set; } = int.MaxValue;
     }
-
-    internal static int DelayBetween(TimeSpan start, TimeSpan end) =>
-        // Quantize absolute boundaries, not each interval: fractional frame
-        // periods (e.g. 30 FPS) must not accumulate rounding drift.
-        Math.Max(2, (int)(Math.Round(end.TotalMilliseconds / 10d) -
-                         Math.Round(start.TotalMilliseconds / 10d)));
 
     private static GifTechnicalLimitException TechnicalLimit(string message)
     {

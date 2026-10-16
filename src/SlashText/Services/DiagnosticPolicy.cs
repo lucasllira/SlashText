@@ -122,7 +122,7 @@ internal static class DiagnosticPolicy
     {
         "processId", "threadId", "width", "height", "fps", "bytes", "durationMs", "elapsedMs",
         "timeoutMs", "count", "migrationWarnings", "capturedFrames", "storedFrames", "frames",
-        "duplicateFrames", "droppedFrames", "processedFrames", "temporaryBytes", "captureMs",
+        "duplicateFrames", "timingCoalescedFrames", "droppedFrames", "processedFrames", "temporaryBytes", "captureMs",
         "spoolMs", "encodeMs", "queueWaitMs", "requestedFps", "effectiveCapturedFps", "queueCapacity",
         "maximumStoredFrames", "maximumTemporaryBytes", "qualityColors", "exitCode", "downloadBytes",
         "typedCharacterCount", "insertedCharacterCount", "segmentCount", "segmentIndex", "characterCount",
