@@ -226,8 +226,11 @@ O resultado deve ser igual ao hash informado na página da Release.
 ### Requisitos
 
 - Windows x64;
-- SDK do .NET 10;
-- PowerShell para os scripts de validação.
+- SDK .NET definido em [`global.json`](global.json), com a política de servicing documentada;
+- PowerShell 7.2 ou superior; Python 3 para inventário e validações de segurança.
+
+Consulte o [ambiente de desenvolvimento e build](docs/development.md) para versões,
+recursos Noto/OCR, Visual C++ x64 e validação dos pacotes Portable/Installed.
 
 ### Executar
 

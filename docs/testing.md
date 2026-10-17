@@ -31,7 +31,7 @@ O Full usa os leitores, serviços, controles e renderers reais sobre fixtures; n
   -TestExecutable ./tests/SlashText.SmokeTests/bin/x64/Release/net10.0-windows/SlashText.SmokeTests.exe
 ```
 
-`-DotnetPath` aceita um SDK explicitamente selecionado. Ele deve estar acessível aos apphosts; quando instalado em diretório próprio, configure `DOTNET_ROOT` e PATH **somente na sessão** antes de executar. A escolha/política permanente do SDK pertence à atividade 3; esta entrega não altera SDK, runtime, projeto ou recursos do produto. Não execute Full enquanto outro build/publish altera os mesmos bin/obj.
+`-DotnetPath` aceita um SDK explicitamente selecionado, compatível com `global.json`. Ele deve estar acessível aos apphosts; quando instalado em diretório próprio, configure `DOTNET_ROOT` e PATH **somente na sessão** antes de executar. Consulte a [política de SDK, servicing e restauração de recursos](development.md). Não execute Full enquanto outro build/publish altera os mesmos bin/obj.
 
 Antes de enviar switches de fixture, o runner exige FileVersion do app igual à do projeto atual. EXEs antigos/desconhecidos ficam UNAVAILABLE: um app que não conhece um switch poderia iniciar normalmente. A comparação de versão evita esse erro de uso; não autentica um binário adversarial. Use somente build próprio ou artefato cuja origem/hash já foi conferida.
 
