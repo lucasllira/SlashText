@@ -1,5 +1,7 @@
 # Fundação visual 3.3.0 — #62
 
+> **Registro histórico / aplicabilidade.** Fundação inicial #62 sobre a base 3.2.0. As regras técnicas e o contrato continuam preservados; instruções de seguir para #63 e pendências abaixo registram aquela entrega, não o andamento atual. Veja o [índice histórico](../../history.md) para o contexto e os guias atuais.
+
 Parte de #61, piloto seguinte #63. Base funcional: v3.2.0, commit `406022943ab13d0d78399b2a797210ae5106b0e3`.
 
 ## Referência reproduzível

@@ -1,5 +1,7 @@
 # Inventário funcional da interface — SlashDesk 2.9.1
 
+> **Registro histórico / aplicabilidade.** Baseline funcional da 2.9.1, ainda usada para regressão; as contagens não descrevem a main atual. Veja o [índice histórico](history.md) para o contexto e os guias atuais.
+
 Este documento congela a linha de base visual e funcional anterior ao redesign
 3.0.0. A origem é a `main` após o merge do PR #20, commit
 `57ed4ebfe7857cd293f837c248330ccc142b9604`.

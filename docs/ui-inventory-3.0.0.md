@@ -1,5 +1,7 @@
 # Inventário funcional da interface — SlashDesk 3.0.0
 
+> **Registro histórico / aplicabilidade.** Inventário da entrega 3.0.0; as contagens e resultados pertencem àquela base. Veja o [índice histórico](history.md) para o contexto e os guias atuais.
+
 Este inventário final compara o redesign com a linha de base 2.9.1 congelada no
 commit `57ed4ebfe7857cd293f837c248330ccc142b9604`. A comparação automatizada é feita
 por `scripts/compare-ui-inventory.ps1`.

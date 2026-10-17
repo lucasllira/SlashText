@@ -1,5 +1,7 @@
 # Inventário funcional — confiabilidade (base do PR #25)
 
+> **Registro histórico / aplicabilidade.** Inventário anterior às mudanças do PR #25; não é um diagnóstico de falhas ainda abertas na main. Veja o [índice histórico](history.md) para o contexto e os guias atuais.
+
 Base remota: `agent/slashdesk-shortcuts-v2-splitters` em `5839cadda97c780b00338ac3e3011b99282d0934`.
 Branch funcional: `agent/slashdesk-functional-reliability`.
 

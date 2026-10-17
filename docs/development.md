@@ -1,5 +1,7 @@
 # Ambiente de desenvolvimento e build
 
+Navegação: [índice da documentação](README.md) · [registros históricos e pilotos](history.md).
+
 Execute os comandos na raiz do repositório, em Windows x64. Requer Git, PowerShell **7.2 ou superior** (`pwsh`), Python 3 para inventário/validações de segurança e o SDK definido em [`global.json`](../global.json). Não é necessário instalar Visual Studio para usar os comandos abaixo; um editor/IDE é opcional.
 
 ## SDK, runtime e servicing

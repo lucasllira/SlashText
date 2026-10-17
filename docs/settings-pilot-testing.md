@@ -1,5 +1,7 @@
 # Piloto 3.3.0 — Configurações (#67)
 
+> **Registro histórico — piloto da preparação da 3.3.0.** O roteiro abaixo pertence ao pacote/fixtures da entrega identificada, não à RC ou a qualquer EXE atual. Versão interna, comandos e pendências conservam o contexto original. Consulte o [índice histórico](history.md) e o [fluxo atual de testes](testing.md) antes de reproduzir.
+
 Base: `c74b92b140a61c9688655c102ac42713c3489e8c`, Estatísticas aprovada e integrada na PR #78. Referência: Visual Lab publicação 11, contrato congelado em `docs/design/3.3.0/contract/`. Os arquivos/tokens desse contrato permanecem intactos. Os serviços reais continuam em WPF; este piloto não é o site do Lab.
 
 ## Abrir e preservar dados

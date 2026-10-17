@@ -1,5 +1,7 @@
 # Preparação da gravação — piloto #128
 
+> **Registro histórico — piloto da preparação da 3.3.0.** O roteiro abaixo pertence ao pacote/fixtures da entrega identificada, não à RC ou a qualquer EXE atual. Versão interna, comandos e pendências conservam o contexto original. Consulte o [índice histórico](history.md) e o [fluxo atual de testes](testing.md) antes de reproduzir.
+
 Este piloto usa uma pasta fictícia `SlashDeskPilotData`, separada da instalação habitual. Os áudios do computador e microfone começam desativados, assim como a cópia para o clipboard. Atualizações e inicialização com o Windows estão desativadas no piloto. O número interno da versão ainda é anterior ao lançamento 3.3.0.
 
 ## Preparação

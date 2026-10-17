@@ -1,5 +1,7 @@
 # SlashDesk Design System
 
+> **Registro histórico / aplicabilidade.** Guia 3.0 aplicado na 2.8.1/3.0.0; referência para os componentes legados. Para a fundação visual da 3.3.0, consulte [a documentação da migração](design/3.3.0/README.md) e os estilos reais do checkout. Veja o [índice histórico](history.md) para o contexto e os guias atuais.
+
 Versão do guia: 3.0
 Aplicação inicial: SlashDesk 2.8.1
 Redesign funcional validado: SlashDesk 3.0.0

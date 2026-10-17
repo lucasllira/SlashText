@@ -1,5 +1,7 @@
 # Piloto #119 — preservar versões antigas de atalhos
 
+> **Registro histórico — piloto da preparação da 3.3.0.** O roteiro abaixo pertence ao pacote/fixtures da entrega identificada, não à RC ou a qualquer EXE atual. Versão interna, comandos e pendências conservam o contexto original. Consulte o [índice histórico](history.md) e o [fluxo atual de testes](testing.md) antes de reproduzir.
+
 O objetivo é garantir que criar backups novos não apague versões antigas que ainda podem ser recuperadas. O pacote contém apenas atalhos fictícios, três arquivos `.md` antigos e ZIPs de teste. O app oficial permanece separado.
 
 ## Preparação

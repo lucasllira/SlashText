@@ -1,5 +1,7 @@
 # Piloto #126 — falha auxiliar de estatísticas
 
+> **Registro histórico — piloto da preparação da 3.3.0.** O roteiro abaixo pertence ao pacote/fixtures da entrega identificada, não à RC ou a qualquer EXE atual. Versão interna, comandos e pendências conservam o contexto original. Consulte o [índice histórico](history.md) e o [fluxo atual de testes](testing.md) antes de reproduzir.
+
 Validação manual opcional: os testes automatizados já cobrem escrita negada, recuperação sem duplicação e os consumidores reais de UI. O piloto usa somente `SlashDeskPilotData` da pasta extraída e desativa inicialização com Windows/atualizações. Não copiar dados reais para esta pasta.
 
 1. Extraia o pacote em **uma pasta nova**. Saia de qualquer SlashDesk pela bandeja antes de abrir `SlashDesk.exe`. Abra Estatísticas: fixture começa com **2 expansões e 1 acento**. Deixe o app aberto.

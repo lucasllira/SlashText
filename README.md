@@ -207,8 +207,9 @@ Captura com rolagem depende do comportamento do aplicativo de destino e pode rep
 
 ## Verificar o download
 
-As próximas releases incluem proveniência assinada do GitHub para o ZIP e o
-executável. O roteiro de [verificação de proveniência](docs/release-provenance.md)
+A RC [v3.3.0-rc.1](https://github.com/lucasllira/SlashText/releases/tag/v3.3.0-rc.1)
+inclui proveniência assinada do GitHub para o ZIP e o executável. A estável 3.2.0
+é anterior a esse fluxo. O roteiro de [verificação de proveniência](docs/release-provenance.md)
 confere repositório, workflow, tag e commit esperados. O atualizador do app mantém
 as verificações de integridade; não verifica essa assinatura internamente.
 Releases antigas sem atestado continuam identificadas como legadas.
@@ -270,12 +271,10 @@ Os workflows do GitHub repetem build, testes, validações de UI, publicação s
 
 ## Documentação técnica
 
-- [Armazenamento e atualizações](docs/storage-and-updates.md)
-- [Design system](docs/design-system.md)
-- [Inventário funcional da interface 3.0.0](docs/ui-inventory-3.0.0.md)
-- [Inventário de confiabilidade](docs/reliability-functional-inventory.md)
-- [Contrato visual da barra de captura](docs/capture-toolbar-visual-contract.md)
-- [Integração da barra de captura](docs/capture-toolbar-visual-integration.md)
+- [Índice completo: uso, desenvolvimento, testes, distribuição e segurança](docs/README.md)
+- [Armazenamento, atualização e compatibilidade dos dados](docs/storage-and-updates.md)
+- [Fundação visual 3.3.0 e contrato preservado](docs/design/3.3.0/README.md)
+- [Histórico: design anterior, baselines e roteiros de pilotos](docs/history.md)
 
 ## Versões
 

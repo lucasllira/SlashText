@@ -1,5 +1,7 @@
 # Captura 3.3.0 — piloto do editor unificado · issue #63
 
+> **Registro histórico — piloto da preparação da 3.3.0.** O roteiro abaixo pertence ao pacote/fixtures da entrega identificada, não à RC ou a qualquer EXE atual. Versão interna, comandos e pendências conservam o contexto original. Consulte o [índice histórico](history.md) e o [fluxo atual de testes](testing.md) antes de reproduzir.
+
 Este pacote é um **candidato de teste**, não uma atualização oficial. Não substituir o executável da versão 3.2.0 nem copiar os dados oficiais para este pacote.
 
 ## Como abrir sem alterar a instalação oficial

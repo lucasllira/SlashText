@@ -125,9 +125,14 @@ Automated regressions execute release input/source guards, permission mutations,
 verification command policy, synthetic HTTP redirects and updater preparation /
 rollback / data preservation. Mocked `gh` tests validate wiring and failure
 propagation, **not cryptography**. Real CLI verification is recorded separately.
-The first official attestation for the actual candidate, public bundle download,
-successful verification and refused modified/wrong-identity cases remain a #70
-release gate. No production tag/release may be created merely to test this PR.
+Real verification of the public RC1 bundle, its subjects and modified/wrong-identity
+refusals is recorded in [#70](https://github.com/lucasllira/SlashText/issues/70).
+That proof binds [v3.3.0-rc.1](https://github.com/lucasllira/SlashText/releases/tag/v3.3.0-rc.1)
+to source `138e6bbdacf494d2d748e6db68b53c1d46008bc5`; it is not proof for later
+main commits. Each new published tag/artifact, including stable 3.3.0, requires its
+own authorized run, public bundle download, successful verification and refused
+modified/wrong-identity cases. No production tag/release may be created merely
+to test documentation or a code PR.
 
 References: [GitHub artifact attestations](https://docs.github.com/en/actions/how-tos/secure-your-work/use-artifact-attestations/use-artifact-attestations),
 [GitHub CLI verification policy](https://cli.github.com/manual/gh_attestation_verify),

@@ -1,5 +1,7 @@
 # Complementos da Captura — piloto 3.3.0 · issue #74
 
+> **Registro histórico — piloto da preparação da 3.3.0.** O roteiro abaixo pertence ao pacote/fixtures da entrega identificada, não à RC ou a qualquer EXE atual. Versão interna, comandos e pendências conservam o contexto original. Consulte o [índice histórico](history.md) e o [fluxo atual de testes](testing.md) antes de reproduzir.
+
 Base: issue #63 integrada, seguida da tela Atalhos #64 aprovada. Este pacote é um piloto de desenvolvimento, não uma release oficial. O Visual Lab permanece como referência; estes complementos foram solicitados para o app real.
 
 ## Abrir com dados separados

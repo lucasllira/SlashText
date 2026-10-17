@@ -1,5 +1,7 @@
 # Piloto — retenção local (#108)
 
+> **Registro histórico — piloto da preparação da 3.3.0.** O roteiro abaixo pertence ao pacote/fixtures da entrega identificada, não à RC ou a qualquer EXE atual. Versão interna, comandos e pendências conservam o contexto original. Consulte o [índice histórico](history.md) e o [fluxo atual de testes](testing.md) antes de reproduzir.
+
 O piloto é portátil e usa `SlashDeskPilotData` ao lado do executável. Extraia em
 uma pasta nova e encerre o piloto anterior pela bandeja antes de abrir. Não
 substitui a instalação oficial, não migra seus dados nem ativa autostart ou

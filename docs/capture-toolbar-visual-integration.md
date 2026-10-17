@@ -1,5 +1,7 @@
 # Integração da barra de captura aprovada
 
+> **Registro histórico / aplicabilidade.** Registro da integração sobre o PR #29; as instruções de branch e merge abaixo pertencem àquela entrega. Veja o [índice histórico](history.md) para o contexto e os guias atuais.
+
 Este branch integra à captura real o Visual Contract aprovado no PR #29. Ele é
 empilhado sobre `feat/capture-toolbar-visual-contract` e não deve ser integrado
 diretamente à `main`.

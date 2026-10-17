@@ -78,8 +78,9 @@ instalado entrar em escopo, sem compartilhar o mecanismo do portátil.
 
 ## Publicação após aprovação
 
-O workflow `Release Windows` é acionado exclusivamente por tags `vX.Y.Z` (ou uma
-tag SemVer com sufixo, que gera prerelease). Ele restaura, compila, executa os
+O workflow `Release Windows` aceita push de tag ou execução manual selecionando
+a própria tag existente como ref e como entrada `release_tag`. Tags `vX.Y.Z`
+geram releases estáveis; um sufixo SemVer gera prerelease. Ele restaura, compila, executa os
 smoke tests, publica os dois perfis, valida o portátil de arquivo único, calcula
 SHA-256. Após aprovação, o job de publicação usa `contents: write`, `id-token: write`
 e `attestations: write` para gerar/verificar a proveniência antes de publicar.
@@ -94,8 +95,16 @@ tag pela execução aprovada de `Tag Stable Release` e executar `Release Windows
 selecionando essa própria tag como ref do workflow. Assinatura Git de tag não é
 assinatura Authenticode nem substitui a proveniência do executável.
 
-Sem chave de assinatura configurada, use uma tag anotada (`git tag -a`) somente
-após registrar essa limitação. Não execute esses comandos para validar o workflow;
-uma tag publicada já aciona a criação da Release. Para ensaiar o atualizador, use
-uma tag com sufixo, por exemplo `vX.Y.Z-rc.1`, após aprovação específica; ela será
-marcada como prerelease e continuará ignorada pelo canal estável.
+`Tag Stable Release` cria uma tag anotada após aprovação. O push com
+`GITHUB_TOKEN` não inicia automaticamente outro workflow: executar `Release Windows`
+explicitamente a partir dessa tag, como descrito nos controles. Uma tag criada
+por outro mecanismo autorizado pode iniciar o build por push; isso não dispensa
+a aprovação separada do publisher. Não criar tags reais somente para ensaiar os
+workflows.
+
+Uma tag com sufixo, por exemplo `vX.Y.Z-rc.1`, exige autorização específica para
+criação/build e outra para publicação. Ela permite validar pacotes e proveniência,
+mas é ignorada pelo canal estável e não comprova a detecção automática de nova
+estável da #37. A RC1 pública já possui esse fluxo registrado na
+[#70](https://github.com/lucasllira/SlashText/issues/70); uma futura estável exige
+seus próprios hashes, atestados e aceites.

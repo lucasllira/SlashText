@@ -4,7 +4,9 @@ All external Actions use full commit SHAs and an inline semantic version comment
 The comment is for maintenance; the SHA is the executable reference. Dependabot
 supports both SHA updates and same-line version comments.
 
-## Reviewed pins (2026-10-11)
+<a id="reviewed-pins-2026-10-11"></a>
+
+## Reviewed pins (initial #93 review and #94/#95 extensions)
 
 | Official repository | Version | Full commit |
 | --- | --- | --- |
@@ -12,14 +14,25 @@ supports both SHA updates and same-line version comments.
 | [actions/setup-dotnet](https://github.com/actions/setup-dotnet/releases/tag/v4.3.1) | v4.3.1 | [67a3573c9a986a3f9c594539f4ab511d57bb3ce9](https://github.com/actions/setup-dotnet/commit/67a3573c9a986a3f9c594539f4ab511d57bb3ce9) |
 | [actions/upload-artifact](https://github.com/actions/upload-artifact/releases/tag/v4.6.2) | v4.6.2 | [ea165f8d65b6e75b540449e92b4886f43607fa02](https://github.com/actions/upload-artifact/commit/ea165f8d65b6e75b540449e92b4886f43607fa02) |
 | [actions/download-artifact](https://github.com/actions/download-artifact/releases/tag/v4.3.0) | v4.3.0 | [d3f86a106a0bac45b974a628896c90dbdf5c8093](https://github.com/actions/download-artifact/commit/d3f86a106a0bac45b974a628896c90dbdf5c8093) |
+| [github/codeql-action/init](https://github.com/github/codeql-action/tree/24c54180a607b1449ed407dd24f251e4e9147c8d/init) | v4.38.3 | [24c54180a607b1449ed407dd24f251e4e9147c8d](https://github.com/github/codeql-action/commit/24c54180a607b1449ed407dd24f251e4e9147c8d) |
+| [github/codeql-action/analyze](https://github.com/github/codeql-action/tree/24c54180a607b1449ed407dd24f251e4e9147c8d/analyze) | v4.38.3 | [24c54180a607b1449ed407dd24f251e4e9147c8d](https://github.com/github/codeql-action/commit/24c54180a607b1449ed407dd24f251e4e9147c8d) |
+| [actions/attest](https://github.com/actions/attest/tree/1e69f48acb82d1966a394da916b4c1698aa569d6) | v4.2.2 | [1e69f48acb82d1966a394da916b4c1698aa569d6](https://github.com/actions/attest/commit/1e69f48acb82d1966a394da916b4c1698aa569d6) |
 
-Each SHA was resolved from the official repository's `v4` ref and checked against
-the exact release tag. Release notes, Action manifests, runtime and package
-metadata were reviewed. All four manifests use Node 20; this change preserves the
-existing v4 runtime and artifact interfaces. checkout v4.4.0 changes unsafe
+The initial four transport/setup SHAs were reviewed on 2026-10-11, resolved from
+the official repository's `v4` ref and checked against the exact release tag.
+Their release notes, Action manifests, runtime and package metadata were reviewed.
+Those four manifests use Node 20. This is not a runtime claim for the later
+CodeQL or attestation entries. checkout v4.4.0 changes unsafe
 `pull_request_target` defaults; these workflows use ordinary `pull_request` and
 do not enable `allow-unsafe-pr-checkout`. Verified commit signatures establish
 provenance information, not a guarantee that all upstream code is safe.
+
+CodeQL init/analyze were added in #94 for the analyzer only. The exact
+`actions/attest` pin was added in #95 for the protected publisher only; its
+reviewed entry uses Node 24. See [security baseline](security-baseline.md) and
+[release provenance](release-provenance.md) for their respective review/permission
+boundaries. The table describes the checked-in pins, not automatically updated
+upstream release tags.
 
 ## Permissions and checkout credentials
 
@@ -36,7 +49,7 @@ automatic approval/merge logic. Forks keep the existing read-only PR execution
 model and may still need the repository's usual approval to run.
 
 `scripts/actions-policy-smoke.ps1` checks every workflow against the reviewed
-four-repository allowlist, full SHAs, version comments, explicit checkout
+Action entries (including CodeQL and the exact attestation pin), full SHAs, version comments, explicit checkout
 credential choices and the two permitted write jobs. The guard supports the
 repository's block-style YAML conventions; it is not a general YAML parser or
 an upstream vulnerability scanner. `actions-policy-regression.ps1` confirms that
@@ -88,7 +101,7 @@ verified in #91 on 2026-10-11). Desired API payloads are versioned under
 `.github/repository-controls/`; these files document settings and do not apply
 them automatically.
 
-Applied server policy after #93 integration:
+Historical server policy after #93 integration, before the later extensions:
 
 - Require full commit SHAs (`sha_pinning_required: true`).
 - Use selected Actions: `actions/checkout@*`, `actions/setup-dotnet@*`,
@@ -101,8 +114,13 @@ so pending branches can be rebased and compatibility can be checked.
 Older branches with mutable refs will need updates before their workflows run
 under the stricter server policy. The #94 baseline extends the selected allowlist
 only with `github/codeql-action/init@*` and `github/codeql-action/analyze@*`, keeping
-SHA enforcement and read-only token defaults. The analyzer job alone has the
-reviewed `security-events:write` permission. See [security baseline](security-baseline.md) and
+SHA enforcement and read-only token defaults. #95 then adds only
+`actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6`, not an `attest@*`
+wildcard. The current desired entries are in
+[actions-policy.json](../.github/repository-controls/actions-policy.json);
+effective server settings still require API readback. The analyzer job alone has the
+reviewed `security-events:write` permission; only the protected publisher receives
+the attestation/OIDC exception. See [security baseline](security-baseline.md) and
 [repository release controls](repository-release-controls.md) for approval,
 main/tag policies, exceptions and verification.
 

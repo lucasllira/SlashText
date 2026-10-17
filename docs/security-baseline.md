@@ -76,8 +76,9 @@ publish directory without loading/executing app/native assemblies. Each shipped
 file/resource gets SHA-256; emoji ZIP entries are individually inventoried.
 Matching resolved NuGet cache bytes identifies package origins even when the
 assembly name/version differs (for example ScreenRecorderLib.Reference).
-Unmatched items and unresolved licenses stay explicit as `NOASSERTION`; #96
-must review native transitive notices and legacy/compiled assets. The SBOM is
+Unmatched items and unresolved licenses stay explicit as `NOASSERTION`; review
+native transitive notices and legacy/compiled assets using the
+[offline-notice maintenance policy](third-party-notices.md) delivered in #96. The SBOM is
 an inventory/composition, not a complete native dependency graph or license
 certification. This baseline does not upgrade OCR or rewrite third-party notices.
 
@@ -106,7 +107,10 @@ separate. Security-update PRs are reviewed individually. Actions majors/runtime
 migrations require a deliberate compatibility review; review them monthly even
 when ignored by automatic version updates. Never freeze servicing indefinitely.
 
-Keep .NET setup on `10.0.x` to receive servicing updates. Every self-contained
+Keep .NET setup on the reviewed `10.0.4xx` GA feature band, with minimum SDK
+10.0.402 and the servicing policy in [development](development.md); review a band
+change explicitly instead of freezing patches or accepting any feature band.
+Every self-contained
 release must rebuild with the supported patched SDK/runtime; updating the PC's
 runtime does not patch a previously distributed EXE. Record actual included
 runtime versions in inventory, review Microsoft security advisories monthly and
