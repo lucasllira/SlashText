@@ -6,7 +6,9 @@ Comece pela finalidade da tarefa. Os guias de manutenção descrevem a implement
 
 | Preciso de… | Ler |
 |---|---|
-| Download, primeiros passos, recursos e atalhos | [README do produto](../README.md) e [última versão estável](https://github.com/lucasllira/SlashText/releases/latest) |
+| Download e primeiros passos | [README do produto](../README.md) e [última versão estável](https://github.com/lucasllira/SlashText/releases/latest) |
+| Recursos detalhados, variáveis e limitações | [Guia de uso](user-guide.md) |
+| Próximas entregas e ideias futuras | [Roadmap](roadmap.md) e [organização de issues/marcos](project-navigation.md) |
 | Pedir ajuda ou consultar perguntas frequentes | [Suporte](../SUPPORT.md) |
 | Relatar uma vulnerabilidade em privado | [Política e canal de segurança](../SECURITY.md) |
 | Entender a versão em preparação | [Notas da 3.3.0](releases/3.3.0.md) e [validação/publicação #70](https://github.com/lucasllira/SlashText/issues/70) |
