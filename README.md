@@ -35,12 +35,12 @@ Ele foi pensado para uso pessoal ou corporativo com três prioridades:
 - distribuição portátil em um único executável;
 - preservação dos dados do usuário durante atualizações.
 
-A versão estável atual é a **3.2.0**.
+A versão estável disponível está na [página de releases](https://github.com/lucasllira/SlashText/releases/latest).
 
-A **3.3.0 está em validação**, com a nova interface completa, áudio nas gravações
-e idiomas português, inglês e espanhol. Consulte as [notas da 3.3.0](docs/releases/3.3.0.md).
-A publicação será feita após a aprovação do candidato; os links de download acima
-continuam apontando para a versão estável disponível.
+A **3.3.0** reúne a nova interface completa, áudio nas gravações e idiomas
+português, inglês e espanhol. Consulte as [notas da 3.3.0](docs/releases/3.3.0.md)
+e o [registro de validação e publicação](https://github.com/lucasllira/SlashText/issues/70).
+Os links de download acima apontam para a versão estável publicada.
 
 ## Principais recursos
 
