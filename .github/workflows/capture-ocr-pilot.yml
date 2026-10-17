@@ -35,14 +35,17 @@ jobs:
       - name: Existing contracts and regression
         shell: pwsh
         run: |
-          ./scripts/compare-ui-inventory.ps1
-          ./scripts/ui-integrity-smoke.ps1
-          ./scripts/capture-pilot-smoke.ps1
-          ./scripts/capture-toolbar-visual-contract-smoke.ps1
-          ./scripts/visual-foundation-smoke.ps1
-          ./scripts/release-workflow-smoke.ps1
+          ./scripts/test.ps1 -Profile Quick -Task ui-inventory,ui-integrity,capture-contract,toolbar-contract,visual-foundation,release-contract
+          if ($LASTEXITCODE -ne 0) { throw 'Shared contracts failed or incomplete; inspect test-results.' }
           dotnet run --project tests/SlashText.SmokeTests/SlashText.SmokeTests.csproj -c Release --no-build -p:Platform=x64
           if ($LASTEXITCODE -ne 0) { throw 'Regression failed' }
+      - name: Upload shared contract evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: SlashDesk-capture-shared-test-evidence
+          path: test-results/
+          if-no-files-found: warn
       - name: Real WPF capture and shortcuts regression
         shell: pwsh
         run: |

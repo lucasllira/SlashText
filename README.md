@@ -238,6 +238,10 @@ dotnet run --project .\src\SlashText\SlashText.csproj
 
 ### Validar
 
+O [fluxo de testes](docs/testing.md) oferece os perfis `Quick`, `Full` e
+`Hardware`, com resumo estruturado, cancelamento e limites de isolamento.
+Hardware e áudio exigem opt-in explícito; indisponibilidade não conta como aprovação.
+
 ~~~powershell
 dotnet build SlashText.sln --configuration Release -p:Platform=x64
 dotnet run --project .\tests\SlashText.SmokeTests\SlashText.SmokeTests.csproj --configuration Release -p:Platform=x64

@@ -38,3 +38,4 @@ publish-security-installed/
 security-evidence/
 component-inventory/
 scripts/security/__pycache__/
+test-results/
