@@ -81,7 +81,14 @@ if ($Task.Count) {
 } else { $selected=@($steps.ToArray()) }
 if ($List) { $selected | ForEach-Object {$_.id}; exit 0 }
 $run=Join-Path ([IO.Path]::GetFullPath($OutputDirectory)) ($Profile.ToLowerInvariant()+'-'+[DateTime]::UtcNow.ToString('yyyyMMdd-HHmmss')+'-'+[guid]::NewGuid().ToString('N').Substring(0,8))
+$expectedVersion=([xml](Get-Content (Join-Path $repo 'src/SlashText/SlashText.csproj') -Raw)).Project.PropertyGroup.FileVersion | Where-Object { $_ } | Select-Object -First 1
 foreach ($step in $selected) {
+    # Old EXEs may treat unknown smoke switches as a normal launch. Never send
+    # this checkout's helper arguments to a different product version.
+    if ($AppExecutable -and ($step.tool -eq $AppExecutable -or $step.id -eq 'native-stop') -and -not $step.Contains('unavailableReason')) {
+        $step.versionedFile=$AppExecutable
+        $step.requiredFileVersion=$expectedVersion
+    }
     # The recovery fixture intentionally uses the product's MAX_PATH guard even
     # with a fake backend. Include its complete private working-file suffix.
     if ($step.id -eq 'recording-audio-ui') {

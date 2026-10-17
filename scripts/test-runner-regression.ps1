@@ -16,6 +16,7 @@ switch($Mode) {
  'timeout' { [IO.File]::WriteAllText((Join-Path $Output 'owned-pid.txt'),[string]$PID); Start-Sleep -Seconds 10 }
  'skip' { [IO.File]::WriteAllText((Join-Path $Output 'result.txt'),'[{"Skipped":"no fixture device"}]') }
  'volume' { [Console]::Out.Write(('o'*262144)); [Console]::Error.Write(('e'*262144)) }
+ 'prepare' { Copy-Item -LiteralPath $Value -Destination (Join-Path $Output 'fixture.exe') }
 }
 '@ | Set-Content -LiteralPath $stub -Encoding utf8
 $pwsh=Join-Path $PSHOME 'pwsh.exe'
@@ -89,6 +90,14 @@ $longOutput=Join-Path $root ('long-fixture-'+('x'*60))
 & $pwsh -NoProfile -File $entry -Profile Full -SkipBuild -Task recording-audio-ui -AppExecutable 'inert-not-launched.exe' -OutputDirectory $longOutput | Out-Null
 $longReport=Get-ChildItem -LiteralPath $longOutput -Recurse -Filter summary.json | Select-Object -First 1 | Get-Content -Raw | ConvertFrom-Json
 Check ($LASTEXITCODE -eq 2 -and $longReport.results[0].status -eq 'UNAVAILABLE' -and $longReport.results[0].reason.Contains('MAX_PATH')) 'recovery fixture path budget is checked before launch without weakening product guard'
+$unknownOutput=Join-Path $root 'unknown-version'
+& $pwsh -NoProfile -File $entry -Profile Full -SkipBuild -Task about-ui -AppExecutable $pwsh -OutputDirectory $unknownOutput | Out-Null
+$unknownReport=Get-ChildItem -LiteralPath $unknownOutput -Recurse -Filter summary.json | Select-Object -First 1 | Get-Content -Raw | ConvertFrom-Json
+Check ($LASTEXITCODE -eq 2 -and $unknownReport.results[0].status -eq 'UNAVAILABLE' -and $unknownReport.results[0].reason.Contains('FileVersion')) 'unknown product version is never launched with helper switches that could open normal startup'
+$prepare=Step 'build-fixture' 'prepare';$prepare.arguments=@('-NoProfile','-File',$stub,'-Mode','prepare','-Value',$pwsh,'-Output','{output}')
+$version=Step 'versioned' 'pass';$version.versionedFile=Join-Path $root 'version-after-build/build-fixture/fixture.exe';$version.requiredFileVersion=(Get-Item $pwsh).VersionInfo.FileVersion
+$r=Run 'version-after-build' @($prepare,$version)
+Check ($r.status -eq 'PASS') 'version preflight runs after the build step creates a fresh binary'
 @{status='PASS';checks=$checks.Count;results=@($checks.ToArray())} | ConvertTo-Json -Depth 5 | Set-Content (Join-Path $root 'regression.json') -Encoding utf8
 Write-Output "Test orchestration regression: PASS ($($checks.Count) checks; inert child processes only); $root"
 # Negative CLI cases deliberately leave LASTEXITCODE=2. The GHA pwsh wrapper

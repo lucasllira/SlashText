@@ -31,6 +31,8 @@ O Full usa os leitores, serviços, controles e renderers reais sobre fixtures; n
 
 `-DotnetPath` aceita um SDK explicitamente selecionado. Ele deve estar acessível aos apphosts; quando instalado em diretório próprio, configure `DOTNET_ROOT` e PATH **somente na sessão** antes de executar. A escolha/política permanente do SDK pertence à atividade 3; esta entrega não altera SDK, runtime, projeto ou recursos do produto. Não execute Full enquanto outro build/publish altera os mesmos bin/obj.
 
+Antes de enviar switches de fixture, o runner exige FileVersion do app igual à do projeto atual. EXEs antigos/desconhecidos ficam UNAVAILABLE: um app que não conhece um switch poderia iniciar normalmente. A comparação de versão evita esse erro de uso; não autentica um binário adversarial. Use somente build próprio ou artefato cuja origem/hash já foi conferida.
+
 Os smokes WPF apresentam janelas fictícias. Execute em desktop disponível/conta descartável quando pertinente; render e UIA não comprovam DPI físico, Narrador ou integração entre aplicativos reais. Full não equivale ao conjunto de todos os jobs de publicação e segurança.
 
 Use uma pasta curta para Full: a fixture inerte de recuperação também passa pelo limite MP4 incluindo o GUID/sufixo temporário. Em checkout profundo, o preflight marca essa etapa UNAVAILABLE com orientação de encurtar `-OutputDirectory`, em vez de esperar um backend que o produto recusou antes de iniciar. Não se remove a validação nativa para fazer o teste passar.

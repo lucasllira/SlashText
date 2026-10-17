@@ -33,6 +33,15 @@ function Invoke-TestSteps {
             if ($step.Contains('unavailableReason')) {
                 $entry.status = 'UNAVAILABLE'; $entry.reason = $step.unavailableReason; continue
             }
+            # Check at execution time: a preceding build may create this EXE.
+            if ($step.Contains('requiredFileVersion')) {
+                $candidate = Get-Item -LiteralPath $step.versionedFile -ErrorAction SilentlyContinue
+                if (-not $candidate -or $candidate.VersionInfo.FileVersion -ne $step.requiredFileVersion) {
+                    $entry.status = 'UNAVAILABLE'
+                    $entry.reason = 'Fixture EXE FileVersion differs from this checkout. Older/unknown versions are not launched with helper switches.'
+                    continue
+                }
+            }
             $directory = Join-Path $root $step.id
             [void][IO.Directory]::CreateDirectory($directory)
             $timer = [Diagnostics.Stopwatch]::StartNew()
