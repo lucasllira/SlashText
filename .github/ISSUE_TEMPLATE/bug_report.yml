@@ -1,0 +1,57 @@
+name: Relatar um bug
+description: Descrever uma falha reproduzível no SlashDesk.
+title: "[Bug] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Procure uma issue existente antes de abrir outra. Este relato será público.
+        Para vulnerabilidade ou dados expostos, siga a [política de segurança](https://github.com/lucasllira/SlashText/security/policy) e o canal privado.
+        Use dados fictícios e revise anexos; não envie clipboard, backups, caminhos pessoais ou logs brutos.
+  - type: input
+    id: version
+    attributes:
+      label: Versão e origem do pacote
+      description: Informe a versão em Sobre e se é estável, RC, piloto ou build próprio; acrescente commit/hash se souber.
+      placeholder: "Ex.: 3.3.0-rc.1 portátil, baixado das Releases oficiais"
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Ambiente relevante
+      description: Windows/build; se visual, tema, idioma, escala e monitores. Se gravação, modo e fontes de áudio, sem IDs pessoais.
+      placeholder: "Ex.: Windows 11, Português, tema Preto, 125%, um monitor; MP4 de região sem áudio."
+    validations:
+      required: false
+  - type: textarea
+    id: steps
+    attributes:
+      label: Passos para reproduzir
+      description: Use conteúdo fictício e diga se ocorre sempre ou ocasionalmente.
+      placeholder: |
+        1. Abrir...
+        2. Selecionar...
+        3. Ocorre...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Resultado esperado
+    validations:
+      required: true
+  - type: textarea
+    id: observed
+    attributes:
+      label: Resultado observado
+      description: Inclua a mensagem sanitizada, se houver. Preserve os dados originais.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidência revisada e testes já feitos
+      description: Opcional. Imagem/trecho sanitizado, comando/perfil e resultado real. Não declare teste indisponível como aprovado.
+    validations:
+      required: false

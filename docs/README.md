@@ -7,6 +7,8 @@ Comece pela finalidade da tarefa. Os guias de manutenção descrevem a implement
 | Preciso de… | Ler |
 |---|---|
 | Download, primeiros passos, recursos e atalhos | [README do produto](../README.md) e [última versão estável](https://github.com/lucasllira/SlashText/releases/latest) |
+| Pedir ajuda ou consultar perguntas frequentes | [Suporte](../SUPPORT.md) |
+| Relatar uma vulnerabilidade em privado | [Política e canal de segurança](../SECURITY.md) |
 | Entender a versão em preparação | [Notas da 3.3.0](releases/3.3.0.md) e [validação/publicação #70](https://github.com/lucasllira/SlashText/issues/70) |
 | Consultar a versão anterior e compatibilidade | [Notas da 3.2.0](releases/3.2.0.md), [armazenamento e atualização](storage-and-updates.md) e [compatibilidade de backups](backup-compatibility.md) |
 | Saber onde ficam os dados e como atualizar | [Armazenamento, migração, backup e rollback](storage-and-updates.md) |
@@ -22,6 +24,7 @@ Comece pela finalidade da tarefa. Os guias de manutenção descrevem a implement
 | Pré-requisitos, SDK/runtime e recursos Noto/OCR | [Ambiente de desenvolvimento e build](development.md) |
 | Pontos de entrada e responsabilidades | [Mapa do código e dos smokes](code-map.md) |
 | Trabalho por agentes, evidências e aceites | [Instruções do repositório](../AGENTS.md) |
+| Contribuir com correção, documentação ou proposta | [Guia de contribuição](../CONTRIBUTING.md) |
 | Execução automatizada e registro de bugs | [Perfis Quick, Full e Hardware](testing.md) |
 | Localização PT/EN/ES | [Contrato de localização](design/3.3.0/localization.md) |
 | Aparência e preservação funcional da 3.3.0 | [Fundação visual](design/3.3.0/README.md), [matriz de paridade](design/3.3.0/parity.md) e [inventário da base](design/3.3.0/ui-inventory.json) |
