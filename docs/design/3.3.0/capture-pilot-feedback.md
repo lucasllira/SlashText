@@ -1,5 +1,7 @@
 # Captura 3.3.0 — revisão do teste de 06/10/2026
 
+> **Registro histórico / aplicabilidade.** Revisão de 06/10/2026, #63/PR #72. As pendências e instruções de parada abaixo são daquele teste. Veja o [índice histórico](../../history.md) para o contexto e os guias atuais.
+
 Escopo: issue #63 / PR #72. Não encerrar a issue ou avançar para outra tela antes da validação do candidato e do overlay nativo previsto na issue.
 
 ## Três divergências reportadas

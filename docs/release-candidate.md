@@ -29,7 +29,18 @@ change. Pull-request merge refs and post-integration main refs have different
 identities; record the actual commit instead of treating their artifacts as
 interchangeable.
 
-## Remaining acceptance gates
+<a id="remaining-acceptance-gates"></a>
+
+## Acceptance criteria for each chosen candidate
+
+Checkpoint recorded in [#70](https://github.com/lucasllira/SlashText/issues/70)
+on 2026-10-17: clean-Windows/Visual C++ checks and the scoped physical acceptance
+were recorded, and public [v3.3.0-rc.1](https://github.com/lucasllira/SlashText/releases/tag/v3.3.0-rc.1)
+has real provenance verification. That RC belongs to source
+`138e6bbdacf494d2d748e6db68b53c1d46008bc5`; it does not include later main changes.
+The criteria below describe required coverage, not a claim that every earlier
+gate is still untested. Reuse evidence only after recording unchanged inputs and
+accepted limitations; validate affected paths and the exact new artifacts.
 
 - Hosted runners already contain prerequisites. They do not prove OCR behavior
   on clean Windows with Visual C++ x64 missing and installed.
@@ -39,9 +50,10 @@ interchangeable.
   the owner has no existing profile. Never invent a real-user-data acceptance.
 - Before publication, validate the final source, runtime, metadata and artifacts;
   subsequent changes require a new identity and affected regression checks.
-- The chosen provenance strategy still requires the first real SlashDesk
-  tag/workflow/bundle validation under the existing approval policy. This
-  read-only workflow does not satisfy that gate or authorize publication.
+- Each published tag needs its own real SlashDesk workflow/bundle validation
+  under the existing approval policy. The first proof was recorded for RC1;
+  that identity does not verify a future stable tag or different artifact.
+  This read-only candidate workflow does not issue that proof or authorize publication.
 - #37 requires observation of an actual stable release by a previously running
   consumer; candidate artifacts and prereleases cannot satisfy it.
 

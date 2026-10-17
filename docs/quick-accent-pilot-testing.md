@@ -1,5 +1,7 @@
 # Piloto 3.3.0 — Acento Rápido (#65)
 
+> **Registro histórico — piloto da preparação da 3.3.0.** O roteiro abaixo pertence ao pacote/fixtures da entrega identificada, não à RC ou a qualquer EXE atual. Versão interna, comandos e pendências conservam o contexto original. Consulte o [índice histórico](history.md) e o [fluxo atual de testes](testing.md) antes de reproduzir.
+
 ## Revisão v2 — Linhas compactas
 
 Layout aprovado em 09/10/2026: blocos com cantos de 4 px, intervalo de 14 px, ativação única no topo, prévia compacta, idiomas em grade e seções avançadas recolhidas. O piloto abre diretamente em Acento Rápido.

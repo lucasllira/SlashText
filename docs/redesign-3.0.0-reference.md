@@ -1,5 +1,7 @@
 # Referência visual aprovada — SlashDesk 3.0.0
 
+> **Registro histórico / aplicabilidade.** Mockups do redesign 3.0.0; a referência da migração 3.3.0 está na fundação visual, não neste conjunto. Veja o [índice histórico](history.md) para o contexto e os guias atuais.
+
 Os 20 mockups anexados em 9 de agosto de 2026 são a referência visual principal
 do redesign. Eles não são redistribuídos no pacote nem usados em runtime. Este
 registro permite identificar exatamente as imagens avaliadas.

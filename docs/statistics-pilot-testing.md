@@ -1,5 +1,7 @@
 # Piloto 3.3.0 — Estatísticas (#66)
 
+> **Registro histórico — piloto da preparação da 3.3.0.** O roteiro abaixo pertence ao pacote/fixtures da entrega identificada, não à RC ou a qualquer EXE atual. Versão interna, comandos e pendências conservam o contexto original. Consulte o [índice histórico](history.md) e o [fluxo atual de testes](testing.md) antes de reproduzir.
+
 Base: Acento Rápido aprovado e integrado pela PR #77 em `3467b02d79ccc5c4b0127243186a9bed8435c600`. Referência: Visual Lab publicação 11, contrato congelado em `docs/design/3.3.0/contract/`. WPF e os serviços existentes permanecem em uso; os tokens e arquivos do contrato não foram alterados.
 
 ## Avaliação no piloto

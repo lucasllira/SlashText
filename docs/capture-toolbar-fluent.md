@@ -1,5 +1,7 @@
 # Barra de marcações Fluent do SlashDesk
 
+> **Registro histórico / aplicabilidade.** Escopo do piloto da barra anterior à migração 3.3.0; conservar suas decisões sem aplicá-las automaticamente às telas atuais. Veja o [índice histórico](history.md) para o contexto e os guias atuais.
+
 ## Escopo
 
 Este piloto altera somente a barra transitória da captura por região, seus

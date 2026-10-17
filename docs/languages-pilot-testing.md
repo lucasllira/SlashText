@@ -1,5 +1,7 @@
 # Piloto Idiomas — #82
 
+> **Registro histórico — piloto da preparação da 3.3.0.** O roteiro abaixo pertence ao pacote/fixtures da entrega identificada, não à RC ou a qualquer EXE atual. Versão interna, comandos e pendências conservam o contexto original. Consulte o [índice histórico](history.md) e o [fluxo atual de testes](testing.md) antes de reproduzir.
+
 Português (Brasil) continua sendo o padrão. O piloto oferece English e Español
 nas seis telas, bandeja, barras, diálogos, mensagens e ajuda do SlashDesk.
 3.3.0 identifica o piloto; a versão base continua 3.2.0 até a preparação do lançamento.

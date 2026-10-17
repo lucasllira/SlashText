@@ -1,5 +1,7 @@
 # Destinos MP4 — piloto #114
 
+> **Registro histórico — piloto da preparação da 3.3.0.** O roteiro abaixo pertence ao pacote/fixtures da entrega identificada, não à RC ou a qualquer EXE atual. Versão interna, comandos e pendências conservam o contexto original. Consulte o [índice histórico](history.md) e o [fluxo atual de testes](testing.md) antes de reproduzir.
+
 Foi corrigida uma falha real: os blocos Monitor/Região/Janela alteravam apenas o
 modo visual, enquanto Novo iniciava o vídeo usando um seletor legado que podia
 continuar em Monitor. Piloto e versão final compartilhavam esse caminho.

@@ -1,5 +1,7 @@
 # Visual Contract — barra de marcações
 
+> **Registro histórico / aplicabilidade.** Contrato do preview da barra anterior à fundação 3.3.0; permanece como referência e entrada de smoke, sem redefinir toda a interface atual. Veja o [índice histórico](history.md) para o contexto e os guias atuais.
+
 ## Objetivo
 
 Este contrato transforma o mockup aprovado em requisitos verificáveis. Ele não

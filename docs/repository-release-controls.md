@@ -78,7 +78,9 @@ Verify the effective server state with authenticated GitHub API reads:
   `prevent_self_review: false`, `can_admins_bypass: false`; deployment branch
   policies contain branch main and tag v* only.
 - `/actions/permissions`, `/actions/permissions/selected-actions` and
-  `/actions/permissions/workflow`: SHA required, only the four reviewed Actions,
+  `/actions/permissions/workflow`: SHA required, only the reviewed entries in
+  `.github/repository-controls/actions-policy.json` (the four transport/setup
+  Actions, CodeQL init/analyze and the exact attestation pin),
   read-only token default and no Action PR approval.
 
 The publication job additionally generates and verifies artifact provenance after

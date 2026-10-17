@@ -1,5 +1,7 @@
 # SlashDesk — Shell e Atalhos V2
 
+> **Registro histórico / aplicabilidade.** Handoff do Shell/Atalhos V2 anterior ao Visual Lab 3.3.0. As especificações e o protótipo deste diretório conservam a aplicabilidade original. Veja o [índice histórico](../../history.md) para o contexto e os guias atuais.
+
 Pacote de handoff independente do Figma para implementar o piloto visual do SlashDesk em WPF.
 
 ## Arquivos

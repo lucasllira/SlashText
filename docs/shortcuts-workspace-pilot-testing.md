@@ -1,5 +1,7 @@
 # Piloto Atalhos 3.3.0 — issue #64
 
+> **Registro histórico — piloto da preparação da 3.3.0.** O roteiro abaixo pertence ao pacote/fixtures da entrega identificada, não à RC ou a qualquer EXE atual. Versão interna, comandos e pendências conservam o contexto original. Consulte o [índice histórico](history.md) e o [fluxo atual de testes](testing.md) antes de reproduzir.
+
 Este pacote abre diretamente em Atalhos e conserva a Captura aprovada na #63.
 É um executável de desenvolvimento. A versão oficial publicada continua em 3.2.0.
 

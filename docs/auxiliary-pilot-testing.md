@@ -1,5 +1,7 @@
 # Piloto Interfaces auxiliares — #69
 
+> **Registro histórico — piloto da preparação da 3.3.0.** O roteiro abaixo pertence ao pacote/fixtures da entrega identificada, não à RC ou a qualquer EXE atual. Versão interna, comandos e pendências conservam o contexto original. Consulte o [índice histórico](history.md) e o [fluxo atual de testes](testing.md) antes de reproduzir.
+
 Sobre foi concluída na PR #80, integrada em `3f23ad47f10dfe771b8db122d34b8619b0963b57`. Este piloto reúne os ajustes às janelas e barras que ficam fora das seis telas principais. A base funcional continua em 3.2.0; 3.3.0 identifica o piloto, sem lançamento oficial.
 
 ## Abrir e revisar
