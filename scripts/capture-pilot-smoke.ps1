@@ -2,8 +2,8 @@ $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'localization-source.ps1')
 
 $xaml = Resolve-InterfaceResourcesForInspection (Get-Content 'src/SlashText/MainWindow.xaml' -Raw)
-$code = (Get-Content 'src/SlashText/MainWindow.xaml.cs' -Raw) +
-    (Get-Content 'src/SlashText/MainWindow.CapturePreferences.cs' -Raw)
+$code = (Get-ChildItem (Join-Path $PSScriptRoot '../src/SlashText') -Filter 'MainWindow.*.cs' |
+    Sort-Object Name | ForEach-Object { Get-Content $_.FullName -Raw }) -join "`n"
 $app = Get-Content 'src/SlashText/App.xaml' -Raw
 $styles = Get-Content 'src/SlashText/Styles/VisualLab/CapturePilot.xaml' -Raw
 $ruleDialog = Resolve-InterfaceResourcesForInspection (Get-Content 'src/SlashText/Views/CaptureRuleDialog.xaml' -Raw)

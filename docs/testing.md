@@ -1,6 +1,8 @@
-# Execução de testes — atividade 1 da #159
+# Execução de testes
 
 Uma entrada para os contratos e testes locais existentes, com logs por processo e resumo JSON/Markdown. Requer Windows e PowerShell 7.2 ou superior. Não instala pré-requisitos nem inicia o app normalmente.
+
+O [mapa de responsabilidades do código e dos smokes](code-map.md) indica onde ficam a coordenação de `MainWindow`, os modos de linha de comando e os domínios da suíte. A separação da atividade 2 da #159 conserva a execução sequencial e os comandos abaixo.
 
 ## Perfis
 

@@ -1,4 +1,3 @@
-using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -7,6 +6,7 @@ using SlashText.Design;
 using SlashText.Models;
 using SlashText.Services;
 using SlashText.Views;
+using Button = System.Windows.Controls.Button;
 
 namespace SlashText;
 
@@ -328,4 +328,129 @@ public partial class MainWindow
     internal string QuickAccentChoicesForEvidence => _quickAccentPreviewCharacters;
     internal void SetQuickAccentRuntimeForEvidence(QuickAccentRuntimeState? state)
     { _quickAccentRuntimeForEvidence = state; UpdateQuickAccentStatus(); }
+
+    private async void QuickAccentCharacterSet_OnChanged(
+        object sender,
+        RoutedEventArgs e)
+    {
+        if (!_initialized || _updatingQuickAccentSets)
+        {
+            return;
+        }
+
+        if (SelectedQuickAccentCharacterSets().Count == 0)
+        {
+            _updatingQuickAccentSets = true;
+            QuickAccentPortugueseCheckBox.IsChecked = true;
+            _updatingQuickAccentSets = false;
+        }
+
+        await SaveQuickAccentSettingsAsync();
+    }
+
+    private async void QuickAccentPortugueseOnly_OnClick(
+        object sender,
+        RoutedEventArgs e)
+    {
+        ApplyQuickAccentCharacterSetSelection(["PortugueseBrazil"]);
+        if (_initialized)
+        {
+            await SaveQuickAccentSettingsAsync();
+        }
+    }
+
+    private async void QuickAccentSelectAll_OnClick(
+        object sender,
+        RoutedEventArgs e)
+    {
+        ApplyQuickAccentCharacterSetSelection(
+            QuickAccentCharacterSetBoxes()
+                .Select(item => item.Tag?.ToString() ?? string.Empty));
+        if (_initialized)
+        {
+            await SaveQuickAccentSettingsAsync();
+        }
+    }
+
+    private void ApplyQuickAccentSettings()
+    {
+        _quickAccentService.Enabled = _settings.QuickAccentEnabled;
+        _quickAccentService.ActivationKey = _settings.QuickAccentActivationKey;
+        _quickAccentService.SortByUsage = _settings.QuickAccentSortByUsage;
+        _quickAccentService.InputDelayMs = _settings.QuickAccentInputDelayMs;
+        _quickAccentService.ExcludedApps = _settings.QuickAccentExcludedApps;
+        _quickAccentService.SetCharacterSets(_settings.QuickAccentCharacterSets);
+        _quickAccentService.SetUsage(_usageService.QuickAccentCharacterCounts());
+        if (_settings.QuickAccentEnabled && _quickAccentStatusTimer is not null && !_quickAccentService.IsRunning)
+        {
+            try { _quickAccentService.Start(); }
+            catch (Exception exception)
+            { AppDiagnosticLog.Write("quick-accent.start_failed", ("exceptionType", exception.GetType().Name)); }
+        }
+        UpdateQuickAccentCharacterSetPreview();
+        UpdateQuickAccentPreviewSelection();
+        if (!_settings.QuickAccentEnabled)
+        {
+            _quickAccentWindow.Hide();
+        }
+    }
+
+    private void ApplyQuickAccentCharacterSetSelection(IEnumerable<string>? sets)
+    {
+        var selected = new HashSet<string>(
+            sets ?? [],
+            StringComparer.OrdinalIgnoreCase);
+        if (selected.Count == 0)
+        {
+            selected.Add("PortugueseBrazil");
+        }
+
+        _updatingQuickAccentSets = true;
+        foreach (var checkBox in QuickAccentCharacterSetBoxes())
+        {
+            checkBox.IsChecked =
+                checkBox.Tag is string tag && selected.Contains(tag);
+        }
+        if (QuickAccentCharacterSetBoxes().All(item => item.IsChecked != true))
+        {
+            QuickAccentPortugueseCheckBox.IsChecked = true;
+        }
+        _updatingQuickAccentSets = false;
+        UpdateQuickAccentCharacterSetPreview();
+    }
+
+    private List<string> SelectedQuickAccentCharacterSets() =>
+        QuickAccentCharacterSetBoxes()
+            .Where(item => item.IsChecked == true)
+            .Select(item => item.Tag?.ToString())
+            .Where(item => !string.IsNullOrWhiteSpace(item))
+            .Cast<string>()
+            .ToList();
+
+    private CheckBox[] QuickAccentCharacterSetBoxes() =>
+    [
+        QuickAccentPortugueseCheckBox,
+        QuickAccentSpanishCheckBox,
+        QuickAccentFrenchCheckBox,
+        QuickAccentGermanCheckBox,
+        QuickAccentItalianCheckBox,
+        QuickAccentNordicCheckBox,
+        QuickAccentCentralEuropeanCheckBox,
+        QuickAccentCurrencyCheckBox,
+        QuickAccentSpecialCheckBox
+    ];
+
+    private void UpdateQuickAccentCharacterSetPreview()
+    {
+        if (QuickAccentSetSummaryText is null)
+        {
+            return;
+        }
+
+        var selected = SelectedQuickAccentCharacterSets();
+        QuickAccentSetSummaryText.Text = selected.Count == 1 &&
+                                         selected[0] == "PortugueseBrazil"
+            ? UiText.Get("Português (Brasil)")
+            : selected.Count == 9 ? UiText.Get("Todos os conjuntos") : UiText.Format($"{selected.Count} conjuntos");
+    }
 }
