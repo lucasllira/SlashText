@@ -1,7 +1,12 @@
+using System.Diagnostics;
+using System.IO;
 using System.Windows;
-using SlashText.Views;
+using System.Windows.Threading;
 using SlashText.Services;
+using SlashText.Views;
 using Forms = System.Windows.Forms;
+using DrawingIcon = System.Drawing.Icon;
+using DrawingSystemIcons = System.Drawing.SystemIcons;
 
 namespace SlashText;
 
@@ -210,4 +215,71 @@ public partial class MainWindow
         return menu;
 
     }
+
+    private void InitializeTray()
+    {
+        DrawingIcon? icon = null;
+        try
+        {
+            if (!string.IsNullOrWhiteSpace(Environment.ProcessPath))
+            {
+                icon = DrawingIcon.ExtractAssociatedIcon(Environment.ProcessPath);
+            }
+        }
+        catch (Exception)
+        {
+            // O ícone da janela continua disponível mesmo se o shell não o extrair.
+        }
+
+        var menu = CreateTrayMenu();
+
+        _trayIcon = new Forms.NotifyIcon
+        {
+            Text = UiText.Get("SlashDesk · Monitoramento ativo"),
+            Icon = icon ?? DrawingSystemIcons.Application,
+            ContextMenuStrip = menu,
+            Visible = true
+        };
+        _trayIcon.DoubleClick += (_, _) => Dispatcher.Invoke(ShowFromTray);
+        _trayIcon.BalloonTipClicked += (_, _) =>
+            Dispatcher.Invoke(OpenPendingCaptureNotification);
+    }
+
+    private void ShowTrayBalloon(
+        int timeout,
+        string title,
+        string text,
+        Forms.ToolTipIcon icon,
+        string? openFilePath = null)
+    {
+        _pendingCaptureNotificationPath =
+            string.IsNullOrWhiteSpace(openFilePath) ? null : openFilePath;
+        _trayIcon?.ShowBalloonTip(timeout, title, text, icon);
+    }
+
+    private void OpenPendingCaptureNotification()
+    {
+        var path = _pendingCaptureNotificationPath;
+        _pendingCaptureNotificationPath = null;
+        if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
+        {
+            return;
+        }
+
+        try
+        {
+            if (_captureNotificationEvidenceLauncher is not null) _captureNotificationEvidenceLauncher(path);
+            else Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
+        }
+        catch (Exception exception)
+        {
+            ShowAppDialog(
+                exception.Message,
+                UiText.Get("Não foi possível abrir a captura"),
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+        }
+    }
+
+    private static void ApplyTrayTheme(Forms.ContextMenuStrip menu) => TrayMenuTheme.Apply(menu);
 }
