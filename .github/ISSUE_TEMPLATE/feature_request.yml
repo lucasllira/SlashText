@@ -1,0 +1,38 @@
+name: Sugerir uma melhoria
+description: Propor uma melhoria com caso de uso e resultado esperado.
+title: "[Melhoria] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Procure sugestões existentes para concentrar a discussão. A issue é pública; use exemplos fictícios.
+        Falhas de segurança seguem a [política de relato privado](https://github.com/lucasllira/SlashText/security/policy).
+  - type: input
+    id: version
+    attributes:
+      label: Versão ou canal utilizado
+      description: Informe a versão em Sobre ou diga que é uma ideia geral para o produto.
+      placeholder: "Ex.: 3.2.0 estável; ideia para Captura."
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problema ou caso de uso
+      description: Que tarefa você tenta realizar e qual dificuldade encontra hoje?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Melhoria e resultado esperado
+      description: Descreva o fluxo desejado e como perceber que ele atende ao caso de uso.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternativas e contexto
+      description: Opcional. Solução atual, componente afetado, referências ou imagem sanitizada. Não envie dados/arquivos pessoais.
+    validations:
+      required: false
