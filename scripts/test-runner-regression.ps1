@@ -91,3 +91,6 @@ $longReport=Get-ChildItem -LiteralPath $longOutput -Recurse -Filter summary.json
 Check ($LASTEXITCODE -eq 2 -and $longReport.results[0].status -eq 'UNAVAILABLE' -and $longReport.results[0].reason.Contains('MAX_PATH')) 'recovery fixture path budget is checked before launch without weakening product guard'
 @{status='PASS';checks=$checks.Count;results=@($checks.ToArray())} | ConvertTo-Json -Depth 5 | Set-Content (Join-Path $root 'regression.json') -Encoding utf8
 Write-Output "Test orchestration regression: PASS ($($checks.Count) checks; inert child processes only); $root"
+# Negative CLI cases deliberately leave LASTEXITCODE=2. The GHA pwsh wrapper
+# propagates it even after all assertions pass unless this script owns its exit.
+exit 0
