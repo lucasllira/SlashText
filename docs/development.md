@@ -38,6 +38,8 @@ O build invoca `scripts/restore-noto-emoji.ps1`, `scripts/restore-ocr-models.ps1
 
 Não apagar caches, dados ou evidências para simular build limpo. O CI valida um checkout novo; uma reprodução local pode usar outro checkout/pasta de saída, mantendo a origem, SDK, comandos e hashes registrados. Não executar dois builds/publishes sobre os mesmos `bin/obj` ao mesmo tempo.
 
+O [inventário e plano de limpeza](repository-cleanup.md) classifica as saídas locais e a retenção necessária. Ele é somente leitura e não autoriza remoção de arquivos ou dados.
+
 ## Validar os dois formatos distribuídos
 
 Use uma pasta nova de saída/evidência a cada execução. `Installed` é o layout de distribuição em diretório, **não um instalador**. O portátil deve conter apenas `SlashDesk.exe`; os dados do usuário não fazem parte do pacote.

@@ -1,0 +1,1336 @@
+{
+  "schemaVersion": 1,
+  "issue": 159,
+  "activity": 4,
+  "sourceCommit": "39f06daa94b0fabc38e90e7485f03db21600f93b",
+  "capturedUtc": "2026-10-17T17:16:56.804014+00:00",
+  "scope": "Exact repository-relative targets only; private audit, tools, downloads, Git metadata and synced sources excluded",
+  "deleteApproved": false,
+  "deletedFiles": 0,
+  "movedFiles": 0,
+  "directoryDeletionPlanned": false,
+  "versioned": {
+    "total": 520,
+    "classes": {
+      "active-versioned": 410,
+      "retain-historical-reference": 33,
+      "protected-contract-or-resource": 77
+    },
+    "decision": "KEEP_ALL"
+  },
+  "summary": {
+    "measuredFiles": 13549,
+    "knownBytes": 5567246023,
+    "candidateFilesAfterConditions": 2845,
+    "candidateBytesAfterConditions": 3265424745,
+    "candidateUniqueFiles": 1608,
+    "protectedPathsOmitted": 128,
+    "manifestSha256": "0a384f2160f2c8d9060a2a84682ff97af579786740a414c5fe1866e6ad2bb788",
+    "versionedClasses": {
+      "active-versioned": 410,
+      "retain-historical-reference": 33,
+      "protected-contract-or-resource": 77
+    }
+  },
+  "exactCandidateListSha256": "388f45224fd4a46ebe2fa8911d3ac76facbfda6cb37691b47c0bfbb076a4d738",
+  "targets": [
+    {
+      "path": "publish-about",
+      "kind": "reproducible-output",
+      "exists": true,
+      "filesHashed": 1,
+      "knownBytes": 140938453,
+      "protectedPathsNotTraversed": 0,
+      "linksNotTraversed": 0,
+      "readErrors": 0,
+      "trackedFiles": 0,
+      "ignoredByGit": true,
+      "decision": "REVIEW_AFTER_RETENTION",
+      "deleteApproved": false,
+      "consumerReferences": [
+        {
+          "file": ".github/workflows/about-pilot.yml",
+          "line": 43
+        },
+        {
+          "file": ".github/workflows/about-pilot.yml",
+          "line": 45
+        },
+        {
+          "file": ".github/workflows/about-pilot.yml",
+          "line": 51
+        },
+        {
+          "file": ".github/workflows/about-pilot.yml",
+          "line": 56
+        },
+        {
+          "file": ".github/workflows/about-pilot.yml",
+          "line": 58
+        },
+        {
+          "file": ".github/workflows/about-pilot.yml",
+          "line": 63
+        },
+        {
+          "file": ".gitignore",
+          "line": 29
+        }
+      ]
+    },
+    {
+      "path": "publish-accent",
+      "kind": "reproducible-output",
+      "exists": true,
+      "filesHashed": 3,
+      "knownBytes": 422429823,
+      "protectedPathsNotTraversed": 0,
+      "linksNotTraversed": 0,
+      "readErrors": 0,
+      "trackedFiles": 0,
+      "ignoredByGit": true,
+      "decision": "REVIEW_AFTER_RETENTION",
+      "deleteApproved": false,
+      "consumerReferences": [
+        {
+          "file": ".github/workflows/quick-accent-pilot.yml",
+          "line": 43
+        },
+        {
+          "file": ".github/workflows/quick-accent-pilot.yml",
+          "line": 45
+        },
+        {
+          "file": ".github/workflows/quick-accent-pilot.yml",
+          "line": 51
+        },
+        {
+          "file": ".github/workflows/quick-accent-pilot.yml",
+          "line": 56
+        },
+        {
+          "file": ".github/workflows/quick-accent-pilot.yml",
+          "line": 61
+        },
+        {
+          "file": ".gitignore",
+          "line": 20
+        }
+      ]
+    },
+    {
+      "path": "publish-auxiliary",
+      "kind": "reproducible-output",
+      "exists": true,
+      "filesHashed": 1,
+      "knownBytes": 140968149,
+      "protectedPathsNotTraversed": 0,
+      "linksNotTraversed": 0,
+      "readErrors": 0,
+      "trackedFiles": 0,
+      "ignoredByGit": true,
+      "decision": "REVIEW_AFTER_RETENTION",
+      "deleteApproved": false,
+      "consumerReferences": [
+        {
+          "file": ".github/workflows/auxiliary-pilot.yml",
+          "line": 43
+        },
+        {
+          "file": ".github/workflows/auxiliary-pilot.yml",
+          "line": 45
+        },
+        {
+          "file": ".github/workflows/auxiliary-pilot.yml",
+          "line": 51
+        },
+        {
+          "file": ".github/workflows/auxiliary-pilot.yml",
+          "line": 56
+        },
+        {
+          "file": ".github/workflows/auxiliary-pilot.yml",
+          "line": 58
+        },
+        {
+          "file": ".github/workflows/auxiliary-pilot.yml",
+          "line": 64
+        },
+        {
+          "file": ".gitignore",
+          "line": 32
+        }
+      ]
+    },
+    {
+      "path": "publish-languages",
+      "kind": "reproducible-output",
+      "exists": true,
+      "filesHashed": 1,
+      "knownBytes": 142447829,
+      "protectedPathsNotTraversed": 0,
+      "linksNotTraversed": 0,
+      "readErrors": 0,
+      "trackedFiles": 0,
+      "ignoredByGit": true,
+      "decision": "REVIEW_AFTER_RETENTION",
+      "deleteApproved": false,
+      "consumerReferences": [
+        {
+          "file": ".github/workflows/languages-pilot.yml",
+          "line": 46
+        },
+        {
+          "file": ".github/workflows/languages-pilot.yml",
+          "line": 48
+        },
+        {
+          "file": ".github/workflows/languages-pilot.yml",
+          "line": 54
+        },
+        {
+          "file": ".github/workflows/languages-pilot.yml",
+          "line": 59
+        },
+        {
+          "file": ".github/workflows/languages-pilot.yml",
+          "line": 61
+        },
+        {
+          "file": ".github/workflows/languages-pilot.yml",
+          "line": 66
+        },
+        {
+          "file": ".gitignore",
+          "line": 35
+        }
+      ]
+    },
+    {
+      "path": "publish-ocr",
+      "kind": "reproducible-output",
+      "exists": true,
+      "filesHashed": 1,
+      "knownBytes": 140769493,
+      "protectedPathsNotTraversed": 0,
+      "linksNotTraversed": 0,
+      "readErrors": 0,
+      "trackedFiles": 0,
+      "ignoredByGit": true,
+      "decision": "REVIEW_AFTER_RETENTION",
+      "deleteApproved": false,
+      "consumerReferences": [
+        {
+          "file": ".github/workflows/capture-ocr-pilot.yml",
+          "line": 115
+        },
+        {
+          "file": ".github/workflows/capture-ocr-pilot.yml",
+          "line": 117
+        },
+        {
+          "file": ".github/workflows/capture-ocr-pilot.yml",
+          "line": 123
+        },
+        {
+          "file": ".github/workflows/capture-ocr-pilot.yml",
+          "line": 132
+        },
+        {
+          "file": ".github/workflows/capture-ocr-pilot.yml",
+          "line": 141
+        },
+        {
+          "file": ".github/workflows/capture-ocr-pilot.yml",
+          "line": 161
+        },
+        {
+          "file": ".github/workflows/capture-ocr-pilot.yml",
+          "line": 170
+        },
+        {
+          "file": ".github/workflows/capture-ocr-pilot.yml",
+          "line": 179
+        }
+      ]
+    },
+    {
+      "path": "publish-security",
+      "kind": "reproducible-output",
+      "exists": true,
+      "filesHashed": 1,
+      "knownBytes": 142447829,
+      "protectedPathsNotTraversed": 0,
+      "linksNotTraversed": 0,
+      "readErrors": 0,
+      "trackedFiles": 0,
+      "ignoredByGit": true,
+      "decision": "REVIEW_AFTER_RETENTION",
+      "deleteApproved": false,
+      "consumerReferences": [
+        {
+          "file": ".github/workflows/security.yml",
+          "line": 47
+        },
+        {
+          "file": ".github/workflows/security.yml",
+          "line": 50
+        },
+        {
+          "file": ".github/workflows/security.yml",
+          "line": 52
+        },
+        {
+          "file": ".github/workflows/security.yml",
+          "line": 55
+        },
+        {
+          "file": ".github/workflows/security.yml",
+          "line": 59
+        },
+        {
+          "file": ".github/workflows/security.yml",
+          "line": 60
+        },
+        {
+          "file": ".gitignore",
+          "line": 36
+        },
+        {
+          "file": ".gitignore",
+          "line": 37
+        }
+      ]
+    },
+    {
+      "path": "publish-security-installed",
+      "kind": "reproducible-output",
+      "exists": true,
+      "filesHashed": 483,
+      "knownBytes": 267739917,
+      "protectedPathsNotTraversed": 0,
+      "linksNotTraversed": 0,
+      "readErrors": 0,
+      "trackedFiles": 0,
+      "ignoredByGit": true,
+      "decision": "REVIEW_AFTER_RETENTION",
+      "deleteApproved": false,
+      "consumerReferences": [
+        {
+          "file": ".github/workflows/security.yml",
+          "line": 52
+        },
+        {
+          "file": ".github/workflows/security.yml",
+          "line": 55
+        },
+        {
+          "file": ".github/workflows/security.yml",
+          "line": 60
+        },
+        {
+          "file": ".gitignore",
+          "line": 37
+        }
+      ]
+    },
+    {
+      "path": "publish-settings",
+      "kind": "reproducible-output",
+      "exists": true,
+      "filesHashed": 3,
+      "knownBytes": 422738047,
+      "protectedPathsNotTraversed": 0,
+      "linksNotTraversed": 0,
+      "readErrors": 0,
+      "trackedFiles": 0,
+      "ignoredByGit": true,
+      "decision": "REVIEW_AFTER_RETENTION",
+      "deleteApproved": false,
+      "consumerReferences": [
+        {
+          "file": ".github/workflows/settings-pilot.yml",
+          "line": 43
+        },
+        {
+          "file": ".github/workflows/settings-pilot.yml",
+          "line": 45
+        },
+        {
+          "file": ".github/workflows/settings-pilot.yml",
+          "line": 51
+        },
+        {
+          "file": ".github/workflows/settings-pilot.yml",
+          "line": 56
+        },
+        {
+          "file": ".github/workflows/settings-pilot.yml",
+          "line": 61
+        },
+        {
+          "file": ".gitignore",
+          "line": 24
+        }
+      ]
+    },
+    {
+      "path": "publish-statistics",
+      "kind": "reproducible-output",
+      "exists": true,
+      "filesHashed": 1,
+      "knownBytes": 140851413,
+      "protectedPathsNotTraversed": 0,
+      "linksNotTraversed": 0,
+      "readErrors": 0,
+      "trackedFiles": 0,
+      "ignoredByGit": true,
+      "decision": "REVIEW_AFTER_RETENTION",
+      "deleteApproved": false,
+      "consumerReferences": [
+        {
+          "file": ".github/workflows/statistics-pilot.yml",
+          "line": 43
+        },
+        {
+          "file": ".github/workflows/statistics-pilot.yml",
+          "line": 45
+        },
+        {
+          "file": ".github/workflows/statistics-pilot.yml",
+          "line": 51
+        },
+        {
+          "file": ".github/workflows/statistics-pilot.yml",
+          "line": 56
+        },
+        {
+          "file": ".github/workflows/statistics-pilot.yml",
+          "line": 61
+        },
+        {
+          "file": ".gitignore",
+          "line": 26
+        }
+      ]
+    },
+    {
+      "path": "about-pilot-package",
+      "kind": "historical-pilot-output",
+      "exists": true,
+      "filesHashed": 4,
+      "knownBytes": 140942045,
+      "protectedPathsNotTraversed": 0,
+      "linksNotTraversed": 0,
+      "readErrors": 0,
+      "trackedFiles": 0,
+      "ignoredByGit": true,
+      "decision": "REVIEW_AFTER_RETENTION",
+      "deleteApproved": false,
+      "consumerReferences": [
+        {
+          "file": ".github/workflows/about-pilot.yml",
+          "line": 55
+        },
+        {
+          "file": ".github/workflows/about-pilot.yml",
+          "line": 56
+        },
+        {
+          "file": ".github/workflows/about-pilot.yml",
+          "line": 57
+        },
+        {
+          "file": ".github/workflows/about-pilot.yml",
+          "line": 59
+        },
+        {
+          "file": ".github/workflows/about-pilot.yml",
+          "line": 60
+        },
+        {
+          "file": ".github/workflows/about-pilot.yml",
+          "line": 67
+        },
+        {
+          "file": ".github/workflows/about-pilot.yml",
+          "line": 77
+        },
+        {
+          "file": ".gitignore",
+          "line": 28
+        }
+      ]
+    },
+    {
+      "path": "auxiliary-pilot-package",
+      "kind": "historical-pilot-output",
+      "exists": true,
+      "filesHashed": 5,
+      "knownBytes": 140973177,
+      "protectedPathsNotTraversed": 0,
+      "linksNotTraversed": 0,
+      "readErrors": 0,
+      "trackedFiles": 0,
+      "ignoredByGit": true,
+      "decision": "REVIEW_AFTER_RETENTION",
+      "deleteApproved": false,
+      "consumerReferences": [
+        {
+          "file": ".github/workflows/auxiliary-pilot.yml",
+          "line": 55
+        },
+        {
+          "file": ".github/workflows/auxiliary-pilot.yml",
+          "line": 56
+        },
+        {
+          "file": ".github/workflows/auxiliary-pilot.yml",
+          "line": 57
+        },
+        {
+          "file": ".github/workflows/auxiliary-pilot.yml",
+          "line": 59
+        },
+        {
+          "file": ".github/workflows/auxiliary-pilot.yml",
+          "line": 60
+        },
+        {
+          "file": ".github/workflows/auxiliary-pilot.yml",
+          "line": 61
+        },
+        {
+          "file": ".github/workflows/auxiliary-pilot.yml",
+          "line": 68
+        },
+        {
+          "file": ".github/workflows/auxiliary-pilot.yml",
+          "line": 78
+        }
+      ]
+    },
+    {
+      "path": "languages-pilot-package",
+      "kind": "historical-pilot-output",
+      "exists": true,
+      "filesHashed": 4,
+      "knownBytes": 142451927,
+      "protectedPathsNotTraversed": 0,
+      "linksNotTraversed": 0,
+      "readErrors": 0,
+      "trackedFiles": 0,
+      "ignoredByGit": true,
+      "decision": "REVIEW_AFTER_RETENTION",
+      "deleteApproved": false,
+      "consumerReferences": [
+        {
+          "file": ".github/workflows/languages-pilot.yml",
+          "line": 58
+        },
+        {
+          "file": ".github/workflows/languages-pilot.yml",
+          "line": 59
+        },
+        {
+          "file": ".github/workflows/languages-pilot.yml",
+          "line": 60
+        },
+        {
+          "file": ".github/workflows/languages-pilot.yml",
+          "line": 62
+        },
+        {
+          "file": ".github/workflows/languages-pilot.yml",
+          "line": 63
+        },
+        {
+          "file": ".github/workflows/languages-pilot.yml",
+          "line": 70
+        },
+        {
+          "file": ".github/workflows/languages-pilot.yml",
+          "line": 80
+        },
+        {
+          "file": ".gitignore",
+          "line": 34
+        }
+      ]
+    },
+    {
+      "path": "quick-accent-pilot-package",
+      "kind": "historical-pilot-output",
+      "exists": true,
+      "filesHashed": 4,
+      "knownBytes": 140803571,
+      "protectedPathsNotTraversed": 0,
+      "linksNotTraversed": 0,
+      "readErrors": 0,
+      "trackedFiles": 0,
+      "ignoredByGit": true,
+      "decision": "REVIEW_AFTER_RETENTION",
+      "deleteApproved": false,
+      "consumerReferences": [
+        {
+          "file": ".github/workflows/quick-accent-pilot.yml",
+          "line": 55
+        },
+        {
+          "file": ".github/workflows/quick-accent-pilot.yml",
+          "line": 56
+        },
+        {
+          "file": ".github/workflows/quick-accent-pilot.yml",
+          "line": 57
+        },
+        {
+          "file": ".github/workflows/quick-accent-pilot.yml",
+          "line": 58
+        },
+        {
+          "file": ".github/workflows/quick-accent-pilot.yml",
+          "line": 65
+        },
+        {
+          "file": ".github/workflows/quick-accent-pilot.yml",
+          "line": 75
+        },
+        {
+          "file": ".gitignore",
+          "line": 19
+        }
+      ]
+    },
+    {
+      "path": "recording-audio-pilot-package",
+      "kind": "historical-pilot-output",
+      "exists": true,
+      "filesHashed": 6,
+      "knownBytes": 140797774,
+      "protectedPathsNotTraversed": 0,
+      "linksNotTraversed": 0,
+      "readErrors": 0,
+      "trackedFiles": 0,
+      "ignoredByGit": true,
+      "decision": "REVIEW_AFTER_RETENTION",
+      "deleteApproved": false,
+      "consumerReferences": [
+        {
+          "file": ".gitignore",
+          "line": 17
+        }
+      ]
+    },
+    {
+      "path": "about-evidence",
+      "kind": "retain-evidence",
+      "exists": true,
+      "filesHashed": 81,
+      "knownBytes": 149658528,
+      "protectedPathsNotTraversed": 3,
+      "linksNotTraversed": 0,
+      "readErrors": 0,
+      "trackedFiles": 0,
+      "ignoredByGit": true,
+      "decision": "KEEP",
+      "deleteApproved": false,
+      "consumerReferences": [
+        {
+          "file": ".github/workflows/about-pilot.yml",
+          "line": 33
+        },
+        {
+          "file": ".github/workflows/about-pilot.yml",
+          "line": 50
+        },
+        {
+          "file": ".github/workflows/about-pilot.yml",
+          "line": 71
+        },
+        {
+          "file": ".github/workflows/about-pilot.yml",
+          "line": 72
+        },
+        {
+          "file": ".github/workflows/build.yml",
+          "line": 209
+        },
+        {
+          "file": ".github/workflows/build.yml",
+          "line": 219
+        },
+        {
+          "file": ".github/workflows/build.yml",
+          "line": 225
+        },
+        {
+          "file": ".github/workflows/build.yml",
+          "line": 232
+        }
+      ]
+    },
+    {
+      "path": "auxiliary-evidence",
+      "kind": "retain-evidence",
+      "exists": true,
+      "filesHashed": 699,
+      "knownBytes": 186538303,
+      "protectedPathsNotTraversed": 12,
+      "linksNotTraversed": 0,
+      "readErrors": 0,
+      "trackedFiles": 0,
+      "ignoredByGit": true,
+      "decision": "KEEP",
+      "deleteApproved": false,
+      "consumerReferences": [
+        {
+          "file": ".github/workflows/auxiliary-pilot.yml",
+          "line": 33
+        },
+        {
+          "file": ".github/workflows/auxiliary-pilot.yml",
+          "line": 50
+        },
+        {
+          "file": ".github/workflows/auxiliary-pilot.yml",
+          "line": 72
+        },
+        {
+          "file": ".github/workflows/auxiliary-pilot.yml",
+          "line": 73
+        },
+        {
+          "file": ".github/workflows/build.yml",
+          "line": 239
+        },
+        {
+          "file": ".github/workflows/build.yml",
+          "line": 250
+        },
+        {
+          "file": ".gitignore",
+          "line": 30
+        },
+        {
+          "file": "src/SlashText/App.xaml.cs",
+          "line": 166
+        }
+      ]
+    },
+    {
+      "path": "languages-evidence",
+      "kind": "retain-evidence",
+      "exists": true,
+      "filesHashed": 1477,
+      "knownBytes": 249152173,
+      "protectedPathsNotTraversed": 19,
+      "linksNotTraversed": 0,
+      "readErrors": 0,
+      "trackedFiles": 0,
+      "ignoredByGit": true,
+      "decision": "KEEP",
+      "deleteApproved": false,
+      "consumerReferences": [
+        {
+          "file": ".github/workflows/languages-pilot.yml",
+          "line": 36
+        },
+        {
+          "file": ".github/workflows/languages-pilot.yml",
+          "line": 53
+        },
+        {
+          "file": ".github/workflows/languages-pilot.yml",
+          "line": 74
+        },
+        {
+          "file": ".github/workflows/languages-pilot.yml",
+          "line": 75
+        },
+        {
+          "file": ".gitignore",
+          "line": 33
+        },
+        {
+          "file": "src/SlashText/App.xaml.cs",
+          "line": 154
+        }
+      ]
+    },
+    {
+      "path": "ocr-evidence",
+      "kind": "retain-evidence",
+      "exists": true,
+      "filesHashed": 1406,
+      "knownBytes": 88512307,
+      "protectedPathsNotTraversed": 5,
+      "linksNotTraversed": 0,
+      "readErrors": 0,
+      "trackedFiles": 0,
+      "ignoredByGit": true,
+      "decision": "KEEP",
+      "deleteApproved": false,
+      "consumerReferences": [
+        {
+          "file": ".github/workflows/capture-ocr-pilot.yml",
+          "line": 54
+        },
+        {
+          "file": ".github/workflows/capture-ocr-pilot.yml",
+          "line": 62
+        },
+        {
+          "file": ".github/workflows/capture-ocr-pilot.yml",
+          "line": 71
+        },
+        {
+          "file": ".github/workflows/capture-ocr-pilot.yml",
+          "line": 80
+        },
+        {
+          "file": ".github/workflows/capture-ocr-pilot.yml",
+          "line": 88
+        },
+        {
+          "file": ".github/workflows/capture-ocr-pilot.yml",
+          "line": 97
+        },
+        {
+          "file": ".github/workflows/capture-ocr-pilot.yml",
+          "line": 106
+        },
+        {
+          "file": ".github/workflows/capture-ocr-pilot.yml",
+          "line": 122
+        }
+      ]
+    },
+    {
+      "path": "quick-accent-evidence",
+      "kind": "retain-evidence",
+      "exists": true,
+      "filesHashed": 837,
+      "knownBytes": 647036996,
+      "protectedPathsNotTraversed": 20,
+      "linksNotTraversed": 0,
+      "readErrors": 0,
+      "trackedFiles": 0,
+      "ignoredByGit": true,
+      "decision": "KEEP",
+      "deleteApproved": false,
+      "consumerReferences": [
+        {
+          "file": ".github/workflows/build.yml",
+          "line": 132
+        },
+        {
+          "file": ".github/workflows/build.yml",
+          "line": 144
+        },
+        {
+          "file": ".github/workflows/quick-accent-pilot.yml",
+          "line": 33
+        },
+        {
+          "file": ".github/workflows/quick-accent-pilot.yml",
+          "line": 50
+        },
+        {
+          "file": ".github/workflows/quick-accent-pilot.yml",
+          "line": 69
+        },
+        {
+          "file": ".github/workflows/quick-accent-pilot.yml",
+          "line": 70
+        },
+        {
+          "file": ".gitignore",
+          "line": 18
+        },
+        {
+          "file": "src/SlashText/App.xaml.cs",
+          "line": 233
+        }
+      ]
+    },
+    {
+      "path": "recording-audio-evidence",
+      "kind": "retain-evidence",
+      "exists": true,
+      "filesHashed": 492,
+      "knownBytes": 166104460,
+      "protectedPathsNotTraversed": 6,
+      "linksNotTraversed": 0,
+      "readErrors": 0,
+      "trackedFiles": 0,
+      "ignoredByGit": true,
+      "decision": "KEEP",
+      "deleteApproved": false,
+      "consumerReferences": [
+        {
+          "file": ".gitignore",
+          "line": 16
+        },
+        {
+          "file": "src/SlashText/App.xaml.cs",
+          "line": 274
+        }
+      ]
+    },
+    {
+      "path": "security-evidence",
+      "kind": "retain-evidence",
+      "exists": true,
+      "filesHashed": 7,
+      "knownBytes": 18347295,
+      "protectedPathsNotTraversed": 0,
+      "linksNotTraversed": 0,
+      "readErrors": 0,
+      "trackedFiles": 0,
+      "ignoredByGit": true,
+      "decision": "KEEP",
+      "deleteApproved": false,
+      "consumerReferences": [
+        {
+          "file": ".github/workflows/security.yml",
+          "line": 50
+        },
+        {
+          "file": ".github/workflows/security.yml",
+          "line": 55
+        },
+        {
+          "file": ".github/workflows/security.yml",
+          "line": 59
+        },
+        {
+          "file": ".github/workflows/security.yml",
+          "line": 60
+        },
+        {
+          "file": ".github/workflows/security.yml",
+          "line": 67
+        },
+        {
+          "file": ".gitignore",
+          "line": 38
+        },
+        {
+          "file": "scripts/security-dependencies.ps1",
+          "line": 1
+        }
+      ]
+    },
+    {
+      "path": "settings-evidence",
+      "kind": "retain-evidence",
+      "exists": true,
+      "filesHashed": 1240,
+      "knownBytes": 525521862,
+      "protectedPathsNotTraversed": 53,
+      "linksNotTraversed": 0,
+      "readErrors": 0,
+      "trackedFiles": 0,
+      "ignoredByGit": true,
+      "decision": "KEEP",
+      "deleteApproved": false,
+      "consumerReferences": [
+        {
+          "file": ".github/workflows/build.yml",
+          "line": 191
+        },
+        {
+          "file": ".github/workflows/build.yml",
+          "line": 202
+        },
+        {
+          "file": ".github/workflows/settings-pilot.yml",
+          "line": 33
+        },
+        {
+          "file": ".github/workflows/settings-pilot.yml",
+          "line": 50
+        },
+        {
+          "file": ".github/workflows/settings-pilot.yml",
+          "line": 69
+        },
+        {
+          "file": ".github/workflows/settings-pilot.yml",
+          "line": 70
+        },
+        {
+          "file": ".gitignore",
+          "line": 22
+        },
+        {
+          "file": "src/SlashText/App.xaml.cs",
+          "line": 209
+        }
+      ]
+    },
+    {
+      "path": "statistics-evidence",
+      "kind": "retain-evidence",
+      "exists": true,
+      "filesHashed": 487,
+      "knownBytes": 189266796,
+      "protectedPathsNotTraversed": 10,
+      "linksNotTraversed": 0,
+      "readErrors": 0,
+      "trackedFiles": 0,
+      "ignoredByGit": true,
+      "decision": "KEEP",
+      "deleteApproved": false,
+      "consumerReferences": [
+        {
+          "file": ".github/workflows/build.yml",
+          "line": 152
+        },
+        {
+          "file": ".github/workflows/build.yml",
+          "line": 163
+        },
+        {
+          "file": ".github/workflows/statistics-pilot.yml",
+          "line": 33
+        },
+        {
+          "file": ".github/workflows/statistics-pilot.yml",
+          "line": 50
+        },
+        {
+          "file": ".github/workflows/statistics-pilot.yml",
+          "line": 69
+        },
+        {
+          "file": ".github/workflows/statistics-pilot.yml",
+          "line": 70
+        },
+        {
+          "file": ".gitignore",
+          "line": 21
+        },
+        {
+          "file": "src/SlashText/App.xaml.cs",
+          "line": 221
+        }
+      ]
+    },
+    {
+      "path": "src/SlashText/bin",
+      "kind": "reproducible-build-output",
+      "exists": true,
+      "filesHashed": 498,
+      "knownBytes": 363441689,
+      "protectedPathsNotTraversed": 0,
+      "linksNotTraversed": 0,
+      "readErrors": 0,
+      "trackedFiles": 0,
+      "ignoredByGit": true,
+      "decision": "REVIEW_AFTER_RETENTION",
+      "deleteApproved": false,
+      "consumerReferences": [
+        {
+          "file": ".github/workflows/about-pilot.yml",
+          "line": 32
+        },
+        {
+          "file": ".github/workflows/auxiliary-pilot.yml",
+          "line": 32
+        },
+        {
+          "file": ".github/workflows/build.yml",
+          "line": 102
+        },
+        {
+          "file": ".github/workflows/build.yml",
+          "line": 130
+        },
+        {
+          "file": ".github/workflows/build.yml",
+          "line": 151
+        },
+        {
+          "file": ".github/workflows/build.yml",
+          "line": 169
+        },
+        {
+          "file": ".github/workflows/build.yml",
+          "line": 190
+        },
+        {
+          "file": ".github/workflows/build.yml",
+          "line": 208
+        }
+      ]
+    },
+    {
+      "path": "src/SlashText/obj",
+      "kind": "reproducible-build-output",
+      "exists": true,
+      "filesHashed": 1758,
+      "knownBytes": 140273217,
+      "protectedPathsNotTraversed": 0,
+      "linksNotTraversed": 0,
+      "readErrors": 0,
+      "trackedFiles": 0,
+      "ignoredByGit": true,
+      "decision": "REVIEW_AFTER_RETENTION",
+      "deleteApproved": false,
+      "consumerReferences": [
+        {
+          "file": "scripts/security/inventory.py",
+          "line": 154
+        },
+        {
+          "file": "scripts/security/inventory.py",
+          "line": 186
+        },
+        {
+          "file": "scripts/security/inventory.py",
+          "line": 189
+        },
+        {
+          "file": "scripts/security/test_inventory.py",
+          "line": 31
+        },
+        {
+          "file": "scripts/security/test_inventory.py",
+          "line": 134
+        },
+        {
+          "file": "scripts/security/test_inventory.py",
+          "line": 136
+        }
+      ]
+    },
+    {
+      "path": "tests/SlashText.SmokeTests/bin",
+      "kind": "reproducible-build-output",
+      "exists": true,
+      "filesHashed": 20,
+      "knownBytes": 92954825,
+      "protectedPathsNotTraversed": 0,
+      "linksNotTraversed": 0,
+      "readErrors": 0,
+      "trackedFiles": 0,
+      "ignoredByGit": true,
+      "decision": "REVIEW_AFTER_RETENTION",
+      "deleteApproved": false,
+      "consumerReferences": [
+        {
+          "file": ".github/workflows/build.yml",
+          "line": 301
+        },
+        {
+          "file": ".github/workflows/capture-ocr-pilot.yml",
+          "line": 79
+        },
+        {
+          "file": ".github/workflows/capture-ocr-pilot.yml",
+          "line": 157
+        },
+        {
+          "file": "docs/custom-emoji-long-path-testing.md",
+          "line": 15
+        },
+        {
+          "file": "docs/gif-cancellation-validation.md",
+          "line": 27
+        },
+        {
+          "file": "docs/gif-timeline-validation.md",
+          "line": 75
+        },
+        {
+          "file": "docs/testing.md",
+          "line": 31
+        },
+        {
+          "file": "scripts/test.ps1",
+          "line": 42
+        }
+      ]
+    },
+    {
+      "path": "tests/SlashText.SmokeTests/obj",
+      "kind": "reproducible-build-output",
+      "exists": true,
+      "filesHashed": 24,
+      "knownBytes": 965431,
+      "protectedPathsNotTraversed": 0,
+      "linksNotTraversed": 0,
+      "readErrors": 0,
+      "trackedFiles": 0,
+      "ignoredByGit": true,
+      "decision": "REVIEW_AFTER_RETENTION",
+      "deleteApproved": false,
+      "consumerReferences": []
+    },
+    {
+      "path": "tools/SlashDesk.ResourceInventory/bin",
+      "kind": "reproducible-build-output",
+      "exists": true,
+      "filesHashed": 5,
+      "knownBytes": 191481,
+      "protectedPathsNotTraversed": 0,
+      "linksNotTraversed": 0,
+      "readErrors": 0,
+      "trackedFiles": 0,
+      "ignoredByGit": true,
+      "decision": "REVIEW_AFTER_RETENTION",
+      "deleteApproved": false,
+      "consumerReferences": [
+        {
+          "file": "scripts/security-inventory.ps1",
+          "line": 8
+        }
+      ]
+    },
+    {
+      "path": "tools/SlashDesk.ResourceInventory/obj",
+      "kind": "reproducible-build-output",
+      "exists": true,
+      "filesHashed": 20,
+      "knownBytes": 253619,
+      "protectedPathsNotTraversed": 0,
+      "linksNotTraversed": 0,
+      "readErrors": 0,
+      "trackedFiles": 0,
+      "ignoredByGit": true,
+      "decision": "REVIEW_AFTER_RETENTION",
+      "deleteApproved": false,
+      "consumerReferences": []
+    },
+    {
+      "path": "scripts/security/__pycache__",
+      "kind": "reproducible-cache",
+      "exists": true,
+      "filesHashed": 2,
+      "knownBytes": 45036,
+      "protectedPathsNotTraversed": 0,
+      "linksNotTraversed": 0,
+      "readErrors": 0,
+      "trackedFiles": 0,
+      "ignoredByGit": true,
+      "decision": "REVIEW_AFTER_RETENTION",
+      "deleteApproved": false,
+      "consumerReferences": [
+        {
+          "file": ".gitignore",
+          "line": 40
+        }
+      ]
+    },
+    {
+      "path": "src/SlashText/Assets/NotoEmoji/Full",
+      "kind": "preserve-restored-resource-cache",
+      "exists": true,
+      "filesHashed": 3973,
+      "knownBytes": 25991857,
+      "protectedPathsNotTraversed": 0,
+      "linksNotTraversed": 0,
+      "readErrors": 0,
+      "trackedFiles": 0,
+      "ignoredByGit": true,
+      "decision": "KEEP",
+      "deleteApproved": false,
+      "consumerReferences": [
+        {
+          "file": ".gitignore",
+          "line": 10
+        }
+      ]
+    },
+    {
+      "path": "src/SlashText/Assets/NotoEmoji/catalog-assets.zip",
+      "kind": "preserve-restored-resource-cache",
+      "exists": true,
+      "filesHashed": 1,
+      "knownBytes": 26034317,
+      "protectedPathsNotTraversed": 0,
+      "linksNotTraversed": 0,
+      "readErrors": 0,
+      "trackedFiles": 0,
+      "ignoredByGit": true,
+      "decision": "KEEP",
+      "deleteApproved": false,
+      "consumerReferences": [
+        {
+          "file": ".gitignore",
+          "line": 11
+        }
+      ]
+    },
+    {
+      "path": "src/SlashText/Assets/Ocr/eng.traineddata",
+      "kind": "preserve-restored-resource-cache",
+      "exists": true,
+      "filesHashed": 1,
+      "knownBytes": 15400601,
+      "protectedPathsNotTraversed": 0,
+      "linksNotTraversed": 0,
+      "readErrors": 0,
+      "trackedFiles": 0,
+      "ignoredByGit": true,
+      "decision": "KEEP",
+      "deleteApproved": false,
+      "consumerReferences": []
+    },
+    {
+      "path": "src/SlashText/Assets/Ocr/Fast/eng.traineddata",
+      "kind": "preserve-restored-resource-cache",
+      "exists": true,
+      "filesHashed": 1,
+      "knownBytes": 4113088,
+      "protectedPathsNotTraversed": 0,
+      "linksNotTraversed": 0,
+      "readErrors": 0,
+      "trackedFiles": 0,
+      "ignoredByGit": true,
+      "decision": "KEEP",
+      "deleteApproved": false,
+      "consumerReferences": []
+    },
+    {
+      "path": "src/SlashText/Assets/Ocr/por.traineddata",
+      "kind": "preserve-restored-resource-cache",
+      "exists": true,
+      "filesHashed": 1,
+      "knownBytes": 8159939,
+      "protectedPathsNotTraversed": 0,
+      "linksNotTraversed": 0,
+      "readErrors": 0,
+      "trackedFiles": 0,
+      "ignoredByGit": true,
+      "decision": "KEEP",
+      "deleteApproved": false,
+      "consumerReferences": []
+    },
+    {
+      "path": "src/SlashText/Assets/Ocr/Fast/por.traineddata",
+      "kind": "preserve-restored-resource-cache",
+      "exists": true,
+      "filesHashed": 1,
+      "knownBytes": 1982756,
+      "protectedPathsNotTraversed": 0,
+      "linksNotTraversed": 0,
+      "readErrors": 0,
+      "trackedFiles": 0,
+      "ignoredByGit": true,
+      "decision": "KEEP",
+      "deleteApproved": false,
+      "consumerReferences": []
+    }
+  ],
+  "processGate": "FRESH_RECHECK_REQUIRED; snapshot not an exhaustive handle/relative-build-path check",
+  "retention": "Keep current release/candidate/rollback evidence through #70 and at least 30 days after stable publication; any incident/rollback extends retention; no automatic deletion",
+  "limitations": [
+    "Protected data subtrees were not traversed or hashed; bytes are a lower bound.",
+    "Uniqueness and duplicate counts apply only to the enumerated safe files, not to all disks or GitHub.",
+    "Logical bytes are not a promise of physical disk space recovered.",
+    "File hashes and process snapshot are point-in-time evidence, not deletion authorization or an exhaustive lock check."
+  ]
+}
