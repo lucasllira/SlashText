@@ -1,0 +1,28 @@
+root = true
+
+# Match existing Windows source layout; do not bulk-format the repository.
+[*.{cs,xaml,csproj,pubxml,ps1,py,json,yml,yaml,md}]
+charset = utf-8
+end_of_line = crlf
+insert_final_newline = true
+indent_style = space
+indent_size = 4
+trim_trailing_whitespace = true
+
+[*.{csproj,pubxml,json,yml,yaml}]
+indent_size = 2
+
+# Preserve Markdown hard line breaks and existing prose wrapping.
+[*.md]
+trim_trailing_whitespace = false
+max_line_length = off
+
+# Frozen byte contracts and upstream material are not formatting targets.
+[{docs/design/3.3.0/contract/**,src/SlashText/Assets/**}]
+charset = unset
+end_of_line = unset
+insert_final_newline = unset
+indent_style = unset
+indent_size = unset
+trim_trailing_whitespace = unset
+max_line_length = unset

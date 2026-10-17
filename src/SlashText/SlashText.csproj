@@ -16,6 +16,7 @@
     <Version>3.3.0</Version>
     <AssemblyVersion>3.3.0.0</AssemblyVersion>
     <FileVersion>3.3.0.0</FileVersion>
+    <SlashDeskMinimumRuntimeVersion>10.0.13</SlashDeskMinimumRuntimeVersion>
     <DebugType>embedded</DebugType>
     <CapturePilotBuild Condition="'$(CaptureComplementsPilotBuild)' == 'true'">true</CapturePilotBuild>
     <CapturePilotBuild Condition="'$(CaptureOcrPilotBuild)' == 'true'">true</CapturePilotBuild>
@@ -74,6 +75,15 @@
                       Link="Defaults\snippets.md"
                       LogicalName="SlashText.Defaults.snippets.md" />
   </ItemGroup>
+  <Target Name="ValidateRuntimeServicing" AfterTargets="ResolveFrameworkReferences" Condition="'$(SelfContained)' == 'true'">
+    <ItemGroup>
+      <_SlashDeskRuntimePack Include="@(ResolvedRuntimePack)"
+        Condition="'%(ResolvedRuntimePack.NuGetPackageId)' == 'Microsoft.NETCore.App.Runtime.win-x64' Or '%(ResolvedRuntimePack.NuGetPackageId)' == 'Microsoft.WindowsDesktop.App.Runtime.win-x64'" />
+    </ItemGroup>
+    <Error Condition="'@(_SlashDeskRuntimePack)' == ''" Text="Self-contained build requires resolved Windows x64 runtime packs." />
+    <Error Condition="$([MSBuild]::VersionLessThan('%(_SlashDeskRuntimePack.NuGetPackageVersion)', '$(SlashDeskMinimumRuntimeVersion)'))"
+      Text="Runtime %(_SlashDeskRuntimePack.NuGetPackageId)/%(_SlashDeskRuntimePack.NuGetPackageVersion) is below the reviewed minimum $(SlashDeskMinimumRuntimeVersion). Restore with a compatible SDK and current servicing; do not downgrade the runtime." />
+  </Target>
   <Target Name="RestoreNotoEmoji" BeforeTargets="PrepareForBuild">
     <Exec Command="pwsh -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildProjectDirectory)\..\..\scripts\restore-noto-emoji.ps1&quot;" />
   </Target>
