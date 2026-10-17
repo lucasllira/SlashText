@@ -21,6 +21,7 @@ Comece pela finalidade da tarefa. Os guias de manutenção descrevem a implement
 |---|---|
 | Pré-requisitos, SDK/runtime e recursos Noto/OCR | [Ambiente de desenvolvimento e build](development.md) |
 | Pontos de entrada e responsabilidades | [Mapa do código e dos smokes](code-map.md) |
+| Trabalho por agentes, evidências e aceites | [Instruções do repositório](../AGENTS.md) |
 | Execução automatizada e registro de bugs | [Perfis Quick, Full e Hardware](testing.md) |
 | Localização PT/EN/ES | [Contrato de localização](design/3.3.0/localization.md) |
 | Aparência e preservação funcional da 3.3.0 | [Fundação visual](design/3.3.0/README.md), [matriz de paridade](design/3.3.0/parity.md) e [inventário da base](design/3.3.0/ui-inventory.json) |
