@@ -22,8 +22,8 @@ O foco de manutenção é a última versão estável publicada e o código/candi
 
 | Versão/canal | Tratamento |
 |---|---|
-| v3.2.0, última estável | Recebe relatos e triagem; uma correção pode ser entregue na próxima versão, sem promessa de backport separado. |
-| v3.3.0-rc.1 e main | Candidato/desenvolvimento: relatos ajudam a corrigir a preparação. Não são declaração de publicação estável ou garantia de ausência de falhas. |
+| v3.3.0, última estável | Recebe relatos e triagem; uma correção pode ser entregue na próxima versão, sem promessa de backport separado. |
+| main e candidatos posteriores | Desenvolvimento: relatos ajudam a corrigir a próxima entrega. Não representam o pacote estável nem garantem ausência de falhas. |
 | Versões anteriores | Sem compromisso de manutenção paralela. Informe se o problema ainda afeta a última estável; se não puder conferir, relate a suspeita em privado mesmo assim. |
 
 Confira a [última estável](https://github.com/lucasllira/SlashText/releases/latest), as [releases](https://github.com/lucasllira/SlashText/releases) e a [validação da 3.3.0](https://github.com/lucasllira/SlashText/issues/70) para o estado atual. O número no projeto ou o nome de um piloto não comprova lançamento.

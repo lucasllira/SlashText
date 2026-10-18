@@ -28,13 +28,13 @@ Situação conferida em **17/10/2026**:
 
 | Canal | Download | Situação |
 |---|---|---|
-| Estável | [v3.2.0](https://github.com/lucasllira/SlashText/releases/latest) | Versão oferecida pelo atualizador |
-| Pré-lançamento | [v3.3.0-rc.1](https://github.com/lucasllira/SlashText/releases/tag/v3.3.0-rc.1) | Para testes; não oferecida pelo atualizador estável |
+| Estável | [v3.3.0](https://github.com/lucasllira/SlashText/releases/tag/v3.3.0) | Versão oferecida pelo atualizador |
+| Pré-lançamento anterior | [v3.3.0-rc.1](https://github.com/lucasllira/SlashText/releases/tag/v3.3.0-rc.1) | Histórico de testes; substituído pela estável |
 
-A **3.3.0 ainda não foi publicada como estável**. Ela reúne a nova interface, idiomas PT/EN/ES,
+A **3.3.0 foi publicada como estável em 17/10/2026**. Ela reúne a nova interface, idiomas PT/EN/ES,
 áudio nas gravações MP4 e melhorias de acessibilidade, segurança e recuperação.
 Veja as [notas da 3.3.0](docs/releases/3.3.0.md) e a [validação/publicação #70](https://github.com/lucasllira/SlashText/issues/70).
-A RC1 corresponde ao commit `138e6bbdacf494d2d748e6db68b53c1d46008bc5`; mudanças posteriores da main exigem novo candidato.
+A estável corresponde ao commit `834d7878ef02e2fc90572bd17df6aee898c1d3fd`; mudanças posteriores da main não alteram esse pacote.
 
 ## Conheça o aplicativo
 
@@ -46,8 +46,8 @@ A RC1 corresponde ao commit `138e6bbdacf494d2d748e6db68b53c1d46008bc5`; mudança
 | Gravação | GIF e MP4 de monitor, janela ou região, com pausa e prévia |
 | Preferências | Temas Claro, Preto e Seguir o Windows, bandeja e backups |
 
-**Interface da 3.3.0 em preparação**, renderizada pelos controles WPF reais com dados fictícios.
-Estas imagens não representam a interface da estável 3.2.0. O monitor de atalhos fica indisponível
+**Interface da 3.3.0**, renderizada durante a preparação pelos controles WPF reais com dados fictícios.
+Estas imagens são fixtures, com fonte e limites registrados. O monitor de atalhos fica indisponível
 na fixture porque ela não instala hooks globais. [Origem e limites das imagens](docs/screenshots/README.md).
 
 ![Acento Rápido na interface da 3.3.0, tema preto](docs/screenshots/quick-accent-dark.png)
@@ -72,8 +72,8 @@ Veja [dados, atualização e recuperação](docs/storage-and-updates.md) e [supo
 
 ## Conferir o download e a privacidade
 
-Compare o ZIP com o `.sha256` publicado na mesma release. A RC 3.3.0 também oferece
-[proveniência verificável do GitHub](docs/release-provenance.md); a estável 3.2.0 é anterior a esse fluxo.
+Compare o ZIP com o `.sha256` publicado na mesma release. A estável 3.3.0 também oferece
+[proveniência verificável do GitHub](docs/release-provenance.md); a versão anterior 3.2.0 não possui esse atestado.
 O atualizador valida integridade, mas não verifica essa assinatura internamente.
 
 Textos, imagens e gravações permanecem no computador. A verificação de atualização consulta o GitHub.

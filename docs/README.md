@@ -11,13 +11,13 @@ Comece pela finalidade da tarefa. Os guias de manutenção descrevem a implement
 | Próximas entregas e ideias futuras | [Roadmap](roadmap.md) e [organização de issues/marcos](project-navigation.md) |
 | Pedir ajuda ou consultar perguntas frequentes | [Suporte](../SUPPORT.md) |
 | Relatar uma vulnerabilidade em privado | [Política e canal de segurança](../SECURITY.md) |
-| Entender a versão em preparação | [Notas da 3.3.0](releases/3.3.0.md) e [validação/publicação #70](https://github.com/lucasllira/SlashText/issues/70) |
+| Entender a versão estável atual | [Notas da 3.3.0](releases/3.3.0.md) e [validação/publicação #70](https://github.com/lucasllira/SlashText/issues/70) |
 | Consultar a versão anterior e compatibilidade | [Notas da 3.2.0](releases/3.2.0.md), [armazenamento e atualização](storage-and-updates.md) e [compatibilidade de backups](backup-compatibility.md) |
 | Saber onde ficam os dados e como atualizar | [Armazenamento, migração, backup e rollback](storage-and-updates.md) |
 | Entender privacidade e recuperação | [Clipboard](clipboard-privacy.md), [diagnósticos e temporários](local-data-retention.md), [histórico de capturas](capture-history-security.md) e [recuperação de restauração](restore-recovery.md) |
 | Consultar avisos e licenças | [Manutenção/consulta dos avisos offline](third-party-notices.md), [avisos de terceiros](../THIRD-PARTY-NOTICES.md) e [licença do projeto](../LICENSE) |
 
-**Situação consultada em 17/10/2026:** a estável é **v3.2.0**; [v3.3.0-rc.1](https://github.com/lucasllira/SlashText/releases/tag/v3.3.0-rc.1) é um pré-lançamento, ignorado pelo atualizador estável. A RC foi produzida no commit `138e6bbdacf494d2d748e6db68b53c1d46008bc5`; mudanças posteriores da main não estão nesses bytes. As notas da 3.3.0 descrevem o escopo preparado, não anunciam sua publicação estável. Conferir releases e o estado atual da #70 antes de escolher um pacote; não substituir dados reais por fixtures dos pilotos.
+**Situação conferida em 17/10/2026:** a estável é [**v3.3.0**](https://github.com/lucasllira/SlashText/releases/tag/v3.3.0), produzida no commit `834d7878ef02e2fc90572bd17df6aee898c1d3fd`, com hashes e proveniência do pacote público verificados. A RC1 anterior permanece como histórico, ignorada pelo atualizador estável. Mudanças posteriores da main não alteram os bytes da release. A observação da consulta periódica real continua na #37; publicar não aprova esse critério automaticamente. Conferir releases e a #70 antes de escolher um pacote; não substituir dados reais por fixtures dos pilotos.
 
 ## Desenvolvimento e testes
 

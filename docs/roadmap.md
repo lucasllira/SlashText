@@ -4,18 +4,18 @@ Navegação: [produto](../README.md) · [documentação](README.md) · [contribu
 
 Este documento separa compromissos do lançamento de ideias para avaliação. Não fixa datas nem transforma uma sugestão em funcionalidade prometida. O estado de execução fica nas issues ligadas abaixo.
 
-## Preparar a 3.3.0
+## Publicação da 3.3.0 e acompanhamento
 
-Situação consultada em 17/10/2026: estável **3.2.0**, pré-lançamento **3.3.0-rc.1**. A RC1 pertence ao commit `138e6bbdacf494d2d748e6db68b53c1d46008bc5`; não contém a organização posterior do repositório.
+Situação conferida em 17/10/2026: [**3.3.0 estável publicada**](https://github.com/lucasllira/SlashText/releases/tag/v3.3.0), fonte `834d7878ef02e2fc90572bd17df6aee898c1d3fd`. A RC1 anterior permanece como histórico. O aceite de critérios pendentes continua nas respectivas issues.
 
 | Frente | Registro e próximo resultado |
 |---|---|
-| Organização do repositório | [#159](https://github.com/lucasllira/SlashText/issues/159): concluir as atividades, conferir evidências e transferir o resultado à validação do candidato |
-| Candidato integrado e publicação | [#70](https://github.com/lucasllira/SlashText/issues/70): gerar o candidato da fonte integrada, validar o impacto das alterações e registrar identidade dos pacotes; tag/publicação estáveis dependem de autorização própria |
+| Organização do repositório | [#159](https://github.com/lucasllira/SlashText/issues/159): concluída e aceita; oito entregas integradas e evidências transferidas à #70. Limpeza e labels/marcos continuam somente propostas |
+| Candidato integrado e publicação | [#70](https://github.com/lucasllira/SlashText/issues/70): candidato, tag/build e publicação tiveram aceites próprios; pacote público e proveniência verificados. Consolidar o fechamento sem aprovar critérios pendentes de outras issues |
 | Aceite da migração visual | [#61](https://github.com/lucasllira/SlashText/issues/61): consolidar o aceite conforme seus critérios, sem reabrir automaticamente análises ou correções concluídas |
-| Observação da atualização real | [#37](https://github.com/lucasllira/SlashText/issues/37): preparar consumidores já abertos e observar a oferta após a publicação estável, respeitando cache/polling reais |
+| Observação da atualização real | [#37](https://github.com/lucasllira/SlashText/issues/37): registrar o aviso numa consulta posterior à abertura, respeitando cache/polling reais. A observação original foi interrompida; a fixture de reposição e seus limites estão identificados na issue |
 
-O escopo funcional preparado está nas [notas da 3.3.0](releases/3.3.0.md). As análises A–F e correções integradas permanecem rastreáveis no GitHub; não são uma lista de trabalho futuro. Os [critérios do candidato](release-candidate.md) conservam os limites da validação e os aceites humanos.
+O escopo funcional publicado está nas [notas da 3.3.0](releases/3.3.0.md). As análises A–F e correções integradas permanecem rastreáveis no GitHub; não são uma lista de trabalho futuro. Os [critérios do candidato](release-candidate.md) conservam os limites da validação e os aceites humanos.
 
 ## Ideias após o lançamento
 

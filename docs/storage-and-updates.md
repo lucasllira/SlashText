@@ -105,6 +105,8 @@ workflows.
 Uma tag com sufixo, por exemplo `vX.Y.Z-rc.1`, exige autorização específica para
 criação/build e outra para publicação. Ela permite validar pacotes e proveniência,
 mas é ignorada pelo canal estável e não comprova a detecção automática de nova
-estável da #37. A RC1 pública já possui esse fluxo registrado na
-[#70](https://github.com/lucasllira/SlashText/issues/70); uma futura estável exige
-seus próprios hashes, atestados e aceites.
+estável da #37. A RC1 pública e a estável 3.3.0 possuem verificações próprias
+registradas na [#70](https://github.com/lucasllira/SlashText/issues/70). A estável
+foi publicada em 17/10/2026 a partir de `834d7878ef02e2fc90572bd17df6aee898c1d3fd`;
+uma nova versão exige seus próprios hashes, atestados e aceites. A observação
+periódica da #37 permanece separada da publicação e da detecção na inicialização.
