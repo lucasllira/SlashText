@@ -2,7 +2,7 @@
 
 Navegação: [README do produto](../README.md) · [suporte](../SUPPORT.md) · [índice técnico](README.md).
 
-Este guia detalha os recursos do checkout atual. A interface completa e os idiomas da 3.3.0 estão em preparação; escolha o pacote pela [página de releases](https://github.com/lucasllira/SlashText/releases). A versão estável e a RC são identificadas no README.
+Este guia detalha os recursos do checkout atual. A interface completa e os idiomas estão disponíveis na estável 3.3.0; escolha o pacote pela [página de releases](https://github.com/lucasllira/SlashText/releases). A versão estável e o pré-lançamento anterior são identificados no README.
 
 ## Principais recursos
 
@@ -66,8 +66,8 @@ Este guia detalha os recursos do checkout atual. A interface completa e os idiom
 - foco visível, contraste semântico e suporte à escala do Windows;
 - barra de captura Fluent e catálogo local de emojis Noto.
 
-A implementação da interface completa do Visual Lab faz parte da **3.3.0, em validação**.
-A versão estável 3.2.0 mantém a fundação Fluent anterior. A nova interface preserva
+A implementação da interface completa do Visual Lab faz parte da **3.3.0 estável**.
+A versão anterior 3.2.0 mantém a fundação Fluent anterior. A nova interface preserva
 os dados, os atalhos e os formatos existentes.
 
 ## Instalação portátil
@@ -169,8 +169,8 @@ Captura com rolagem depende do comportamento do aplicativo de destino e pode rep
 
 ## Verificar o download
 
-A RC [v3.3.0-rc.1](https://github.com/lucasllira/SlashText/releases/tag/v3.3.0-rc.1)
-inclui proveniência assinada do GitHub para o ZIP e o executável. A estável 3.2.0
+A estável [v3.3.0](https://github.com/lucasllira/SlashText/releases/tag/v3.3.0)
+inclui proveniência assinada do GitHub para o ZIP e o executável. A versão anterior 3.2.0
 é anterior a esse fluxo. O roteiro de [verificação de proveniência](release-provenance.md)
 confere repositório, workflow, tag e commit esperados. O atualizador do app mantém
 as verificações de integridade; não verifica essa assinatura internamente.

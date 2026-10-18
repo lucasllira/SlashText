@@ -22,7 +22,7 @@ Os formulários de bug/melhoria e o template de PR já pedem contexto e validaç
 ## Marcos de versão
 
 - Propor um único marco **v3.3.0**, sem data artificial, para o escopo aceito do lançamento. A data deve ser definida a partir dos gates reais.
-- Se autorizado posteriormente, relacionar somente as issues abertas #159, #70, #61 e #37 ao marco. #159 pode usar `maintenance`, #70 pode usar `release`; não remover labels atuais automaticamente.
+- Se autorizado posteriormente, conferir as issues ainda abertas antes de relacioná-las ao marco. Após a publicação estável, #70, #61 e #37 continuam em acompanhamento; a #159 foi aceita e encerrada. #70 pode usar `release`; não remover labels atuais automaticamente.
 - A #37 depende da observação após a publicação estável. O marco pode continuar aberto durante essa observação; não marcar tudo como concluído apenas porque a release foi publicada.
 - Ideias do [roadmap](roadmap.md) ficam sem marco até triagem. Não criar um marco genérico “futuro” que pareça compromisso de entrega.
 - Não preencher retroativamente todas as issues/PRs fechadas. Preservar relações e histórico existentes; o marco organiza trabalho aceito, não reescreve releases anteriores.

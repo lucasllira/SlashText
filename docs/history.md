@@ -63,6 +63,6 @@ O corpo de cada guia foi preservado; somente o aviso de aplicabilidade foi acres
 
 ## Aceites e retenção
 
-Para a identidade exata de um candidato, aceites físicos e limites aceitos, consultar o **estado atual** da [#70](https://github.com/lucasllira/SlashText/issues/70). A RC1 tem proveniência própria; uma futura estável precisa de nova conferência e autorização. A [#37](https://github.com/lucasllira/SlashText/issues/37) depende da observação de uma release estável real por um consumidor já aberto, não de piloto/pré-lançamento.
+Para a identidade exata de um candidato, aceites físicos e limites aceitos, consultar o **estado atual** da [#70](https://github.com/lucasllira/SlashText/issues/70). A RC1 e a estável 3.3.0 têm proveniências próprias verificadas; novas versões exigem nova conferência e autorização. A [#37](https://github.com/lucasllira/SlashText/issues/37) depende da observação de uma release estável real por um consumidor já aberto, não de piloto/pré-lançamento. Os registros e roteiros anteriores não provam essa observação automaticamente.
 
 O [plano de limpeza](repository-cleanup.md) preserva documentos, contratos, dados e evidências. Este índice não move ou exclui arquivos, não reduz retenção e não substitui a aprovação de uma limpeza posterior.

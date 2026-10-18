@@ -125,14 +125,30 @@ Automated regressions execute release input/source guards, permission mutations,
 verification command policy, synthetic HTTP redirects and updater preparation /
 rollback / data preservation. Mocked `gh` tests validate wiring and failure
 propagation, **not cryptography**. Real CLI verification is recorded separately.
-Real verification of the public RC1 bundle, its subjects and modified/wrong-identity
-refusals is recorded in [#70](https://github.com/lucasllira/SlashText/issues/70).
-That proof binds [v3.3.0-rc.1](https://github.com/lucasllira/SlashText/releases/tag/v3.3.0-rc.1)
-to source `138e6bbdacf494d2d748e6db68b53c1d46008bc5`; it is not proof for later
-main commits. Each new published tag/artifact, including stable 3.3.0, requires its
-own authorized run, public bundle download, successful verification and refused
-modified/wrong-identity cases. No production tag/release may be created merely
-to test documentation or a code PR.
+Real verification of the public RC1 and stable bundles is recorded in
+[#70](https://github.com/lucasllira/SlashText/issues/70). RC1 binds source
+`138e6bbdacf494d2d748e6db68b53c1d46008bc5`; the separately authorized
+[stable v3.3.0](https://github.com/lucasllira/SlashText/releases/tag/v3.3.0)
+binds `834d7878ef02e2fc90572bd17df6aee898c1d3fd`, built/published by
+[run 39077264939](https://github.com/lucasllira/SlashText/actions/runs/39077264939).
+
+For stable, all three subjects passed the trusted consumer script with the public
+bundle; seven wrong-identity/policy cases, modified artifact/signature and missing
+verification material were refused. A final unchanged positive control passed
+(14 decisions). Public ZIP/checksum and extracted EXE match the approved hashes;
+installed staging remains the same-run Actions artifact, not a public installer.
+
+| Stable subject | SHA-256 |
+| --- | --- |
+| Portable ZIP | `4e2bd54778e45266c2bf77741a5980e11f349cc38731442af3b0ff311461fb20` |
+| Actual portable SlashDesk.exe | `4e1ee92070262de5b5511e2b547ef76c6f4e9d4333fbb343be747b395e3c2e73` |
+| Installed staging ZIP | `791d6b9f05863957e33326eeda38b87317a766a88472c1ee9c38d77cce6e4d9f` |
+
+This proof does not cover later main commits or prove an end-user update popup/
+transaction; that observation remains in #37. Each new published tag/artifact
+requires its own authorized run, public bundle download, successful verification
+and refused modified/wrong-identity cases. No production tag/release may be created
+merely to test documentation or a code PR.
 
 References: [GitHub artifact attestations](https://docs.github.com/en/actions/how-tos/secure-your-work/use-artifact-attestations/use-artifact-attestations),
 [GitHub CLI verification policy](https://cli.github.com/manual/gh_attestation_verify),

@@ -28,7 +28,7 @@ Preserve os originais e backups. Registre a mensagem sanitizada e siga as açõe
 
 ## Como conferir a origem do download?
 
-Confira repositório, release e checksum do pacote escolhido. A partir da RC 3.3.0 há [proveniência do GitHub e verificador manual](docs/release-provenance.md). Isso não equivale a assinatura Authenticode/reputação SmartScreen, e o atualizador não verifica a assinatura de proveniência internamente. A estável 3.2.0 é anterior a esse fluxo; não apresente um artefato antigo como se tivesse atestado.
+Confira repositório, release e checksum do pacote escolhido. A estável 3.3.0 oferece [proveniência do GitHub e verificador manual](docs/release-provenance.md), já disponível na RC anterior. Isso não equivale a assinatura Authenticode/reputação SmartScreen, e o atualizador não verifica a assinatura de proveniência internamente. A versão anterior 3.2.0 não possui esse atestado; não apresente um artefato antigo como se tivesse atestado.
 
 ## Posso contribuir ou executar os testes?
 
